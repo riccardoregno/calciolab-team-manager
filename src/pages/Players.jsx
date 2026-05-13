@@ -12,6 +12,7 @@ import PlayerCard from "../components/players/PlayerCard";
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
 import { createId } from "../utils/helpers";
+import { supabase } from "../lib/supabaseClient";
 
 function Players({ players, setPlayers }) {
   const [search, setSearch] = useState("");
@@ -43,33 +44,65 @@ function Players({ players, setPlayers }) {
     reader.readAsDataURL(file);
   }
 
-  function addPlayer() {
-    if (!form.name.trim()) {
-      return alert("Inserisci il nome del giocatore");
-    }
+  import { supabase } from "../lib/supabaseClient";
 
-    setPlayers([
-      ...players,
+async function addPlayer() {
+  if (!form.name.trim()) {
+    return alert("Inserisci il nome del giocatore");
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return alert("Utente non autenticato");
+  }
+
+  const { data, error } = await supabase
+    .from("players")
+    .insert([
       {
-        ...form,
-        id: createId("player"),
+        user_id: user.id,
+        name: form.name,
+        age: form.age || null,
+        role: form.role || "",
       },
-    ]);
+    ])
+    .select()
+    .single();
 
-    setForm({
-      ...emptyPlayer(),
-      status: "Disponibile",
-    });
-
-    setOpenModal(false);
+  if (error) {
+    console.error(error);
+    return alert("Errore nel salvataggio del giocatore");
   }
 
-  function deletePlayer(id) {
-    if (!confirm("Vuoi eliminare questo giocatore?")) return;
+  // aggiorna UI con ID reale del DB
+  setPlayers([...players, data]);
 
-    setPlayers(players.filter((p) => p.id !== id));
+  setForm({
+    ...emptyPlayer(),
+    status: "Disponibile",
+  });
+
+  setOpenModal(false);
+}
+
+async function deletePlayer(id) {
+  if (!confirm("Vuoi eliminare questo giocatore?")) return;
+
+  const { error } = await supabase
+    .from("players")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error(error);
+    return alert("Errore nell'eliminazione del giocatore");
   }
 
+  setPlayers(players.filter((p) => p.id !== id));
+}
   return (
     <div style={styles.page}>
       <PageHeader
