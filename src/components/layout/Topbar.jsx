@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "../../lib/supabaseClient";
 import { styles } from "../../styles/index.js";
 
 export default function Topbar({
@@ -7,19 +8,27 @@ export default function Topbar({
   exercises = [],
   sessions = [],
   matches = [],
+  profile = null,
 }) {
   const [search, setSearch] = useState("");
   const [openNotifications, setOpenNotifications] = useState(false);
   const [openProfile, setOpenProfile] = useState(false);
+
+  const firstName = profile?.first_name || "Coach";
+  const lastName = profile?.last_name || "";
+  const initials = `${firstName?.[0] || "C"}${lastName?.[0] || ""}`.toUpperCase();
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.reload();
+  }
 
   const results = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return [];
 
     const playerResults = players
-      .filter((p) =>
-        `${p.name} ${p.role} ${p.status}`.toLowerCase().includes(q)
-      )
+      .filter((p) => `${p.name} ${p.role} ${p.status}`.toLowerCase().includes(q))
       .map((p) => ({
         id: `player-${p.id}`,
         label: p.name,
@@ -28,9 +37,7 @@ export default function Topbar({
       }));
 
     const exerciseResults = exercises
-      .filter((e) =>
-        `${e.title} ${e.category} ${e.objective}`.toLowerCase().includes(q)
-      )
+      .filter((e) => `${e.title} ${e.category} ${e.objective}`.toLowerCase().includes(q))
       .map((e) => ({
         id: `exercise-${e.id}`,
         label: e.title,
@@ -39,9 +46,7 @@ export default function Topbar({
       }));
 
     const sessionResults = sessions
-      .filter((s) =>
-        `${s.title} ${s.date} ${s.objective}`.toLowerCase().includes(q)
-      )
+      .filter((s) => `${s.title} ${s.date} ${s.objective}`.toLowerCase().includes(q))
       .map((s) => ({
         id: `session-${s.id}`,
         label: s.title || "Seduta",
@@ -51,9 +56,7 @@ export default function Topbar({
 
     const matchResults = matches
       .filter((m) =>
-        `${m.opponent} ${m.date} ${m.competition} ${m.location}`
-          .toLowerCase()
-          .includes(q)
+        `${m.opponent} ${m.date} ${m.competition} ${m.location}`.toLowerCase().includes(q)
       )
       .map((m) => ({
         id: `match-${m.id}`,
@@ -62,12 +65,7 @@ export default function Topbar({
         to: "/matches",
       }));
 
-    return [
-      ...playerResults,
-      ...exerciseResults,
-      ...sessionResults,
-      ...matchResults,
-    ].slice(0, 8);
+    return [...playerResults, ...exerciseResults, ...sessionResults, ...matchResults].slice(0, 8);
   }, [search, players, exercises, sessions, matches]);
 
   const notifications = useMemo(() => {
@@ -103,16 +101,13 @@ export default function Topbar({
         to: `/players/${p.id}`,
       }));
 
-    return [...upcomingSessions, ...upcomingMatches, ...injuredPlayers].slice(
-      0,
-      5
-    );
+    return [...upcomingSessions, ...upcomingMatches, ...injuredPlayers].slice(0, 5);
   }, [sessions, matches, players]);
 
   return (
     <header style={styles.topbar}>
       <div style={styles.topbarLeft}>
-        <p style={styles.topbarEyebrow}>Benvenuto, Coach</p>
+        <p style={styles.topbarEyebrow}>Ciao {firstName}</p>
         <h1 style={styles.topbarTitle}>Gestisci la tua stagione</h1>
       </div>
 
@@ -144,9 +139,7 @@ export default function Topbar({
                   </Link>
                 ))
               ) : (
-                <div style={styles.topbarSearchEmpty}>
-                  Nessun risultato trovato
-                </div>
+                <div style={styles.topbarSearchEmpty}>Nessun risultato trovato</div>
               )}
             </div>
           )}
@@ -164,9 +157,7 @@ export default function Topbar({
             onClick={() => setOpenNotifications(!openNotifications)}
           >
             🔔
-            {notifications.length > 0 && (
-              <span style={styles.topbarNotificationDot} />
-            )}
+            {notifications.length > 0 && <span style={styles.topbarNotificationDot} />}
           </button>
 
           {openNotifications && (
@@ -189,75 +180,76 @@ export default function Topbar({
                   </Link>
                 ))
               ) : (
-                <div style={styles.topbarNotificationEmpty}>
-                  Nessuna attività urgente
-                </div>
+                <div style={styles.topbarNotificationEmpty}>Nessuna attività urgente</div>
               )}
             </div>
           )}
         </div>
 
-       <div style={{ position: "relative" }}>
-  <button
-    style={styles.topbarProfileButton}
-    onClick={() => setOpenProfile(!openProfile)}
-  >
-    <div style={styles.topbarAvatar}>C</div>
+        <div style={{ position: "relative" }}>
+          <button
+            style={styles.topbarProfileButton}
+            onClick={() => setOpenProfile(!openProfile)}
+          >
+            <div style={styles.topbarAvatar}>{initials}</div>
 
-    <div style={styles.topbarProfileText}>
-      <strong style={styles.topbarProfileName}>Coach</strong>
-      <span style={styles.topbarProfileRole}>Locale MVP</span>
-    </div>
+            <div style={styles.topbarProfileText}>
+              <strong style={styles.topbarProfileName}>
+                {firstName} {lastName}
+              </strong>
+              <span style={styles.topbarProfileRole}>Coach CalcioLab</span>
+            </div>
 
-    <span style={styles.topbarChevron}>⌄</span>
-  </button>
+            <span style={styles.topbarChevron}>⌄</span>
+          </button>
 
-  {openProfile && (
-  <div style={styles.topbarProfileMenu}>
-    <div style={styles.topbarProfileMenuHeader}>
-      <strong>Profilo Coach</strong>
-      <span>CalcioLab Team</span>
-    </div>
+          {openProfile && (
+            <div style={styles.topbarProfileMenu}>
+              <div style={styles.topbarProfileMenuHeader}>
+                <strong>
+                  {firstName} {lastName}
+                </strong>
+                <span>{profile?.email || "Profilo coach"}</span>
+              </div>
 
-    <Link
-      to="/settings"
-      style={styles.topbarProfileMenuItem}
-      onClick={() => setOpenProfile(false)}
-    >
-      ⚙️ Impostazioni
-    </Link>
+              <Link
+                to="/settings"
+                style={styles.topbarProfileMenuItem}
+                onClick={() => setOpenProfile(false)}
+              >
+                ⚙️ Impostazioni
+              </Link>
 
-    <Link
-      to="/statistics"
-      style={styles.topbarProfileMenuItem}
-      onClick={() => setOpenProfile(false)}
-    >
-      📊 Dashboard performance
-    </Link>
+              <Link
+                to="/statistics"
+                style={styles.topbarProfileMenuItem}
+                onClick={() => setOpenProfile(false)}
+              >
+                📊 Dashboard performance
+              </Link>
 
-      <Link
-        to="/players"
-        style={styles.topbarProfileMenuItem}
-        onClick={() => setOpenProfile(false)}
-      >
-        👥 Gestione rosa
-      </Link>
+              <Link
+                to="/players"
+                style={styles.topbarProfileMenuItem}
+                onClick={() => setOpenProfile(false)}
+              >
+                👥 Gestione rosa
+              </Link>
 
-      <Link
-        to="/trainings"
-        style={styles.topbarProfileMenuItem}
-        onClick={() => setOpenProfile(false)}
-      >
-        🗓️ Pianificazione
-      </Link>
+              <Link
+                to="/trainings"
+                style={styles.topbarProfileMenuItem}
+                onClick={() => setOpenProfile(false)}
+              >
+                🗓️ Pianificazione
+              </Link>
 
-      <button style={styles.topbarProfileLogout}>
-        Esci dalla demo
-      </button>
-    </div>
-  )}
-</div>
-
+              <button style={styles.topbarProfileLogout} onClick={handleLogout}>
+                Esci
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
