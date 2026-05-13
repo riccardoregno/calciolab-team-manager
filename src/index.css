@@ -32,51 +32,114 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
-@media (max-width: 900px) {
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+
+  .desktop-sidebar {
+    display: none !important;
+  }
+
   .app-shell {
-    flex-direction: column;
-  }
-
-  .app-shell > aside {
-    position: relative !important;
-    top: auto !important;
+    display: block !important;
     width: 100% !important;
-    min-width: 0 !important;
-    min-height: auto !important;
-    padding: 16px !important;
-  }
-
-  .app-shell > aside nav {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+    min-height: 100vh !important;
   }
 
   .app-content {
-    padding: 20px 16px 32px !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    padding: 16px 14px 96px !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
   }
 
   .app-content header {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
     gap: 14px !important;
+    align-items: stretch !important;
   }
 
-  .app-content header > div:last-child {
-    width: 100%;
-    justify-content: flex-start !important;
+  .app-content header > div {
+    width: 100% !important;
+  }
+
+  .app-content header h1 {
+    font-size: 24px !important;
+    line-height: 1.15 !important;
+  }
+
+  .app-content header p {
+    font-size: 12px !important;
+  }
+
+  .app-content header input {
+    width: 100% !important;
+  }
+
+  .mobile-bottom-nav {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    z-index: 9999;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    padding: 8px;
+    border-radius: 22px;
+    background: rgba(15, 23, 42, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(14px);
+  }
+
+  .mobile-nav-item {
+    display: grid;
+    place-items: center;
+    gap: 2px;
+    padding: 8px 4px;
+    border-radius: 16px;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 18px;
+  }
+
+  .mobile-nav-item small {
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .mobile-nav-item.active {
+    background: rgba(59, 130, 246, 0.25);
+    color: #ffffff;
+  }
+
+  [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+    min-height: 44px;
+  }
+
+  button {
+    white-space: normal;
   }
 }
-
-@media (max-width: 700px) {
-  .app-shell > aside {
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    top: auto !important;
-    z-index: 100 !important;
-    border-right: none !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-    box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.34) !important;
-  }
 
   .app-shell > aside > div:first-child > div:first-child,
   .app-shell > aside > div:last-child {

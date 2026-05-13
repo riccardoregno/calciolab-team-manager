@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { styles } from "./styles/index.js";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
+import MobileBottomNav from "./components/layout/MobileBottomNav";
 import Badge from "./components/ui/Badge";
 import AppCard from "./components/ui/AppCard";
 
@@ -121,7 +122,9 @@ function App() {
   return (
     <BrowserRouter>
       <div className="app-shell" style={styles.appShell}>
-        <Sidebar />
+        <div className="desktop-sidebar">
+          <Sidebar />
+        </div>
 
         <main className="app-content" style={styles.content}>
           <Topbar
@@ -140,12 +143,6 @@ function App() {
                 ? `Sync ${auth.team?.name || "Supabase"}`
                 : "Salvataggio locale"}
             </Badge>
-
-            {auth.authConfigured && !auth.user && !auth.authLoading && (
-              <span style={styles.storageStatusText}>
-                Accedi dalle impostazioni per attivare il workspace cloud
-              </span>
-            )}
 
             {storageError && (
               <span style={styles.storageStatusText}>
@@ -207,10 +204,7 @@ function App() {
                 }
               />
 
-              <Route
-                path="/opponents"
-                element={<Opponents matches={matches} />}
-              />
+              <Route path="/opponents" element={<Opponents matches={matches} />} />
 
               <Route
                 path="/post-match"
@@ -257,9 +251,7 @@ function App() {
 
               <Route
                 path="/availability"
-                element={
-                  <Availability players={players} setPlayers={setPlayers} />
-                }
+                element={<Availability players={players} setPlayers={setPlayers} />}
               />
 
               <Route
@@ -296,18 +288,12 @@ function App() {
                 }
               />
 
-              <Route
-                path="/tactical-board"
-                element={<TacticalBoard players={players} />}
-              />
+              <Route path="/tactical-board" element={<TacticalBoard players={players} />} />
 
               <Route
                 path="/statistics"
                 element={
-                  <Statistics
-                    events={[...sessions, ...matches]}
-                    players={players}
-                  />
+                  <Statistics events={[...sessions, ...matches]} players={players} />
                 }
               />
 
@@ -349,12 +335,7 @@ function App() {
 
               <Route
                 path="/exercises"
-                element={
-                  <Exercises
-                    exercises={exercises}
-                    setExercises={setExercises}
-                  />
-                }
+                element={<Exercises exercises={exercises} setExercises={setExercises} />}
               />
 
               <Route
@@ -383,6 +364,8 @@ function App() {
           </Suspense>
         </main>
       </div>
+
+      <MobileBottomNav />
     </BrowserRouter>
   );
 }
