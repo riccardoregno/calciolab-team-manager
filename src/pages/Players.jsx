@@ -11,7 +11,6 @@ import PlayerCard from "../components/players/PlayerCard";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
-import { createId } from "../utils/helpers";
 import { supabase } from "../lib/supabaseClient";
 
 function Players({ players, setPlayers }) {
@@ -20,11 +19,15 @@ function Players({ players, setPlayers }) {
 
   const [form, setForm] = useState({
     ...emptyPlayer(),
+    firstName: "",
+    lastName: "",
     status: "Disponibile",
   });
 
   const filteredPlayers = players.filter((player) =>
-    `${player.name} ${player.role}`
+    `${player.first_name || player.firstName || ""} ${
+      player.last_name || player.lastName || ""
+    } ${player.name || ""} ${player.role || ""}`
       .toLowerCase()
       .includes(search.toLowerCase())
   );
@@ -44,65 +47,66 @@ function Players({ players, setPlayers }) {
     reader.readAsDataURL(file);
   }
 
-  import { supabase } from "../lib/supabaseClient";
+  async function addPlayer() {
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      return alert("Inserisci nome e cognome del giocatore");
+    }
 
-async function addPlayer() {
-  if (!form.name.trim()) {
-    return alert("Inserisci il nome del giocatore");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return alert("Utente non autenticato");
+    }
+
+    const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`;
+
+    const { data, error } = await supabase
+      .from("players")
+      .insert([
+        {
+          user_id: user.id,
+          first_name: form.firstName.trim(),
+          last_name: form.lastName.trim(),
+          name: fullName,
+          role: form.role || "",
+          age: form.age || null,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error(error);
+      return alert("Errore nel salvataggio del giocatore");
+    }
+
+    setPlayers([...players, data]);
+
+    setForm({
+      ...emptyPlayer(),
+      firstName: "",
+      lastName: "",
+      status: "Disponibile",
+    });
+
+    setOpenModal(false);
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  async function deletePlayer(id) {
+    if (!confirm("Vuoi eliminare questo giocatore?")) return;
 
-  if (!user) {
-    return alert("Utente non autenticato");
+    const { error } = await supabase.from("players").delete().eq("id", id);
+
+    if (error) {
+      console.error(error);
+      return alert("Errore nell'eliminazione del giocatore");
+    }
+
+    setPlayers(players.filter((p) => p.id !== id));
   }
 
-  const { data, error } = await supabase
-    .from("players")
-    .insert([
-      {
-        user_id: user.id,
-        name: form.name,
-        age: form.age || null,
-        role: form.role || "",
-      },
-    ])
-    .select()
-    .single();
-
-  if (error) {
-    console.error(error);
-    return alert("Errore nel salvataggio del giocatore");
-  }
-
-  // aggiorna UI con ID reale del DB
-  setPlayers([...players, data]);
-
-  setForm({
-    ...emptyPlayer(),
-    status: "Disponibile",
-  });
-
-  setOpenModal(false);
-}
-
-async function deletePlayer(id) {
-  if (!confirm("Vuoi eliminare questo giocatore?")) return;
-
-  const { error } = await supabase
-    .from("players")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    console.error(error);
-    return alert("Errore nell'eliminazione del giocatore");
-  }
-
-  setPlayers(players.filter((p) => p.id !== id));
-}
   return (
     <div style={styles.page}>
       <PageHeader
@@ -127,13 +131,9 @@ async function deletePlayer(id) {
         />
 
         <div style={{ display: "flex", gap: 12 }}>
-          <Badge tone="blue">
-            {players.length} giocatori
-          </Badge>
+          <Badge tone="blue">{players.length} giocatori</Badge>
 
-          <Button onClick={() => setOpenModal(true)}>
-            + Nuovo giocatore
-          </Button>
+          <Button onClick={() => setOpenModal(true)}>+ Nuovo giocatore</Button>
         </div>
       </div>
 
@@ -162,10 +162,7 @@ async function deletePlayer(id) {
       )}
 
       {openModal && (
-        <Modal
-          title="Nuovo giocatore"
-          onClose={() => setOpenModal(false)}
-        >
+        <Modal title="Nuovo giocatore" onClose={() => setOpenModal(false)}>
           <div
             style={{
               display: "grid",
@@ -174,10 +171,19 @@ async function deletePlayer(id) {
             }}
           >
             <input
-              placeholder="Nome giocatore"
-              value={form.name}
+              placeholder="Nome"
+              value={form.firstName}
               onChange={(e) =>
-                setForm({ ...form, name: e.target.value })
+                setForm({ ...form, firstName: e.target.value })
+              }
+              style={styles.input}
+            />
+
+            <input
+              placeholder="Cognome"
+              value={form.lastName}
+              onChange={(e) =>
+                setForm({ ...form, lastName: e.target.value })
               }
               style={styles.input}
             />
@@ -185,9 +191,7 @@ async function deletePlayer(id) {
             <input
               placeholder="Ruolo"
               value={form.role}
-              onChange={(e) =>
-                setForm({ ...form, role: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, role: e.target.value })}
               style={styles.input}
             />
 
@@ -202,9 +206,7 @@ async function deletePlayer(id) {
 
             <select
               value={form.status}
-              onChange={(e) =>
-                setForm({ ...form, status: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
               style={styles.input}
             >
               <option>Disponibile</option>
@@ -215,9 +217,7 @@ async function deletePlayer(id) {
             <input
               type="file"
               accept="image/*"
-              onChange={(e) =>
-                handlePhotoUpload(e.target.files[0])
-              }
+              onChange={(e) => handlePhotoUpload(e.target.files[0])}
               style={styles.input}
             />
           </div>
@@ -252,16 +252,11 @@ async function deletePlayer(id) {
               gap: 12,
             }}
           >
-            <Button
-              variant="ghost"
-              onClick={() => setOpenModal(false)}
-            >
+            <Button variant="ghost" onClick={() => setOpenModal(false)}>
               Annulla
             </Button>
 
-            <Button onClick={addPlayer}>
-              Salva giocatore
-            </Button>
+            <Button onClick={addPlayer}>Salva giocatore</Button>
           </div>
         </Modal>
       )}
