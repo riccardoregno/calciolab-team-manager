@@ -6,6 +6,7 @@ const items = [
   { to: "/exercises", label: "Esercizi", icon: "⚽" },
   { to: "/trainings", label: "Sedute", icon: "📋" },
   { to: "/matches", label: "Gare", icon: "🏆" },
+  { to: "/premium", label: "Premium", icon: "💎" },
 ];
 
 export default function MobileBottomNav() {

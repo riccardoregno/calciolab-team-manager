@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { styles } from "../../styles/index.js";
+import DevelopmentPlanSwitcher from "./DevelopmentPlanSwitcher";
+import DevelopmentRoleSwitcher from "./DevelopmentRoleSwitcher";
 
 export default function Topbar({
   players = [],
@@ -9,6 +11,10 @@ export default function Topbar({
   sessions = [],
   matches = [],
   profile = null,
+  developmentPlanPreview = "club",
+  onDevelopmentPlanPreviewChange,
+  developmentRolePreview = "headCoach",
+  onDevelopmentRolePreviewChange,
 }) {
   const [search, setSearch] = useState("");
   const [openNotifications, setOpenNotifications] = useState(false);
@@ -112,6 +118,16 @@ export default function Topbar({
       </div>
 
       <div style={styles.topbarActions}>
+        <DevelopmentPlanSwitcher
+          value={developmentPlanPreview}
+          onChange={onDevelopmentPlanPreviewChange}
+        />
+
+        <DevelopmentRoleSwitcher
+          value={developmentRolePreview}
+          onChange={onDevelopmentRolePreviewChange}
+        />
+
         <div style={styles.topbarSearchWrapper}>
           <div style={styles.topbarSearchBox}>
             <span style={styles.topbarSearchIcon}>⌕</span>

@@ -1,5 +1,3 @@
-import React from "react";
-
 import AppCard from "../ui/AppCard";
 import Badge from "../ui/Badge";
 
@@ -20,7 +18,13 @@ function TrainingTimeline({ exercises = [] }) {
     );
   }
 
-  let currentMinute = 0;
+  const timelineBlocks = exercises.reduce((blocks, item, index) => {
+    const duration = Number(item.customDuration || item.duration || 0);
+    const start = blocks[index - 1]?.end || 0;
+    const end = start + duration;
+
+    return [...blocks, { item, index, duration, start, end }];
+  }, []);
 
   return (
     <AppCard>
@@ -62,12 +66,7 @@ function TrainingTimeline({ exercises = [] }) {
       </div>
 
       <div style={{ display: "grid", gap: 14 }}>
-        {exercises.map((item, index) => {
-          const duration = Number(item.customDuration || item.duration || 0);
-          const start = currentMinute;
-          const end = currentMinute + duration;
-          currentMinute = end;
-
+        {timelineBlocks.map(({ item, index, duration, start, end }) => {
           return (
             <div
               key={`${item.exerciseId || item.id}-${index}`}

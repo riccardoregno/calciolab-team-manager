@@ -80,6 +80,16 @@ export function normalizeExercise(exercise){
   return {
     ...exercise,
     fieldSize: exercise.fieldSize || exercise.space || "",
+    premium: Boolean(exercise.premium),
+    tags: Array.isArray(exercise.tags)
+      ? exercise.tags
+      : String(exercise.tags || "")
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    ageGroup: exercise.ageGroup || "Tutte",
+    playersRange: exercise.playersRange || exercise.players || "",
+    goal: exercise.goal || exercise.objective || "",
   };
 }
 
@@ -133,8 +143,191 @@ export function normalizeAppState(state = {}){
   };
 }
 
+export const subscriptionPlans = {
+  free: {
+    id: "free",
+    name: "Free",
+    price: "0",
+    description: "Per iniziare a gestire rosa, calendario e sedute base.",
+  },
+  premium: {
+    id: "premium",
+    name: "Premium Coach",
+    price: "14,90",
+    description: "Per allenatori che vogliono automatizzare, esportare e lavorare sui dati.",
+  },
+  club: {
+    id: "club",
+    name: "Club",
+    price: "49,90",
+    description: "Per societa' con staff, sponsor, area giocatori e moduli condivisi.",
+  },
+};
+
+const planRank = {
+  free: 0,
+  premium: 1,
+  club: 2,
+};
+
+const activeBillingStatuses = ["trialing", "active"];
+const developmentPreviewPlans = ["free", "premium", "club"];
+const developmentPreviewStorageKey = "calciolab_plan_preview";
+const developmentPreviewRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"];
+const developmentPreviewRoleStorageKey = "calciolab_role_preview";
+
+export function getDevelopmentPreviewPlan(settings = {}){
+  if (!import.meta.env?.DEV) return "";
+
+  const explicitPlan = settings.developmentPreviewPlan;
+  if (developmentPreviewPlans.includes(explicitPlan)) {
+    return explicitPlan;
+  }
+
+  if (typeof window !== "undefined") {
+    const storedPlan = window.localStorage.getItem(developmentPreviewStorageKey);
+    if (developmentPreviewPlans.includes(storedPlan)) {
+      return storedPlan;
+    }
+  }
+
+  return import.meta.env?.VITE_UNLOCK_PREMIUM === "true" ? "club" : "";
+}
+
+export function isDevelopmentPremiumUnlocked(settings = {}){
+  const plan = getDevelopmentPreviewPlan(settings);
+  return plan === "premium" || plan === "club";
+}
+
+export function getDevelopmentPreviewRole(settings = {}){
+  if (!import.meta.env?.DEV) return "";
+
+  const explicitRole = settings.developmentPreviewRole;
+  if (developmentPreviewRoles.includes(explicitRole)) {
+    return explicitRole;
+  }
+
+  if (typeof window !== "undefined") {
+    const storedRole = window.localStorage.getItem(developmentPreviewRoleStorageKey);
+    if (developmentPreviewRoles.includes(storedRole)) {
+      return storedRole;
+    }
+  }
+
+  return "";
+}
+
+export const premiumFeatures = {
+  physicalTests: {
+    label: "Test fisici",
+    plan: "premium",
+    description: "Test Gacon, Yo-Yo, sprint e riferimenti per i lavori.",
+  },
+  physicalWorkouts: {
+    label: "Lavori fisici",
+    plan: "premium",
+    description: "Gruppi e metri personalizzati in base ai test.",
+  },
+  matchDay: {
+    label: "Match Day avanzato",
+    plan: "premium",
+    description: "Distinta, ruoli, piano gara e scouting avversario.",
+  },
+  postMatch: {
+    label: "Report post gara",
+    plan: "premium",
+    description: "Analisi tecnica, focus settimanale e alert fisici.",
+  },
+  opponents: {
+    label: "Scouting avversari",
+    plan: "premium",
+    description: "Archivio avversari, ritorno e informazioni condivisibili.",
+  },
+  exports: {
+    label: "Export PDF",
+    plan: "premium",
+    description: "Template professionali per staff, giocatori e societa'.",
+  },
+  sessionGenerator: {
+    label: "Generatore sedute",
+    plan: "premium",
+    description: "Creazione guidata di sedute da obiettivi e vincoli.",
+  },
+  aiSessionBuilder: {
+    label: "AI Session Builder",
+    plan: "premium",
+    description: "Sedute generate da obiettivo, durata, categoria, campo e giocatori disponibili.",
+  },
+  playerPortal: {
+    label: "Area giocatori",
+    plan: "club",
+    description: "Accesso giocatori a rendimento, obiettivi e programmi.",
+  },
+  sponsors: {
+    label: "Sponsor hub",
+    plan: "club",
+    description: "Spazi sponsor, offerte, report visibilita' e contatti.",
+  },
+  marketplace: {
+    label: "Marketplace professionisti",
+    plan: "club",
+    description: "Preparatore, fisioterapista, nutrizionista e consulenze.",
+  },
+};
+
+export const memberRoles = {
+  owner: {
+    label: "Owner",
+    description: "Gestisce piano, impostazioni, ruoli e tutti i dati.",
+    permissions: ["manageBilling", "manageMembers", "manageTeam", "manageSessions", "managePlayers", "viewReports", "manageSponsors"],
+  },
+  headCoach: {
+    label: "Head Coach",
+    description: "Gestisce sedute, rosa, gare, test e report tecnici.",
+    permissions: ["manageTeam", "manageSessions", "managePlayers", "viewReports"],
+  },
+  assistantCoach: {
+    label: "Assistant Coach",
+    description: "Collabora su sedute, presenze e osservazioni tecniche.",
+    permissions: ["manageSessions", "viewReports"],
+  },
+  athleticTrainer: {
+    label: "Preparatore",
+    description: "Gestisce test fisici, lavori individuali e carichi.",
+    permissions: ["managePhysical", "viewReports"],
+  },
+  director: {
+    label: "Dirigente",
+    description: "Consulta report, sponsor, export e stato Club.",
+    permissions: ["viewReports", "manageSponsors"],
+  },
+  player: {
+    label: "Giocatore",
+    description: "Vede solo il proprio rendimento e programma.",
+    permissions: ["viewOwnProfile"],
+  },
+  sponsor: {
+    label: "Sponsor",
+    description: "Vede solo visibilita', offerte e report dedicati.",
+    permissions: ["viewSponsorReports"],
+  },
+};
+
 export function normalizeAppSettings(settings = {}){
   return {
+    subscription: {
+      plan: settings.subscription?.plan || "free",
+      billingCycle: settings.subscription?.billingCycle || "monthly",
+      billingStatus: settings.subscription?.billingStatus || "free",
+      trialPlan: settings.subscription?.trialPlan || "",
+      trialStartedAt: settings.subscription?.trialStartedAt || "",
+      trialEndsAt: settings.subscription?.trialEndsAt || "",
+      customerId: settings.subscription?.customerId || "",
+      subscriptionId: settings.subscription?.subscriptionId || "",
+      priceId: settings.subscription?.priceId || "",
+      currentPeriodEnd: settings.subscription?.currentPeriodEnd || "",
+      cancelAtPeriodEnd: Boolean(settings.subscription?.cancelAtPeriodEnd),
+    },
     coachParameters: {
       method: settings.coachParameters?.method || "standard",
       category: settings.coachParameters?.category || "adulti",
@@ -156,8 +349,385 @@ export function normalizeAppSettings(settings = {}){
       coachAlerts: true,
       recentActivities: true,
       quickActions: true,
+      rewardCenter: true,
+    },
+    playerPortal: {
+      enabled: Boolean(settings.playerPortal?.enabled),
+      welcomeMessage: settings.playerPortal?.welcomeMessage || "Benvenuto nella tua area personale CalcioLab.",
+      visibleMetrics: settings.playerPortal?.visibleMetrics || ["minutes", "tests", "goals", "load"],
+      programs: settings.playerPortal?.programs || {},
+      goals: settings.playerPortal?.goals || {},
+      staffNotes: settings.playerPortal?.staffNotes || {},
+    },
+    sponsorHub: {
+      enabled: Boolean(settings.sponsorHub?.enabled),
+      mainSponsorId: settings.sponsorHub?.mainSponsorId || "",
+      sponsors: (settings.sponsorHub?.sponsors || []).map(normalizeSponsor),
+      reportNotes: settings.sponsorHub?.reportNotes || "",
+    },
+    onboarding: {
+      completed: Boolean(settings.onboarding?.completed),
+      completedAt: settings.onboarding?.completedAt || "",
+      currentStep: Number(settings.onboarding?.currentStep || 0),
+    },
+    workspaceProfile: {
+      clubName: settings.workspaceProfile?.clubName || "CalcioLab",
+      teamName: settings.workspaceProfile?.teamName || "",
+      category: settings.workspaceProfile?.category || "Adulti",
+      seasonGoal: settings.workspaceProfile?.seasonGoal || "",
+      userRole: settings.workspaceProfile?.userRole || "headCoach",
+      recommendedPlan: settings.workspaceProfile?.recommendedPlan || "premium",
+      modules: settings.workspaceProfile?.modules || ["trainings", "matches", "players"],
+    },
+    members: (settings.members || []).map(normalizeMember),
+    developmentPreviewPlan: settings.developmentPreviewPlan || "",
+    developmentPreviewRole: settings.developmentPreviewRole || "",
+  };
+}
+
+export function normalizeMember(member = {}){
+  const role = memberRoles[member.role] ? member.role : "assistantCoach";
+
+  return {
+    id: member.id || createId("member"),
+    name: member.name || "",
+    email: member.email || "",
+    role,
+    status: member.status || "Invitato",
+    linkedPlayerId: member.linkedPlayerId || "",
+    sponsorId: member.sponsorId || "",
+  };
+}
+
+export function normalizeSponsor(sponsor = {}){
+  return {
+    id: sponsor.id || createId("sponsor"),
+    name: sponsor.name || "",
+    package: sponsor.package || "Bronze",
+    contact: sponsor.contact || "",
+    website: sponsor.website || "",
+    logo: sponsor.logo || "",
+    offer: sponsor.offer || "",
+    visibility: sponsor.visibility || "Dashboard, report PDF e materiali squadra",
+    notes: sponsor.notes || "",
+    active: sponsor.active !== false,
+  };
+}
+
+export function getSubscriptionPlan(settings = {}){
+  const developmentPreviewPlan = getDevelopmentPreviewPlan(settings);
+  if (developmentPreviewPlan) {
+    return subscriptionPlans[developmentPreviewPlan] || subscriptionPlans.free;
+  }
+
+  const normalized = normalizeAppSettings(settings);
+  const planId = getEffectivePlanId(normalized);
+  return subscriptionPlans[planId] || subscriptionPlans.free;
+}
+
+export function isFeatureUnlocked(featureKey, settings = {}){
+  const feature = premiumFeatures[featureKey];
+  if(!feature) return true;
+
+  const plan = getSubscriptionPlan(settings);
+  return (planRank[plan.id] || 0) >= (planRank[feature.plan] || 0);
+}
+
+export function getEffectivePlanId(settings = {}){
+  const developmentPreviewPlan = getDevelopmentPreviewPlan(settings);
+  if (developmentPreviewPlan) {
+    return developmentPreviewPlan;
+  }
+
+  const normalized = normalizeAppSettings(settings);
+  const subscription = normalized.subscription;
+
+  if (subscription.billingStatus === "trialing" && isTrialActive(normalized)) {
+    return subscription.trialPlan || subscription.plan || "free";
+  }
+
+  if (activeBillingStatuses.includes(subscription.billingStatus) && subscription.plan !== "free") {
+    return subscription.plan;
+  }
+
+  return "free";
+}
+
+export function isTrialActive(settings = {}){
+  const subscription = normalizeAppSettings(settings).subscription;
+  if (subscription.billingStatus !== "trialing" || !subscription.trialEndsAt) return false;
+  return new Date(subscription.trialEndsAt).getTime() >= Date.now();
+}
+
+export function getTrialDaysLeft(settings = {}){
+  const subscription = normalizeAppSettings(settings).subscription;
+  if (!subscription.trialEndsAt) return 0;
+
+  const diff = new Date(subscription.trialEndsAt).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+export function getBillingStatus(settings = {}){
+  const normalized = normalizeAppSettings(settings);
+  const subscription = normalized.subscription;
+  const effectivePlanId = getEffectivePlanId(normalized);
+  const trialActive = isTrialActive(normalized);
+  const trialExpired = subscription.billingStatus === "trialing" && !trialActive && Boolean(subscription.trialEndsAt);
+
+  return {
+    ...subscription,
+    effectivePlanId,
+    effectivePlan: subscriptionPlans[effectivePlanId] || subscriptionPlans.free,
+    developerUnlocked: Boolean(getDevelopmentPreviewPlan(normalized)),
+    developerPreviewPlan: getDevelopmentPreviewPlan(normalized),
+    trialActive,
+    trialExpired,
+    trialDaysLeft: getTrialDaysLeft(normalized),
+    canStartTrial: subscription.billingStatus === "free" || subscription.billingStatus === "canceled",
+  };
+}
+
+export function startSubscriptionTrial(settings = {}, plan = "premium", days = 14){
+  const normalized = normalizeAppSettings(settings);
+  const startedAt = new Date();
+  const endsAt = new Date(startedAt);
+  endsAt.setDate(startedAt.getDate() + days);
+
+  return {
+    ...normalized,
+    subscription: {
+      ...normalized.subscription,
+      plan: "free",
+      billingStatus: "trialing",
+      trialPlan: plan,
+      trialStartedAt: startedAt.toISOString(),
+      trialEndsAt: endsAt.toISOString(),
+      currentPeriodEnd: endsAt.toISOString(),
+      priceId: `${plan}_monthly_demo`,
+      cancelAtPeriodEnd: false,
     },
   };
+}
+
+export function hasPermission(role, permission){
+  const roleConfig = memberRoles[role];
+  return Boolean(roleConfig?.permissions.includes(permission));
+}
+
+export function getCurrentUserRole(settings = {}){
+  const developmentPreviewRole = getDevelopmentPreviewRole(settings);
+  if (developmentPreviewRole) return developmentPreviewRole;
+
+  const normalized = normalizeAppSettings(settings);
+  return memberRoles[normalized.workspaceProfile.userRole]
+    ? normalized.workspaceProfile.userRole
+    : "headCoach";
+}
+
+export function isRoleAllowed(role, allowedRoles = []){
+  if (!allowedRoles.length) return true;
+  if (role === "owner") return true;
+  return allowedRoles.includes(role);
+}
+
+export function getSetupProgress({
+  players = [],
+  exercises = [],
+  sessions = [],
+  matches = [],
+  appSettings = {},
+} = {}){
+  const settings = normalizeAppSettings(appSettings);
+  const checks = [
+    {
+      key: "onboarding",
+      label: "Completa onboarding",
+      done: settings.onboarding.completed,
+      path: "/onboarding",
+    },
+    {
+      key: "workspace",
+      label: "Configura squadra e obiettivo",
+      done: Boolean(settings.workspaceProfile.teamName && settings.workspaceProfile.seasonGoal),
+      path: "/club-settings",
+    },
+    {
+      key: "members",
+      label: "Invita staff o ruoli Club",
+      done: settings.members.length > 0,
+      path: "/club-settings",
+    },
+    {
+      key: "players",
+      label: "Inserisci almeno 18 giocatori",
+      done: players.length >= 18,
+      path: "/players",
+    },
+    {
+      key: "exercises",
+      label: "Crea o importa 10 esercizi",
+      done: exercises.length >= 10,
+      path: "/exercise-library",
+    },
+    {
+      key: "sessions",
+      label: "Crea la prima seduta",
+      done: sessions.length > 0,
+      path: "/trainings",
+    },
+    {
+      key: "matches",
+      label: "Inserisci la prima partita",
+      done: matches.length > 0,
+      path: "/matches",
+    },
+  ];
+  const completed = checks.filter((check) => check.done).length;
+
+  return {
+    checks,
+    completed,
+    total: checks.length,
+    percent: Math.round((completed / checks.length) * 100),
+    next: checks.find((check) => !check.done),
+  };
+}
+
+export function getCoachRewardProfile({
+  players = [],
+  exercises = [],
+  sessions = [],
+  matches = [],
+  physicalTests = [],
+} = {}){
+  const completeSessions = sessions.filter((session) =>
+    session.objective || session.exercises?.length || (session.attendance && Object.keys(session.attendance).length)
+  ).length;
+  const scoutedMatches = matches.filter((match) =>
+    match.opponentScouting?.formation || match.opponentScouting?.lineup?.length || match.matchPlan
+  ).length;
+  const postMatchReports = matches.filter((match) =>
+    match.postMatch?.worked || match.postMatch?.notWorked || match.postMatch?.nextWeekFocus
+  ).length;
+
+  const points =
+    players.length * 12 +
+    exercises.length * 16 +
+    sessions.length * 22 +
+    completeSessions * 18 +
+    matches.length * 20 +
+    scoutedMatches * 26 +
+    postMatchReports * 30 +
+    physicalTests.length * 28;
+
+  const levels = [
+    { level: 1, title: "Coach Starter", min: 0, discount: 0 },
+    { level: 2, title: "Coach Attivo", min: 150, discount: 5 },
+    { level: 3, title: "Coach Pro", min: 450, discount: 10 },
+    { level: 4, title: "Coach Elite", min: 900, discount: 15 },
+    { level: 5, title: "Academy Partner", min: 1600, discount: 25 },
+  ];
+
+  const current = [...levels].reverse().find((item) => points >= item.min) || levels[0];
+  const next = levels.find((item) => item.min > points);
+  const previousMin = current.min;
+  const nextMin = next?.min || current.min;
+  const progress = next
+    ? Math.min(100, Math.round(((points - previousMin) / (nextMin - previousMin)) * 100))
+    : 100;
+
+  const suggestedActions = [
+    players.length < 18 ? "Completa la rosa con almeno 18 giocatori" : null,
+    exercises.length < 20 ? "Aggiungi esercizi alla libreria" : null,
+    sessions.length < 4 ? "Programma piu' sedute del mese" : null,
+    physicalTests.length < players.length ? "Aggiorna i test fisici della rosa" : null,
+    scoutedMatches < matches.length ? "Compila scouting e distinta avversaria" : null,
+  ].filter(Boolean);
+
+  return {
+    points,
+    level: current.level,
+    title: current.title,
+    discount: current.discount,
+    nextLevel: next,
+    progress,
+    suggestedActions: suggestedActions.slice(0, 4),
+  };
+}
+
+export function generateGuidedSession({
+  exercises = [],
+  duration = 90,
+  objective = "Possesso",
+  players = 18,
+  intensity = "Media",
+  field = "Campo intero",
+  category = "Adulti",
+  matchDayDistance = "MD-3",
+} = {}){
+  const targetDuration = Number(duration || 90);
+  const objectiveText = objective.toLowerCase();
+  const selected = [];
+  let total = 0;
+
+  const scoreExercise = (exercise) => {
+    const haystack = [
+      exercise.title,
+      exercise.category,
+      exercise.phase,
+      exercise.objective,
+      exercise.goal,
+      exercise.description,
+      ...(exercise.tags || []),
+    ].join(" ").toLowerCase();
+    const intensityScore = exercise.intensity === intensity ? 2 : 0;
+    const objectiveScore = haystack.includes(objectiveText) ? 5 : 0;
+    const categoryScore = exercise.ageGroup === category || exercise.ageGroup === "Tutte" ? 1 : 0;
+    return objectiveScore + intensityScore + categoryScore;
+  };
+
+  const ordered = [...exercises]
+    .filter((exercise) => Number(exercise.duration || 0) > 0)
+    .sort((a, b) => scoreExercise(b) - scoreExercise(a));
+
+  ordered.forEach((exercise) => {
+    if (total >= targetDuration) return;
+    const minutes = Number(exercise.duration || 15);
+    selected.push({
+      exerciseId: exercise.id,
+      customDuration: Math.min(minutes, Math.max(8, targetDuration - total)),
+      customPlayers: exercise.players || players,
+      variantNotes: buildSessionVariantNote({ exercise, field, matchDayDistance }),
+    });
+    total += minutes;
+  });
+
+  if (!selected.length && exercises.length) {
+    const fallback = exercises[0];
+    selected.push({
+      exerciseId: fallback.id,
+      customDuration: targetDuration,
+      customPlayers: players,
+      variantNotes: buildSessionVariantNote({ exercise: fallback, field, matchDayDistance }),
+    });
+  }
+
+  return {
+    title: `Seduta ${objective} ${matchDayDistance}`,
+    date: new Date().toISOString().slice(0, 10),
+    type: "Allenamento",
+    theme: objective,
+    objective: `Allenare ${objective} con ${players} giocatori, ${field.toLowerCase()}, intensita' ${intensity.toLowerCase()}.`,
+    notes: `Generata da AI Session Builder locale. Categoria: ${category}. Vincolo gara: ${matchDayDistance}.`,
+    exercises: selected,
+    attendance: {},
+  };
+}
+
+function buildSessionVariantNote({ exercise, field, matchDayDistance }){
+  const fieldNote = field === "Mezzo campo" ? "adatta spazi e tempi di recupero al mezzo campo" : "mantieni ampiezza e riferimenti reali";
+  const loadNote = matchDayDistance === "MD-1" ? "riduci contatti e volume" : matchDayDistance === "MD+1" ? "usa come recupero tecnico" : "mantieni intensita' coerente";
+  return `${fieldNote}; ${loadNote}; focus ${exercise.goal || exercise.objective || exercise.category || "principio"}.`;
 }
 
 export function getAvailabilityGroups(players = []){

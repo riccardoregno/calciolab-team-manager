@@ -14,6 +14,7 @@ const widgetLabels = {
   coachAlerts: "Alert coach",
   recentActivities: "Ultime attivita",
   quickActions: "Azioni rapide",
+  rewardCenter: "Reward e piano",
 };
 
 export default function CoachSettings({ appSettings, setAppSettings }) {
@@ -129,4 +130,3 @@ const coachStyles = {
   blocks: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginBottom: 16 },
   block: { display: "grid", gap: 6, padding: 14, borderRadius: 16, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", color: "#cbd5e1" },
 };
-

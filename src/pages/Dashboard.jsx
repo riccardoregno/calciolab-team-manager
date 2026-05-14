@@ -6,7 +6,19 @@ import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
 
-import { formatDate, getCoachAlerts, normalizeAppSettings } from "../utils/helpers";
+import {
+  formatDate,
+  formatShortDate,
+  getBillingStatus,
+  getCoachAlerts,
+  getCoachRewardProfile,
+  getCurrentUserRole,
+  getPhysicalReference,
+  getPlayerSummary,
+  getSetupProgress,
+  getSubscriptionPlan,
+  normalizeAppSettings,
+} from "../utils/helpers";
 
 function Dashboard({
   players = [],
@@ -20,6 +32,11 @@ function Dashboard({
   const navigate = useNavigate();
   const settings = normalizeAppSettings(appSettings);
   const widgets = settings.dashboardWidgets;
+  const currentRole = getCurrentUserRole(settings);
+  const reward = getCoachRewardProfile({ players, exercises, sessions, matches, physicalTests });
+  const plan = getSubscriptionPlan(settings);
+  const setup = getSetupProgress({ players, exercises, sessions, matches, appSettings: settings });
+  const billing = getBillingStatus(settings);
 
   const events = [...sessions, ...matches].sort(
     (a, b) => new Date(a.date) - new Date(b.date)
@@ -41,6 +58,33 @@ function Dashboard({
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 4);
   const coachAlerts = getCoachAlerts({ players, matches, physicalTests, sessions });
+
+  if (currentRole === "player") {
+    return (
+      <PlayerRoleDashboard
+        players={players}
+        sessions={sessions}
+        matches={matches}
+        physicalTests={physicalTests}
+        appSettings={settings}
+      />
+    );
+  }
+
+  if (currentRole === "sponsor") {
+    return <SponsorRoleDashboard appSettings={settings} matches={matches} />;
+  }
+
+  if (currentRole === "athleticTrainer") {
+    return (
+      <PhysicalRoleDashboard
+        players={players}
+        matches={matches}
+        physicalTests={physicalTests}
+        coachAlerts={coachAlerts}
+      />
+    );
+  }
 
   function toggleWidget(key) {
     setAppSettings?.({
@@ -79,6 +123,7 @@ function Dashboard({
             coachAlerts: "Alert",
             recentActivities: "Attivita",
             quickActions: "Azioni",
+            rewardCenter: "Reward",
           }).map(([key, label]) => (
             <button
               key={key}
@@ -188,6 +233,54 @@ function Dashboard({
       </div>
       )}
 
+      {(billing.trialActive || billing.trialExpired || billing.billingStatus === "free") && (
+        <AppCard>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+            <div>
+              <Badge tone={billing.trialActive ? "orange" : billing.trialExpired ? "red" : "blue"}>
+                {billing.trialActive ? "Trial" : billing.trialExpired ? "Trial scaduto" : "Free"}
+              </Badge>
+              <h2 style={{ margin: "12px 0 6px" }}>
+                {billing.trialActive
+                  ? `${billing.trialDaysLeft} giorni rimasti di prova ${billing.effectivePlan.name}`
+                  : billing.trialExpired
+                  ? "Riattiva un piano per sbloccare le funzioni avanzate"
+                  : "Avvia una prova Premium o Club"}
+              </h2>
+              <p style={{ color: "#94a3b8", margin: 0 }}>
+                Il billing e' simulato ma pronto per Stripe: status, periodo, price e subscription id sono gia' nel modello.
+              </p>
+            </div>
+            <Button onClick={() => navigate("/premium")}>
+              Gestisci piano
+            </Button>
+          </div>
+        </AppCard>
+      )}
+
+      <AppCard>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "center" }}>
+          <div>
+            <Badge tone={setup.percent >= 70 ? "green" : "orange"}>Setup {setup.percent}%</Badge>
+            <h2 style={{ margin: "12px 0 6px" }}>
+              {setup.next ? setup.next.label : "Workspace pronto"}
+            </h2>
+            <p style={{ color: "#94a3b8", margin: 0 }}>
+              {setup.completed}/{setup.total} passaggi completati per rendere CalcioLab pronto a staff, giocatori e club.
+            </p>
+            <div style={{ height: 10, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginTop: 14 }}>
+              <div style={{ width: `${setup.percent}%`, height: "100%", background: "linear-gradient(135deg,#22c55e,#38bdf8)" }} />
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <Button variant="ghost" onClick={() => navigate("/onboarding")}>Onboarding</Button>
+            <Button onClick={() => navigate(setup.next?.path || "/club-settings")}>
+              Prossimo passo
+            </Button>
+          </div>
+        </div>
+      </AppCard>
+
       {widgets.kpis && (
       <div
         style={{
@@ -202,6 +295,36 @@ function Dashboard({
         <KpiCard label="Sedute" value={sessions.length} icon="📋" note="Allenamenti creati" />
         <KpiCard label="Partite" value={matches.length} icon="🏟️" note={`${injuredPlayers} infortunati`} />
       </div>
+      )}
+
+      {widgets.rewardCenter && (
+        <AppCard>
+          <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 18, alignItems: "center" }}>
+            <div>
+              <Badge tone="purple">Piano {plan.name}</Badge>
+              <h2 style={{ margin: "12px 0 6px" }}>
+                Livello {reward.level} - {reward.title}
+              </h2>
+              <p style={{ color: "#94a3b8", margin: 0 }}>
+                {reward.points} punti attivita' · sconto potenziale {reward.discount}%.
+              </p>
+              <div style={{ height: 10, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginTop: 14 }}>
+                <div style={{ width: `${reward.progress}%`, height: "100%", background: "linear-gradient(135deg,#22c55e,#38bdf8)" }} />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+              <Button variant="ghost" onClick={() => navigate("/premium")}>
+                Premium e reward
+              </Button>
+              {plan.id === "free" && (
+                <Button onClick={() => navigate("/premium")}>
+                  Sblocca funzioni
+                </Button>
+              )}
+            </div>
+          </div>
+        </AppCard>
       )}
 
       {(widgets.weekFocus || widgets.rosterStatus) && (
@@ -365,6 +488,184 @@ function Dashboard({
   );
 }
 
+function PlayerRoleDashboard({ players, sessions, matches, physicalTests, appSettings }) {
+  const navigate = useNavigate();
+  const player = players[0];
+  const summary = getPlayerSummary(player, { sessions, matches, physicalTests });
+  const latestTest = summary.latestTests[0];
+  const reference = getPhysicalReference(latestTest, appSettings.coachParameters);
+  const nextEvents = [...sessions, ...matches]
+    .filter((event) => new Date(event.date) >= todayStart())
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .slice(0, 3);
+  const program = player ? appSettings.playerPortal.programs[player.id] : "";
+
+  return (
+    <div>
+      <PageHeader
+        title="Dashboard Giocatore"
+        subtitle="Programma personale, prossimi impegni e rendimento individuale"
+        badge="Vista Player"
+      />
+
+      <div style={roleDashboardStyles.heroGrid}>
+        <AppCard>
+          <Badge tone={player?.status === "Disponibile" ? "green" : "orange"}>
+            {player?.status || "Profilo atleta"}
+          </Badge>
+          <h2 style={roleDashboardStyles.heroTitle}>{player?.name || "Giocatore"}</h2>
+          <p style={roleDashboardStyles.muted}>
+            {player?.role || "Ruolo non definito"} {player?.shirtNumber ? `· #${player.shirtNumber}` : ""}
+          </p>
+          <div style={roleDashboardStyles.kpiGrid}>
+            <MiniStatus label="Minuti" value={summary.stats.minutes} tone="blue" />
+            <MiniStatus label="Gol" value={summary.stats.goals} tone="green" />
+            <MiniStatus label="Assist" value={summary.stats.assists} tone="purple" />
+          </div>
+        </AppCard>
+
+        <AppCard>
+          <SectionTitle title="Programma personale" subtitle="Indicazioni assegnate dallo staff" />
+          <p style={roleDashboardStyles.bodyText}>
+            {program || "Nessun programma individuale assegnato. Controlla l'area giocatori dopo il prossimo aggiornamento dello staff."}
+          </p>
+          <Button onClick={() => navigate("/player-portal")}>Apri area giocatori</Button>
+        </AppCard>
+      </div>
+
+      <div style={roleDashboardStyles.twoColumns}>
+        <AppCard>
+          <SectionTitle title="Profilo fisico" subtitle="Ultimo test e gruppo di lavoro" />
+          <InfoRows
+            rows={[
+              ["Ultimo test", latestTest ? formatShortDate(latestTest.date) : "Da testare"],
+              ["Gruppo", reference.group],
+              ["MAS", reference.mas ? `${reference.mas} km/h` : "-"],
+            ]}
+          />
+        </AppCard>
+
+        <AppCard>
+          <SectionTitle title="Prossimi impegni" subtitle="Calendario personale" />
+          <EventList events={nextEvents} emptyText="Nessun impegno programmato." />
+        </AppCard>
+      </div>
+    </div>
+  );
+}
+
+function SponsorRoleDashboard({ appSettings, matches }) {
+  const navigate = useNavigate();
+  const hub = appSettings.sponsorHub;
+  const activeSponsors = hub.sponsors.filter((sponsor) => sponsor.active);
+  const mainSponsor = hub.sponsors.find((sponsor) => String(sponsor.id) === String(hub.mainSponsorId));
+  const recentMatches = [...matches].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
+
+  return (
+    <div>
+      <PageHeader
+        title="Dashboard Sponsor"
+        subtitle="Visibilita, offerte community e report dedicati ai partner"
+        badge="Vista Sponsor"
+      />
+
+      <div style={roleDashboardStyles.heroGrid}>
+        <AppCard>
+          <Badge tone="purple">Partner Club</Badge>
+          <h2 style={roleDashboardStyles.heroTitle}>{mainSponsor?.name || "Sponsor principale da configurare"}</h2>
+          <p style={roleDashboardStyles.muted}>
+            {activeSponsors.length} sponsor attivi nel club.
+          </p>
+          <Button onClick={() => navigate("/sponsors")}>Apri sponsor hub</Button>
+        </AppCard>
+
+        <AppCard>
+          <SectionTitle title="Offerta community" subtitle="Contenuto visibile a famiglie e squadra" />
+          <p style={roleDashboardStyles.bodyText}>
+            {mainSponsor?.offer || activeSponsors[0]?.offer || "Nessuna offerta sponsor ancora inserita."}
+          </p>
+        </AppCard>
+      </div>
+
+      <div style={roleDashboardStyles.twoColumns}>
+        <AppCard>
+          <SectionTitle title="Visibilita promessa" subtitle="Asset e spazi commerciali" />
+          <p style={roleDashboardStyles.bodyText}>
+            {mainSponsor?.visibility || "Dashboard, report PDF, pagina squadra e materiali club."}
+          </p>
+        </AppCard>
+
+        <AppCard>
+          <SectionTitle title="Ultime partite" subtitle="Contesto per report e comunicazioni" />
+          <EventList events={recentMatches} emptyText="Nessuna partita registrata." />
+        </AppCard>
+      </div>
+    </div>
+  );
+}
+
+function PhysicalRoleDashboard({ players, matches, physicalTests, coachAlerts }) {
+  const navigate = useNavigate();
+  const testedPlayerIds = new Set(physicalTests.map((test) => String(test.playerId)));
+  const untestedPlayers = players.filter((player) => !testedPlayerIds.has(String(player.id)));
+  const latestTests = [...physicalTests]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 5);
+  const nextMatch = matches
+    .filter((match) => new Date(match.date) >= todayStart())
+    .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+
+  return (
+    <div>
+      <PageHeader
+        title="Dashboard Preparatore"
+        subtitle="Test, gruppi fisici, carichi e disponibilita della rosa"
+        badge="Vista Prep."
+      />
+
+      <div style={roleDashboardStyles.kpiGrid}>
+        <KpiCard label="Giocatori" value={players.length} icon="👥" note="Rosa monitorata" />
+        <KpiCard label="Test registrati" value={physicalTests.length} icon="⏱️" note={`${untestedPlayers.length} da testare`} />
+        <KpiCard label="Prossima gara" value={nextMatch ? formatShortDate(nextMatch.date) : "-"} icon="⚽" note={nextMatch?.opponent || "Da programmare"} />
+      </div>
+
+      <div style={roleDashboardStyles.twoColumns}>
+        <AppCard>
+          <SectionTitle title="Ultimi test" subtitle="Riferimenti per i lavori individuali" />
+          {latestTests.length ? (
+            <InfoRows
+              rows={latestTests.map((test) => {
+                const player = players.find((item) => String(item.id) === String(test.playerId));
+                const reference = getPhysicalReference(test);
+                return [player?.name || "Giocatore", `${reference.group} · ${reference.mas || "-"} km/h`];
+              })}
+            />
+          ) : (
+            <p style={roleDashboardStyles.muted}>Nessun test fisico registrato.</p>
+          )}
+          <Button onClick={() => navigate("/physical-tests")}>Aggiorna test</Button>
+        </AppCard>
+
+        <AppCard>
+          <SectionTitle title="Alert fisici" subtitle="Priorita per la settimana" />
+          {coachAlerts.length ? (
+            <div style={{ display: "grid", gap: 10 }}>
+              {coachAlerts.slice(0, 5).map((alert, index) => (
+                <div key={`${alert.text}-${index}`} style={roleDashboardStyles.alertRow}>
+                  <Badge tone={alert.tone}>{alert.tone}</Badge>
+                  <span>{alert.text}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={roleDashboardStyles.muted}>Nessun alert prioritario.</p>
+          )}
+        </AppCard>
+      </div>
+    </div>
+  );
+}
+
 function KpiCard({ label, value, icon, note }) {
   return (
     <AppCard>
@@ -472,6 +773,105 @@ function QuickAction({ label, icon, onClick }) {
     </button>
   );
 }
+
+function InfoRows({ rows }) {
+  return (
+    <div style={{ display: "grid", gap: 8, marginBottom: 16 }}>
+      {rows.map(([label, value]) => (
+        <div key={`${label}-${value}`} style={roleDashboardStyles.infoRow}>
+          <span>{label}</span>
+          <strong>{value}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EventList({ events, emptyText }) {
+  if (!events.length) {
+    return <p style={roleDashboardStyles.muted}>{emptyText}</p>;
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {events.map((event) => (
+        <div key={`${event.type}-${event.id}`} style={roleDashboardStyles.eventRow}>
+          <div>
+            <strong>{event.title}</strong>
+            <p style={roleDashboardStyles.muted}>{formatShortDate(event.date)}</p>
+          </div>
+          <Badge tone={event.type === "Partita" ? "orange" : "green"}>
+            {event.type || "Evento"}
+          </Badge>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const roleDashboardStyles = {
+  heroGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 22,
+    marginBottom: 22,
+  },
+  twoColumns: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 22,
+    marginTop: 22,
+  },
+  kpiGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+    gap: 18,
+    marginBottom: 22,
+  },
+  heroTitle: {
+    margin: "12px 0 6px",
+    fontSize: 32,
+    letterSpacing: 0,
+  },
+  muted: {
+    color: "#94a3b8",
+    margin: 0,
+  },
+  bodyText: {
+    color: "#cbd5e1",
+    lineHeight: 1.6,
+    marginTop: 0,
+  },
+  infoRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    background: "rgba(255,255,255,0.045)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    color: "#cbd5e1",
+  },
+  eventRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 16,
+    background: "rgba(255,255,255,0.045)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+  alertRow: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 14,
+    background: "rgba(255,255,255,0.045)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+};
 
 function todayStart() {
   const today = new Date();

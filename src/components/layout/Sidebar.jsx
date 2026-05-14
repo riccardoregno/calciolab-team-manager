@@ -1,55 +1,80 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { getCurrentUserRole, isFeatureUnlocked, isRoleAllowed } from "../../utils/helpers";
+
+const coachRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"];
+const technicalRoles = ["owner", "headCoach", "assistantCoach"];
+const physicalRoles = ["owner", "headCoach", "athleticTrainer"];
+const managementRoles = ["owner", "headCoach", "director"];
 
 const menuGroups = [
   {
     title: "Home",
     items: [
-      { to: "/", label: "Dashboard", icon: "🏠" },
-      { to: "/week-plan", label: "Settimana", icon: "🗓️" },
-      { to: "/calendar", label: "Calendario", icon: "🗓️" },
+      { to: "/", label: "Dashboard", icon: "🏠", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
+      { to: "/onboarding", label: "Onboarding", icon: "🚀", roles: managementRoles },
+      { to: "/week-plan", label: "Settimana", icon: "🗓️", roles: coachRoles },
+      { to: "/calendar", label: "Calendario", icon: "🗓️", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"] },
     ],
   },
   {
     title: "Squadra",
     items: [
-      { to: "/players", label: "Rosa", icon: "👥" },
-      { to: "/availability", label: "Disponibilita", icon: "🩺" },
-      { to: "/physical-tests", label: "Test fisici", icon: "⏱️" },
-      { to: "/physical-workouts", label: "Lavori fisici", icon: "🏃" },
+      { to: "/players", label: "Rosa", icon: "👥", roles: coachRoles },
+      { to: "/availability", label: "Disponibilita", icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
+      { to: "/physical-tests", label: "Test fisici", icon: "⏱️", featureKey: "physicalTests", roles: physicalRoles },
+      { to: "/physical-workouts", label: "Lavori fisici", icon: "🏃", featureKey: "physicalWorkouts", roles: physicalRoles },
     ],
   },
   {
     title: "Campo",
     items: [
-      { to: "/exercises", label: "Esercizi", icon: "🎯" },
-      { to: "/trainings", label: "Sedute", icon: "📋" },
-      { to: "/session-generator", label: "Generatore", icon: "🧩" },
-      { to: "/tactical-board", label: "Lavagna", icon: "🧠" },
+      { to: "/exercises", label: "Esercizi", icon: "🎯", roles: technicalRoles },
+      { to: "/exercise-library", label: "Eserciziario", icon: "📚", roles: technicalRoles },
+      { to: "/trainings", label: "Sedute", icon: "📋", roles: technicalRoles },
+      { to: "/session-generator", label: "Generatore", icon: "🧩", featureKey: "sessionGenerator", roles: technicalRoles },
+      { to: "/ai-session-builder", label: "AI Builder", icon: "✨", featureKey: "aiSessionBuilder", roles: technicalRoles },
+      { to: "/tactical-board", label: "Lavagna", icon: "🧠", roles: technicalRoles },
     ],
   },
   {
     title: "Gara",
     items: [
-      { to: "/matches", label: "Partite", icon: "⚽" },
-      { to: "/match-day", label: "Match Day", icon: "📋" },
-      { to: "/post-match", label: "Post gara", icon: "📝" },
-      { to: "/opponents", label: "Avversari", icon: "🕵️" },
+      { to: "/matches", label: "Partite", icon: "⚽", roles: coachRoles },
+      { to: "/match-day", label: "Match Day", icon: "📋", featureKey: "matchDay", roles: technicalRoles },
+      { to: "/post-match", label: "Post gara", icon: "📝", featureKey: "postMatch", roles: technicalRoles },
+      { to: "/opponents", label: "Avversari", icon: "🕵️", featureKey: "opponents", roles: technicalRoles },
     ],
   },
   {
     title: "Sistema",
     items: [
-      { to: "/statistics", label: "Statistiche", icon: "📊" },
-      { to: "/exports", label: "Export", icon: "🖨️" },
-      { to: "/coach-settings", label: "Coach", icon: "🎛️" },
-      { to: "/settings", label: "Impostazioni", icon: "⚙️" },
+      { to: "/statistics", label: "Statistiche", icon: "📊", roles: coachRoles },
+      { to: "/exports", label: "Export", icon: "🖨️", featureKey: "exports", roles: managementRoles },
+      { to: "/premium", label: "Premium", icon: "💎", roles: managementRoles },
+      { to: "/coach-settings", label: "Coach", icon: "🎛️", roles: physicalRoles },
+      { to: "/settings", label: "Impostazioni", icon: "⚙️", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
+    ],
+  },
+  {
+    title: "Club",
+    items: [
+      { to: "/club-settings", label: "Club settings", icon: "🏢", roles: managementRoles },
+      { to: "/player-portal", label: "Area giocatori", icon: "🎽", featureKey: "playerPortal", roles: ["owner", "headCoach", "director", "player"] },
+      { to: "/sponsors", label: "Sponsor", icon: "🤝", featureKey: "sponsors", roles: ["owner", "director", "sponsor"] },
     ],
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ appSettings = {} }) {
   const [collapsed, setCollapsed] = useState(false);
+  const currentRole = getCurrentUserRole(appSettings);
+  const visibleGroups = menuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => isRoleAllowed(currentRole, item.roles)),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <aside
@@ -108,33 +133,19 @@ export default function Sidebar() {
         </div>
 
         <nav className="sidebar-nav" style={sidebarStyles.nav}>
-          {menuGroups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.title} className="sidebar-group" style={sidebarStyles.group}>
               {!collapsed && <div style={sidebarStyles.groupTitle}>{group.title}</div>}
 
               <div style={sidebarStyles.groupItems}>
                 {group.items.map((item) => (
-                  <NavLink
+                  <SidebarLink
                     key={item.to}
-                    to={item.to}
-                    title={collapsed ? `${group.title} · ${item.label}` : undefined}
-                    style={({ isActive }) => ({
-                      ...sidebarStyles.link,
-                      color: isActive ? "#ffffff" : "#cbd5e1",
-                      background: isActive
-                        ? "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)"
-                        : "rgba(255,255,255,0.035)",
-                      border: isActive
-                        ? "1px solid rgba(147,197,253,0.6)"
-                        : "1px solid rgba(255,255,255,0.07)",
-                      padding: collapsed ? "12px 0" : "11px 13px",
-                      justifyContent: collapsed ? "center" : "flex-start",
-                      boxShadow: isActive ? "0 10px 25px rgba(37,99,235,0.35)" : "none",
-                    })}
-                  >
-                    <span style={{ fontSize: 18 }}>{item.icon}</span>
-                    {!collapsed && <span>{item.label}</span>}
-                  </NavLink>
+                    item={item}
+                    group={group}
+                    collapsed={collapsed}
+                    locked={Boolean(item.featureKey && !isFeatureUnlocked(item.featureKey, appSettings))}
+                  />
                 ))}
               </div>
             </div>
@@ -147,11 +158,37 @@ export default function Sidebar() {
           <>
             <strong style={{ color: "#fff" }}>Workspace Coach</strong>
             <br />
-            Moduli raggruppati per flusso
+            Vista ruolo: {roleLabels[currentRole] || "Coach"}
           </>
         )}
       </div>
     </aside>
+  );
+}
+
+function SidebarLink({ item, group, collapsed, locked }) {
+  return (
+    <NavLink
+      to={item.to}
+      title={collapsed ? `${group.title} · ${item.label}` : undefined}
+      style={({ isActive }) => ({
+        ...sidebarStyles.link,
+        color: isActive ? "#ffffff" : "#cbd5e1",
+        background: isActive
+          ? "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)"
+          : "rgba(255,255,255,0.035)",
+        border: isActive
+          ? "1px solid rgba(147,197,253,0.6)"
+          : "1px solid rgba(255,255,255,0.07)",
+        padding: collapsed ? "12px 0" : "11px 13px",
+        justifyContent: collapsed ? "center" : "flex-start",
+        boxShadow: isActive ? "0 10px 25px rgba(37,99,235,0.35)" : "none",
+      })}
+    >
+      <span style={{ fontSize: 18 }}>{item.icon}</span>
+      {!collapsed && <span style={sidebarStyles.linkLabel}>{item.label}</span>}
+      {!collapsed && locked && <span style={sidebarStyles.lockPill}>🔒</span>}
+    </NavLink>
   );
 }
 
@@ -199,6 +236,13 @@ const sidebarStyles = {
     gap: 11,
     transition: "all 0.25s ease",
   },
+  linkLabel: {
+    flex: 1,
+  },
+  lockPill: {
+    fontSize: 12,
+    opacity: 0.82,
+  },
   footer: {
     background: "rgba(255,255,255,0.035)",
     border: "1px solid rgba(255,255,255,0.08)",
@@ -221,4 +265,14 @@ const sidebarStyles = {
     fontWeight: 900,
     margin: "0 auto",
   },
+};
+
+const roleLabels = {
+  owner: "Owner",
+  headCoach: "Allenatore",
+  assistantCoach: "Assistente",
+  athleticTrainer: "Preparatore",
+  director: "Dirigente",
+  player: "Giocatore",
+  sponsor: "Sponsor",
 };
