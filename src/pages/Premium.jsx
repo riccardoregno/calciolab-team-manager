@@ -49,6 +49,7 @@ const businessModules = [
 export default function Premium({
   appSettings = {},
   setAppSettings,
+  setSubscription,
   players = [],
   exercises = [],
   sessions = [],
@@ -61,22 +62,42 @@ export default function Premium({
   const developerUnlocked = isDevelopmentPremiumUnlocked();
   const reward = getCoachRewardProfile({ players, exercises, sessions, matches, physicalTests });
 
-  function activatePlan(plan) {
-    setAppSettings?.({
-      ...settings,
-      subscription: {
-        ...settings.subscription,
-        plan,
-        trialPlan: "",
-        billingStatus: plan === "free" ? "free" : "active",
-        currentPeriodEnd: plan === "free" ? "" : nextMonthIso(),
-        priceId: plan === "free" ? "" : `${plan}_monthly_demo`,
-      },
-    });
+  async function activatePlan(plan) {
+    console.log("[Premium] activatePlan chiamato, plan:", plan);
+    console.log("[Premium] setSubscription disponibile:", typeof setSubscription);
+    if (setSubscription) {
+      await setSubscription({
+        subscription_plan: plan,
+        billing_status:    plan === "free" ? "free" : "active",
+        trial_plan:        "",
+        trial_started_at:  null,
+        trial_ends_at:     null,
+      });
+    } else {
+      setAppSettings?.({
+        ...settings,
+        subscription: { ...settings.subscription, plan, trialPlan: "", billingStatus: plan === "free" ? "free" : "active" },
+      });
+    }
   }
 
-  function startTrial(plan) {
-    setAppSettings?.(startSubscriptionTrial(settings, plan, 14));
+  async function startTrial(plan) {
+    const now = new Date().toISOString();
+    const end = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    console.log("[Premium] startTrial chiamato, plan:", plan);
+    console.log("[Premium] setSubscription disponibile:", typeof setSubscription);
+    if (setSubscription) {
+      await setSubscription({
+        subscription_plan: "free",
+        billing_status:    "trialing",
+        trial_plan:        plan,
+        trial_started_at:  now,
+        trial_ends_at:     end,
+        trial_used:        true,
+      });
+    } else {
+      setAppSettings?.(startSubscriptionTrial(settings, plan, 14));
+    }
   }
 
   return (

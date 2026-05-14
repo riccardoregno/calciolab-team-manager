@@ -13,6 +13,7 @@ import AppCard from "./components/ui/AppCard";
 import { useTeamData } from "./hooks/useTeamData";
 import { useAuth } from "./hooks/useAuth";
 import { supabase } from "./lib/supabaseClient";
+import { updateTeamSubscription } from "./services/subscription";
 
 import Auth from "./pages/Auth";
 
@@ -79,6 +80,19 @@ function App() {
   const [profile, setProfile] = useState(null);
   const [developmentPlanPreview, setDevelopmentPlanPreview] = useState(getInitialDevelopmentPlanPreview);
   const [developmentRolePreview, setDevelopmentRolePreview] = useState(getInitialDevelopmentRolePreview);
+  const [remoteSubscription, setRemoteSubscription] = useState(null);
+
+  useEffect(() => {
+    if (!auth.team) return;
+    setRemoteSubscription({
+      subscription_plan:  auth.team.subscription_plan  ?? "free",
+      billing_status:     auth.team.billing_status     ?? "free",
+      trial_plan:         auth.team.trial_plan         ?? "",
+      trial_started_at:   auth.team.trial_started_at   ?? "",
+      trial_ends_at:      auth.team.trial_ends_at      ?? "",
+      trial_used:         auth.team.trial_used         ?? false,
+    });
+  }, [auth.team]);
 
   const {
     state,
@@ -94,18 +108,34 @@ function App() {
   } = useTeamData({ teamId: auth.team?.id });
 
   const previewAppSettings = useMemo(() => {
-    const currentAppSettings = state.appSettings || {};
+    const current = state.appSettings || {};
+
+    // Merge subscription da Supabase come fonte di verità.
+    // Se remoteSubscription è null (Supabase non configurato o non ancora caricato)
+    // l'override è vuoto e appSettings locale rimane il fallback.
+    const subscriptionOverride = remoteSubscription ? {
+      plan:           remoteSubscription.subscription_plan,
+      billingStatus:  remoteSubscription.billing_status,
+      trialPlan:      remoteSubscription.trial_plan,
+      trialStartedAt: remoteSubscription.trial_started_at,
+      trialEndsAt:    remoteSubscription.trial_ends_at,
+    } : {};
+
+    const merged = {
+      ...current,
+      subscription: { ...current.subscription, ...subscriptionOverride },
+    };
 
     if (!import.meta.env.DEV || !developmentPreviewPlans.includes(developmentPlanPreview)) {
-      return currentAppSettings;
+      return merged;
     }
 
     return {
-      ...currentAppSettings,
+      ...merged,
       developmentPreviewPlan: developmentPlanPreview,
       developmentPreviewRole: developmentRolePreview,
     };
-  }, [state.appSettings, developmentPlanPreview, developmentRolePreview]);
+  }, [state.appSettings, remoteSubscription, developmentPlanPreview, developmentRolePreview]);
 
   useEffect(() => {
     async function loadProfile() {
@@ -172,6 +202,19 @@ function App() {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(developmentRolePreviewStorageKey, role);
     }
+  }
+
+  async function setSubscription(dbFields) {
+    console.log("[App] setSubscription chiamato");
+    console.log("[App] auth.team?.id:", auth.team?.id);
+    console.log("[App] dbFields:", dbFields);
+    const { error } = await updateTeamSubscription(auth.team?.id, dbFields);
+    if (error) {
+      console.error("[App] setSubscription fallito:", error.message);
+    } else {
+      console.log("[App] setSubscription completato senza errori");
+    }
+    setRemoteSubscription((prev) => ({ ...(prev || {}), ...dbFields }));
   }
 
   function updateEventAttendance(eventId, eventType, attendance) {
@@ -344,6 +387,7 @@ function App() {
                   gate(managementRoles, <Premium
                     appSettings={previewAppSettings}
                     setAppSettings={setAppSettings}
+                    setSubscription={setSubscription}
                     players={players}
                     exercises={exercises}
                     sessions={sessions}
