@@ -20,6 +20,7 @@ import Auth from "./pages/Auth";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Players = lazy(() => import("./pages/Players"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail"));
+const PlayerProfile = lazy(() => import("./pages/PlayerProfile"));
 const Exercises = lazy(() => import("./pages/Exercises"));
 const Trainings = lazy(() => import("./pages/Trainings"));
 const Sessions = lazy(() => import("./pages/Sessions"));
@@ -570,6 +571,19 @@ function App() {
                     sessions={sessions}
                     matches={matches}
                     physicalTests={physicalTests}
+                  />)
+                }
+              />
+
+              <Route
+                path="/player/:id"
+                element={
+                  gate(coachRoles, <PlayerProfile
+                    players={players}
+                    matches={matches}
+                    physicalTests={physicalTests}
+                    sessions={sessions}
+                    loading={loading}
                   />)
                 }
               />
