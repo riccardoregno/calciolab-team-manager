@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -8,6 +9,7 @@ import { styles } from "../styles/index.js";
 import { createId } from "../utils/helpers";
 
 export default function SessionGenerator({ exercises = [], sessions = [], setSessions, players = [], matches = [] }) {
+  const navigate = useNavigate();
   const [goal, setGoal] = useState("Possesso");
   const [duration, setDuration] = useState(75);
   const [intensity, setIntensity] = useState("Media");
@@ -55,7 +57,11 @@ export default function SessionGenerator({ exercises = [], sessions = [], setSes
 
   return (
     <div>
-      <PageHeader title="Generatore Seduta" subtitle="Crea una proposta partendo da obiettivo, durata, rosa e libreria esercizi" />
+      <PageHeader
+        title="Builder guidato"
+        subtitle="Crea una seduta con parametri manuali: obiettivo, durata, intensità e libreria esercizi."
+        action={<Button variant="ghost" onClick={() => navigate("/ai-session-builder")}>Passa al Builder AI</Button>}
+      />
 
       <div style={generatorStyles.grid}>
         <AppCard>
@@ -101,4 +107,3 @@ const generatorStyles = {
   item: { display: "grid", gap: 8, padding: 14, borderRadius: 16, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" },
   muted: { color: "#94a3b8", lineHeight: 1.5 },
 };
-

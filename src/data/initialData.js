@@ -76,9 +76,10 @@ export function emptyPhysicalTest() {
   };
 }
 
+// FIX #12: ID stringa fin dall'inizio — elimina type mismatch con UUID generati da createId()
 export const initialPlayers = [
   {
-    id: 1,
+    id: "player-initial-1",
     name: "Luca Rossi",
     role: "Centrale",
     secondaryRole: "Braccetto destro",
@@ -103,7 +104,7 @@ export const initialPlayers = [
 
 export const initialExercises = [
   {
-    id: 1,
+    id: "exercise-initial-1",
     title: "Rondo posizionale 5v2+2",
     category: "Possesso",
     phase: "Possesso consolidato",
@@ -125,7 +126,7 @@ export const initialExercises = [
     goal: "Possesso",
   },
   {
-    id: 2,
+    id: "exercise-initial-2",
     title: "Pressione alta 7v7+3",
     category: "Pressing",
     phase: "Non possesso",
@@ -147,7 +148,7 @@ export const initialExercises = [
     goal: "Pressing",
   },
   {
-    id: 3,
+    id: "exercise-initial-3",
     title: "Transizione positiva con finalizzazione",
     category: "Transizione",
     phase: "Transizione positiva",

@@ -96,7 +96,9 @@ topbarProfileLogout: {
   hero: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
+    gap: 16,
+    flexWrap: "wrap",
     marginBottom: 28,
   },
 
@@ -173,15 +175,19 @@ topbarNotificationEmpty: {
   fontSize: 13,
 },
   pageTitle: {
-    fontSize: 38,
-    fontWeight: 800,
+    fontSize: 34,
+    lineHeight: 1.08,
+    fontWeight: 900,
     margin: 0,
     color: theme.colors.text,
+    letterSpacing: 0,
   },
 
   pageSubtitle: {
     color: theme.colors.muted,
     marginTop: 6,
+    maxWidth: 760,
+    lineHeight: 1.5,
   },
 
   topbar: {

@@ -6,12 +6,14 @@ function AppCard({
   subtitle,
   rightContent,
   noPadding = false,
+  style = {},
 }) {
   return (
     <div
       style={{
         ...styles.sectionCard,
         padding: noPadding ? 0 : styles.sectionCard.padding,
+        ...style,
       }}
     >
       {(title || subtitle || rightContent) && (

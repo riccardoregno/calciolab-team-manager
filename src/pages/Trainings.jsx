@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
@@ -7,11 +8,16 @@ import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
 import SearchBar from "../components/ui/SearchBar";
 import SortableTrainingTimeline from "../components/trainings/SortableTrainingTimeline";
+import { useToast } from "../components/ui/Toast";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 import { styles } from "../styles/index.js";
 import { createId, formatDate } from "../utils/helpers";
 
 function Trainings({ exercises, sessions, setSessions, players = [] }) {
+  const navigate = useNavigate();
+  const { showToast, ToastContainer } = useToast();
+  const [confirmState, setConfirmState] = useState(null);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
 
@@ -84,7 +90,8 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
 
   function saveTraining() {
     if (!form.title.trim()) {
-      return alert("Inserisci il titolo della seduta");
+      showToast("Inserisci il titolo della seduta", "warn");
+      return;
     }
 
     const payload = {
@@ -105,6 +112,7 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
 
     setEditingId(null);
     setForm(emptyTraining());
+    showToast(editingId ? "Seduta aggiornata" : "Seduta salvata", "ok");
   }
 
   function editTraining(session) {
@@ -125,14 +133,19 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
   }
 
   function deleteTraining(id) {
-    if (!confirm("Vuoi eliminare questa seduta?")) return;
-
-    setSessions(sessions.filter((session) => session.id !== id));
-
-    if (editingId === id) {
-      setEditingId(null);
-      setForm(emptyTraining());
-    }
+    setConfirmState({
+      message: "Vuoi eliminare questa seduta?",
+      confirmLabel: "Elimina",
+      confirmTone: "red",
+      onConfirm: () => {
+        setSessions(sessions.filter((session) => session.id !== id));
+        if (editingId === id) {
+          setEditingId(null);
+          setForm(emptyTraining());
+        }
+        showToast("Seduta eliminata", "info");
+      },
+    });
   }
 
   function cancelEdit() {
@@ -142,12 +155,21 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
 
   return (
     <div style={styles.page}>
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
+      <ToastContainer />
       <PageHeader
         title="Sedute"
         subtitle="Costruisci allenamenti, ordina esercizi e gestisci il carico della squadra"
+        action={
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <Button variant="ghost" onClick={() => navigate("/exports")}>PDF seduta</Button>
+            <Button onClick={() => navigate("/ai-session-builder")}>Genera con AI</Button>
+          </div>
+        }
       />
 
       <div
+        className="calciolab-two-column"
         style={{
           display: "grid",
           gridTemplateColumns: "1.1fr 0.9fr",
@@ -159,22 +181,26 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
           <div className="print-area">
   <AppCard>
     {/* 👇 SOLO PER PDF */}
- <div className="print-only" style={{ marginBottom: 30 }}>
-  <h1 style={{ margin: 0 }}>{form.title || "Seduta"}</h1>
+    <div className="print-only" style={trainingStyles.sessionSummary}>
+      <div>
+        <span style={trainingStyles.summaryEyebrow}>Seduta</span>
+        <h1 style={trainingStyles.summaryTitle}>{form.title || "Seduta da costruire"}</h1>
+      </div>
 
-  <div style={{ marginTop: 10, fontSize: 14 }}>
-    <div><strong>Data:</strong> {form.date}</div>
-    <div><strong>Tema:</strong> {form.theme}</div>
-    <div><strong>Obiettivo:</strong> {form.objective}</div>
-    <div><strong>Durata:</strong> {totalMinutes} min</div>
-  </div>
+      <div style={trainingStyles.summaryGrid}>
+        <SessionMeta label="Data" value={formatDate(form.date)} />
+        <SessionMeta label="Tema" value={form.theme} />
+        <SessionMeta label="Obiettivo" value={form.objective || "Da definire"} />
+        <SessionMeta label="Durata" value={`${totalMinutes} min`} />
+      </div>
 
-  {form.notes && (
-    <div style={{ marginTop: 10 }}>
-      <strong>Note:</strong> {form.notes}
+      {form.notes && (
+        <div style={trainingStyles.summaryNotes}>
+          <strong>Note staff</strong>
+          <span>{form.notes}</span>
+        </div>
+      )}
     </div>
-  )}
-</div>
 
     <div
       style={{
@@ -187,10 +213,14 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
       }}
     >
       <div>
-        <h3 style={{ margin: 0 }}>
+        <div style={trainingStyles.stepHeader}>
+          <span style={trainingStyles.stepBadge}>1</span>
+          <span>Dati seduta</span>
+        </div>
+        <h3 style={{ margin: 0, lineHeight: 1.2 }}>
           {editingId ? "Modifica seduta" : "Crea seduta"}
         </h3>
-        <p style={{ color: "#94a3b8", margin: "6px 0 0" }}>
+        <p style={{ color: "#94a3b8", margin: "6px 0 0", lineHeight: 1.45 }}>
           Inserisci dati base e scegli gli esercizi
         </p>
       </div>
@@ -251,6 +281,11 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
         }}
       />
     </div>
+
+    {/* Giocatori disponibili per questa seduta */}
+    {players.length > 0 && (
+      <AvailablePlayers players={players} />
+    )}
   </AppCard>
 </div>
 
@@ -266,8 +301,12 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
               }}
             >
               <div>
-                <h3 style={{ margin: 0 }}>Libreria esercizi</h3>
-                <p style={{ color: "#94a3b8", margin: "6px 0 0" }}>
+                <div style={trainingStyles.stepHeader}>
+                  <span style={trainingStyles.stepBadge}>2</span>
+                  <span>Esercizi</span>
+                </div>
+                <h3 style={{ margin: 0, lineHeight: 1.2 }}>Libreria esercizi</h3>
+                <p style={{ color: "#94a3b8", margin: "6px 0 0", lineHeight: 1.45 }}>
                   Clicca per aggiungere o rimuovere esercizi dalla seduta
                 </p>
               </div>
@@ -303,7 +342,7 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
                       key={exercise.id}
                       onClick={() => toggleExercise(exercise)}
                       style={{
-                        borderRadius: 18,
+                        borderRadius: 12,
                         padding: 14,
                         textAlign: "left",
                         cursor: "pointer",
@@ -314,15 +353,17 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
                         border: selected
                           ? "1px solid rgba(56,189,248,0.35)"
                           : "1px solid rgba(255,255,255,0.08)",
+                        minHeight: 118,
                       }}
                     >
-                      <strong>{exercise.title}</strong>
+                      <strong style={{ lineHeight: 1.25 }}>{exercise.title}</strong>
 
                       <p
                         style={{
                           color: "#94a3b8",
                           margin: "8px 0",
                           fontSize: 13,
+                          lineHeight: 1.35,
                         }}
                       >
                         {exercise.category || "Categoria"} ·{" "}
@@ -341,12 +382,13 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
 
           {selectedExercises.length > 0 && (
             <AppCard>
-              <h3 style={{ marginTop: 0 }}>Varianti esercizi</h3>
+              <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Varianti esercizi</h3>
 
               <div style={{ display: "grid", gap: 12 }}>
                 {selectedExercises.map((item) => (
                   <div
                     key={item.exerciseId}
+                    className="training-variant-row"
                     style={{
                       display: "grid",
                       gridTemplateColumns: "1fr 100px 100px 1fr",
@@ -409,6 +451,10 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
 
        <div style={{ display: "grid", gap: 20 }}>
   <AppCard style={{ marginTop: 20 }}>
+    <div style={trainingStyles.stepHeader}>
+      <span style={trainingStyles.stepBadge}>3</span>
+      <span>Timeline</span>
+    </div>
     <SortableTrainingTimeline
     exercises={selectedExercises}
     onReorder={(ordered) => {
@@ -426,13 +472,17 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
 </AppCard>
 
           <AppCard>
-            <h3 style={{ marginTop: 0 }}>Anteprima</h3>
+            <div style={trainingStyles.stepHeader}>
+              <span style={trainingStyles.stepBadge}>4</span>
+              <span>Anteprima</span>
+            </div>
+            <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Anteprima</h3>
 
-            <h2 style={{ marginBottom: 8 }}>
+            <h2 style={{ marginBottom: 8, lineHeight: 1.1 }}>
               {form.title || "Titolo non inserito"}
             </h2>
 
-            <p style={{ color: "#94a3b8" }}>
+            <p style={{ color: "#94a3b8", lineHeight: 1.45 }}>
               {formatDate(form.date)} · {form.theme} · {totalMinutes} min
             </p>
 
@@ -440,7 +490,7 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
               <p style={{ color: "#cbd5e1" }}>{form.objective}</p>
             )}
 
-            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
               {editingId && (
                 <Button variant="ghost" onClick={cancelEdit}>
                   Annulla
@@ -449,6 +499,9 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
 
               <Button onClick={saveTraining}>
                 {editingId ? "Aggiorna seduta" : "Salva seduta"}
+              </Button>
+              <Button variant="ghost" onClick={() => navigate("/exports")}>
+                Esporta PDF
               </Button>
             </div>
           </AppCard>
@@ -467,8 +520,8 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
             }}
           >
             <div>
-              <h3 style={{ margin: 0 }}>Sedute salvate</h3>
-              <p style={{ color: "#94a3b8", margin: "6px 0 0" }}>
+              <h3 style={{ margin: 0, lineHeight: 1.2 }}>Sedute salvate</h3>
+              <p style={{ color: "#94a3b8", margin: "6px 0 0", lineHeight: 1.45 }}>
                 Archivio allenamenti creati
               </p>
             </div>
@@ -494,8 +547,8 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
                   <div
                     key={session.id}
                     style={{
-                      borderRadius: 20,
-                      padding: 18,
+                      borderRadius: 12,
+                      padding: 16,
                       background:
                         editingId === session.id
                           ? "rgba(56,189,248,0.12)"
@@ -516,9 +569,9 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
                       }}
                     >
                       <div>
-                        <h3 style={{ margin: 0 }}>{session.title}</h3>
+                        <h3 style={{ margin: 0, lineHeight: 1.2 }}>{session.title}</h3>
 
-                        <p style={{ color: "#94a3b8", margin: "8px 0" }}>
+                        <p style={{ color: "#94a3b8", margin: "8px 0", lineHeight: 1.4 }}>
                           {formatDate(session.date)} · {session.theme} ·{" "}
                           {sessionTotal} min
                         </p>
@@ -545,7 +598,14 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", gap: 10 }}>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <Button
+                          variant="ghost"
+                          onClick={() => navigate(`/session-attendance/${session.id}`)}
+                        >
+                          Presenze
+                        </Button>
+
                         <Button
                           variant="ghost"
                           onClick={() => editTraining(session)}
@@ -584,5 +644,160 @@ function emptyTraining() {
     attendance: {},
   };
 }
+
+function SessionMeta({ label, value }) {
+  return (
+    <div style={trainingStyles.metaPill}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Box giocatori disponibili nel form seduta
+// ─────────────────────────────────────────────
+const UNAVAILABLE_STATUSES = ["Infortunato", "Squalificato"];
+
+function AvailablePlayers({ players }) {
+  const available = players.filter(
+    (p) => !UNAVAILABLE_STATUSES.includes(p.status || "Disponibile")
+  );
+  const unavailable = players.filter(
+    (p) => UNAVAILABLE_STATUSES.includes(p.status || "Disponibile")
+  );
+
+  return (
+    <div style={{
+      marginTop: 16,
+      paddingTop: 16,
+      borderTop: "1px solid rgba(255,255,255,0.07)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <h4 style={{ margin: 0, fontSize: 13, color: "#94a3b8", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4 }}>
+          Giocatori disponibili
+        </h4>
+        <span style={{
+          fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999,
+          background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#22c55e",
+        }}>
+          {available.length} / {players.length}
+        </span>
+        {unavailable.length > 0 && (
+          <span style={{
+            fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999,
+            background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.25)", color: "#f87171",
+          }}>
+            {unavailable.length} non disponibili
+          </span>
+        )}
+      </div>
+
+      {/* Chip disponibili */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {available.map((p) => {
+          const name = [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
+          return (
+            <span key={p.id} style={{
+              fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999,
+              background: "rgba(34,197,94,0.09)", border: "1px solid rgba(34,197,94,0.2)", color: "#86efac",
+            }}>
+              {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{name}
+            </span>
+          );
+        })}
+      </div>
+
+      {/* Chip non disponibili */}
+      {unavailable.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+          {unavailable.map((p) => {
+            const name = [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
+            const isInjured = p.status === "Infortunato";
+            return (
+              <span key={p.id} title={`${p.status}${p.injuryType ? ` · ${p.injuryType}` : ""}`} style={{
+                fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999,
+                background: isInjured ? "rgba(248,113,113,0.08)" : "rgba(168,85,247,0.08)",
+                border: isInjured ? "1px solid rgba(248,113,113,0.2)" : "1px solid rgba(168,85,247,0.2)",
+                color: isInjured ? "#fca5a5" : "#d8b4fe",
+                textDecoration: "line-through",
+                opacity: 0.75,
+              }}>
+                {isInjured ? "🚑" : "🟥"} {name}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const trainingStyles = {
+  sessionSummary: {
+    marginBottom: 26,
+    padding: 18,
+    borderRadius: 16,
+    background: "rgba(15,23,42,0.58)",
+    border: "1px solid rgba(148,163,184,0.16)",
+  },
+  summaryEyebrow: {
+    display: "block",
+    color: "#7dd3fc",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+    marginBottom: 6,
+  },
+  summaryTitle: {
+    margin: 0,
+    fontSize: 28,
+    lineHeight: 1.08,
+  },
+  summaryGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(135px,1fr))",
+    gap: 10,
+    marginTop: 16,
+  },
+  metaPill: {
+    display: "grid",
+    gap: 5,
+    padding: "10px 12px",
+    borderRadius: 12,
+    background: "rgba(255,255,255,0.045)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+  summaryNotes: {
+    display: "grid",
+    gap: 5,
+    marginTop: 12,
+    color: "#cbd5e1",
+    lineHeight: 1.45,
+  },
+  stepHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    color: "#7dd3fc",
+    fontSize: 12,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+    marginBottom: 10,
+  },
+  stepBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 999,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(56,189,248,0.16)",
+    border: "1px solid rgba(56,189,248,0.3)",
+    color: "#bae6fd",
+    fontSize: 12,
+  },
+};
 
 export default Trainings;

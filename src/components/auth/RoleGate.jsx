@@ -5,9 +5,17 @@ import Badge from "../ui/Badge";
 import Button from "../ui/Button";
 import { getCurrentUserRole, isRoleAllowed, memberRoles } from "../../utils/helpers";
 
-export default function RoleGate({ allowedRoles = [], appSettings = {}, children }) {
+// FIX #5: supabaseRole (da team_members.role su Supabase) è la fonte di verità.
+// authConfigured=true → blocca il fallback su localStorage quando Supabase è attivo:
+//   - supabaseRole presente → ok, usalo
+//   - supabaseRole null con Supabase attivo → accesso negato (no fallback localStorage)
+//   - supabaseRole null senza Supabase (locale) → fallback a appSettings accettabile
+export default function RoleGate({ allowedRoles = [], appSettings = {}, supabaseRole = null, authConfigured = false, children }) {
   const navigate = useNavigate();
-  const currentRole = getCurrentUserRole(appSettings);
+
+  const currentRole = authConfigured
+    ? (supabaseRole ?? "")                         // Supabase attivo: usa solo il ruolo Supabase
+    : (supabaseRole || getCurrentUserRole(appSettings)); // locale: fallback accettabile
 
   if (isRoleAllowed(currentRole, allowedRoles)) {
     return children;

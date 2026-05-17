@@ -1,11 +1,12 @@
-export default function Button({ children, onClick, variant = "primary", style = {}, ...props }) {
+export default function Button({ children, onClick, variant = "primary", style = {}, disabled, type = "button", ...props }) {
   const base = {
     border: "none",
     borderRadius: 14,
     padding: "11px 16px",
     fontWeight: 800,
-    cursor: "pointer",
+    cursor: disabled ? "not-allowed" : "pointer",
     transition: "0.2s",
+    opacity: disabled ? 0.45 : 1,
   };
 
   const variants = {
@@ -27,7 +28,9 @@ export default function Button({ children, onClick, variant = "primary", style =
 
   return (
     <button
+      type={type}
       onClick={onClick}
+      disabled={disabled}
       style={{ ...base, ...variants[variant], ...style }}
       {...props}
     >

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { getCurrentUserRole, isFeatureUnlocked, isRoleAllowed } from "../../utils/helpers";
+import { getCurrentUserRole, isFeatureUnlocked, isRoleAllowed, normalizeAppSettings } from "../../utils/helpers";
 
 const coachRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"];
 const technicalRoles = ["owner", "headCoach", "assistantCoach"];
@@ -13,15 +13,14 @@ const menuGroups = [
     items: [
       { to: "/", label: "Dashboard", icon: "🏠", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
       { to: "/onboarding", label: "Onboarding", icon: "🚀", roles: managementRoles },
-      { to: "/week-plan", label: "Settimana", icon: "🗓️", roles: coachRoles },
-      { to: "/calendar", label: "Calendario", icon: "🗓️", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"] },
+      { to: "/calendar", label: "Calendario", icon: "📅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"] },
     ],
   },
   {
     title: "Squadra",
     items: [
       { to: "/players", label: "Rosa", icon: "👥", roles: coachRoles },
-      { to: "/availability", label: "Disponibilita", icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
+      { to: "/availability", label: "Disponibilità", icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
       { to: "/physical-tests", label: "Test fisici", icon: "⏱️", featureKey: "physicalTests", roles: physicalRoles },
       { to: "/physical-workouts", label: "Lavori fisici", icon: "🏃", featureKey: "physicalWorkouts", roles: physicalRoles },
     ],
@@ -32,8 +31,7 @@ const menuGroups = [
       { to: "/exercises", label: "Esercizi", icon: "🎯", roles: technicalRoles },
       { to: "/exercise-library", label: "Eserciziario", icon: "📚", roles: technicalRoles },
       { to: "/trainings", label: "Sedute", icon: "📋", roles: technicalRoles },
-      { to: "/session-generator", label: "Generatore", icon: "🧩", featureKey: "sessionGenerator", roles: technicalRoles },
-      { to: "/ai-session-builder", label: "AI Builder", icon: "✨", featureKey: "aiSessionBuilder", roles: technicalRoles },
+      { to: "/ai-session-builder", label: "Genera con AI", icon: "✨", featureKey: "aiSessionBuilder", roles: technicalRoles },
       { to: "/tactical-board", label: "Lavagna", icon: "🧠", roles: technicalRoles },
     ],
   },
@@ -59,7 +57,7 @@ const menuGroups = [
   {
     title: "Club",
     items: [
-      { to: "/club-settings", label: "Club settings", icon: "🏢", roles: managementRoles },
+      { to: "/settings?tab=club", label: "Profilo società", icon: "🏢", roles: managementRoles },
       { to: "/player-portal", label: "Area giocatori", icon: "🎽", featureKey: "playerPortal", roles: ["owner", "headCoach", "director", "player"] },
       { to: "/sponsors", label: "Sponsor", icon: "🤝", featureKey: "sponsors", roles: ["owner", "director", "sponsor"] },
     ],
@@ -69,7 +67,19 @@ const menuGroups = [
 export default function Sidebar({ appSettings = {} }) {
   const [collapsed, setCollapsed] = useState(false);
   const currentRole = getCurrentUserRole(appSettings);
-  const visibleGroups = menuGroups
+  const profile = normalizeAppSettings(appSettings).workspaceProfile;
+  const managesJuniores = profile.managesJuniores && profile.teamLevel === "prima";
+
+  const junioresiGroup = managesJuniores ? [{
+    title: "Juniores",
+    items: [
+      { to: "/players?gruppo=juniores", label: "Rosa Juniores", icon: "⚡", roles: coachRoles },
+    ],
+  }] : [];
+
+  const allGroups = [...menuGroups, ...junioresiGroup];
+
+  const visibleGroups = allGroups
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => isRoleAllowed(currentRole, item.roles)),
@@ -142,7 +152,6 @@ export default function Sidebar({ appSettings = {} }) {
                   <SidebarLink
                     key={item.to}
                     item={item}
-                    group={group}
                     collapsed={collapsed}
                     locked={Boolean(item.featureKey && !isFeatureUnlocked(item.featureKey, appSettings))}
                   />
@@ -166,11 +175,11 @@ export default function Sidebar({ appSettings = {} }) {
   );
 }
 
-function SidebarLink({ item, group, collapsed, locked }) {
+function SidebarLink({ item, collapsed, locked }) {
   return (
     <NavLink
       to={item.to}
-      title={collapsed ? `${group.title} · ${item.label}` : undefined}
+      title={collapsed ? item.label : undefined}
       style={({ isActive }) => ({
         ...sidebarStyles.link,
         color: isActive ? "#ffffff" : "#cbd5e1",

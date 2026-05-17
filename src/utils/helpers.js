@@ -37,6 +37,8 @@ export function normalizeSession(s){
 
   return {
     ...s,
+    // FIX #12: ID sempre stringa
+    id: s.id ? String(s.id) : s.id,
     type:s.type || "Allenamento",
     date:s.date || new Date().toISOString().slice(0, 10),
     title:s.title || "Seduta",
@@ -68,11 +70,15 @@ export function createId(prefix = "id"){
 export function normalizePlayer(player){
   return {
     ...player,
+    // FIX #12: ID sempre stringa — elimina type mismatch tra numeric initialData e UUID creati dall'utente
+    id: String(player.id),
     shirtNumber: player.shirtNumber || player.number || "",
     status: player.status || "Disponibile",
     returnPhase: player.returnPhase || "",
     weeklyGoal: player.weeklyGoal || "",
     ratings: player.ratings || {},
+    gruppo: player.gruppo || "prima",
+    injuries: Array.isArray(player.injuries) ? player.injuries : [],
   };
 }
 
@@ -96,6 +102,8 @@ export function normalizeExercise(exercise){
 export function normalizeMatch(match){
   return {
     ...match,
+    // FIX #12: ID sempre stringa
+    id: match.id ? String(match.id) : match.id,
     type: "Partita",
     title: match.title || `CalcioLab - ${match.opponent || "Avversario"}`,
     attendance: match.attendance || {},
@@ -126,8 +134,10 @@ export function normalizeMatch(match){
 export function normalizePhysicalTest(test){
   return {
     ...test,
-    date: test.date || new Date().toISOString().slice(0, 10),
-    playerId: test.playerId || "",
+    // FIX #12: ID e playerId sempre stringa
+    id:       test.id       ? String(test.id)       : test.id,
+    playerId: test.playerId ? String(test.playerId) : "",
+    date:     test.date || new Date().toISOString().slice(0, 10),
     gaconLevel: test.gaconLevel || "",
   };
 }
@@ -249,12 +259,12 @@ export const premiumFeatures = {
     description: "Template professionali per staff, giocatori e societa'.",
   },
   sessionGenerator: {
-    label: "Generatore sedute",
+    label: "Builder guidato sedute",
     plan: "premium",
-    description: "Creazione guidata di sedute da obiettivi e vincoli.",
+    description: "Funzione legacy integrata nel flusso Sedute.",
   },
   aiSessionBuilder: {
-    label: "AI Session Builder",
+    label: "Genera sedute con AI",
     plan: "premium",
     description: "Sedute generate da obiettivo, durata, categoria, campo e giocatori disponibili.",
   },
@@ -312,6 +322,19 @@ export const memberRoles = {
     permissions: ["viewSponsorReports"],
   },
 };
+
+export const DEFAULT_PHYSICAL_METRICS = [
+  { key: "gaconLevel", label: "Gacon",         unit: "",    higherIsBetter: true,  icon: "🏃", enabled: true,  custom: false },
+  { key: "yoYo",       label: "Yo-Yo",         unit: "",    higherIsBetter: true,  icon: "🔄", enabled: true,  custom: false },
+  { key: "sprint10m",  label: "Sprint 10m",    unit: "s",   higherIsBetter: false, icon: "⚡", enabled: true,  custom: false },
+  { key: "sprint30m",  label: "Sprint 30m",    unit: "s",   higherIsBetter: false, icon: "⚡", enabled: true,  custom: false },
+  { key: "jumpCm",     label: "Salto",         unit: "cm",  higherIsBetter: true,  icon: "↑",  enabled: true,  custom: false },
+  { key: "weight",     label: "Peso",          unit: "kg",  higherIsBetter: null,  icon: "⚖️", enabled: true,  custom: false },
+  { key: "bodyFat",    label: "Massa grassa",  unit: "%",   higherIsBetter: false, icon: "📊", enabled: true,  custom: false },
+  { key: "agility",    label: "Agilità",       unit: "s",   higherIsBetter: false, icon: "🔀", enabled: false, custom: false },
+  { key: "restingHR",  label: "FC riposo",     unit: "bpm", higherIsBetter: false, icon: "❤️", enabled: false, custom: false },
+  { key: "height",     label: "Altezza",       unit: "cm",  higherIsBetter: null,  icon: "📏", enabled: true,  custom: false },
+];
 
 export function normalizeAppSettings(settings = {}){
   return {
@@ -375,13 +398,30 @@ export function normalizeAppSettings(settings = {}){
       teamName: settings.workspaceProfile?.teamName || "",
       category: settings.workspaceProfile?.category || "Adulti",
       seasonGoal: settings.workspaceProfile?.seasonGoal || "",
+      currentSeason: settings.workspaceProfile?.currentSeason || "2025/2026",
       userRole: settings.workspaceProfile?.userRole || "headCoach",
       recommendedPlan: settings.workspaceProfile?.recommendedPlan || "premium",
       modules: settings.workspaceProfile?.modules || ["trainings", "matches", "players"],
+      teamLevel: settings.workspaceProfile?.teamLevel || "prima",
+      managesJuniores: Boolean(settings.workspaceProfile?.managesJuniores),
     },
+    physicalMetrics: Array.isArray(settings.physicalMetrics) && settings.physicalMetrics.length > 0
+      ? settings.physicalMetrics
+      : DEFAULT_PHYSICAL_METRICS,
     members: (settings.members || []).map(normalizeMember),
+    communications: (settings.communications || []).map(normalizeComm),
     developmentPreviewPlan: settings.developmentPreviewPlan || "",
     developmentPreviewRole: settings.developmentPreviewRole || "",
+  };
+}
+
+export function normalizeComm(c = {}) {
+  return {
+    id:       c.id       || createId("comm"),
+    title:    c.title    || "",
+    body:     c.body     || "",
+    date:     c.date     || new Date().toISOString().slice(0, 10),
+    priority: c.priority === "urgent" ? "urgent" : "info",
   };
 }
 
@@ -823,7 +863,31 @@ export function generatePhysicalWorkout(players = [], tests = [], parameters = {
   });
 }
 
-export function getCoachAlerts({ players = [], matches = [], physicalTests = [], sessions = [] } = {}){
+// Parsa un risultato tipo "2-1" → { goalsFor: 2, goalsAgainst: 1 }
+export function parseMatchResult(result) {
+  if (!result || typeof result !== "string") return null;
+  const m = result.trim().match(/^(\d+)\s*[-:]\s*(\d+)$/);
+  if (!m) return null;
+  return { goalsFor: parseInt(m[1], 10), goalsAgainst: parseInt(m[2], 10) };
+}
+
+// Aggrega tutti i risultati della stagione
+export function getSeasonRecord(matches = []) {
+  let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0, played = 0;
+  for (const match of matches) {
+    const parsed = parseMatchResult(match.result);
+    if (!parsed) continue;
+    played++;
+    goalsFor     += parsed.goalsFor;
+    goalsAgainst += parsed.goalsAgainst;
+    if (parsed.goalsFor > parsed.goalsAgainst)      wins++;
+    else if (parsed.goalsFor === parsed.goalsAgainst) draws++;
+    else                                              losses++;
+  }
+  return { wins, draws, losses, goalsFor, goalsAgainst, played };
+}
+
+export function getCoachAlerts({ players = [], matches = [], physicalTests = [], sessions = [], playerStatsMap = {} } = {}){
   const now = new Date();
   const thirtyDaysAgo = new Date(now);
   thirtyDaysAgo.setDate(now.getDate() - 30);
@@ -857,7 +921,26 @@ export function getCoachAlerts({ players = [], matches = [], physicalTests = [],
     if (!session.objective) alerts.push({ tone: "orange", text: `${session.title}: obiettivo seduta mancante` });
   });
 
-  return alerts.slice(0, 8);
+  // Alert diffide / squalifiche da yellow cards (soglia: 5 ammonizioni)
+  const SUSPENSION_THRESHOLD = 5;
+  players.forEach((player) => {
+    const stats = playerStatsMap[String(player.id)];
+    if (!stats) return;
+    const yellows = Number(stats.yellow_cards || 0);
+    if (yellows >= SUSPENSION_THRESHOLD) {
+      alerts.push({
+        tone: "red",
+        text: `${player.name} — squalificato (${yellows} ammonizioni)`,
+      });
+    } else if (yellows === SUSPENSION_THRESHOLD - 1) {
+      alerts.push({
+        tone: "orange",
+        text: `${player.name} — diffidato (${yellows}/${SUSPENSION_THRESHOLD} ammonizioni)`,
+      });
+    }
+  });
+
+  return alerts.slice(0, 10);
 }
 
 export function getPlayerSummary(player, { sessions = [], matches = [], physicalTests = [] } = {}){

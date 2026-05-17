@@ -13,10 +13,10 @@ export const cards = {
  sectionCard: {
   background: "linear-gradient(180deg, #171b24 0%, #11151d 100%)",
   border: "1px solid #2b3240",
-  borderRadius: 24,
-  padding: 24,
+  borderRadius: 18,
+  padding: 22,
   color: theme.colors.text,
-  boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+  boxShadow: "0 14px 34px rgba(0,0,0,0.22)",
   backdropFilter: "blur(10px)",
 },
 
@@ -74,21 +74,24 @@ export const cards = {
   cardHeader: {
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: 24,
-  gap: 20,
+  alignItems: "flex-start",
+  marginBottom: 20,
+  gap: 16,
+  flexWrap: "wrap",
 },
 
 cardHeaderTitle: {
   margin: 0,
-  fontSize: 20,
-  fontWeight: 700,
+  fontSize: 18,
+  lineHeight: 1.2,
+  fontWeight: 850,
 },
 
 cardHeaderSubtitle: {
   margin: "6px 0 0 0",
   color: "#9ca3af",
   fontSize: 14,
+  lineHeight: 1.45,
 },
 cardHover: {
   transition: "all 0.25s ease",

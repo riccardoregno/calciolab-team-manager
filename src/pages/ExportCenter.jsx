@@ -62,7 +62,7 @@ export default function ExportCenter({
         }
       />
 
-      <div style={pageStyles.workspace}>
+      <div className="export-workspace" style={pageStyles.workspace}>
         <AppCard title="Contenuto" subtitle="Scegli cosa preparare per staff, giocatori o archivio.">
           <div style={pageStyles.typeGrid}>
             {exportTypes.map((item) => (

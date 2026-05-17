@@ -5,6 +5,7 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
+import MatchTabBar from "../components/match/MatchTabBar";
 import { styles } from "../styles/index.js";
 import { createId, formatDate, getLineup, uniqueIds } from "../utils/helpers";
 
@@ -232,7 +233,13 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
         subtitle="Convocazioni, distinta, piano gara ed export stampabile"
       />
 
-      <div style={matchDayStyles.selectorRow}>
+      <MatchTabBar
+        matchId={selectedMatch?.id}
+        active="scheda"
+        matchLabel={selectedMatch?.opponent ? `vs ${selectedMatch.opponent}` : undefined}
+      />
+
+        <div style={matchDayStyles.selectorRow}>
         <select
           value={selectedMatch.id}
           onChange={(event) => selectMatch(event.target.value)}
@@ -275,7 +282,7 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
               <h2 style={matchDayStyles.matchTitle}>
                 {selectedMatch.title || `CalcioLab - ${selectedMatch.opponent}`}
               </h2>
-              <p style={matchDayStyles.muted}>
+              <p style={{ ...matchDayStyles.muted, marginTop: 6 }}>
                 {formatDate(selectedMatch.date)} · {selectedMatch.location} ·{" "}
                 {selectedMatch.formation}
               </p>
@@ -430,7 +437,7 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
           </div>
 
           <div style={matchDayStyles.opponentHeader}>
-            <h4 style={{ margin: 0 }}>Distinta avversaria</h4>
+            <h4 style={{ margin: 0, lineHeight: 1.2 }}>Distinta avversaria</h4>
             <Button variant="ghost" onClick={addOpponentPlayer}>
               + Giocatore
             </Button>
@@ -544,7 +551,7 @@ function PlayerList({
             )}
           </div>
           <div style={matchDayStyles.playerInfo}>
-            <strong>{player.name}</strong>
+            <strong style={{ lineHeight: 1.2 }}>{player.name}</strong>
             <span>
               #{player.shirtNumber || "-"} · {lineup?.roles?.[player.id] || player.role || "Ruolo"}
               {lineup?.captainId === player.id ? " · C" : ""}
@@ -590,7 +597,7 @@ function TeamMark({ logo, name, fallback }) {
       ) : (
         <div style={matchDayStyles.teamFallback}>{fallback}</div>
       )}
-      <strong>{name}</strong>
+      <strong style={{ lineHeight: 1.2 }}>{name}</strong>
     </div>
   );
 }
@@ -599,7 +606,7 @@ function MiniStat({ label, value }) {
   return (
     <div style={matchDayStyles.statCard}>
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong style={{ lineHeight: 1 }}>{value}</strong>
     </div>
   );
 }
@@ -607,7 +614,7 @@ function MiniStat({ label, value }) {
 function SectionHeader({ title, badge }) {
   return (
     <div style={matchDayStyles.sectionHeader}>
-      <h3 style={{ margin: 0 }}>{title}</h3>
+      <h3 style={{ margin: 0, lineHeight: 1.2 }}>{title}</h3>
       <Badge tone="blue">{badge}</Badge>
     </div>
   );
@@ -631,9 +638,13 @@ const matchDayStyles = {
     display: "flex",
     justifyContent: "space-between",
     gap: 14,
-    alignItems: "center",
+    alignItems: "flex-start",
     flexWrap: "wrap",
     marginBottom: 22,
+    padding: 16,
+    borderRadius: 18,
+    background: "rgba(255,255,255,0.035)",
+    border: "1px solid rgba(255,255,255,0.08)",
   },
   actions: {
     display: "flex",
@@ -670,16 +681,16 @@ const matchDayStyles = {
     minWidth: 0,
   },
   teamLogo: {
-    width: 78,
-    height: 78,
-    borderRadius: 20,
+    width: 68,
+    height: 68,
+    borderRadius: 16,
     objectFit: "cover",
     border: "1px solid rgba(255,255,255,0.12)",
   },
   teamFallback: {
-    width: 78,
-    height: 78,
-    borderRadius: 20,
+    width: 68,
+    height: 68,
+    borderRadius: 16,
     display: "grid",
     placeItems: "center",
     background: "linear-gradient(135deg,#2563eb,#38bdf8)",
@@ -696,7 +707,7 @@ const matchDayStyles = {
     display: "grid",
     gap: 6,
     padding: 14,
-    borderRadius: 16,
+    borderRadius: 12,
     background: "rgba(255,255,255,0.045)",
     border: "1px solid rgba(255,255,255,0.08)",
     color: "#94a3b8",
@@ -704,7 +715,7 @@ const matchDayStyles = {
   mainGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: 22,
+    gap: 18,
   },
   sectionHeader: {
     display: "flex",
@@ -723,14 +734,14 @@ const matchDayStyles = {
     gap: 12,
     alignItems: "center",
     padding: 12,
-    borderRadius: 16,
+    borderRadius: 12,
     background: "rgba(255,255,255,0.045)",
     border: "1px solid rgba(255,255,255,0.08)",
   },
   playerAvatar: {
     width: 46,
     height: 46,
-    borderRadius: 14,
+    borderRadius: 12,
     display: "grid",
     placeItems: "center",
     overflow: "hidden",
@@ -749,7 +760,7 @@ const matchDayStyles = {
   },
   roleInput: {
     width: "100%",
-    borderRadius: 12,
+    borderRadius: 10,
     border: "1px solid rgba(255,255,255,0.1)",
     background: "rgba(15,23,42,0.82)",
     color: "white",
@@ -785,7 +796,7 @@ const matchDayStyles = {
   },
   compactInput: {
     width: "100%",
-    borderRadius: 12,
+    borderRadius: 10,
     border: "1px solid rgba(255,255,255,0.1)",
     background: "rgba(15,23,42,0.82)",
     color: "white",
@@ -796,7 +807,7 @@ const matchDayStyles = {
     gap: 10,
     marginTop: 18,
     padding: 14,
-    borderRadius: 16,
+    borderRadius: 12,
     background: "rgba(56,189,248,0.08)",
     border: "1px solid rgba(56,189,248,0.18)",
   },

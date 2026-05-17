@@ -78,9 +78,16 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
   return (
     <div style={builderStyles.page}>
       <PageHeader
-        title="AI Session Builder"
-        subtitle="Genera una seduta coerente con obiettivo, categoria, giocatori, campo e distanza dalla gara."
-        badge={isOpenAiConfigured() ? "OpenAI configurato" : "Fallback locale"}
+        title="Builder AI"
+        subtitle="Genera una seduta da brief tecnico: obiettivo, categoria, giocatori, campo e distanza dalla gara."
+        action={
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <Button variant="ghost" onClick={() => navigate("/trainings")}>Crea manualmente</Button>
+            <Badge tone={isOpenAiConfigured() ? "green" : "orange"}>
+              {isOpenAiConfigured() ? "OpenAI configurato" : "Fallback locale"}
+            </Badge>
+          </div>
+        }
       />
 
       <div style={builderStyles.grid}>
@@ -143,8 +150,12 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
               />
             </Field>
             <div style={builderStyles.aiActions}>
-              <Button onClick={generateWithAi} disabled={generating || !exercises.length}>
-                {generating ? "Generazione..." : "Genera con AI"}
+              <Button
+                onClick={generateWithAi}
+                disabled={generating || !exercises.length}
+                style={{ opacity: generating ? 0.6 : 1, cursor: generating ? "not-allowed" : "pointer" }}
+              >
+                {generating ? "⏳ Generazione in corso…" : "Genera con AI"}
               </Button>
               <Button variant="ghost" onClick={() => {
                 setGeneratedSession(localPreview);

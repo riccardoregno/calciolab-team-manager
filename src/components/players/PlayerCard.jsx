@@ -20,27 +20,14 @@ function PlayerCard({ player, onDelete }) {
       style={{
         position: "relative",
         overflow: "hidden",
-        borderRadius: 24,
-        padding: 20,
+        borderRadius: 18,
+        padding: 18,
         background:
-          "linear-gradient(145deg, rgba(15,23,42,0.96), rgba(30,41,59,0.92))",
+          "linear-gradient(145deg, rgba(15,23,42,0.98), rgba(30,41,59,0.92))",
         border: "1px solid rgba(255,255,255,0.10)",
-        boxShadow: "0 24px 60px rgba(0,0,0,0.28)",
+        boxShadow: "0 18px 42px rgba(0,0,0,0.24)",
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          width: 140,
-          height: 140,
-          borderRadius: "50%",
-          background: "rgba(56,189,248,0.18)",
-          filter: "blur(20px)",
-          right: -50,
-          top: -50,
-        }}
-      />
-
       <div style={{ position: "relative", zIndex: 2 }}>
         <div
           style={{
@@ -52,15 +39,15 @@ function PlayerCard({ player, onDelete }) {
         >
           <div
             style={{
-              width: 72,
-              height: 72,
-              borderRadius: 22,
+              width: 62,
+              height: 62,
+              borderRadius: 18,
               background:
-                "linear-gradient(135deg, rgba(56,189,248,0.35), rgba(37,99,235,0.20))",
+                "linear-gradient(135deg, rgba(56,189,248,0.28), rgba(37,99,235,0.18))",
               border: "1px solid rgba(255,255,255,0.16)",
               display: "grid",
               placeItems: "center",
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: 900,
               color: "white",
               overflow: "hidden",
@@ -81,17 +68,23 @@ function PlayerCard({ player, onDelete }) {
             )}
           </div>
 
-          <Badge tone={player.status === "Infortunato" ? "red" : "green"}>
+          <Badge tone={
+            player.status === "Infortunato" ? "red" :
+            player.status === "Squalificato" ? "purple" :
+            player.status === "Recupero" || player.status === "Differenziato" ? "orange" :
+            "green"
+          }>
             {player.status || "Disponibile"}
           </Badge>
         </div>
 
-        <div style={{ marginTop: 18 }}>
+        <div style={{ marginTop: 16 }}>
           <h3
             style={{
               margin: 0,
-              fontSize: 22,
-              letterSpacing: "-0.03em",
+              fontSize: 21,
+              lineHeight: 1.16,
+              letterSpacing: 0,
             }}
           >
             {player.name}
@@ -102,6 +95,7 @@ function PlayerCard({ player, onDelete }) {
               margin: "6px 0 0",
               color: "#94a3b8",
               fontWeight: 700,
+              lineHeight: 1.35,
             }}
           >
             {player.role || "Ruolo non impostato"}
@@ -110,7 +104,7 @@ function PlayerCard({ player, onDelete }) {
 
         <div
           style={{
-            marginTop: 18,
+            marginTop: 16,
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
             gap: 10,
@@ -123,7 +117,7 @@ function PlayerCard({ player, onDelete }) {
 
         <div
           style={{
-            marginTop: 20,
+            marginTop: 18,
             display: "flex",
             gap: 10,
             flexWrap: "wrap",
@@ -132,7 +126,7 @@ function PlayerCard({ player, onDelete }) {
           <Button
             variant="ghost"
             onClick={() => navigate(`/players/${player.id}`)}
-            style={{ flex: 1 }}
+            style={{ flex: "1 1 110px" }}
           >
             Scheda
           </Button>
@@ -140,7 +134,7 @@ function PlayerCard({ player, onDelete }) {
           <Button
             variant="danger"
             onClick={onDelete}
-            style={{ flex: 1 }}
+            style={{ flex: "1 1 110px" }}
           >
             Elimina
           </Button>
@@ -154,11 +148,12 @@ function MiniValue({ label, value }) {
   return (
     <div
       style={{
-        borderRadius: 16,
+        borderRadius: 12,
         background: "rgba(255,255,255,0.055)",
         border: "1px solid rgba(255,255,255,0.08)",
-        padding: "10px 8px",
+        padding: "9px 8px",
         textAlign: "center",
+        minWidth: 0,
       }}
     >
       <div
@@ -167,7 +162,8 @@ function MiniValue({ label, value }) {
           color: "#94a3b8",
           fontWeight: 800,
           textTransform: "uppercase",
-          letterSpacing: "0.05em",
+          letterSpacing: 0,
+          lineHeight: 1,
         }}
       >
         {label}
@@ -179,6 +175,8 @@ function MiniValue({ label, value }) {
           marginTop: 5,
           fontSize: 16,
           color: "white",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
         }}
       >
         {value}

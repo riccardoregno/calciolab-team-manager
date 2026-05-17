@@ -52,7 +52,7 @@ export default function ExerciseLibrary({ exercises = [], appSettings = {} }) {
       <PageHeader
         title="Eserciziario Premium"
         subtitle="Filtra esercizi per obiettivo, eta', intensita' e accesso. Gli esercizi premium anticipano la libreria da 1000 contenuti."
-        action={<Button onClick={() => navigate("/ai-session-builder")}>AI Session Builder</Button>}
+        action={<Button onClick={() => navigate("/ai-session-builder")}>Builder AI</Button>}
       />
 
       <AppCard>

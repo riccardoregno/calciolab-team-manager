@@ -7,11 +7,15 @@ import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
 import Modal from "../components/ui/Modal";
+import { useToast } from "../components/ui/Toast";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 import { styles } from "../styles/index.js";
 import { createId, formatDate } from "../utils/helpers";
 
 function Matches({ matches, setMatches, players = [] }) {
+  const { showToast, ToastContainer } = useToast();
+  const [confirmState, setConfirmState] = useState(null);
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyMatch());
@@ -33,7 +37,8 @@ function Matches({ matches, setMatches, players = [] }) {
 
   function saveMatch() {
     if (!form.opponent.trim()) {
-      return alert("Inserisci l’avversario");
+      showToast("Inserisci l’avversario", "warn");
+      return;
     }
 
     const payload = {
@@ -52,6 +57,7 @@ function Matches({ matches, setMatches, players = [] }) {
     setForm(emptyMatch());
     setEditingId(null);
     setOpenModal(false);
+    showToast(editingId ? "Partita aggiornata" : "Partita salvata", "ok");
   }
 
   function editMatch(match) {
@@ -76,15 +82,32 @@ function Matches({ matches, setMatches, players = [] }) {
   }
 
   function deleteMatch(id) {
-    if (!confirm("Vuoi eliminare questa partita?")) return;
-    setMatches(matches.filter((match) => match.id !== id));
+    setConfirmState({
+      message: "Vuoi eliminare questa partita?",
+      confirmLabel: "Elimina",
+      confirmTone: "red",
+      onConfirm: () => {
+        setMatches(matches.filter((match) => match.id !== id));
+        showToast("Partita eliminata", "info");
+      },
+    });
   }
 
   return (
     <div style={styles.page}>
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
+      <ToastContainer />
       <PageHeader
         title="Partite"
         subtitle="Match center, risultati, loghi squadre e note tecniche"
+        action={
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <Link to="/match-day" style={{ textDecoration: "none" }}>
+              <Button variant="ghost">Match Day</Button>
+            </Link>
+            <Button onClick={() => setOpenModal(true)}>+ Nuova partita</Button>
+          </div>
+        }
       />
 
       <div
@@ -92,19 +115,19 @@ function Matches({ matches, setMatches, players = [] }) {
           display: "flex",
           justifyContent: "space-between",
           gap: 20,
-          alignItems: "center",
-          marginBottom: 24,
+          alignItems: "flex-start",
+          marginBottom: 22,
           flexWrap: "wrap",
+          padding: 16,
+          borderRadius: 18,
+          background: "rgba(255,255,255,0.035)",
+          border: "1px solid rgba(255,255,255,0.08)",
         }}
       >
         <Badge tone="blue">{matches.length} partite</Badge>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Link to="/match-day" style={{ textDecoration: "none" }}>
-            <Button variant="ghost">Match Day</Button>
-          </Link>
-          <Button onClick={() => setOpenModal(true)}>+ Nuova partita</Button>
-        </div>
+        <p style={{ color: "#94a3b8", margin: 0, lineHeight: 1.45 }}>
+          Archivio gare, convocazioni, distinta e statistiche partita.
+        </p>
       </div>
 
       {matches.length === 0 ? (
@@ -117,8 +140,8 @@ function Matches({ matches, setMatches, players = [] }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(430px,1fr))",
-            gap: 22,
+            gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
+            gap: 18,
           }}
         >
           {matches.map((match) => (
@@ -127,9 +150,9 @@ function Matches({ matches, setMatches, players = [] }) {
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr auto 1fr",
-                  gap: 18,
+                  gap: 14,
                   alignItems: "center",
-                  marginBottom: 22,
+                  marginBottom: 20,
                 }}
               >
                 <TeamBox
@@ -142,8 +165,9 @@ function Matches({ matches, setMatches, players = [] }) {
                 <div style={{ textAlign: "center" }}>
                   <div
                     style={{
-                      fontSize: 34,
+                      fontSize: 32,
                       fontWeight: 900,
+                      lineHeight: 1,
                       marginBottom: 6,
                     }}
                   >
@@ -181,7 +205,7 @@ function Matches({ matches, setMatches, players = [] }) {
 
               <div
                 style={{
-                  borderRadius: 18,
+                  borderRadius: 12,
                   padding: 16,
                   background: "rgba(255,255,255,0.045)",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -194,6 +218,7 @@ function Matches({ matches, setMatches, players = [] }) {
                     fontSize: 12,
                     fontWeight: 800,
                     textTransform: "uppercase",
+                    letterSpacing: 0,
                     marginBottom: 8,
                   }}
                 >
@@ -205,20 +230,57 @@ function Matches({ matches, setMatches, players = [] }) {
                 </p>
               </div>
 
-              <div style={{ display: "flex", gap: 12, marginTop: 22 }}>
+              {/* Badge convocazione */}
+              {match.convocazione?.published && (
+                <div style={{ marginBottom: 10, marginTop: 14 }}>
+                  <Badge tone="green">
+                    ✓ Convocazione pubblicata · {match.convocazione.playerIds?.length || 0} giocatori
+                  </Badge>
+                </div>
+              )}
+              {match.convocazione && !match.convocazione.published && match.convocazione.playerIds?.length > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  <Badge tone="orange">
+                    Bozza convocazione · {match.convocazione.playerIds.length} selezionati
+                  </Badge>
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                <Link
+                  to={`/match-convocation/${match.id}`}
+                  style={{ flex: 1, textDecoration: "none", minWidth: 110 }}
+                >
+                  <Button
+                    variant={match.convocazione?.published ? "ghost" : "primary"}
+                    style={{ width: "100%" }}
+                  >
+                    {match.convocazione?.published ? "✓ Convocazione" : "Convoca"}
+                  </Button>
+                </Link>
+
                 <Link
                   to={`/match-day/${match.id}`}
-                  style={{ flex: 1, textDecoration: "none" }}
+                  style={{ flex: 1, textDecoration: "none", minWidth: 100 }}
                 >
                   <Button variant="ghost" style={{ width: "100%" }}>
                     Scheda gara
                   </Button>
                 </Link>
 
+                <Link
+                  to={`/match-stats/${match.id}`}
+                  style={{ flex: 1, textDecoration: "none", minWidth: 100 }}
+                >
+                  <Button variant="ghost" style={{ width: "100%" }}>
+                    Statistiche
+                  </Button>
+                </Link>
+
                 <Button
                   variant="ghost"
                   onClick={() => editMatch(match)}
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, minWidth: 90 }}
                 >
                   Modifica
                 </Button>
@@ -226,7 +288,7 @@ function Matches({ matches, setMatches, players = [] }) {
                 <Button
                   variant="danger"
                   onClick={() => deleteMatch(match.id)}
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, minWidth: 80 }}
                 >
                   Elimina
                 </Button>
@@ -365,10 +427,10 @@ function TeamBox({ logo, name, fallback, gradient }) {
           src={logo}
           alt={name}
           style={{
-            width: 78,
-            height: 78,
+            width: 68,
+            height: 68,
             objectFit: "cover",
-            borderRadius: 20,
+            borderRadius: 16,
             marginBottom: 10,
             border: "1px solid rgba(255,255,255,0.12)",
           }}
@@ -376,9 +438,9 @@ function TeamBox({ logo, name, fallback, gradient }) {
       ) : (
         <div
           style={{
-            width: 78,
-            height: 78,
-            borderRadius: 20,
+            width: 68,
+            height: 68,
+            borderRadius: 16,
             background: gradient,
             display: "grid",
             placeItems: "center",
@@ -397,6 +459,7 @@ function TeamBox({ logo, name, fallback, gradient }) {
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
+          lineHeight: 1.2,
         }}
       >
         {name}
@@ -449,8 +512,8 @@ function MiniInfo({ label, value }) {
   return (
     <div
       style={{
-        borderRadius: 16,
-        padding: 14,
+        borderRadius: 12,
+        padding: 12,
         background: "rgba(255,255,255,0.055)",
         border: "1px solid rgba(255,255,255,0.08)",
       }}
@@ -461,13 +524,14 @@ function MiniInfo({ label, value }) {
           fontSize: 11,
           fontWeight: 800,
           textTransform: "uppercase",
+          letterSpacing: 0,
           marginBottom: 6,
         }}
       >
         {label}
       </div>
 
-      <strong>{value}</strong>
+      <strong style={{ lineHeight: 1.2 }}>{value}</strong>
     </div>
   );
 }

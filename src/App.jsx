@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import { styles } from "./styles/index.js";
 import Sidebar from "./components/layout/Sidebar";
@@ -21,6 +21,9 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Players = lazy(() => import("./pages/Players"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail"));
 const PlayerProfile = lazy(() => import("./pages/PlayerProfile"));
+const MatchStats = lazy(() => import("./pages/MatchStats"));
+const SessionAttendance = lazy(() => import("./pages/SessionAttendance"));
+const MatchConvocation  = lazy(() => import("./pages/MatchConvocation"));
 const Exercises = lazy(() => import("./pages/Exercises"));
 const Trainings = lazy(() => import("./pages/Trainings"));
 const Sessions = lazy(() => import("./pages/Sessions"));
@@ -30,14 +33,11 @@ const Calendar = lazy(() => import("./pages/Calendar"));
 const Statistics = lazy(() => import("./pages/Statistics"));
 const TacticalBoard = lazy(() => import("./pages/TacticalBoard"));
 const Settings = lazy(() => import("./pages/Settings"));
-const WeekPlan = lazy(() => import("./pages/WeekPlan"));
 const Availability = lazy(() => import("./pages/Availability"));
 const PhysicalTests = lazy(() => import("./pages/PhysicalTests"));
-const CoachSettings = lazy(() => import("./pages/CoachSettings"));
 const PhysicalWorkouts = lazy(() => import("./pages/PhysicalWorkouts"));
 const Opponents = lazy(() => import("./pages/Opponents"));
 const PostMatch = lazy(() => import("./pages/PostMatch"));
-const SessionGenerator = lazy(() => import("./pages/SessionGenerator"));
 const ExportCenter = lazy(() => import("./pages/ExportCenter"));
 const Premium = lazy(() => import("./pages/Premium"));
 const PlayerPortal = lazy(() => import("./pages/PlayerPortal"));
@@ -45,7 +45,10 @@ const Sponsors = lazy(() => import("./pages/Sponsors"));
 const ExerciseLibrary = lazy(() => import("./pages/ExerciseLibrary"));
 const AiSessionBuilder = lazy(() => import("./pages/AiSessionBuilder"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
-const ClubSettings = lazy(() => import("./pages/ClubSettings"));
+const JoinTeam = lazy(() => import("./pages/JoinTeam"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 
 const developmentPreviewStorageKey = "calciolab_plan_preview";
 const developmentPreviewPlans = ["free", "premium", "club"];
@@ -85,6 +88,7 @@ function App() {
 
   useEffect(() => {
     if (!auth.team) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRemoteSubscription({
       subscription_plan:  auth.team.subscription_plan  ?? "free",
       billing_status:     auth.team.billing_status     ?? "free",
@@ -138,10 +142,13 @@ function App() {
     };
   }, [state.appSettings, remoteSubscription, developmentPlanPreview, developmentRolePreview]);
 
+  // FIX #9: active flag previene setState su componente smontato (memory leak)
   useEffect(() => {
+    let active = true;
+
     async function loadProfile() {
       if (!auth.user) {
-        setProfile(null);
+        if (active) setProfile(null);
         return;
       }
 
@@ -151,8 +158,10 @@ function App() {
         .eq("id", auth.user.id)
         .single();
 
+      if (!active) return;
+
       if (error) {
-        console.error("Errore caricamento profilo:", error);
+        if (import.meta.env.DEV) console.error("Errore caricamento profilo:", error);
         return;
       }
 
@@ -160,7 +169,15 @@ function App() {
     }
 
     loadProfile();
+    return () => { active = false; };
   }, [auth.user]);
+
+  // Pagine pubbliche — accessibili senza autenticazione
+  const _path = typeof window !== "undefined" ? window.location.pathname : "";
+  if (_path === "/terms")                  return <Suspense fallback={null}><Terms /></Suspense>;
+  if (_path === "/privacy")                return <Suspense fallback={null}><Privacy /></Suspense>;
+  if (_path.startsWith("/join"))           return <Suspense fallback={null}><JoinTeam /></Suspense>;
+  if (_path.startsWith("/reset-password")) return <Suspense fallback={null}><ResetPassword /></Suspense>;
 
   if (auth.authLoading) {
     return (
@@ -179,6 +196,27 @@ function App() {
 
   if (!auth.user) {
     return <Auth />;
+  }
+
+  // Onboarding automatico per nuovi utenti.
+  // Fonte di verità: auth.team.onboarding_completed (campo Supabase) quando disponibile,
+  // altrimenti appSettings.onboarding.completed (localStorage) come fallback locale.
+  // Saltare l'onboarding non concede privilegi aggiuntivi — è solo configurazione.
+  const onboardingDone =
+    auth.team?.onboarding_completed === true ||
+    previewAppSettings?.onboarding?.completed === true;
+  if (!loading && !onboardingDone) {
+    return (
+      <BrowserRouter>
+        <Suspense fallback={null}>
+          <Onboarding
+            appSettings={previewAppSettings}
+            setAppSettings={setAppSettings}
+            team={auth.team}
+          />
+        </Suspense>
+      </BrowserRouter>
+    );
   }
 
   const players = state.players || [];
@@ -205,17 +243,20 @@ function App() {
     }
   }
 
+  // FIX #8 / pre-go-live: setSubscription aggiorna lo stato locale SOLO se l'update
+  // sul DB è andato a buon fine. Se il trigger billing_immutable (o un altro errore)
+  // rifiuta la scrittura, ritorniamo { error } senza modificare remoteSubscription —
+  // così la UI non mostra mai un piano che non è realmente attivo sul DB.
   async function setSubscription(dbFields) {
-    console.log("[App] setSubscription chiamato");
-    console.log("[App] auth.team?.id:", auth.team?.id);
-    console.log("[App] dbFields:", dbFields);
     const { error } = await updateTeamSubscription(auth.team?.id, dbFields);
     if (error) {
-      console.error("[App] setSubscription fallito:", error.message);
-    } else {
-      console.log("[App] setSubscription completato senza errori");
+      if (import.meta.env.DEV) {
+        console.error("[App] setSubscription fallito:", error.message);
+      }
+      return { error };
     }
     setRemoteSubscription((prev) => ({ ...(prev || {}), ...dbFields }));
+    return { error: null };
   }
 
   function updateEventAttendance(eventId, eventType, attendance) {
@@ -234,9 +275,16 @@ function App() {
     }
   }
 
+  // FIX #5: supabaseRole viene da team_members.role su Supabase — fonte di verità,
+  // non manipolabile via localStorage come appSettings.workspaceProfile.userRole
   function gate(allowedRoles, children) {
     return (
-      <RoleGate allowedRoles={allowedRoles} appSettings={previewAppSettings}>
+      <RoleGate
+        allowedRoles={allowedRoles}
+        appSettings={previewAppSettings}
+        supabaseRole={auth.team?.role || null}
+        authConfigured={!!auth.authConfigured}
+      >
         {children}
       </RoleGate>
     );
@@ -307,18 +355,21 @@ function App() {
 
               <Route
                 path="/settings"
-                element={gate(allRoles, <Settings {...auth} storageSource={storageSource} />)}
+                element={gate(allRoles, <Settings
+                  {...auth}
+                  storageSource={storageSource}
+                  appSettings={previewAppSettings}
+                  setAppSettings={setAppSettings}
+                  players={players}
+                  exercises={exercises}
+                  sessions={sessions}
+                  matches={matches}
+                />)}
               />
 
-              <Route
-                path="/coach-settings"
-                element={
-                  gate(physicalRoles, <CoachSettings
-                    appSettings={previewAppSettings}
-                    setAppSettings={setAppSettings}
-                  />)
-                }
-              />
+              {/* Legacy redirects → unified settings */}
+              <Route path="/coach-settings" element={<Navigate to="/settings" replace />} />
+              <Route path="/club-settings"  element={<Navigate to="/settings?tab=club" replace />} />
 
               <Route
                 path="/physical-workouts"
@@ -352,19 +403,15 @@ function App() {
               />
 
               <Route
-                path="/session-generator"
+                path="/post-match/:id"
                 element={
-                  gate(technicalRoles, <FeatureGate featureKey="sessionGenerator" appSettings={previewAppSettings}>
-                    <SessionGenerator
-                      exercises={exercises}
-                      sessions={sessions}
-                      setSessions={setSessions}
-                      players={players}
-                      matches={matches}
-                    />
+                  gate(technicalRoles, <FeatureGate featureKey="postMatch" appSettings={previewAppSettings}>
+                    <PostMatch matches={matches} setMatches={setMatches} />
                   </FeatureGate>)
                 }
               />
+
+              <Route path="/session-generator" element={<Navigate to="/trainings" replace />} />
 
               <Route
                 path="/exports"
@@ -408,19 +455,6 @@ function App() {
                 }
               />
 
-              <Route
-                path="/club-settings"
-                element={
-                  gate(managementRoles, <ClubSettings
-                    appSettings={previewAppSettings}
-                    setAppSettings={setAppSettings}
-                    players={players}
-                    exercises={exercises}
-                    sessions={sessions}
-                    matches={matches}
-                  />)
-                }
-              />
 
               <Route
                 path="/exercise-library"
@@ -474,20 +508,11 @@ function App() {
                 }
               />
 
-              <Route
-                path="/week-plan"
-                element={
-                  gate(coachRoles, <WeekPlan
-                    sessions={sessions}
-                    matches={matches}
-                    players={players}
-                  />)
-                }
-              />
+              {/* /week-plan rimosso — vista Settimana integrata in /calendar */}
 
               <Route
                 path="/availability"
-                element={gate(["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"], <Availability players={players} setPlayers={setPlayers} />)}
+                element={gate(["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"], <Availability players={players} setPlayers={setPlayers} sessions={sessions} matches={matches} />)}
               />
 
               <Route
@@ -530,12 +555,45 @@ function App() {
                 }
               />
 
-              <Route path="/tactical-board" element={gate(technicalRoles, <TacticalBoard players={players} />)} />
+              <Route
+                path="/match-stats/:id"
+                element={
+                  gate(coachRoles, <MatchStats
+                    players={players}
+                    matches={matches}
+                    appSettings={previewAppSettings}
+                  />)
+                }
+              />
+
+              <Route
+                path="/session-attendance/:id"
+                element={
+                  gate(technicalRoles, <SessionAttendance
+                    players={players}
+                    sessions={sessions}
+                    setSessions={setSessions}
+                  />)
+                }
+              />
+
+              <Route
+                path="/match-convocation/:id"
+                element={
+                  gate(technicalRoles, <MatchConvocation
+                    players={players}
+                    matches={matches}
+                    setMatches={setMatches}
+                  />)
+                }
+              />
+
+              <Route path="/tactical-board" element={gate(technicalRoles, <TacticalBoard players={players} exercises={exercises} setExercises={setExercises} />)} />
 
               <Route
                 path="/statistics"
                 element={
-                  gate(coachRoles, <Statistics events={[...sessions, ...matches]} players={players} />)
+                  gate(coachRoles, <Statistics events={[...sessions, ...matches]} players={players} appSettings={previewAppSettings} setAppSettings={setAppSettings} />)
                 }
               />
 
@@ -558,6 +616,10 @@ function App() {
                     events={[...sessions, ...matches]}
                     players={players}
                     updateEventAttendance={updateEventAttendance}
+                    setSessions={setSessions}
+                    setMatches={setMatches}
+                    sessions={sessions}
+                    matches={matches}
                   />)
                 }
               />

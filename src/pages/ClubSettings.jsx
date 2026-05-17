@@ -147,7 +147,7 @@ export default function ClubSettings({
                 <div key={member.id} style={clubStyles.memberCard}>
                   <div>
                     <Badge tone={member.status === "Attivo" ? "green" : "orange"}>{member.status}</Badge>
-                    <h3>{member.name}</h3>
+                    <h3 style={{ lineHeight: 1.2 }}>{member.name}</h3>
                     <p style={clubStyles.muted}>{member.email || "Email non inserita"}</p>
                   </div>
                   <select value={member.role} onChange={(event) => updateMemberRole(member.id, event.target.value)} style={styles.input}>
@@ -185,16 +185,16 @@ function Field({ label, children }) {
 }
 
 const clubStyles = {
-  page: { display: "grid", gap: 22 },
-  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22, alignItems: "start" },
+  page: { display: "grid", gap: 20 },
+  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" },
   formGrid: { display: "grid", gap: 12 },
-  field: { display: "grid", gap: 4, color: "#94a3b8", fontSize: 12, fontWeight: 900, textTransform: "uppercase" },
+  field: { display: "grid", gap: 4, color: "#94a3b8", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0 },
   progressTrack: { height: 12, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 14 },
   progressBar: { height: "100%", borderRadius: 999, background: "linear-gradient(135deg,#22c55e,#38bdf8)" },
   checkList: { display: "grid", gap: 9 },
-  checkRow: { display: "flex", gap: 10, alignItems: "center", padding: 12, borderRadius: 14, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", color: "white", cursor: "pointer", textAlign: "left" },
+  checkRow: { display: "flex", gap: 10, alignItems: "center", padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", color: "white", cursor: "pointer", textAlign: "left", lineHeight: 1.25 },
   memberList: { display: "grid", gap: 12 },
-  memberCard: { display: "grid", gridTemplateColumns: "1fr 180px 1fr auto", gap: 12, alignItems: "center", padding: 14, borderRadius: 18, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" },
+  memberCard: { display: "grid", gridTemplateColumns: "1fr 180px 1fr auto", gap: 12, alignItems: "center", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" },
   permissions: { display: "flex", gap: 6, flexWrap: "wrap" },
-  muted: { color: "#94a3b8", margin: 0 },
+  muted: { color: "#94a3b8", margin: 0, lineHeight: 1.4 },
 };

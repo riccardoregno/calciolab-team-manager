@@ -12,7 +12,7 @@ const SECTION_LABELS = { overview: "Overview", partite: "Partite", sviluppo: "Sv
 
 const STATUS_TONE = { Disponibile: "green", Recupero: "orange", Infortunato: "red" };
 
-export default function PlayerProfile({ players = [], matches = [], physicalTests = [], sessions = [], loading: appLoading = false }) {
+export default function PlayerProfile({ players = [], matches = [], physicalTests = [], loading: appLoading = false }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const auth = useAuth();
@@ -31,6 +31,7 @@ export default function PlayerProfile({ players = [], matches = [], physicalTest
   useEffect(() => {
     if (playerFromState || appLoading || !auth.team?.id || !id) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPlayerLoading(true);
     loadPlayerById(auth.team.id, id).then(({ data }) => {
       setPlayerFromDb(data);
@@ -41,6 +42,7 @@ export default function PlayerProfile({ players = [], matches = [], physicalTest
   // Carica stats e partite da Supabase
   useEffect(() => {
     if (!auth.team?.id || !id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoadingStats(false);
       return;
     }
