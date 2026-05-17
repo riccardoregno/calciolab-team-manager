@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "../../i18n";
 import { supabase } from "../../lib/supabaseClient";
 import { styles } from "../../styles/index.js";
 import DevelopmentPlanSwitcher from "./DevelopmentPlanSwitcher";
 import DevelopmentRoleSwitcher from "./DevelopmentRoleSwitcher";
+import LanguageSelector from "./LanguageSelector";
 
 export default function Topbar({
   players = [],
@@ -16,6 +18,7 @@ export default function Topbar({
   developmentRolePreview = "headCoach",
   onDevelopmentRolePreviewChange,
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [openNotifications, setOpenNotifications] = useState(false);
   const [openProfile, setOpenProfile] = useState(false);
@@ -38,7 +41,7 @@ export default function Topbar({
       .map((p) => ({
         id: `player-${p.id}`,
         label: p.name,
-        meta: `Giocatore · ${p.role || "Ruolo non definito"}`,
+        meta: t("topbar.resultMeta.player", { role: p.role || t("topbar.resultMeta.undefinedRole") }),
         to: `/players/${p.id}`,
       }));
 
@@ -47,7 +50,7 @@ export default function Topbar({
       .map((e) => ({
         id: `exercise-${e.id}`,
         label: e.title,
-        meta: `Esercizio · ${e.category || "Categoria"}`,
+        meta: t("topbar.resultMeta.exercise", { category: e.category || t("topbar.resultMeta.category") }),
         to: "/exercises",
       }));
 
@@ -55,8 +58,8 @@ export default function Topbar({
       .filter((s) => `${s.title} ${s.date} ${s.objective}`.toLowerCase().includes(q))
       .map((s) => ({
         id: `session-${s.id}`,
-        label: s.title || "Seduta",
-        meta: `Allenamento · ${s.date || "Data non definita"}`,
+        label: s.title || t("navigation.items.trainings"),
+        meta: t("topbar.resultMeta.session", { date: s.date || t("topbar.resultMeta.undefinedDate") }),
         to: "/trainings",
       }));
 
@@ -66,13 +69,13 @@ export default function Topbar({
       )
       .map((m) => ({
         id: `match-${m.id}`,
-        label: m.opponent || "Partita",
-        meta: `Match · ${m.date || "Data non definita"}`,
+        label: m.opponent || t("navigation.items.matches"),
+        meta: t("topbar.resultMeta.match", { date: m.date || t("topbar.resultMeta.undefinedDate") }),
         to: "/matches",
       }));
 
     return [...playerResults, ...exerciseResults, ...sessionResults, ...matchResults].slice(0, 8);
-  }, [search, players, exercises, sessions, matches]);
+  }, [search, players, exercises, sessions, matches, t]);
 
   const notifications = useMemo(() => {
     const today = new Date();
@@ -82,8 +85,8 @@ export default function Topbar({
       .slice(0, 2)
       .map((s) => ({
         id: `session-note-${s.id}`,
-        title: s.title || "Seduta in programma",
-        text: s.date || "Data non definita",
+        title: s.title || t("topbar.notificationsText.upcomingSession"),
+        text: s.date || t("topbar.resultMeta.undefinedDate"),
         to: "/trainings",
       }));
 
@@ -92,8 +95,8 @@ export default function Topbar({
       .slice(0, 2)
       .map((m) => ({
         id: `match-note-${m.id}`,
-        title: `Match vs ${m.opponent || "avversario"}`,
-        text: m.date || "Data non definita",
+        title: t("topbar.notificationsText.matchVs", { opponent: m.opponent || t("topbar.notificationsText.opponent") }),
+        text: m.date || t("topbar.resultMeta.undefinedDate"),
         to: "/matches",
       }));
 
@@ -102,19 +105,19 @@ export default function Topbar({
       .slice(0, 2)
       .map((p) => ({
         id: `injury-note-${p.id}`,
-        title: `${p.name} infortunato`,
-        text: p.injury || "Controllare stato fisico",
+        title: t("topbar.notificationsText.injuredPlayer", { name: p.name }),
+        text: p.injury || t("topbar.notificationsText.checkPhysicalStatus"),
         to: `/players/${p.id}`,
       }));
 
     return [...upcomingSessions, ...upcomingMatches, ...injuredPlayers].slice(0, 5);
-  }, [sessions, matches, players]);
+  }, [sessions, matches, players, t]);
 
   return (
     <header style={styles.topbar}>
       <div style={styles.topbarLeft}>
-        <p style={styles.topbarEyebrow}>Ciao {firstName}</p>
-        <h1 style={styles.topbarTitle}>Gestisci la tua stagione</h1>
+        <p style={styles.topbarEyebrow}>{t("topbar.greeting", { name: firstName })}</p>
+        <h1 style={styles.topbarTitle}>{t("topbar.title")}</h1>
       </div>
 
       <div style={styles.topbarActions}>
@@ -135,7 +138,7 @@ export default function Topbar({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cerca giocatori, sedute, esercizi..."
+              placeholder={t("topbar.searchPlaceholder")}
               style={styles.topbarSearchInput}
             />
           </div>
@@ -155,7 +158,7 @@ export default function Topbar({
                   </Link>
                 ))
               ) : (
-                <div style={styles.topbarSearchEmpty}>Nessun risultato trovato</div>
+                <div style={styles.topbarSearchEmpty}>{t("common.noResults")}</div>
               )}
             </div>
           )}
@@ -163,13 +166,13 @@ export default function Topbar({
 
         <Link to="/trainings" style={styles.topbarPrimaryAction}>
           <span style={styles.topbarPlus}>+</span>
-          Nuova seduta
+          {t("topbar.newSession")}
         </Link>
 
         <div style={{ position: "relative" }}>
           <button
             style={styles.topbarIconButton}
-            title="Notifiche"
+            title={t("topbar.notifications")}
             onClick={() => setOpenNotifications(!openNotifications)}
           >
             🔔
@@ -179,7 +182,7 @@ export default function Topbar({
           {openNotifications && (
             <div style={styles.topbarNotificationsPanel}>
               <div style={styles.topbarNotificationsHeader}>
-                <strong>Centro attività</strong>
+                <strong>{t("topbar.activityCenter")}</strong>
                 <span>{notifications.length}</span>
               </div>
 
@@ -196,7 +199,7 @@ export default function Topbar({
                   </Link>
                 ))
               ) : (
-                <div style={styles.topbarNotificationEmpty}>Nessuna attività urgente</div>
+                <div style={styles.topbarNotificationEmpty}>{t("common.noUrgentActivity")}</div>
               )}
             </div>
           )}
@@ -225,15 +228,17 @@ export default function Topbar({
                 <strong>
                   {firstName} {lastName}
                 </strong>
-                <span>{profile?.email || "Profilo coach"}</span>
+                <span>{profile?.email || t("common.profileCoach")}</span>
               </div>
+
+              <LanguageSelector />
 
               <Link
                 to="/settings"
                 style={styles.topbarProfileMenuItem}
                 onClick={() => setOpenProfile(false)}
               >
-                ⚙️ Impostazioni
+                ⚙️ {t("topbar.settings")}
               </Link>
 
               <Link
@@ -241,7 +246,7 @@ export default function Topbar({
                 style={styles.topbarProfileMenuItem}
                 onClick={() => setOpenProfile(false)}
               >
-                📊 Dashboard performance
+                📊 {t("topbar.performanceDashboard")}
               </Link>
 
               <Link
@@ -249,7 +254,7 @@ export default function Topbar({
                 style={styles.topbarProfileMenuItem}
                 onClick={() => setOpenProfile(false)}
               >
-                👥 Gestione rosa
+                👥 {t("topbar.rosterManagement")}
               </Link>
 
               <Link
@@ -257,11 +262,11 @@ export default function Topbar({
                 style={styles.topbarProfileMenuItem}
                 onClick={() => setOpenProfile(false)}
               >
-                🗓️ Pianificazione
+                🗓️ {t("topbar.planning")}
               </Link>
 
               <button style={styles.topbarProfileLogout} onClick={handleLogout}>
-                Esci
+                {t("topbar.logout")}
               </button>
             </div>
           )}

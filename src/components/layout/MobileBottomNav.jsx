@@ -1,15 +1,18 @@
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "../../i18n";
 
 const items = [
-  { to: "/", label: "Home", icon: "🏠" },
-  { to: "/players", label: "Rosa", icon: "👥" },
-  { to: "/exercises", label: "Esercizi", icon: "⚽" },
-  { to: "/trainings", label: "Sedute", icon: "📋" },
-  { to: "/matches", label: "Gare", icon: "🏆" },
-  { to: "/premium", label: "Premium", icon: "💎" },
+  { to: "/", labelKey: "navigation.mobile.home", icon: "🏠" },
+  { to: "/players", labelKey: "navigation.mobile.roster", icon: "👥" },
+  { to: "/exercises", labelKey: "navigation.mobile.exercises", icon: "⚽" },
+  { to: "/trainings", labelKey: "navigation.mobile.trainings", icon: "📋" },
+  { to: "/matches", labelKey: "navigation.mobile.matches", icon: "🏆" },
+  { to: "/premium", labelKey: "navigation.mobile.premium", icon: "💎" },
 ];
 
 export default function MobileBottomNav() {
+  const { t } = useTranslation();
+
   return (
     <nav className="mobile-bottom-nav">
       {items.map((item) => (
@@ -21,7 +24,7 @@ export default function MobileBottomNav() {
           }
         >
           <span>{item.icon}</span>
-          <small>{item.label}</small>
+          <small>{t(item.labelKey)}</small>
         </NavLink>
       ))}
     </nav>

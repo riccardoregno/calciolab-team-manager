@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "../../i18n";
 import { getCurrentUserRole, isFeatureUnlocked, isRoleAllowed, normalizeAppSettings } from "../../utils/helpers";
 
 const coachRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"];
@@ -9,71 +10,72 @@ const managementRoles = ["owner", "headCoach", "director"];
 
 const menuGroups = [
   {
-    title: "Home",
+    titleKey: "navigation.groups.home",
     items: [
-      { to: "/", label: "Dashboard", icon: "🏠", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
-      { to: "/onboarding", label: "Onboarding", icon: "🚀", roles: managementRoles },
-      { to: "/calendar", label: "Calendario", icon: "📅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"] },
+      { to: "/", labelKey: "navigation.items.dashboard", icon: "🏠", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
+      { to: "/onboarding", labelKey: "navigation.items.onboarding", icon: "🚀", roles: managementRoles },
+      { to: "/calendar", labelKey: "navigation.items.calendar", icon: "📅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"] },
     ],
   },
   {
-    title: "Squadra",
+    titleKey: "navigation.groups.team",
     items: [
-      { to: "/players", label: "Rosa", icon: "👥", roles: coachRoles },
-      { to: "/availability", label: "Disponibilità", icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
-      { to: "/physical-tests", label: "Test fisici", icon: "⏱️", featureKey: "physicalTests", roles: physicalRoles },
-      { to: "/physical-workouts", label: "Lavori fisici", icon: "🏃", featureKey: "physicalWorkouts", roles: physicalRoles },
+      { to: "/players", labelKey: "navigation.items.roster", icon: "👥", roles: coachRoles },
+      { to: "/availability", labelKey: "navigation.items.availability", icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
+      { to: "/physical-tests", labelKey: "navigation.items.physicalTests", icon: "⏱️", featureKey: "physicalTests", roles: physicalRoles },
+      { to: "/physical-workouts", labelKey: "navigation.items.physicalWorkouts", icon: "🏃", featureKey: "physicalWorkouts", roles: physicalRoles },
     ],
   },
   {
-    title: "Campo",
+    titleKey: "navigation.groups.field",
     items: [
-      { to: "/exercises", label: "Esercizi", icon: "🎯", roles: technicalRoles },
-      { to: "/exercise-library", label: "Eserciziario", icon: "📚", roles: technicalRoles },
-      { to: "/trainings", label: "Sedute", icon: "📋", roles: technicalRoles },
-      { to: "/ai-session-builder", label: "Genera con AI", icon: "✨", featureKey: "aiSessionBuilder", roles: technicalRoles },
-      { to: "/tactical-board", label: "Lavagna", icon: "🧠", roles: technicalRoles },
+      { to: "/exercises", labelKey: "navigation.items.exercises", icon: "🎯", roles: technicalRoles },
+      { to: "/exercise-library", labelKey: "navigation.items.exerciseLibrary", icon: "📚", roles: technicalRoles },
+      { to: "/trainings", labelKey: "navigation.items.trainings", icon: "📋", roles: technicalRoles },
+      { to: "/ai-session-builder", labelKey: "navigation.items.aiBuilder", icon: "✨", featureKey: "aiSessionBuilder", roles: technicalRoles },
+      { to: "/tactical-board", labelKey: "navigation.items.tacticalBoard", icon: "🧠", roles: technicalRoles },
     ],
   },
   {
-    title: "Gara",
+    titleKey: "navigation.groups.match",
     items: [
-      { to: "/matches", label: "Partite", icon: "⚽", roles: coachRoles },
-      { to: "/match-day", label: "Match Day", icon: "📋", featureKey: "matchDay", roles: technicalRoles },
-      { to: "/post-match", label: "Post gara", icon: "📝", featureKey: "postMatch", roles: technicalRoles },
-      { to: "/opponents", label: "Avversari", icon: "🕵️", featureKey: "opponents", roles: technicalRoles },
+      { to: "/matches", labelKey: "navigation.items.matches", icon: "⚽", roles: coachRoles },
+      { to: "/match-day", labelKey: "navigation.items.matchDay", icon: "📋", featureKey: "matchDay", roles: technicalRoles },
+      { to: "/post-match", labelKey: "navigation.items.postMatch", icon: "📝", featureKey: "postMatch", roles: technicalRoles },
+      { to: "/opponents", labelKey: "navigation.items.opponents", icon: "🕵️", featureKey: "opponents", roles: technicalRoles },
     ],
   },
   {
-    title: "Sistema",
+    titleKey: "navigation.groups.system",
     items: [
-      { to: "/statistics", label: "Statistiche", icon: "📊", roles: coachRoles },
-      { to: "/exports", label: "Export", icon: "🖨️", featureKey: "exports", roles: managementRoles },
-      { to: "/premium", label: "Premium", icon: "💎", roles: managementRoles },
-      { to: "/coach-settings", label: "Coach", icon: "🎛️", roles: physicalRoles },
-      { to: "/settings", label: "Impostazioni", icon: "⚙️", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
+      { to: "/statistics", labelKey: "navigation.items.statistics", icon: "📊", roles: coachRoles },
+      { to: "/exports", labelKey: "navigation.items.exports", icon: "🖨️", featureKey: "exports", roles: managementRoles },
+      { to: "/premium", labelKey: "navigation.items.premium", icon: "💎", roles: managementRoles },
+      { to: "/coach-settings", labelKey: "navigation.items.coach", icon: "🎛️", roles: physicalRoles },
+      { to: "/settings", labelKey: "navigation.items.settings", icon: "⚙️", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
     ],
   },
   {
-    title: "Club",
+    titleKey: "navigation.groups.club",
     items: [
-      { to: "/settings?tab=club", label: "Profilo società", icon: "🏢", roles: managementRoles },
-      { to: "/player-portal", label: "Area giocatori", icon: "🎽", featureKey: "playerPortal", roles: ["owner", "headCoach", "director", "player"] },
-      { to: "/sponsors", label: "Sponsor", icon: "🤝", featureKey: "sponsors", roles: ["owner", "director", "sponsor"] },
+      { to: "/settings?tab=club", labelKey: "navigation.items.clubProfile", icon: "🏢", roles: managementRoles },
+      { to: "/player-portal", labelKey: "navigation.items.playerPortal", icon: "🎽", featureKey: "playerPortal", roles: ["owner", "headCoach", "director", "player"] },
+      { to: "/sponsors", labelKey: "navigation.items.sponsors", icon: "🤝", featureKey: "sponsors", roles: ["owner", "director", "sponsor"] },
     ],
   },
 ];
 
 export default function Sidebar({ appSettings = {} }) {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const currentRole = getCurrentUserRole(appSettings);
   const profile = normalizeAppSettings(appSettings).workspaceProfile;
   const managesJuniores = profile.managesJuniores && profile.teamLevel === "prima";
 
   const junioresiGroup = managesJuniores ? [{
-    title: "Juniores",
+    titleKey: "navigation.groups.juniors",
     items: [
-      { to: "/players?gruppo=juniores", label: "Rosa Juniores", icon: "⚡", roles: coachRoles },
+      { to: "/players?gruppo=juniores", labelKey: "navigation.items.juniorRoster", icon: "⚡", roles: coachRoles },
     ],
   }] : [];
 
@@ -122,7 +124,7 @@ export default function Sidebar({ appSettings = {} }) {
                 ⚽ CalcioLab
               </h2>
               <p style={{ color: "#94a3b8", marginTop: 6, marginBottom: 0 }}>
-                Coach Platform
+                {t("common.coachPlatform")}
               </p>
             </div>
           )}
@@ -144,8 +146,8 @@ export default function Sidebar({ appSettings = {} }) {
 
         <nav className="sidebar-nav" style={sidebarStyles.nav}>
           {visibleGroups.map((group) => (
-            <div key={group.title} className="sidebar-group" style={sidebarStyles.group}>
-              {!collapsed && <div style={sidebarStyles.groupTitle}>{group.title}</div>}
+            <div key={group.titleKey} className="sidebar-group" style={sidebarStyles.group}>
+              {!collapsed && <div style={sidebarStyles.groupTitle}>{t(group.titleKey)}</div>}
 
               <div style={sidebarStyles.groupItems}>
                 {group.items.map((item) => (
@@ -154,6 +156,7 @@ export default function Sidebar({ appSettings = {} }) {
                     item={item}
                     collapsed={collapsed}
                     locked={Boolean(item.featureKey && !isFeatureUnlocked(item.featureKey, appSettings))}
+                    label={t(item.labelKey)}
                   />
                 ))}
               </div>
@@ -167,7 +170,7 @@ export default function Sidebar({ appSettings = {} }) {
           <>
             <strong style={{ color: "#fff" }}>Workspace Coach</strong>
             <br />
-            Vista ruolo: {roleLabels[currentRole] || "Coach"}
+            {t("common.roleView", { role: t(`roles.${currentRole}`) })}
           </>
         )}
       </div>
@@ -175,11 +178,11 @@ export default function Sidebar({ appSettings = {} }) {
   );
 }
 
-function SidebarLink({ item, collapsed, locked }) {
+function SidebarLink({ item, collapsed, locked, label }) {
   return (
     <NavLink
       to={item.to}
-      title={collapsed ? item.label : undefined}
+      title={collapsed ? label : undefined}
       style={({ isActive }) => ({
         ...sidebarStyles.link,
         color: isActive ? "#ffffff" : "#cbd5e1",
@@ -195,7 +198,7 @@ function SidebarLink({ item, collapsed, locked }) {
       })}
     >
       <span style={{ fontSize: 18 }}>{item.icon}</span>
-      {!collapsed && <span style={sidebarStyles.linkLabel}>{item.label}</span>}
+      {!collapsed && <span style={sidebarStyles.linkLabel}>{label}</span>}
       {!collapsed && locked && <span style={sidebarStyles.lockPill}>🔒</span>}
     </NavLink>
   );
@@ -274,14 +277,4 @@ const sidebarStyles = {
     fontWeight: 900,
     margin: "0 auto",
   },
-};
-
-const roleLabels = {
-  owner: "Owner",
-  headCoach: "Allenatore",
-  assistantCoach: "Assistente",
-  athleticTrainer: "Preparatore",
-  director: "Dirigente",
-  player: "Giocatore",
-  sponsor: "Sponsor",
 };
