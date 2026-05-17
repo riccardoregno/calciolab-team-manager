@@ -1545,10 +1545,10 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
             <DndContext onDragEnd={handleDragEnd}>
   <div
   id="tactical-board-field"
-  style={boardStyles.field}
-  onMouseDown={handleBoardMouseDown}
-  onMouseMove={handleBoardMouseMove}
-  onMouseUp={handleBoardMouseUp}
+  style={{ ...boardStyles.field, touchAction: "none" }}
+  onPointerDown={handleBoardMouseDown}
+  onPointerMove={handleBoardMouseMove}
+  onPointerUp={handleBoardMouseUp}
 >
     <div style={boardStyles.pitchTexture} />
     <div style={boardStyles.halfwayLine} />
@@ -1608,7 +1608,7 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
                   vectorEffect="non-scaling-stroke"
                   strokeDasharray="6 3"
                   strokeOpacity="0.9"
-                  onMouseDown={(event) => startEditorDrag(event, { kind: "shape", id: shape.id, action: "move" })}
+                  onPointerDown={(event) => startEditorDrag(event, { kind: "shape", id: shape.id, action: "move" })}
                   onDoubleClick={(event) => {
                     event.stopPropagation();
                     setLines((prev) => prev.filter((line) => line.id !== shape.id));
@@ -1656,7 +1656,7 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
                 strokeLinecap="round"
                 strokeOpacity={isSelected ? "0.9" : "1"}
                 strokeDasharray={shape.type === "curve-dashed" ? "10 5" : undefined}
-                onMouseDown={(event) => startEditorDrag(event, { kind: "shape", id: shape.id, action: "move" })}
+                onPointerDown={(event) => startEditorDrag(event, { kind: "shape", id: shape.id, action: "move" })}
                 onDoubleClick={(event) => {
                   event.stopPropagation();
                   setLines((prev) => prev.filter((line) => line.id !== shape.id));
@@ -1699,7 +1699,7 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
               strokeOpacity={isSelected ? "0.9" : "1"}
               strokeDasharray={shape.type === "dashed" ? "10 5" : undefined}
               markerEnd={shape.type === "arrow" ? `url(#ah-${colorId(c)})` : undefined}
-              onMouseDown={(event) => startEditorDrag(event, { kind: "shape", id: shape.id, action: "move" })}
+              onPointerDown={(event) => startEditorDrag(event, { kind: "shape", id: shape.id, action: "move" })}
               onDoubleClick={(event) => {
                 event.stopPropagation();
                 setLines((prev) => prev.filter((line) => line.id !== shape.id));
@@ -2049,7 +2049,7 @@ function LineHandle({ x, y, onStart, fill = "#0f172a" }) {
       fill={fill}
       stroke="#ffffff"
       strokeWidth="0.45"
-      onMouseDown={onStart}
+      onPointerDown={onStart}
       style={{ cursor: "grab" }}
     />
   );
@@ -2081,7 +2081,7 @@ function ShapeHandles({ points, onStart }) {
         fill="#fbbf24"
         stroke="#111827"
         strokeWidth="0.45"
-        onMouseDown={(event) => onStart(event, "rotate")}
+        onPointerDown={(event) => onStart(event, "rotate")}
         style={{ cursor: "grab" }}
       />
     </>
@@ -2145,14 +2145,14 @@ function FieldObject({ obj, activeTool, selected, onSelect, onEditStart, onRemov
             type="button"
             data-board-token="true"
             title="Scala"
-            onMouseDown={(event) => onEditStart(event, { kind: "object", id: obj.id, action: "scale" })}
+            onPointerDown={(event) => onEditStart(event, { kind: "object", id: obj.id, action: "scale" })}
             style={{ ...boardStyles.objectHandle, right: -14, bottom: -14, cursor: "nwse-resize" }}
           />
           <button
             type="button"
             data-board-token="true"
             title="Ruota"
-            onMouseDown={(event) => onEditStart(event, { kind: "object", id: obj.id, action: "rotate" })}
+            onPointerDown={(event) => onEditStart(event, { kind: "object", id: obj.id, action: "rotate" })}
             style={{ ...boardStyles.objectHandle, left: "50%", top: -24, transform: "translateX(-50%)", background: "#fbbf24" }}
           />
         </>

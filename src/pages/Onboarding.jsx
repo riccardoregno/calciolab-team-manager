@@ -292,7 +292,13 @@ function Step1({ form, setForm, onNext, isMobile }) {
 // Step 2 — Identità club + modulo
 // ─────────────────────────────────────────────
 function Step2({ form, setForm, onBack, onNext, isMobile }) {
-  const canProceed = form.clubName?.trim();
+  const [attempted, setAttempted] = useState(false);
+  const canProceed = !!form.clubName?.trim();
+
+  function handleNext() {
+    setAttempted(true);
+    if (canProceed) onNext();
+  }
 
   return (
     <div style={ob.stepContent}>
@@ -307,12 +313,22 @@ function Step2({ form, setForm, onBack, onNext, isMobile }) {
       <div style={ob.formGrid}>
         <FormField label="Nome società *">
           <input
-            style={ob.input}
+            style={{
+              ...ob.input,
+              ...(attempted && !canProceed
+                ? { border: "1.5px solid #ef4444", background: "rgba(239,68,68,0.06)" }
+                : {}),
+            }}
             value={form.clubName}
             onChange={(e) => setForm({ ...form, clubName: e.target.value })}
             placeholder="es. A.S.D. Calcio Rosso"
             autoFocus
           />
+          {attempted && !canProceed && (
+            <span style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>
+              ⚠️ Il nome della società è obbligatorio
+            </span>
+          )}
         </FormField>
 
         <FormField label="Nome squadra">
@@ -380,7 +396,7 @@ function Step2({ form, setForm, onBack, onNext, isMobile }) {
 
       <div style={ob.actions}>
         <BackBtn onClick={onBack} />
-        <NextBtn disabled={!canProceed} onClick={onNext} label="Avanti →" />
+        <NextBtn disabled={false} onClick={handleNext} label="Avanti →" />
       </div>
     </div>
   );

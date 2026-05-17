@@ -182,6 +182,17 @@ function Auth() {
     } finally { setLoading(false); }
   }
 
+  /* ── Validazione campi per disabilitare il bottone ── */
+  const canSubmit =
+    mode === "reset"    ? !!email.trim() :
+    mode === "login"    ? !!(email.trim() && password) :
+    /* register */       !!(firstName.trim() && lastName.trim() && email.trim() && password && acceptTerms);
+
+  /* Evidenzia il checkbox termini quando tutti gli altri campi sono ok ma i termini non sono accettati */
+  const showTermsWarning = mode === "register"
+    && !!(firstName.trim() && lastName.trim() && email.trim() && password)
+    && !acceptTerms;
+
   /* ── Labels ── */
   const title    = mode === "login"    ? "Bentornato"
                  : mode === "register" ? "Crea account"
@@ -328,7 +339,17 @@ function Auth() {
               {mode === "register" && (
                 <div style={s.checkboxGroup}>
                   {/* Termini — obbligatorio */}
-                  <label style={s.checkboxLabel}>
+                  <label style={{
+                    ...s.checkboxLabel,
+                    ...(showTermsWarning ? {
+                      background: "rgba(239,68,68,0.08)",
+                      border: "1.5px solid rgba(239,68,68,0.5)",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                      marginLeft: -12,
+                      marginRight: -12,
+                    } : {}),
+                  }}>
                     <input
                       type="checkbox"
                       checked={acceptTerms}
@@ -343,6 +364,11 @@ function Auth() {
                       <span style={s.requiredStar}>*</span>
                     </span>
                   </label>
+                  {showTermsWarning && (
+                    <span style={{ fontSize: 12, color: "#ef4444", marginTop: -6, paddingLeft: 2 }}>
+                      ⚠️ Devi accettare i termini per procedere
+                    </span>
+                  )}
 
                   {/* Newsletter — facoltativo */}
                   <label style={s.checkboxLabel}>
@@ -382,9 +408,12 @@ function Auth() {
               )}
 
               <button
-                style={{ ...s.button, ...(loading ? s.buttonDisabled : {}) }}
+                style={{
+                  ...s.button,
+                  ...(!canSubmit || loading ? s.buttonDisabled : {}),
+                }}
                 type="submit"
-                disabled={loading}
+                disabled={!canSubmit || loading}
               >
                 {loading ? "Attendere…" : btnLabel}
               </button>

@@ -9,6 +9,7 @@ export const en = {
     profileCoach: "Coach profile",
     noResults: "No results found",
     noUrgentActivity: "No urgent activity",
+    roleView: "Role view: {{role}}",
   },
   navigation: {
     groups: {
@@ -53,7 +54,10 @@ export const en = {
       exercises: "Exercises",
       trainings: "Sessions",
       matches: "Matches",
+      calendar: "Calendar",
       premium: "Premium",
+      more: "More",
+      moreSections: "More sections",
     },
   },
   roles: {

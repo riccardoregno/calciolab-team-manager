@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import { styles } from "./styles/index.js";
+import { useTranslation } from "./i18n";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
 import MobileBottomNav from "./components/layout/MobileBottomNav";
@@ -80,6 +81,7 @@ function getInitialDevelopmentRolePreview() {
 }
 
 function App() {
+  const { t } = useTranslation();
   const auth = useAuth();
   const [profile, setProfile] = useState(null);
   const [developmentPlanPreview, setDevelopmentPlanPreview] = useState(getInitialDevelopmentPlanPreview);
@@ -189,7 +191,7 @@ function App() {
           padding: 40,
         }}
       >
-        Caricamento...
+        {t("common.loadingData")}
       </div>
     );
   }
@@ -313,15 +315,15 @@ function App() {
           <div style={styles.storageStatus}>
             <Badge tone={storageSource === "supabase" ? "green" : "orange"}>
               {loading || auth.authLoading
-                ? "Caricamento dati"
+                ? t("common.loadingData")
                 : storageSource === "supabase"
                 ? `Sync ${auth.team?.name || "Supabase"}`
-                : "Salvataggio locale"}
+                : t("common.localSave")}
             </Badge>
 
             {storageError && (
               <span style={styles.storageStatusText}>
-                Supabase non disponibile: fallback locale attivo
+                {t("common.supabaseUnavailable")}
               </span>
             )}
           </div>
@@ -330,7 +332,7 @@ function App() {
             fallback={
               <AppCard>
                 <p style={{ color: "#94a3b8", margin: 0 }}>
-                  Caricamento vista...
+                  {t("common.loadingView")}
                 </p>
               </AppCard>
             }

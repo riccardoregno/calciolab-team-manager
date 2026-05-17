@@ -1,9 +1,8 @@
-import { createContext, useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { dictionaries } from "./dictionaries";
+import { I18nContext } from "./I18nContext";
 import { isSupportedLanguage, languageStorageKey } from "./languages";
-
-export const I18nContext = createContext(null);
 
 function getInitialLanguage() {
   if (typeof window === "undefined") return "it";
@@ -27,6 +26,12 @@ function interpolate(template, params = {}) {
 
 export function I18nProvider({ children }) {
   const [language, setLanguageState] = useState(getInitialLanguage);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = language;
+    }
+  }, [language]);
 
   const setLanguage = useCallback((nextLanguage) => {
     if (!isSupportedLanguage(nextLanguage)) return;

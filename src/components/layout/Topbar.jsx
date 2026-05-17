@@ -113,8 +113,86 @@ export default function Topbar({
     return [...upcomingSessions, ...upcomingMatches, ...injuredPlayers].slice(0, 5);
   }, [sessions, matches, players, t]);
 
+  function renderProfileMenu(extraStyle = {}) {
+    return (
+      <div style={{ ...styles.topbarProfileMenu, ...extraStyle }}>
+        <div style={styles.topbarProfileMenuHeader}>
+          <strong>
+            {firstName} {lastName}
+          </strong>
+          <span>{profile?.email || t("common.profileCoach")}</span>
+        </div>
+
+        <LanguageSelector />
+
+        <Link
+          to="/settings"
+          style={styles.topbarProfileMenuItem}
+          onClick={() => setOpenProfile(false)}
+        >
+          ⚙️ {t("topbar.settings")}
+        </Link>
+
+        <Link
+          to="/statistics"
+          style={styles.topbarProfileMenuItem}
+          onClick={() => setOpenProfile(false)}
+        >
+          📊 {t("topbar.performanceDashboard")}
+        </Link>
+
+        <Link
+          to="/players"
+          style={styles.topbarProfileMenuItem}
+          onClick={() => setOpenProfile(false)}
+        >
+          👥 {t("topbar.rosterManagement")}
+        </Link>
+
+        <Link
+          to="/trainings"
+          style={styles.topbarProfileMenuItem}
+          onClick={() => setOpenProfile(false)}
+        >
+          🗓️ {t("topbar.planning")}
+        </Link>
+
+        <button style={styles.topbarProfileLogout} onClick={handleLogout}>
+          {t("topbar.logout")}
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <header style={styles.topbar}>
+    <>
+    <header className="mobile-only mobile-topbar" style={mobileTopbarStyles.header}>
+      <div style={mobileTopbarStyles.brand}>
+        <div style={mobileTopbarStyles.logo}>CL</div>
+        <div style={{ minWidth: 0 }}>
+          <strong style={mobileTopbarStyles.appName}>CalcioLab</strong>
+          <span style={mobileTopbarStyles.subtitle}>{t("topbar.title")}</span>
+        </div>
+      </div>
+
+      <div style={{ position: "relative" }}>
+        <button
+          type="button"
+          style={mobileTopbarStyles.avatarButton}
+          onClick={() => setOpenProfile(!openProfile)}
+          aria-label={t("common.profileCoach")}
+        >
+          {initials}
+        </button>
+
+        {openProfile && renderProfileMenu({
+          right: 0,
+          width: "min(280px, calc(100vw - 28px))",
+        })}
+      </div>
+    </header>
+
+    <header className="mobile-hide" style={styles.topbar}>
       <div style={styles.topbarLeft}>
         <p style={styles.topbarEyebrow}>{t("topbar.greeting", { name: firstName })}</p>
         <h1 style={styles.topbarTitle}>{t("topbar.title")}</h1>
@@ -222,56 +300,72 @@ export default function Topbar({
             <span style={styles.topbarChevron}>⌄</span>
           </button>
 
-          {openProfile && (
-            <div style={styles.topbarProfileMenu}>
-              <div style={styles.topbarProfileMenuHeader}>
-                <strong>
-                  {firstName} {lastName}
-                </strong>
-                <span>{profile?.email || t("common.profileCoach")}</span>
-              </div>
-
-              <LanguageSelector />
-
-              <Link
-                to="/settings"
-                style={styles.topbarProfileMenuItem}
-                onClick={() => setOpenProfile(false)}
-              >
-                ⚙️ {t("topbar.settings")}
-              </Link>
-
-              <Link
-                to="/statistics"
-                style={styles.topbarProfileMenuItem}
-                onClick={() => setOpenProfile(false)}
-              >
-                📊 {t("topbar.performanceDashboard")}
-              </Link>
-
-              <Link
-                to="/players"
-                style={styles.topbarProfileMenuItem}
-                onClick={() => setOpenProfile(false)}
-              >
-                👥 {t("topbar.rosterManagement")}
-              </Link>
-
-              <Link
-                to="/trainings"
-                style={styles.topbarProfileMenuItem}
-                onClick={() => setOpenProfile(false)}
-              >
-                🗓️ {t("topbar.planning")}
-              </Link>
-
-              <button style={styles.topbarProfileLogout} onClick={handleLogout}>
-                {t("topbar.logout")}
-              </button>
-            </div>
-          )}
+          {openProfile && renderProfileMenu()}
         </div>
       </div>
     </header>
+    </>
   );
 }
+
+const mobileTopbarStyles = {
+  header: {
+    position: "sticky",
+    top: 0,
+    zIndex: 80,
+    height: 56,
+    margin: "-4px 0 16px",
+    padding: "6px 0",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    background: "rgba(15,17,21,0.94)",
+    backdropFilter: "blur(14px)",
+  },
+  brand: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    minWidth: 0,
+  },
+  logo: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(135deg, #2563eb, #38bdf8)",
+    color: "white",
+    fontSize: 13,
+    fontWeight: 950,
+    flexShrink: 0,
+  },
+  appName: {
+    display: "block",
+    color: "white",
+    fontSize: 17,
+    lineHeight: 1.05,
+  },
+  subtitle: {
+    display: "block",
+    maxWidth: 210,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  avatarButton: {
+    width: 42,
+    height: 42,
+    minHeight: 42,
+    borderRadius: 15,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "linear-gradient(135deg, #22c55e, #16a34a)",
+    color: "#052e16",
+    fontSize: 13,
+    fontWeight: 950,
+    cursor: "pointer",
+  },
+};
