@@ -99,6 +99,8 @@ function App() {
       trial_started_at:   auth.team.trial_started_at   ?? "",
       trial_ends_at:      auth.team.trial_ends_at      ?? "",
       trial_used:         auth.team.trial_used         ?? false,
+      stripe_customer_id: auth.team.stripe_customer_id ?? "",
+      stripe_subscription_id: auth.team.stripe_subscription_id ?? "",
     });
   }, [auth.team]);
 
@@ -129,6 +131,8 @@ function App() {
       trialPlan:      remoteSubscription.trial_plan,
       trialStartedAt: remoteSubscription.trial_started_at,
       trialEndsAt:    remoteSubscription.trial_ends_at,
+      customerId:     remoteSubscription.stripe_customer_id,
+      subscriptionId: remoteSubscription.stripe_subscription_id,
     } : {};
 
     const merged = {
@@ -282,15 +286,18 @@ function App() {
     }
   }
 
-  // FIX #5: supabaseRole viene da team_members.role su Supabase — fonte di verità,
-  // non manipolabile via localStorage come appSettings.workspaceProfile.userRole
+  // FIX #5: supabaseRole viene da team_members.role su Supabase — fonte di verità.
+  // authConfigured è true solo quando Supabase è configurato E ha restituito un team:
+  //   - team caricato → usa supabaseRole come fonte di verità (sicuro)
+  //   - team null (DB in pausa / errore RLS / rete) → fallback a appSettings
+  //     per non bloccare tutta l'app su problemi temporanei di Supabase.
   function gate(allowedRoles, children) {
     return (
       <RoleGate
         allowedRoles={allowedRoles}
         appSettings={previewAppSettings}
         supabaseRole={auth.team?.role || null}
-        authConfigured={!!auth.authConfigured}
+        authConfigured={!!auth.authConfigured && auth.team !== null}
       >
         {children}
       </RoleGate>
