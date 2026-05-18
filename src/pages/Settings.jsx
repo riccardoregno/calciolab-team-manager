@@ -16,12 +16,14 @@ import {
   normalizeAppSettings,
 } from "../utils/helpers";
 import { useAppSettings } from "../hooks/useAppSettings";
+import { useNotifications } from "../hooks/useNotifications";
 
 /* ─── tab list ─────────────────────────────────────────────── */
 const TABS = [
-  { key: "account", label: "Account" },
-  { key: "coach",   label: "Parametri Coach" },
-  { key: "club",    label: "Profilo società" },
+  { key: "account",       label: "Account" },
+  { key: "coach",         label: "Parametri Coach" },
+  { key: "club",          label: "Profilo società" },
+  { key: "notifications", label: "🔔 Notifiche" },
 ];
 
 const widgetLabels = {
@@ -107,6 +109,16 @@ export default function Settings({
           exercises={exercises}
           sessions={sessions}
           matches={matches}
+        />
+      )}
+
+      {activeTab === "notifications" && (
+        <NotificationsTab
+          appSettings={appSettings}
+          setAppSettings={setAppSettings}
+          sessions={sessions}
+          matches={matches}
+          players={players}
         />
       )}
     </div>
@@ -1207,3 +1219,129 @@ const s = {
   memberList:    { display: "grid", gap: 12 },
   memberCard:    { display: "grid", gridTemplateColumns: "1fr 200px 1fr auto", gap: 12, alignItems: "center", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" },
 };
+
+/* ─── Notifications Tab ─────────────────────────────────────── */
+function NotificationsTab({ appSettings, setAppSettings, sessions = [], matches = [], players = [] }) {
+  const settings = normalizeAppSettings(appSettings);
+  const notifSettings = settings.notifications || { enabled: false, remindersEnabled: false };
+
+  const { supported, permission, requestPermission, notify } = useNotifications();
+
+  function updateNotif(patch) {
+    setAppSettings?.({ ...settings, notifications: { ...notifSettings, ...patch } });
+  }
+
+  async function handleEnable() {
+    const result = await requestPermission();
+    if (result === "granted") {
+      updateNotif({ enabled: true });
+      notify({ title: "✅ Notifiche attivate", body: "Riceverai avvisi per partite, sedute e infortuni." });
+    }
+  }
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  const dayAfter = new Date(tomorrow);
+  dayAfter.setDate(tomorrow.getDate() + 1);
+
+  const tomorrowMatches = matches.filter((m) => { const d = new Date(m.date); return d >= tomorrow && d < dayAfter; });
+  const tomorrowSessions = sessions.filter((s) => { const d = new Date(s.date); return d >= tomorrow && d < dayAfter; });
+  const injuredPlayers = players.filter((p) => p.status === "Infortunato");
+
+  return (
+    <div style={{ display: "grid", gap: 20 }}>
+      <AppCard>
+        <h3 style={{ margin: "0 0 6px", fontSize: 17 }}>Notifiche browser</h3>
+        <p style={{ color: "#94a3b8", margin: "0 0 18px", fontSize: 14, lineHeight: 1.5 }}>
+          Ricevi avvisi per partite imminenti, sedute programmate e stato infortuni — direttamente nel browser o come notifica sul telefono (se aggiungi l&apos;app alla schermata Home).
+        </p>
+
+        {!supported ? (
+          <div style={{ padding: "14px 16px", borderRadius: 12, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#fca5a5", fontSize: 14 }}>
+            ⚠️ Il tuo browser non supporta le notifiche push.
+          </div>
+        ) : permission === "denied" ? (
+          <div style={{ padding: "14px 16px", borderRadius: 12, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#fca5a5", fontSize: 14 }}>
+            🚫 Notifiche bloccate dal browser. Vai nelle impostazioni del browser e riabilita le notifiche per questo sito.
+          </div>
+        ) : permission === "granted" ? (
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", color: "#86efac", fontSize: 14, display: "flex", gap: 10, alignItems: "center" }}>
+              ✅ Notifiche autorizzate
+            </div>
+
+            <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
+              <div>
+                <strong style={{ fontSize: 14 }}>Notifiche attive</strong>
+                <p style={{ margin: "2px 0 0", color: "#94a3b8", fontSize: 13 }}>Ricevi avvisi per partite, sedute e infortuni il giorno prima</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={notifSettings.enabled}
+                onChange={(e) => updateNotif({ enabled: e.target.checked })}
+                style={{ width: 20, height: 20, accentColor: "#22c55e", cursor: "pointer" }}
+              />
+            </label>
+
+            {notifSettings.enabled && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  if (tomorrowMatches.length > 0) {
+                    notify({ title: "⚽ Partita domani", body: `${tomorrowMatches[0].opponent}`, tag: "test-match" });
+                  } else if (tomorrowSessions.length > 0) {
+                    notify({ title: "📋 Allenamento domani", body: tomorrowSessions[0].title || "Seduta programmata", tag: "test-session" });
+                  } else if (injuredPlayers.length > 0) {
+                    notify({ title: "🚑 Giocatore infortunato", body: injuredPlayers[0].name, tag: "test-injury" });
+                  } else {
+                    notify({ title: "🔔 CalcioLab", body: "Notifiche funzionanti correttamente!", tag: "test" });
+                  }
+                }}
+              >
+                Invia notifica di test
+              </Button>
+            )}
+          </div>
+        ) : (
+          <Button onClick={handleEnable}>
+            Attiva notifiche browser
+          </Button>
+        )}
+      </AppCard>
+
+      {/* Preview eventi prossimi */}
+      <AppCard>
+        <h3 style={{ margin: "0 0 14px", fontSize: 16 }}>Prossimi avvisi</h3>
+        <div style={{ display: "grid", gap: 10 }}>
+          {tomorrowMatches.map((m) => (
+            <NotifPreviewRow key={m.id} icon="⚽" title="Partita domani" desc={m.opponent || "Avversario"} tone="blue" />
+          ))}
+          {tomorrowSessions.map((s) => (
+            <NotifPreviewRow key={s.id} icon="📋" title="Allenamento domani" desc={s.title || "Seduta"} tone="purple" />
+          ))}
+          {injuredPlayers.map((p) => (
+            <NotifPreviewRow key={p.id} icon="🚑" title="Giocatore infortunato" desc={p.name} tone="red" />
+          ))}
+          {tomorrowMatches.length === 0 && tomorrowSessions.length === 0 && injuredPlayers.length === 0 && (
+            <p style={{ color: "#475569", fontSize: 14 }}>Nessun avviso imminente — tutto tranquillo 👌</p>
+          )}
+        </div>
+      </AppCard>
+    </div>
+  );
+}
+
+function NotifPreviewRow({ icon, title, desc, tone }) {
+  const colors = { blue: "#38bdf8", purple: "#a78bfa", red: "#f87171", green: "#22c55e" };
+  const color = colors[tone] || "#94a3b8";
+  return (
+    <div style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 14px", borderRadius: 10, background: `${color}11`, border: `1px solid ${color}33` }}>
+      <span style={{ fontSize: 20 }}>{icon}</span>
+      <div>
+        <strong style={{ fontSize: 13, color }}>{title}</strong>
+        <p style={{ margin: "2px 0 0", color: "#94a3b8", fontSize: 13 }}>{desc}</p>
+      </div>
+    </div>
+  );
+}
