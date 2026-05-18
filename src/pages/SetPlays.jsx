@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
+import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
 import { styles } from "../styles/index.js";
 import { getCurrentUserRole } from "../utils/helpers";
 
@@ -15,11 +17,13 @@ function emptySetPlays() {
       offTakerRight: "",
       offAssignments: Array.from({ length: 8 }, (_, i) => ({ id: i + 1, playerId: "", zone: "", role: "" })),
       offNotes: "",
+      offDiagram: null,
       defSystem: "zona",
       defPoleSx: "",
       defPoleDx: "",
       defAssignments: Array.from({ length: 8 }, (_, i) => ({ id: i + 1, playerId: "", zone: "" })),
       defNotes: "",
+      defDiagram: null,
     },
     freekicks: {
       offTaker1: "",
@@ -27,13 +31,16 @@ function emptySetPlays() {
       offSchema: "diretto",
       offAssignments: Array.from({ length: 6 }, (_, i) => ({ id: i + 1, playerId: "", zone: "" })),
       offNotes: "",
+      offDiagram: null,
       defWall: ["", "", "", ""],
       defAssignments: Array.from({ length: 6 }, (_, i) => ({ id: i + 1, playerId: "", zone: "" })),
       defNotes: "",
+      defDiagram: null,
     },
     penalties: {
       takers: ["", "", "", "", ""],
       notes: "",
+      diagram: null,
     },
   };
 }
@@ -96,6 +103,70 @@ function ZoneSelect({ value, onChange, options }) {
     </select>
   );
 }
+
+// ─── DiagramBox: caricamento immagine o disegno sulla lavagna ────────────────
+function DiagramBox({ diagram, onSave, onClear, canEdit, navigate, navSection, navLabel }) {
+  const fileRef = useRef();
+
+  function handleUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => onSave({ type: "image", src: ev.target.result });
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  function openBoard() {
+    navigate("/tactical-board", {
+      state: { setPlaySection: navSection, setPlayLabel: navLabel },
+    });
+  }
+
+  const hasDiagram = !!diagram;
+
+  return (
+    <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 10, letterSpacing: 0.3 }}>
+        Diagramma tattico
+      </div>
+
+      {hasDiagram ? (
+        <div>
+          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)", marginBottom: 8 }}>
+            {diagram.type === "image" ? (
+              <img src={diagram.src} alt="Schema" style={{ width: "100%", display: "block", maxHeight: 220, objectFit: "contain", background: "#0f172a" }} />
+            ) : (
+              <TacticalMiniPreview board={diagram.snapshot} height={180} />
+            )}
+          </div>
+          {canEdit && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={openBoard} style={btnSmall}>✏️ Modifica sulla lavagna</button>
+              <button onClick={onClear} style={{ ...btnSmall, color: "#f87171", borderColor: "rgba(248,113,113,0.3)" }}>🗑️ Rimuovi</button>
+            </div>
+          )}
+        </div>
+      ) : (
+        canEdit && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={openBoard} style={btnSmall}>🎨 Disegna sulla Lavagna Tattica</button>
+            <label style={btnSmall} title="Carica da file">
+              📁 Carica immagine
+              <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} style={{ display: "none" }} />
+            </label>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+const btnSmall = {
+  padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+  background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
+  color: "#94a3b8", cursor: "pointer",
+};
 
 // ─── Stili comuni ─────────────────────────────────────────────────────────────
 const card = {
@@ -177,14 +248,18 @@ const textarea = {
 // ─── Componente principale ────────────────────────────────────────────────────
 export default function SetPlays({ players = [], setPlays = {}, setSetPlays, appSettings = {} }) {
   const [activeTab, setActiveTab] = useState("corners");
+  const navigate = useNavigate();
   const role = getCurrentUserRole(appSettings);
   const canEdit = ["owner", "headCoach", "assistantCoach"].includes(role);
+  // ref per accedere ai dati aggiornati dall'useEffect di mount
+  const setPlaysRef = useRef(setPlays);
+  setPlaysRef.current = setPlays;
 
   // Merge con empty per gestire dati parziali
   const data = useMemo(() => {
     const empty = emptySetPlays();
     return {
-      corners: { ...empty.corners, ...(setPlays.corners || {}) },
+      corners:   { ...empty.corners,   ...(setPlays.corners   || {}) },
       freekicks: { ...empty.freekicks, ...(setPlays.freekicks || {}) },
       penalties: { ...empty.penalties, ...(setPlays.penalties || {}) },
     };
@@ -194,6 +269,28 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
     if (!canEdit || !setSetPlays) return;
     setSetPlays({ ...data, [section]: { ...data[section], ...updates } });
   }
+
+  // ── Rientro dalla Lavagna Tattica: legge diagramma da sessionStorage ──────────
+  useEffect(() => {
+    const raw = sessionStorage.getItem("setPlayDiagramResult");
+    if (!raw || !setSetPlays) return;
+    try {
+      const { section, snapshot } = JSON.parse(raw);
+      sessionStorage.removeItem("setPlayDiagramResult");
+      const parts = section.split("_"); // "corners_off" → ["corners","off"]
+      const sec   = parts[0];           // "corners" | "freekicks" | "penalties"
+      const side  = parts[1];           // "off" | "def" | undefined
+      const field = side === "off" ? "offDiagram" : side === "def" ? "defDiagram" : "diagram";
+      const sp = setPlaysRef.current;
+      const empty = emptySetPlays();
+      const current = {
+        corners:   { ...empty.corners,   ...(sp.corners   || {}) },
+        freekicks: { ...empty.freekicks, ...(sp.freekicks || {}) },
+        penalties: { ...empty.penalties, ...(sp.penalties || {}) },
+      };
+      setSetPlays({ ...current, [sec]: { ...current[sec], [field]: { type: "board", snapshot } } });
+    } catch { /* ignore malformed data */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Inject print styles
   useEffect(() => {
@@ -381,6 +478,15 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
                 disabled={!canEdit}
               />
             </div>
+            <DiagramBox
+              diagram={data.corners.offDiagram}
+              onSave={v => patch("corners", { offDiagram: v })}
+              onClear={() => patch("corners", { offDiagram: null })}
+              canEdit={canEdit}
+              navigate={navigate}
+              navSection="corners_off"
+              navLabel="Angolo Offensivo"
+            />
           </div>
 
           {/* Difensivo */}
@@ -476,6 +582,15 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
                 disabled={!canEdit}
               />
             </div>
+            <DiagramBox
+              diagram={data.corners.defDiagram}
+              onSave={v => patch("corners", { defDiagram: v })}
+              onClear={() => patch("corners", { defDiagram: null })}
+              canEdit={canEdit}
+              navigate={navigate}
+              navSection="corners_def"
+              navLabel="Angolo Difensivo"
+            />
           </div>
         </div>
       )}
@@ -588,6 +703,15 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
                 disabled={!canEdit}
               />
             </div>
+            <DiagramBox
+              diagram={data.freekicks.offDiagram}
+              onSave={v => patch("freekicks", { offDiagram: v })}
+              onClear={() => patch("freekicks", { offDiagram: null })}
+              canEdit={canEdit}
+              navigate={navigate}
+              navSection="freekicks_off"
+              navLabel="Punizione Offensiva"
+            />
           </div>
 
           {/* Difensivo */}
@@ -665,6 +789,15 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
                 disabled={!canEdit}
               />
             </div>
+            <DiagramBox
+              diagram={data.freekicks.defDiagram}
+              onSave={v => patch("freekicks", { defDiagram: v })}
+              onClear={() => patch("freekicks", { defDiagram: null })}
+              canEdit={canEdit}
+              navigate={navigate}
+              navSection="freekicks_def"
+              navLabel="Punizione Difensiva"
+            />
           </div>
         </div>
       )}
@@ -735,6 +868,15 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
                 disabled={!canEdit}
               />
             </div>
+            <DiagramBox
+              diagram={data.penalties.diagram}
+              onSave={v => patch("penalties", { diagram: v })}
+              onClear={() => patch("penalties", { diagram: null })}
+              canEdit={canEdit}
+              navigate={navigate}
+              navSection="penalties"
+              navLabel="Rigori"
+            />
           </div>
         </div>
       )}
@@ -795,6 +937,9 @@ function PrintView({ data, players, appSettings }) {
                 </tbody>
               </table>
               {data.corners.offNotes && <p><em>Note: {data.corners.offNotes}</em></p>}
+              {data.corners.offDiagram?.type === "image" && (
+                <img src={data.corners.offDiagram.src} alt="Schema" style={{ width: "100%", maxHeight: 200, objectFit: "contain", marginTop: 8, border: "1px solid #ccc" }} />
+              )}
             </div>
             <div>
               <h3>Angolo Difensivo</h3>
@@ -820,6 +965,9 @@ function PrintView({ data, players, appSettings }) {
                 </tbody>
               </table>
               {data.corners.defNotes && <p><em>Note: {data.corners.defNotes}</em></p>}
+              {data.corners.defDiagram?.type === "image" && (
+                <img src={data.corners.defDiagram.src} alt="Schema" style={{ width: "100%", maxHeight: 200, objectFit: "contain", marginTop: 8, border: "1px solid #ccc" }} />
+              )}
             </div>
           </div>
         </div>
@@ -852,6 +1000,9 @@ function PrintView({ data, players, appSettings }) {
                 </tbody>
               </table>
               {data.freekicks.offNotes && <p><em>Note: {data.freekicks.offNotes}</em></p>}
+              {data.freekicks.offDiagram?.type === "image" && (
+                <img src={data.freekicks.offDiagram.src} alt="Schema" style={{ width: "100%", maxHeight: 200, objectFit: "contain", marginTop: 8, border: "1px solid #ccc" }} />
+              )}
             </div>
             <div>
               <h3>Punizione Difensiva</h3>
@@ -873,6 +1024,9 @@ function PrintView({ data, players, appSettings }) {
                 </tbody>
               </table>
               {data.freekicks.defNotes && <p><em>Note: {data.freekicks.defNotes}</em></p>}
+              {data.freekicks.defDiagram?.type === "image" && (
+                <img src={data.freekicks.defDiagram.src} alt="Schema" style={{ width: "100%", maxHeight: 200, objectFit: "contain", marginTop: 8, border: "1px solid #ccc" }} />
+              )}
             </div>
           </div>
         </div>
@@ -894,6 +1048,9 @@ function PrintView({ data, players, appSettings }) {
             </tbody>
           </table>
           {data.penalties.notes && <p><em>Note: {data.penalties.notes}</em></p>}
+          {data.penalties.diagram?.type === "image" && (
+            <img src={data.penalties.diagram.src} alt="Schema" style={{ width: "100%", maxWidth: 340, maxHeight: 200, objectFit: "contain", marginTop: 8, border: "1px solid #ccc" }} />
+          )}
         </div>
       </div>
     </div>

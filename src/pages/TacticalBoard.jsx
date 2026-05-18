@@ -526,6 +526,10 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
   const editingExerciseId   = location.state?.exerciseId   ?? null;
   const editingExerciseName = location.state?.exerciseName ?? null;
 
+  // Quando si arriva da SetPlays per disegnare uno schema
+  const setPlaySection = location.state?.setPlaySection ?? null;
+  const setPlayLabel   = location.state?.setPlayLabel   ?? null;
+
   const [ownFormation, setOwnFormation] = useState(_saved?.ownFormation ?? "4-2-3-1");
   const [opponentFormation, setOpponentFormation] = useState(_saved?.opponentFormation ?? "Nessuno");
   const [selectedLineup, setSelectedLineup] = useState(_saved?.selectedLineup ?? []);
@@ -1137,6 +1141,21 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
     }
   }
 
+  // ── Salva la lavagna in Palle Inattive e torna ───────────────────────────────
+  function saveForSetPlay() {
+    const snapshot = {
+      boardPlayers: boardPlayers.map((p) => ({ ...p })),
+      lines:        lines.map((l) => ({ ...l })),
+      boardObjects: boardObjects.map((o) => ({ ...o })),
+      ownFormation,
+    };
+    sessionStorage.setItem(
+      "setPlayDiagramResult",
+      JSON.stringify({ section: setPlaySection, snapshot })
+    );
+    navigate("/set-plays");
+  }
+
   function clearLineup() {
     setSelectedLineup([]);
     setSelectedSlotId(null);
@@ -1236,6 +1255,31 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
           >
             ← Torna agli esercizi
           </button>
+        </div>
+      )}
+
+      {/* ── Banner: si arriva da Palle Inattive per disegnare uno schema ── */}
+      {setPlaySection && (
+        <div style={{ ...exStyles.banner, background: "rgba(139,92,246,0.15)", borderColor: "rgba(139,92,246,0.35)" }}>
+          <span style={exStyles.bannerText}>
+            📐 Disegna lo schema per: <strong>{setPlayLabel || setPlaySection}</strong>
+          </span>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => navigate("/set-plays")}
+              style={exStyles.bannerBack}
+            >
+              ← Annulla
+            </button>
+            <button
+              type="button"
+              onClick={saveForSetPlay}
+              style={{ ...exStyles.bannerBack, background: "rgba(139,92,246,0.3)", borderColor: "rgba(139,92,246,0.6)", color: "#c4b5fd" }}
+            >
+              💾 Salva in Palle Inattive
+            </button>
+          </div>
         </div>
       )}
 
