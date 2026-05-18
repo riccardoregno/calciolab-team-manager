@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import AppCard from "../components/ui/AppCard";
@@ -29,14 +29,29 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
   const [generationMessage, setGenerationMessage] = useState("");
   const [generating, setGenerating] = useState(false);
 
+  // Carica il catalogo FP5 e lo unisce agli esercizi personali
+  const [fp5Catalog, setFp5Catalog] = useState([]);
+  useEffect(() => {
+    import("../data/eserciziarioFp5.js")
+      .then(({ eserciziarioFp5 }) => setFp5Catalog(eserciziarioFp5))
+      .catch(() => {});
+  }, []);
+
+  // Merge: esercizi personali hanno precedenza su FP5 (stesso ID = override)
+  const allExercises = useMemo(() => {
+    const personalIds = new Set(exercises.map((e) => e.id));
+    const fp5Only = fp5Catalog.filter((e) => !personalIds.has(e.id));
+    return [...exercises, ...fp5Only];
+  }, [exercises, fp5Catalog]);
+
   const localPreview = useMemo(
-    () => generateGuidedSession({ ...prompt, exercises, players: prompt.players || players.length }),
-    [prompt, exercises, players.length]
+    () => generateGuidedSession({ ...prompt, exercises: allExercises, players: prompt.players || players.length }),
+    [prompt, allExercises, players.length]
   );
   const generated = generatedSession || localPreview;
 
   const generatedExercises = generated.exercises.map((item) => {
-    const exercise = exercises.find((candidate) => String(candidate.id) === String(item.exerciseId));
+    const exercise = allExercises.find((candidate) => String(candidate.id) === String(item.exerciseId));
     return { ...item, exercise };
   });
   const totalMinutes = generated.exercises.reduce((sum, item) => sum + Number(item.customDuration || 0), 0);
@@ -54,7 +69,7 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
 
     const result = await generateAiTrainingSession({
       prompt,
-      exercises,
+      exercises: allExercises,
       fallbackSession: localPreview,
     });
 
@@ -152,7 +167,7 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
             <div style={builderStyles.aiActions}>
               <Button
                 onClick={generateWithAi}
-                disabled={generating || !exercises.length}
+                disabled={generating || !allExercises.length}
                 style={{ opacity: generating ? 0.6 : 1, cursor: generating ? "not-allowed" : "pointer" }}
               >
                 {generating ? "⏳ Generazione in corso…" : "Genera con AI"}
