@@ -9,12 +9,13 @@ import Modal from "../components/ui/Modal";
 import PageHeader from "../components/ui/PageHeader";
 import SearchBar from "../components/ui/SearchBar";
 import { styles } from "../styles/index.js";
-import { TRAINING_BLOCKS, CATEGORY_TO_BLOCK, getBlockFromCategory, createId, getCurrentUserRole, isFeatureUnlocked } from "../utils/helpers";
+import { TRAINING_BLOCKS, getBlockFromCategory, createId, getCurrentUserRole, isFeatureUnlocked } from "../utils/helpers";
 import { emptyExercise } from "../data/initialData";
 import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
 
 // ─── Costanti ────────────────────────────────────────────────────────────────
 const filterDefaults = { category: "Tutte", intensity: "Tutte", phase: "Tutte", ageGroup: "Tutte", players: "Tutti", block: "Tutti" };
+const PAGE_SIZES = [25, 50, 100, "Tutti"];
 
 // Fasce giocatori (allineate con il campo players dei prompt AI)
 const PLAYER_BUCKETS = [
@@ -65,6 +66,14 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
   const [editModal, setEditModal]   = useState(false);
   const [editForm, setEditForm]     = useState(null);
   const [editIsNew, setEditIsNew]   = useState(false);
+
+  // Paginazione catalogo
+  const [page, setPage]           = useState(1);
+  const [pageSize, setPageSize]   = useState(25);
+
+  // Paginazione "I miei"
+  const [myPage, setMyPage]       = useState(1);
+  const [myPageSize, setMyPageSize] = useState(25);
 
   // Lightbox anteprima disegno
   const [lightboxSrc, setLightboxSrc] = useState(null);
@@ -127,6 +136,21 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
         .includes(mySearch.toLowerCase())
     ),
   [myExercises, mySearch]);
+
+  // ── Reset pagina a 1 quando cambiano filtri ─────────────────────────────────
+  useEffect(() => { setPage(1); }, [search, filters]);
+  useEffect(() => { setMyPage(1); }, [mySearch]);
+
+  // ── Pagine calcolate ────────────────────────────────────────────────────────
+  const catalogTotalPages = pageSize === "Tutti" ? 1 : Math.ceil(filteredCatalog.length / pageSize);
+  const catalogSlice = pageSize === "Tutti"
+    ? filteredCatalog
+    : filteredCatalog.slice((page - 1) * pageSize, page * pageSize);
+
+  const myTotalPages = myPageSize === "Tutti" ? 1 : Math.ceil(filteredMy.length / myPageSize);
+  const mySlice = myPageSize === "Tutti"
+    ? filteredMy
+    : filteredMy.slice((myPage - 1) * myPageSize, myPage * myPageSize);
 
   // ── Modifica esercizio (owner) ──────────────────────────────────────────────
   function openEdit(ex) {
@@ -232,6 +256,27 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
                   ✕ Reset filtri
                 </button>
               )}
+              {/* Selezione dimensione pagina */}
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Per pagina:</span>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {PAGE_SIZES.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => { setPageSize(s); setPage(1); }}
+                      style={{
+                        padding: "4px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                        border: pageSize === s ? "1px solid rgba(56,189,248,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                        background: pageSize === s ? "rgba(56,189,248,0.15)" : "rgba(255,255,255,0.04)",
+                        color: pageSize === s ? "#38bdf8" : "#64748b",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </AppCard>
 
@@ -246,8 +291,9 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
           ) : filteredCatalog.length === 0 ? (
             <EmptyState icon="🎯" title="Nessun esercizio trovato" text="Modifica i filtri di ricerca." />
           ) : (
+            <>
             <div style={libStyles.grid}>
-              {filteredCatalog.map((ex) => {
+              {catalogSlice.map((ex) => {
                 const isExpanded = expandedId === ex.id;
                 const locked = !premiumUnlocked;
 
@@ -379,6 +425,20 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
                 );
               })}
             </div>
+
+            {/* ── Paginazione catalogo ── */}
+            {pageSize !== "Tutti" && catalogTotalPages > 1 && (
+              <Pagination
+                page={page}
+                totalPages={catalogTotalPages}
+                total={filteredCatalog.length}
+                pageSize={pageSize}
+                onPrev={() => setPage((p) => Math.max(1, p - 1))}
+                onNext={() => setPage((p) => Math.min(catalogTotalPages, p + 1))}
+                onGo={setPage}
+              />
+            )}
+            </>
           )}
         </>
       )}
@@ -406,8 +466,9 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
               action={<Button onClick={() => navigate("/exercises")}>Vai a Esercizi</Button>}
             />
           ) : (
+            <>
             <div style={libStyles.grid}>
-              {filteredMy.map((ex) => (
+              {mySlice.map((ex) => (
                 <AppCard key={ex.id}>
                   <div style={libStyles.cardHead}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -445,6 +506,20 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
                 </AppCard>
               ))}
             </div>
+
+            {/* ── Paginazione "I miei" ── */}
+            {myPageSize !== "Tutti" && myTotalPages > 1 && (
+              <Pagination
+                page={myPage}
+                totalPages={myTotalPages}
+                total={filteredMy.length}
+                pageSize={myPageSize}
+                onPrev={() => setMyPage((p) => Math.max(1, p - 1))}
+                onNext={() => setMyPage((p) => Math.min(myTotalPages, p + 1))}
+                onGo={setMyPage}
+              />
+            )}
+            </>
           )}
         </>
       )}
@@ -683,6 +758,77 @@ function Field({ label, children }) {
 
 function uniq(arr) {
   return Array.from(new Set(arr.filter(Boolean))).sort();
+}
+
+function Pagination({ page, totalPages, total, pageSize, onPrev, onNext, onGo }) {
+  const from = (page - 1) * pageSize + 1;
+  const to   = Math.min(page * pageSize, total);
+
+  // Genera range di pagine da mostrare (max 7 bottoni)
+  function pageRange() {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages = [];
+    pages.push(1);
+    if (page > 3) pages.push("…");
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+    if (page < totalPages - 2) pages.push("…");
+    pages.push(totalPages);
+    return pages;
+  }
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      flexWrap: "wrap", gap: 12,
+      padding: "14px 18px",
+      borderRadius: 14,
+      background: "rgba(255,255,255,0.03)",
+      border: "1px solid rgba(255,255,255,0.07)",
+    }}>
+      {/* Info range */}
+      <span style={{ fontSize: 13, color: "#64748b" }}>
+        <span style={{ color: "#94a3b8", fontWeight: 600 }}>{from}–{to}</span>
+        {" "}di{" "}
+        <span style={{ color: "#94a3b8", fontWeight: 600 }}>{total}</span>
+        {" "}esercizi
+      </span>
+
+      {/* Bottoni pagina */}
+      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+        <PagBtn onClick={onPrev} disabled={page === 1}>‹</PagBtn>
+        {pageRange().map((p, i) =>
+          p === "…" ? (
+            <span key={`ellipsis-${i}`} style={{ padding: "0 4px", color: "#475569", fontSize: 13 }}>…</span>
+          ) : (
+            <PagBtn key={p} active={p === page} onClick={() => onGo(p)}>{p}</PagBtn>
+          )
+        )}
+        <PagBtn onClick={onNext} disabled={page === totalPages}>›</PagBtn>
+      </div>
+    </div>
+  );
+}
+
+function PagBtn({ children, onClick, disabled, active }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        minWidth: 34, height: 34, padding: "0 8px",
+        borderRadius: 9,
+        border: active ? "1px solid rgba(56,189,248,0.5)" : "1px solid rgba(255,255,255,0.08)",
+        background: active ? "rgba(56,189,248,0.18)" : "rgba(255,255,255,0.04)",
+        color: active ? "#38bdf8" : disabled ? "#334155" : "#94a3b8",
+        fontSize: 14, fontWeight: active ? 700 : 500,
+        cursor: disabled ? "not-allowed" : "pointer",
+        transition: "all .12s",
+        display: "grid", placeItems: "center",
+      }}
+    >
+      {children}
+    </button>
+  );
 }
 
 // ─── Stili ────────────────────────────────────────────────────────────────────
