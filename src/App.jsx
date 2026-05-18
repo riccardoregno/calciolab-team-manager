@@ -48,6 +48,7 @@ const ExerciseLibrary = lazy(() => import("./pages/ExerciseLibrary"));
 const AiSessionBuilder = lazy(() => import("./pages/AiSessionBuilder"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const JoinTeam = lazy(() => import("./pages/JoinTeam"));
+const SetPlays = lazy(() => import("./pages/SetPlays"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
@@ -115,8 +116,8 @@ function App() {
     setMatches,
     setPhysicalTests,
     setGpsSessions,
-    setInjuryRecords,
     setAppSettings,
+    setSetPlays,
   } = useTeamData({ teamId: auth.team?.id });
 
   const previewAppSettings = useMemo(() => {
@@ -234,7 +235,6 @@ function App() {
   const matches = state.matches || [];
   const physicalTests = state.physicalTests || [];
   const gpsSessions   = state.gpsSessions   || [];
-  const injuryRecords = state.injuryRecords || [];
 
   function updateDevelopmentPlanPreview(plan) {
     if (!developmentPreviewPlans.includes(plan)) return;
@@ -404,8 +404,6 @@ function App() {
                   gpsSessions={gpsSessions}
                   setGpsSessions={setGpsSessions}
                   players={players}
-                  injuryRecords={injuryRecords}
-                  setInjuryRecords={setInjuryRecords}
                 />)}
               />
 
@@ -700,6 +698,18 @@ function App() {
                     matches={matches}
                     setMatches={setMatches}
                     players={players}
+                  />)
+                }
+              />
+
+              <Route
+                path="/set-plays"
+                element={
+                  gate(technicalRoles, <SetPlays
+                    players={players}
+                    setPlays={state.setPlays || {}}
+                    setSetPlays={setSetPlays}
+                    appSettings={previewAppSettings}
                   />)
                 }
               />

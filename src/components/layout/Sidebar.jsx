@@ -41,6 +41,7 @@ const menuGroups = [
     titleKey: "navigation.groups.match",
     items: [
       { to: "/matches", labelKey: "navigation.items.matches", icon: "⚽", roles: coachRoles },
+      { to: "/set-plays", labelKey: "navigation.items.setPlays", icon: "📐", roles: technicalRoles },
       { to: "/match-day", labelKey: "navigation.items.matchDay", icon: "📋", featureKey: "matchDay", roles: technicalRoles },
       { to: "/post-match", labelKey: "navigation.items.postMatch", icon: "📝", featureKey: "postMatch", roles: technicalRoles },
       { to: "/opponents", labelKey: "navigation.items.opponents", icon: "🕵️", featureKey: "opponents", roles: technicalRoles },

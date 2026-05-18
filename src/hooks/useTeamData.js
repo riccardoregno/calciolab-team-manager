@@ -5,7 +5,7 @@ import {
   saveLocalState,
   saveTeamTablesState,
 } from "../services/teamData";
-import { normalizeAppState } from "../utils/helpers";
+import { normalizeAppState, normalizeSetPlays } from "../utils/helpers";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 
 export function useTeamData({ teamId } = {}) {
@@ -86,6 +86,9 @@ export function useTeamData({ teamId } = {}) {
       },
       setAppSettings(appSettings) {
         setState((prev) => normalizeAppState({ ...prev, appSettings }));
+      },
+      setSetPlays(setPlays) {
+        setState((prev) => normalizeAppState({ ...prev, setPlays: normalizeSetPlays(setPlays) }));
       },
       setState(updater) {
         setState((prev) =>

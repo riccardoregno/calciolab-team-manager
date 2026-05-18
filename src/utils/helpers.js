@@ -119,15 +119,34 @@ export function normalizeMatch(match){
     opponentNotes: match.opponentNotes || "",
     opponentScouting: {
       formation: match.opponentScouting?.formation || "",
-      lineup: match.opponentScouting?.lineup || [],
+      lineup: (match.opponentScouting?.lineup || []).map((player) => ({
+        ...player,
+        birthYear: player.birthYear || "",
+      })),
       keyPlayers: match.opponentScouting?.keyPlayers || "",
       strengths: match.opponentScouting?.strengths || "",
       weaknesses: match.opponentScouting?.weaknesses || "",
       setPiecesFor: match.opponentScouting?.setPiecesFor || "",
       setPiecesAgainst: match.opponentScouting?.setPiecesAgainst || "",
       returnLegNotes: match.opponentScouting?.returnLegNotes || "",
+      attachment: normalizeAttachment(match.opponentScouting?.attachment),
     },
     staffNotes: match.staffNotes || "",
+  };
+}
+
+function normalizeAttachment(attachment) {
+  if (!attachment) return null;
+  return {
+    name: attachment.name || "",
+    type: attachment.type || "",
+    size: attachment.size || 0,
+    bucket: attachment.bucket || "",
+    path: attachment.path || "",
+    url: attachment.url || "",
+    uploadedAt: attachment.uploadedAt || "",
+    // Compatibilità temporanea con allegati salvati prima del passaggio a Storage.
+    dataUrl: attachment.url || attachment.path ? "" : attachment.dataUrl || "",
   };
 }
 
@@ -192,6 +211,33 @@ export function normalizeGpsSession(s = {}) {
   };
 }
 
+export function normalizeSetPlays(sp = {}) {
+  const empty = {
+    corners: {
+      offTakerLeft: "", offTakerRight: "",
+      offAssignments: Array.from({length:8}, (_,i) => ({id:i+1,playerId:"",zone:"",role:""})),
+      offNotes: "",
+      defSystem: "zona", defPoleSx: "", defPoleDx: "",
+      defAssignments: Array.from({length:8}, (_,i) => ({id:i+1,playerId:"",zone:""})),
+      defNotes: "",
+    },
+    freekicks: {
+      offTaker1:"", offTaker2:"", offSchema:"diretto",
+      offAssignments: Array.from({length:6}, (_,i) => ({id:i+1,playerId:"",zone:""})),
+      offNotes: "",
+      defWall:["","","",""],
+      defAssignments: Array.from({length:6}, (_,i) => ({id:i+1,playerId:"",zone:""})),
+      defNotes:"",
+    },
+    penalties: { takers:["","","","",""], notes:"" },
+  };
+  return {
+    corners:   { ...empty.corners,   ...(sp.corners   || {}) },
+    freekicks: { ...empty.freekicks, ...(sp.freekicks || {}) },
+    penalties: { ...empty.penalties, ...(sp.penalties || {}) },
+  };
+}
+
 export function normalizeAppState(state = {}){
   return {
     players: (state.players || []).map(normalizePlayer),
@@ -202,6 +248,7 @@ export function normalizeAppState(state = {}){
     gpsSessions: (state.gpsSessions || []).map(normalizeGpsSession),
     injuryRecords: (state.injuryRecords || []).map(normalizeInjuryRecord),
     appSettings: normalizeAppSettings(state.appSettings || {}),
+    setPlays: normalizeSetPlays(state.setPlays || {}),
   };
 }
 

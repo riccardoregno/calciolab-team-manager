@@ -48,6 +48,7 @@ export const en = {
       sponsors: "Sponsors",
       juniorRoster: "Junior squad",
       gpsLoad: "GPS & Load",
+      setPlays: "Set Plays",
     },
     mobile: {
       home: "Home",

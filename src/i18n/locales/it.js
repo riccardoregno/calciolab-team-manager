@@ -48,6 +48,7 @@ export const it = {
       sponsors: "Sponsor",
       juniorRoster: "Rosa Juniores",
       gpsLoad: "GPS & Load",
+      setPlays: "Palle Inattive",
     },
     mobile: {
       home: "Home",
