@@ -253,7 +253,6 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
 
   const topScorer = [...stats].sort((a, b) => b.goals - a.goals)[0];
   const mostMinutes = [...stats].sort((a, b) => b.minutes - a.minutes)[0];
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const coachInsights = useMemo(() => getCoachInsights(stats), [stats]);
   const compareStats = comparePlayerIds
     .filter(Boolean)

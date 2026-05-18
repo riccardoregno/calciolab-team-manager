@@ -34,15 +34,40 @@ function resolveHeader(raw) {
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map(resolveHeader);
+  const separator = detectSeparator(lines[0]);
+  const headers = splitCsvLine(lines[0], separator).map(resolveHeader);
   return lines.slice(1).map((line) => {
-    const cells = line.split(",");
+    const cells = splitCsvLine(line, separator);
     const row = { id: createId("gps-row") };
     headers.forEach((field, i) => {
       if (field) row[field] = cells[i]?.trim() || "";
     });
     return row;
   }).filter((row) => row.playerName);
+}
+
+function detectSeparator(headerLine) {
+  return headerLine.split(";").length > headerLine.split(",").length ? ";" : ",";
+}
+
+function splitCsvLine(line, separator) {
+  const cells = [];
+  let current = "";
+  let quoted = false;
+
+  for (const char of line) {
+    if (char === "\"") {
+      quoted = !quoted;
+    } else if (char === separator && !quoted) {
+      cells.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+
+  cells.push(current);
+  return cells;
 }
 
 const TYPE_LABEL = { training: "Allenamento", match: "Partita", test: "Test" };
@@ -167,7 +192,7 @@ export default function GpsLoad({ gpsSessions = [], setGpsSessions, players = []
         showToast("Nessuna riga valida trovata nel CSV", "error");
         return;
       }
-      setPendingRows(rows);
+      setPendingRows(rows.map((row) => matchGpsRowToPlayer(row, players)));
       setShowForm(true);
     };
     reader.readAsText(file);
@@ -593,6 +618,25 @@ export default function GpsLoad({ gpsSessions = [], setGpsSessions, players = []
       <ToastContainer />
     </div>
   );
+}
+
+function matchGpsRowToPlayer(row, players) {
+  const normalizedName = normalizeName(row.playerName);
+  const player = players.find((item) => normalizeName(item.name) === normalizedName);
+  return {
+    ...row,
+    playerId: player?.id || "",
+    playerName: player?.name || row.playerName,
+  };
+}
+
+function normalizeName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
 }
 
 // ─── Shared micro-styles ─────────────────────────────────────────────────

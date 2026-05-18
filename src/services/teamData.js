@@ -143,10 +143,13 @@ async function loadTeamTablesState(teamId) {
       .maybeSingle();
 
     const entityState = Object.fromEntries(entries);
+    const localState = loadLocalState();
     const state = normalizeAppState({
       ...entityState,
+      // GPS & Load resta local-first finché non esiste una tabella Supabase dedicata.
+      gpsSessions: localState.gpsSessions || [],
       // Se la colonna settings esiste e ha dati, usa quelli; altrimenti usa localStorage
-      appSettings: teamRow?.settings || loadLocalState().appSettings || {},
+      appSettings: teamRow?.settings || localState.appSettings || {},
     });
 
     saveLocalState(state);
