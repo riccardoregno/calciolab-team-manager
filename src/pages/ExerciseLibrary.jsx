@@ -13,7 +13,31 @@ import { createId, getCurrentUserRole, isFeatureUnlocked } from "../utils/helper
 import { emptyExercise } from "../data/initialData";
 
 // ─── Costanti ────────────────────────────────────────────────────────────────
-const filterDefaults = { category: "Tutte", intensity: "Tutte", phase: "Tutte" };
+const filterDefaults = { category: "Tutte", intensity: "Tutte", phase: "Tutte", ageGroup: "Tutte", players: "Tutti" };
+
+// Fasce giocatori (allineate con il campo players dei prompt AI)
+const PLAYER_BUCKETS = [
+  { label: "Tutti",   min: 0,  max: Infinity },
+  { label: "≤ 8",    min: 0,  max: 8 },
+  { label: "9 – 12", min: 9,  max: 12 },
+  { label: "13 – 16",min: 13, max: 16 },
+  { label: "17 +",   min: 17, max: Infinity },
+];
+
+// Estrae il numero minimo di giocatori da stringhe tipo "8", "10-14", "16+", "12-16"
+function parseMinPlayers(str = "") {
+  const m = String(str).match(/\d+/);
+  return m ? parseInt(m[0], 10) : NaN;
+}
+
+function matchPlayersBucket(exPlayers, bucketLabel) {
+  if (bucketLabel === "Tutti") return true;
+  const bucket = PLAYER_BUCKETS.find((b) => b.label === bucketLabel);
+  if (!bucket) return true;
+  const n = parseMinPlayers(exPlayers);
+  if (isNaN(n)) return false;
+  return n >= bucket.min && n <= bucket.max;
+}
 
 // ─── Componente principale ────────────────────────────────────────────────────
 export default function ExerciseLibrary({ appSettings = {}, exercises = [], setExercises }) {
@@ -67,6 +91,8 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
     categories:  ["Tutte", ...uniq(catalog.map((e) => e.category))],
     intensities: ["Tutte", ...uniq(catalog.map((e) => e.intensity))],
     phases:      ["Tutte", ...uniq(catalog.map((e) => e.phase))],
+    ageGroups:   ["Tutte", ...uniq(catalog.map((e) => e.ageGroup))],
+    playerBuckets: PLAYER_BUCKETS.map((b) => b.label),
   }), [catalog]);
 
   // ── Catalogo filtrato ───────────────────────────────────────────────────────
@@ -77,7 +103,9 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
       hay.includes(search.toLowerCase()) &&
       (filters.category  === "Tutte" || ex.category  === filters.category)  &&
       (filters.intensity === "Tutte" || ex.intensity === filters.intensity)  &&
-      (filters.phase     === "Tutte" || ex.phase     === filters.phase)
+      (filters.phase     === "Tutte" || ex.phase     === filters.phase)     &&
+      (filters.ageGroup  === "Tutte" || ex.ageGroup  === filters.ageGroup)  &&
+      matchPlayersBucket(ex.players, filters.players)
     );
   }), [catalog, search, filters]);
 
@@ -170,14 +198,25 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
           <AppCard>
             <div style={libStyles.toolbar}>
               <SearchBar value={search} onChange={setSearch} placeholder="Cerca per titolo, categoria, tag..." />
-              <DarkSelect label="Categoria"  value={filters.category}  options={catOptions.categories}  onChange={(v) => setFilters({ ...filters, category: v })} />
-              <DarkSelect label="Fase"       value={filters.phase}     options={catOptions.phases}      onChange={(v) => setFilters({ ...filters, phase: v })} />
-              <DarkSelect label="Intensità"  value={filters.intensity} options={catOptions.intensities} onChange={(v) => setFilters({ ...filters, intensity: v })} />
+              <DarkSelect label="Categoria"   value={filters.category}  options={catOptions.categories}    onChange={(v) => setFilters({ ...filters, category: v })} />
+              <DarkSelect label="Tipologia"   value={filters.phase}     options={catOptions.phases}        onChange={(v) => setFilters({ ...filters, phase: v })} />
+              <DarkSelect label="Intensità"   value={filters.intensity} options={catOptions.intensities}   onChange={(v) => setFilters({ ...filters, intensity: v })} />
+              <DarkSelect label="Giocatori"   value={filters.players}   options={catOptions.playerBuckets} onChange={(v) => setFilters({ ...filters, players: v })} />
+              <DarkSelect label="Età"         value={filters.ageGroup}  options={catOptions.ageGroups}     onChange={(v) => setFilters({ ...filters, ageGroup: v })} />
             </div>
-            <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <Badge tone="blue">{filteredCatalog.length} esercizi</Badge>
               {!premiumUnlocked && <Badge tone="orange">🔒 Dettagli riservati agli abbonati Premium</Badge>}
-              {isOwner && <Badge tone="green">✏️ Modalità admin — puoi modificare il catalogo</Badge>}
+              {isOwner && <Badge tone="green">✏️ Modalità admin</Badge>}
+              {/* Reset filtri */}
+              {(filters.category !== "Tutte" || filters.phase !== "Tutte" || filters.intensity !== "Tutte" || filters.players !== "Tutti" || filters.ageGroup !== "Tutte" || search) && (
+                <button
+                  onClick={() => { setFilters(filterDefaults); setSearch(""); }}
+                  style={{ background: "none", border: "none", color: "#38bdf8", fontSize: 12, cursor: "pointer", padding: "2px 6px" }}
+                >
+                  ✕ Reset filtri
+                </button>
+              )}
             </div>
           </AppCard>
 
@@ -596,7 +635,7 @@ const libStyles = {
   },
   toolbar: {
     display: "grid",
-    gridTemplateColumns: "1.4fr repeat(3, minmax(120px, 1fr))",
+    gridTemplateColumns: "1.6fr repeat(5, minmax(110px, 1fr))",
     gap: 12,
     alignItems: "end",
   },
