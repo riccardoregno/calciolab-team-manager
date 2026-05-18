@@ -113,6 +113,7 @@ function App() {
     setMatches,
     setPhysicalTests,
     setGpsSessions,
+    setInjuryRecords,
     setAppSettings,
   } = useTeamData({ teamId: auth.team?.id });
 
@@ -228,7 +229,8 @@ function App() {
   const sessions = state.sessions || [];
   const matches = state.matches || [];
   const physicalTests = state.physicalTests || [];
-  const gpsSessions = state.gpsSessions || [];
+  const gpsSessions   = state.gpsSessions   || [];
+  const injuryRecords = state.injuryRecords || [];
 
   function updateDevelopmentPlanPreview(plan) {
     if (!developmentPreviewPlans.includes(plan)) return;
@@ -395,7 +397,8 @@ function App() {
                   gpsSessions={gpsSessions}
                   setGpsSessions={setGpsSessions}
                   players={players}
-                  setPlayers={setPlayers}
+                  injuryRecords={injuryRecords}
+                  setInjuryRecords={setInjuryRecords}
                 />)}
               />
 

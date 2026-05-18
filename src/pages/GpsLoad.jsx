@@ -73,18 +73,38 @@ function splitCsvLine(line, separator) {
 const TYPE_LABEL = { training: "Allenamento", match: "Partita", test: "Test" };
 const TYPE_TONE  = { training: "blue", match: "green", test: "orange" };
 
-// ─── Injury types ─────────────────────────────────────────────────────────
-const INJURY_TYPES = ["Muscolare", "Articolare", "Contusione", "Altro"];
+// ─── Injury metadata ──────────────────────────────────────────────────────
+const INJURY_TYPES  = ["Muscolare", "Articolare/Legamentoso", "Tendineo", "Osseo/Frattura", "Contusione", "Altro"];
+const BODY_AREAS    = ["Coscia", "Polpaccio", "Caviglia", "Ginocchio", "Anca", "Addominale/Pubalgico", "Spalla", "Altro"];
+const SEVERITIES    = [{ value: "lieve", label: "Lieve", tone: "green" }, { value: "media", label: "Media", tone: "orange" }, { value: "grave", label: "Grave", tone: "red" }];
+const STATUSES      = [{ value: "attivo", label: "Attivo", tone: "red" }, { value: "recupero", label: "In recupero", tone: "orange" }, { value: "rientrato", label: "Rientrato", tone: "green" }];
 
-function emptyInjury() {
+const SEV_TONE   = { lieve: "green", media: "orange", grave: "red" };
+const SEV_LABEL  = { lieve: "Lieve", media: "Media", grave: "Grave" };
+const STAT_TONE  = { attivo: "red", recupero: "orange", rientrato: "green" };
+const STAT_LABEL = { attivo: "Attivo", recupero: "Recupero", rientrato: "Rientrato" };
+
+function emptyInjury(playerId = "") {
   return {
-    id:             createId("inj"),
-    type:           "Muscolare",
-    dateStart:      new Date().toISOString().slice(0, 10),
-    dateExpected:   "",
-    dateActual:     "",
-    recidiva:       false,
-    notes:          "",
+    id:               createId("inj"),
+    playerId,
+    dateStart:        new Date().toISOString().slice(0, 10),
+    dateEndExpected:  "",
+    dateEndActual:    "",
+    bodyArea:         "Coscia",
+    injuryType:       "Muscolare",
+    severity:         "media",
+    status:           "attivo",
+    recurrence:       false,
+    daysLost:         0,
+    notes:            "",
+    preventionPlan: {
+      focus:             "",
+      exercises:         "",
+      weeklyRoutine:     "",
+      loadLimits:        "",
+      returnToPlayNotes: "",
+    },
   };
 }
 
@@ -165,7 +185,7 @@ const PREVENTION_CARDS = [
 ];
 
 // ─── Main component ────────────────────────────────────────────────────────
-export default function GpsLoad({ gpsSessions = [], setGpsSessions, players = [], setPlayers }) {
+export default function GpsLoad({ gpsSessions = [], setGpsSessions, players = [], injuryRecords = [], setInjuryRecords }) {
   const { showToast, ToastContainer } = useToast();
   const fileInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState("gps");
@@ -178,8 +198,9 @@ export default function GpsLoad({ gpsSessions = [], setGpsSessions, players = []
 
   // Injury tab state
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
-  const [injuryForm, setInjuryForm] = useState(null); // null = hidden
+  const [injuryForm, setInjuryForm] = useState(null);   // null = hidden
   const [editingInjuryId, setEditingInjuryId] = useState(null);
+  const [expandedPrevId, setExpandedPrevId] = useState(null); // expanded preventionPlan card
 
   // ── CSV import ─────────────────────────────────────────────────────────
   function handleFileChange(e) {
@@ -226,38 +247,31 @@ export default function GpsLoad({ gpsSessions = [], setGpsSessions, players = []
   }
 
   // ── Injury helpers ─────────────────────────────────────────────────────
-  const selectedPlayer = players.find((p) => String(p.id) === String(selectedPlayerId));
-  const injuryHistory  = selectedPlayer?.injuryHistory || [];
+  const selectedPlayer   = players.find((p) => String(p.id) === String(selectedPlayerId));
+  const playerInjuries   = injuryRecords.filter((r) => String(r.playerId) === String(selectedPlayerId));
+
+  // KPI across all players
+  const activeInjuries   = injuryRecords.filter((r) => r.status === "attivo").length;
+  const recoveryCount    = injuryRecords.filter((r) => r.status === "recupero").length;
+  const totalInjuries    = injuryRecords.length;
 
   function handleSaveInjury() {
     if (!injuryForm) return;
     if (!selectedPlayerId) { showToast("Seleziona un giocatore", "warn"); return; }
 
+    const record = { ...injuryForm, playerId: selectedPlayerId };
     const updated = editingInjuryId
-      ? injuryHistory.map((inj) => inj.id === editingInjuryId ? { ...injuryForm } : inj)
-      : [...injuryHistory, { ...injuryForm }];
+      ? injuryRecords.map((r) => r.id === editingInjuryId ? record : r)
+      : [...injuryRecords, record];
 
-    if (setPlayers) {
-      setPlayers(players.map((p) =>
-        String(p.id) === String(selectedPlayerId)
-          ? { ...p, injuryHistory: updated }
-          : p
-      ));
-    }
+    if (setInjuryRecords) setInjuryRecords(updated);
     showToast("Infortunio salvato", "ok");
     setInjuryForm(null);
     setEditingInjuryId(null);
   }
 
   function handleDeleteInjury(injId) {
-    const updated = injuryHistory.filter((inj) => inj.id !== injId);
-    if (setPlayers) {
-      setPlayers(players.map((p) =>
-        String(p.id) === String(selectedPlayerId)
-          ? { ...p, injuryHistory: updated }
-          : p
-      ));
-    }
+    if (setInjuryRecords) setInjuryRecords(injuryRecords.filter((r) => r.id !== injId));
     showToast("Infortunio rimosso", "ok");
   }
 
@@ -458,6 +472,17 @@ export default function GpsLoad({ gpsSessions = [], setGpsSessions, players = []
       {/* ── TAB: INJURIES ────────────────────────────────────────────── */}
       {activeTab === "injuries" && (
         <>
+          {/* KPI bar */}
+          {totalInjuries > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+              <InjKpi icon="🩹" label="Totali" value={totalInjuries} color="#94a3b8" />
+              <InjKpi icon="🚑" label="Attivi" value={activeInjuries} color="#f87171" />
+              <InjKpi icon="🔄" label="In recupero" value={recoveryCount} color="#fbbf24" />
+              <InjKpi icon="✅" label="Rientrati" value={totalInjuries - activeInjuries - recoveryCount} color="#22c55e" />
+            </div>
+          )}
+
+          {/* Header + player selector */}
           <AppCard>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
               <div>
@@ -465,12 +490,11 @@ export default function GpsLoad({ gpsSessions = [], setGpsSessions, players = []
                 <p style={{ margin: "4px 0 0", color: "#94a3b8", fontSize: 13 }}>Seleziona un giocatore per visualizzare o aggiungere infortuni.</p>
               </div>
               {selectedPlayerId && (
-                <Button onClick={() => { setInjuryForm(emptyInjury()); setEditingInjuryId(null); }}>
+                <Button onClick={() => { setInjuryForm(emptyInjury(selectedPlayerId)); setEditingInjuryId(null); }}>
                   + Aggiungi infortunio
                 </Button>
               )}
             </div>
-
             <div style={{ marginTop: 14 }}>
               <label style={labelStyle}>
                 Giocatore
@@ -480,25 +504,50 @@ export default function GpsLoad({ gpsSessions = [], setGpsSessions, players = []
                   onChange={(e) => { setSelectedPlayerId(e.target.value); setInjuryForm(null); setEditingInjuryId(null); }}
                 >
                   <option value="">— Seleziona —</option>
-                  {players.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name || `${p.firstName || ""} ${p.lastName || ""}`.trim()}</option>
-                  ))}
+                  {players.map((p) => {
+                    const cnt = injuryRecords.filter((r) => String(r.playerId) === String(p.id) && r.status === "attivo").length;
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {p.name || `${p.firstName || ""} ${p.lastName || ""}`.trim()}{cnt > 0 ? ` 🚑` : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               </label>
             </div>
           </AppCard>
 
-          {/* Inline injury form */}
+          {/* ── Injury form ── */}
           {injuryForm && (
             <AppCard>
-              <h4 style={{ margin: "0 0 14px", color: "#93c5fd", fontSize: 15 }}>
-                {editingInjuryId ? "Modifica infortunio" : "Nuovo infortunio"}
+              <h4 style={{ margin: "0 0 16px", color: "#93c5fd", fontSize: 15 }}>
+                {editingInjuryId ? "Modifica infortunio" : "Nuovo infortunio"} — {selectedPlayer?.name}
               </h4>
+
+              {/* Main fields */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
                 <label style={labelStyle}>
-                  Tipo
-                  <select style={inputStyle} value={injuryForm.type} onChange={(e) => setInjuryForm((p) => ({ ...p, type: e.target.value }))}>
+                  Distretto corporeo
+                  <select style={inputStyle} value={injuryForm.bodyArea} onChange={(e) => setInjuryForm((p) => ({ ...p, bodyArea: e.target.value }))}>
+                    {BODY_AREAS.map((a) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </label>
+                <label style={labelStyle}>
+                  Tipo infortunio
+                  <select style={inputStyle} value={injuryForm.injuryType} onChange={(e) => setInjuryForm((p) => ({ ...p, injuryType: e.target.value }))}>
                     {INJURY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </label>
+                <label style={labelStyle}>
+                  Gravità
+                  <select style={inputStyle} value={injuryForm.severity} onChange={(e) => setInjuryForm((p) => ({ ...p, severity: e.target.value }))}>
+                    {SEVERITIES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </label>
+                <label style={labelStyle}>
+                  Stato
+                  <select style={inputStyle} value={injuryForm.status} onChange={(e) => setInjuryForm((p) => ({ ...p, status: e.target.value }))}>
+                    {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
                 </label>
                 <label style={labelStyle}>
@@ -507,79 +556,138 @@ export default function GpsLoad({ gpsSessions = [], setGpsSessions, players = []
                 </label>
                 <label style={labelStyle}>
                   Rientro previsto
-                  <input type="date" style={inputStyle} value={injuryForm.dateExpected} onChange={(e) => setInjuryForm((p) => ({ ...p, dateExpected: e.target.value }))} />
+                  <input type="date" style={inputStyle} value={injuryForm.dateEndExpected} onChange={(e) => setInjuryForm((p) => ({ ...p, dateEndExpected: e.target.value }))} />
                 </label>
                 <label style={labelStyle}>
                   Rientro effettivo
-                  <input type="date" style={inputStyle} value={injuryForm.dateActual} onChange={(e) => setInjuryForm((p) => ({ ...p, dateActual: e.target.value }))} />
+                  <input type="date" style={inputStyle} value={injuryForm.dateEndActual} onChange={(e) => setInjuryForm((p) => ({ ...p, dateEndActual: e.target.value }))} />
                 </label>
-                <label style={{ ...labelStyle, display: "flex", flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <label style={labelStyle}>
+                  Giorni persi
+                  <input type="number" min="0" style={inputStyle} value={injuryForm.daysLost} onChange={(e) => setInjuryForm((p) => ({ ...p, daysLost: Number(e.target.value) || 0 }))} />
+                </label>
+                <label style={{ ...labelStyle, flexDirection: "row", alignItems: "center", gap: 8, paddingTop: 18 }}>
                   <input
                     type="checkbox"
-                    checked={injuryForm.recidiva}
-                    onChange={(e) => setInjuryForm((p) => ({ ...p, recidiva: e.target.checked }))}
-                    style={{ width: 16, height: 16 }}
+                    checked={injuryForm.recurrence}
+                    onChange={(e) => setInjuryForm((p) => ({ ...p, recurrence: e.target.checked }))}
+                    style={{ width: 16, height: 16, flexShrink: 0 }}
                   />
                   <span style={{ color: "#94a3b8", fontSize: 13 }}>Recidiva</span>
                 </label>
                 <label style={{ ...labelStyle, gridColumn: "1 / -1" }}>
-                  Note
-                  <input style={inputStyle} value={injuryForm.notes} onChange={(e) => setInjuryForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Note opzionali" />
+                  Note cliniche
+                  <input style={inputStyle} value={injuryForm.notes} onChange={(e) => setInjuryForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Diagnosi, terapie, annotazioni…" />
                 </label>
               </div>
-              <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-                <Button onClick={handleSaveInjury}>Salva</Button>
+
+              {/* Prevention plan sub-section */}
+              <div style={{ marginTop: 20, padding: "14px 16px", borderRadius: 12, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)" }}>
+                <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#22c55e", letterSpacing: 0.5 }}>Piano di prevenzione / RTP</p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+                  {[
+                    { key: "focus",             label: "Focus preventivo",          ph: "Es. Rinforzo ischio-crurali" },
+                    { key: "exercises",         label: "Esercizi specifici",        ph: "Es. Nordic Hamstring, RDL…" },
+                    { key: "weeklyRoutine",     label: "Routine settimanale",       ph: "Es. 2x/settimana lunedì e giovedì" },
+                    { key: "loadLimits",        label: "Limiti di carico",          ph: "Es. Max 80% RPE per 2 settimane" },
+                    { key: "returnToPlayNotes", label: "Note Return-to-Play",       ph: "Es. Rientro progressivo 50→75→100%" },
+                  ].map(({ key, label, ph }) => (
+                    <label key={key} style={labelStyle}>
+                      {label}
+                      <input
+                        style={inputStyle}
+                        value={injuryForm.preventionPlan[key]}
+                        onChange={(e) => setInjuryForm((p) => ({ ...p, preventionPlan: { ...p.preventionPlan, [key]: e.target.value } }))}
+                        placeholder={ph}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                <Button onClick={handleSaveInjury}>Salva infortunio</Button>
                 <button onClick={() => { setInjuryForm(null); setEditingInjuryId(null); }} style={ghostBtn}>Annulla</button>
               </div>
             </AppCard>
           )}
 
           {/* Injury list */}
-          {selectedPlayerId && injuryHistory.length === 0 && !injuryForm && (
-            <EmptyState title="Nessun infortunio registrato" description="Clicca su 'Aggiungi infortunio' per iniziare." />
+          {selectedPlayerId && playerInjuries.length === 0 && !injuryForm && (
+            <EmptyState title="Nessun infortunio registrato" description="Clicca su '+ Aggiungi infortunio' per iniziare." />
           )}
 
-          {selectedPlayerId && injuryHistory.length > 0 && (
-            <AppCard>
-              <h4 style={{ margin: "0 0 14px", color: "#f1f5f9", fontSize: 15 }}>
-                Infortuni — {selectedPlayer?.name || selectedPlayer?.firstName}
+          {selectedPlayerId && playerInjuries.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <h4 style={{ margin: 0, color: "#f1f5f9", fontSize: 15, paddingLeft: 4 }}>
+                Infortuni — {selectedPlayer?.name} ({playerInjuries.length})
               </h4>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr>
-                      {["Tipo", "Data inizio", "Rientro previsto", "Rientro effettivo", "Recidiva", "Note", ""].map((h) => (
-                        <th key={h} style={{ padding: "8px 12px", color: "#64748b", fontWeight: 700, textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...injuryHistory].sort((a, b) => b.dateStart.localeCompare(a.dateStart)).map((inj) => (
-                      <tr key={inj.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                        <td style={tdStyle}><Badge tone="orange">{inj.type}</Badge></td>
-                        <td style={tdStyle}>{inj.dateStart || "-"}</td>
-                        <td style={tdStyle}>{inj.dateExpected || "-"}</td>
-                        <td style={tdStyle}>{inj.dateActual || "-"}</td>
-                        <td style={tdStyle}>{inj.recidiva ? <Badge tone="red">Sì</Badge> : <Badge tone="green">No</Badge>}</td>
-                        <td style={tdStyle}>{inj.notes || "-"}</td>
-                        <td style={tdStyle}>
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <button
-                              onClick={() => { setInjuryForm({ ...inj }); setEditingInjuryId(inj.id); }}
-                              style={{ ...ghostBtn, padding: "4px 10px", fontSize: 12 }}
-                            >✏️</button>
-                            <button
-                              onClick={() => handleDeleteInjury(inj.id)}
-                              style={{ ...ghostBtn, padding: "4px 10px", fontSize: 12 }}
-                            >🗑</button>
+              {[...playerInjuries].sort((a, b) => b.dateStart.localeCompare(a.dateStart)).map((inj) => {
+                const isExpPrev = expandedPrevId === inj.id;
+                const hasPrev = Object.values(inj.preventionPlan || {}).some(Boolean);
+                return (
+                  <AppCard key={inj.id}>
+                    {/* Row header */}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                        <Badge tone={SEV_TONE[inj.severity] || "orange"}>{SEV_LABEL[inj.severity] || inj.severity}</Badge>
+                        <Badge tone={STAT_TONE[inj.status] || "blue"}>{STAT_LABEL[inj.status] || inj.status}</Badge>
+                        <span style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 14 }}>{inj.bodyArea}</span>
+                        <span style={{ color: "#94a3b8", fontSize: 13 }}>·</span>
+                        <span style={{ color: "#cbd5e1", fontSize: 13 }}>{inj.injuryType}</span>
+                        {inj.recurrence && <Badge tone="red">Recidiva</Badge>}
+                      </div>
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                        <button onClick={() => { setInjuryForm({ ...inj }); setEditingInjuryId(inj.id); }} style={{ ...ghostBtn, padding: "4px 10px", fontSize: 12 }}>✏️</button>
+                        <button onClick={() => handleDeleteInjury(inj.id)} style={{ ...ghostBtn, padding: "4px 10px", fontSize: 12 }}>🗑</button>
+                      </div>
+                    </div>
+
+                    {/* Date chips */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
+                      <DateChip label="Inizio" value={inj.dateStart} />
+                      <DateChip label="Rientro previsto" value={inj.dateEndExpected} />
+                      <DateChip label="Rientro effettivo" value={inj.dateEndActual} />
+                      {inj.daysLost > 0 && <DateChip label="Giorni persi" value={`${inj.daysLost}gg`} />}
+                    </div>
+
+                    {/* Notes */}
+                    {inj.notes && (
+                      <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 13, lineHeight: 1.5 }}>{inj.notes}</p>
+                    )}
+
+                    {/* Prevention plan toggle */}
+                    {hasPrev && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedPrevId(isExpPrev ? null : inj.id)}
+                          style={{ ...ghostBtn, width: "100%", marginTop: 12, textAlign: "center", fontSize: 12 }}
+                        >
+                          {isExpPrev ? "▲ Nascondi piano prevenzione" : "▼ Piano prevenzione / RTP"}
+                        </button>
+                        {isExpPrev && (
+                          <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+                            {[
+                              { key: "focus",             label: "Focus" },
+                              { key: "exercises",         label: "Esercizi" },
+                              { key: "weeklyRoutine",     label: "Routine settimanale" },
+                              { key: "loadLimits",        label: "Limiti carico" },
+                              { key: "returnToPlayNotes", label: "Return-to-Play" },
+                            ].filter(({ key }) => inj.preventionPlan?.[key]).map(({ key, label }) => (
+                              <div key={key} style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.14)" }}>
+                                <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 900, textTransform: "uppercase", color: "#22c55e" }}>{label}</p>
+                                <p style={{ margin: 0, fontSize: 13, color: "#e2e8f0", lineHeight: 1.5 }}>{inj.preventionPlan[key]}</p>
+                              </div>
+                            ))}
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </AppCard>
+                        )}
+                      </>
+                    )}
+                  </AppCard>
+                );
+              })}
+            </div>
           )}
         </>
       )}
@@ -637,6 +745,29 @@ function normalizeName(value) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, " ");
+}
+
+// ─── Injury micro-components ──────────────────────────────────────────────
+function InjKpi({ icon, label, value, color }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 14, background: "rgba(255,255,255,0.03)", border: `1px solid ${color}33` }}>
+      <span style={{ fontSize: 20 }}>{icon}</span>
+      <div>
+        <p style={{ margin: 0, fontSize: 10, fontWeight: 900, textTransform: "uppercase", color: "#475569" }}>{label}</p>
+        <strong style={{ fontSize: 20, fontWeight: 900, color, lineHeight: 1.1 }}>{value}</strong>
+      </div>
+    </div>
+  );
+}
+
+function DateChip({ label, value }) {
+  if (!value) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "6px 10px", borderRadius: 9, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase", color: "#475569" }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: "#cbd5e1" }}>{value}</span>
+    </div>
+  );
 }
 
 // ─── Shared micro-styles ─────────────────────────────────────────────────

@@ -81,6 +81,9 @@ export function useTeamData({ teamId } = {}) {
       setGpsSessions(gpsSessions) {
         setState((prev) => normalizeAppState({ ...prev, gpsSessions }));
       },
+      setInjuryRecords(injuryRecords) {
+        setState((prev) => normalizeAppState({ ...prev, injuryRecords }));
+      },
       setAppSettings(appSettings) {
         setState((prev) => normalizeAppState({ ...prev, appSettings }));
       },

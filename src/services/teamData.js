@@ -23,12 +23,13 @@ const SAFE_ID_REGEX = /^[a-zA-Z0-9_\-.:]+$/;
 
 export function getInitialState() {
   return normalizeAppState({
-    players:      initialPlayers,
-    exercises:    initialExercises,
-    sessions:     initialSessions,
-    matches:      initialMatches,
+    players:       initialPlayers,
+    exercises:     initialExercises,
+    sessions:      initialSessions,
+    matches:       initialMatches,
     physicalTests: initialPhysicalTests,
-    gpsSessions:  [],
+    gpsSessions:   [],
+    injuryRecords: [],
   });
 }
 
@@ -147,7 +148,9 @@ async function loadTeamTablesState(teamId) {
     const state = normalizeAppState({
       ...entityState,
       // GPS & Load resta local-first finché non esiste una tabella Supabase dedicata.
-      gpsSessions: localState.gpsSessions || [],
+      gpsSessions:   localState.gpsSessions   || [],
+      // Infortuni restano local-first finché non esiste una tabella Supabase dedicata.
+      injuryRecords: localState.injuryRecords || [],
       // Se la colonna settings esiste e ha dati, usa quelli; altrimenti usa localStorage
       appSettings: teamRow?.settings || localState.appSettings || {},
     });

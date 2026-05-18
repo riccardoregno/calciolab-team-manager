@@ -142,6 +142,30 @@ export function normalizePhysicalTest(test){
   };
 }
 
+export function normalizeInjuryRecord(r = {}) {
+  return {
+    id:               r.id               || "",
+    playerId:         r.playerId         ? String(r.playerId) : "",
+    dateStart:        r.dateStart        || new Date().toISOString().slice(0, 10),
+    dateEndExpected:  r.dateEndExpected  || "",
+    dateEndActual:    r.dateEndActual    || "",
+    bodyArea:         r.bodyArea         || "Coscia",
+    injuryType:       r.injuryType       || "Muscolare",
+    severity:         ["lieve", "media", "grave"].includes(r.severity)    ? r.severity  : "media",
+    status:           ["attivo", "recupero", "rientrato"].includes(r.status) ? r.status : "attivo",
+    recurrence:       Boolean(r.recurrence),
+    daysLost:         Number(r.daysLost  || 0),
+    notes:            r.notes            || "",
+    preventionPlan: {
+      focus:             r.preventionPlan?.focus             || "",
+      exercises:         r.preventionPlan?.exercises         || "",
+      weeklyRoutine:     r.preventionPlan?.weeklyRoutine     || "",
+      loadLimits:        r.preventionPlan?.loadLimits        || "",
+      returnToPlayNotes: r.preventionPlan?.returnToPlayNotes || "",
+    },
+  };
+}
+
 export function normalizeGpsSession(s = {}) {
   return {
     id:     s.id     || "",
@@ -176,6 +200,7 @@ export function normalizeAppState(state = {}){
     matches: (state.matches || []).map(normalizeMatch),
     physicalTests: (state.physicalTests || []).map(normalizePhysicalTest),
     gpsSessions: (state.gpsSessions || []).map(normalizeGpsSession),
+    injuryRecords: (state.injuryRecords || []).map(normalizeInjuryRecord),
     appSettings: normalizeAppSettings(state.appSettings || {}),
   };
 }
