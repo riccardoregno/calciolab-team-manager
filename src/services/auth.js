@@ -53,9 +53,11 @@ export async function ensureDefaultTeam(user) {
     return { team: null };
   }
 
+  const teamSelect = "id, name, season, category, subscription_plan, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used, stripe_customer_id, stripe_subscription_id";
+
   const { data: memberships, error: membershipError } = await supabase
     .from("team_members")
-    .select("team_id, role, teams(id, name, season, category, subscription_plan, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used)")
+    .select(`team_id, role, teams(${teamSelect})`)
     .eq("user_id", user.id)
     .limit(1);
 
@@ -82,7 +84,7 @@ export async function ensureDefaultTeam(user) {
       category: "Prima squadra",
       owner_id: user.id,
     })
-    .select("id, name, season, category, subscription_plan, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used")
+    .select(teamSelect)
     .single();
 
   if (teamError) {
@@ -103,4 +105,3 @@ export async function ensureDefaultTeam(user) {
 
   return { team: { ...team, role: "owner" } };
 }
-
