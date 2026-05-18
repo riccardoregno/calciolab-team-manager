@@ -36,7 +36,7 @@ export async function generateAiTrainingSession({
     }
 
     return {
-      source: "openai",
+      source: "gemini",
       session: normalizeAiSession(data, prompt, exercises),
     };
   } catch (error) {

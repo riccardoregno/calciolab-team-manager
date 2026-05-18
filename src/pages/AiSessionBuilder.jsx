@@ -60,7 +60,7 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
 
     setGeneratedSession(result.session);
     setGenerationSource(result.source);
-    setGenerationMessage(result.warning || "Seduta generata con OpenAI.");
+    setGenerationMessage(result.warning || "Seduta generata con Gemini AI.");
     setGenerating(false);
   }
 
@@ -84,7 +84,7 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <Button variant="ghost" onClick={() => navigate("/trainings")}>Crea manualmente</Button>
             <Badge tone={isOpenAiConfigured() ? "green" : "orange"}>
-              {isOpenAiConfigured() ? "OpenAI configurato" : "Fallback locale"}
+              {isOpenAiConfigured() ? "Gemini configurato" : "Fallback locale"}
             </Badge>
           </div>
         }
@@ -173,8 +173,8 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
             <div>
               <div style={builderStyles.badges}>
                 <Badge tone="blue">{generated.theme}</Badge>
-                <Badge tone={generationSource === "openai" ? "green" : "orange"}>
-                  {generationSource === "openai" ? "OpenAI" : "Locale"}
+                <Badge tone={generationSource === "gemini" ? "green" : "orange"}>
+                  {generationSource === "gemini" ? "Gemini" : "Locale"}
                 </Badge>
               </div>
               <h2 style={{ margin: "10px 0 6px" }}>{generated.title}</h2>
