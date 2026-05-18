@@ -11,6 +11,7 @@ import SearchBar from "../components/ui/SearchBar";
 import { styles } from "../styles/index.js";
 import { createId, getCurrentUserRole, isFeatureUnlocked } from "../utils/helpers";
 import { emptyExercise } from "../data/initialData";
+import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
 
 // ─── Costanti ────────────────────────────────────────────────────────────────
 const filterDefaults = { category: "Tutte", intensity: "Tutte", phase: "Tutte", ageGroup: "Tutte", players: "Tutti" };
@@ -64,6 +65,9 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
   const [editModal, setEditModal]   = useState(false);
   const [editForm, setEditForm]     = useState(null);
   const [editIsNew, setEditIsNew]   = useState(false);
+
+  // Lightbox anteprima disegno
+  const [lightboxSrc, setLightboxSrc] = useState(null);
 
   // Ruolo corrente
   const currentRole     = getCurrentUserRole(appSettings);
@@ -149,14 +153,22 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
 
   function deleteFromCatalog(id) {
     if (!confirm("Rimuovere questo esercizio dal catalogo?")) return;
-    // Se è un override fp5, lo rimuoviamo dallo state (torna al FP5 originale)
-    // Se è un custom fp5-custom-*, lo eliminiamo
-    if (id.startsWith("fp5-custom")) {
-      setExercises(exercises.filter((e) => e.id !== id));
+    setExercises(exercises.filter((e) => e.id !== id));
+  }
+
+  // Salva l'esercizio nello state (se non c'è già) e apre la lavagna tattica
+  function openTacticalBoard() {
+    if (!editForm) return;
+    const existing = exercises.find((e) => e.id === editForm.id);
+    if (!existing) {
+      setExercises([...exercises, editForm]);
     } else {
-      // Rimuovi override — il prossimo render userà di nuovo il dato statico
-      setExercises(exercises.filter((e) => e.id !== id));
+      setExercises(exercises.map((e) => e.id === editForm.id ? editForm : e));
     }
+    setEditModal(false);
+    navigate("/tactical-board", {
+      state: { exerciseId: editForm.id, exerciseName: editForm.title },
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -238,7 +250,39 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
 
                 return (
                   <AppCard key={ex.id}>
-                    {/* Header */}
+                    {/* ── Anteprima disegno full-width (premium) o thumbnail locked (free) ── */}
+                    {(ex.tacticalBoard || ex.image) && (
+                      locked ? (
+                        /* Free: piccolo thumbnail con lucchetto */
+                        <div style={{ ...libStyles.thumb, width: "100%", height: 80, marginBottom: 14, cursor: "default" }}>
+                          <img src={ex.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <div style={libStyles.thumbOverlay}>🔒</div>
+                        </div>
+                      ) : (
+                        /* Premium/Owner: anteprima cliccabile full-width */
+                        <div
+                          style={{ marginBottom: 14, borderRadius: 12, overflow: "hidden", cursor: "zoom-in", position: "relative" }}
+                          onClick={() => setLightboxSrc(ex.image || null)}
+                          title="Clicca per ingrandire"
+                        >
+                          <TacticalMiniPreview
+                            board={ex.tacticalBoard || null}
+                            imageSrc={ex.image || null}
+                            height={180}
+                          />
+                          {/* Hint ingrandimento */}
+                          <span style={{
+                            position: "absolute", bottom: 8, right: 8,
+                            background: "rgba(0,0,0,0.5)", color: "white",
+                            fontSize: 11, padding: "2px 7px", borderRadius: 8,
+                          }}>
+                            🔍 Ingrandisci
+                          </span>
+                        </div>
+                      )
+                    )}
+
+                    {/* Header titolo/badge */}
                     <div style={libStyles.cardHead}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
@@ -255,18 +299,6 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
                           {ex.category}{ex.duration ? ` · ${ex.duration} min` : ""}{ex.players ? ` · ${ex.players} gioc.` : ""}
                         </p>
                       </div>
-
-                      {/* Thumbnail SVG */}
-                      {ex.image && (
-                        <div style={libStyles.thumb}>
-                          <img
-                            src={ex.image}
-                            alt=""
-                            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10 }}
-                          />
-                          {locked && <div style={libStyles.thumbOverlay}>🔒</div>}
-                        </div>
-                      )}
                     </div>
 
                     {/* Tag */}
@@ -409,6 +441,30 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
         </>
       )}
 
+      {/* ══════════════════ LIGHTBOX DISEGNO ══════════════════ */}
+      {lightboxSrc && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.88)",
+            display: "grid", placeItems: "center",
+            cursor: "zoom-out",
+          }}
+          onClick={() => setLightboxSrc(null)}
+        >
+          <div style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 16, overflow: "hidden", boxShadow: "0 0 60px rgba(0,0,0,0.8)" }}>
+            <img
+              src={lightboxSrc}
+              alt="Diagramma tattico"
+              style={{ display: "block", maxWidth: "100%", maxHeight: "90vh", objectFit: "contain" }}
+            />
+          </div>
+          <p style={{ position: "absolute", bottom: 24, color: "rgba(255,255,255,0.4)", fontSize: 13 }}>
+            Clicca per chiudere
+          </p>
+        </div>
+      )}
+
       {/* ══════════════════ MODAL MODIFICA (owner) ══════════════════ */}
       {editModal && editForm && (
         <Modal
@@ -416,6 +472,32 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
           onClose={() => { setEditModal(false); setEditForm(null); }}
         >
           <div style={{ display: "grid", gap: 14 }}>
+            {/* Anteprima disegno corrente */}
+            {(editForm.tacticalBoard || editForm.image) && (
+              <div>
+                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                  Disegno tattico
+                </p>
+                <div
+                  style={{ borderRadius: 12, overflow: "hidden", cursor: "zoom-in", position: "relative" }}
+                  onClick={() => setLightboxSrc(editForm.image || null)}
+                >
+                  <TacticalMiniPreview
+                    board={editForm.tacticalBoard || null}
+                    imageSrc={editForm.image || null}
+                    height={200}
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={openTacticalBoard}
+                  style={{ marginTop: 8, width: "100%" }}
+                >
+                  🎨 Modifica nella Lavagna Tattica
+                </Button>
+              </div>
+            )}
+
             <Field label="Titolo">
               <input
                 style={styles.input}
