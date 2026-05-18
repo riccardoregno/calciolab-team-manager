@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../components/ui/PageHeader";
@@ -12,7 +12,7 @@ import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 import { styles } from "../styles/index.js";
-import { createId, formatDate } from "../utils/helpers";
+import { createId, formatDate, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 
 function Trainings({ exercises, sessions, setSessions, players = [] }) {
   const navigate = useNavigate();
@@ -20,18 +20,40 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
   const [confirmState, setConfirmState] = useState(null);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const [pickerBlock, setPickerBlock] = useState("Tutti");
+
+  // Carica catalogo FP5 in background
+  const [fp5Catalog, setFp5Catalog] = useState([]);
+  useEffect(() => {
+    import("../data/eserciziarioFp5.js")
+      .then(({ eserciziarioFp5 }) => setFp5Catalog(eserciziarioFp5))
+      .catch(() => {});
+  }, []);
+
+  // Merge: esercizi personali + FP5 (personali hanno precedenza)
+  const allExercises = useMemo(() => {
+    const personalIds = new Set((exercises || []).map((e) => e.id));
+    const fp5Only = fp5Catalog.filter((e) => !personalIds.has(e.id));
+    return [...(exercises || []), ...fp5Only];
+  }, [exercises, fp5Catalog]);
 
   const [form, setForm] = useState(emptyTraining());
 
-  const filteredExercises = exercises.filter((exercise) =>
-    `${exercise.title} ${exercise.category} ${exercise.objective}`
+  // RPE calcolato dalla distanza dalla gara
+  const rpeTarget = RPE_BY_MATCH_DAY[form.matchDayDistance] || RPE_BY_MATCH_DAY["MD-3"];
+
+  const filteredExercises = allExercises.filter((exercise) => {
+    const matchSearch = `${exercise.title} ${exercise.category} ${exercise.objective}`
       .toLowerCase()
-      .includes(search.toLowerCase())
-  );
+      .includes(search.toLowerCase());
+    const exBlock = exercise.trainingBlock || getBlockFromCategory(exercise.category);
+    const matchBlock = pickerBlock === "Tutti" || exBlock === pickerBlock;
+    return matchSearch && matchBlock;
+  });
 
   const selectedExercises = useMemo(() => {
     return form.exercises.map((item) => {
-      const exercise = exercises.find((ex) => ex.id === item.exerciseId);
+      const exercise = allExercises.find((ex) => ex.id === item.exerciseId);
 
       return {
         ...exercise,
@@ -42,7 +64,7 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
         duration: exercise?.duration || item.customDuration || 0,
       };
     });
-  }, [form.exercises, exercises]);
+  }, [form.exercises, allExercises]);
 
   const totalMinutes = selectedExercises.reduce(
     (sum, item) => sum + Number(item.customDuration || item.duration || 0),
@@ -123,6 +145,7 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
       date: session.date || new Date().toISOString().slice(0, 10),
       type: session.type || "Allenamento",
       theme: session.theme || "Costruzione",
+      matchDayDistance: session.matchDayDistance || "MD-3",
       objective: session.objective || "",
       notes: session.notes || "",
       exercises: session.exercises || [],
@@ -263,6 +286,19 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
         <option>Palla inattiva</option>
       </select>
 
+      <select
+        value={form.matchDayDistance}
+        onChange={(e) => setForm({ ...form, matchDayDistance: e.target.value })}
+        style={styles.input}
+        title="Distanza dalla prossima partita"
+      >
+        <option value="MD+1">MD+1 — Post-gara</option>
+        <option value="MD-4">MD-4 — Carico moderato</option>
+        <option value="MD-3">MD-3 — Picco di carico</option>
+        <option value="MD-2">MD-2 — Carico medio</option>
+        <option value="MD-1">MD-1 — Pre-gara</option>
+      </select>
+
       <input
         placeholder="Obiettivo"
         value={form.objective}
@@ -281,6 +317,9 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
         }}
       />
     </div>
+
+    {/* Pannello RPE — distanza dalla gara */}
+    <RpePanel rpe={rpeTarget} md={form.matchDayDistance} />
 
     {/* Giocatori disponibili per questa seduta */}
     {players.length > 0 && (
@@ -318,6 +357,18 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
               />
             </div>
 
+            {/* Filtro per Training Block */}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+              <BlockBtn active={pickerBlock === "Tutti"} onClick={() => setPickerBlock("Tutti")} color="default">
+                Tutti
+              </BlockBtn>
+              {TRAINING_BLOCKS.map((b) => (
+                <BlockBtn key={b.id} active={pickerBlock === b.id} onClick={() => setPickerBlock(b.id)} color={b.color}>
+                  {b.icon} {b.id}
+                </BlockBtn>
+              ))}
+            </div>
+
             {filteredExercises.length === 0 ? (
               <EmptyState
                 icon="🎯"
@@ -353,25 +404,34 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
                         border: selected
                           ? "1px solid rgba(56,189,248,0.35)"
                           : "1px solid rgba(255,255,255,0.08)",
-                        minHeight: 118,
+                        minHeight: 100,
                       }}
                     >
-                      <strong style={{ lineHeight: 1.25 }}>{exercise.title}</strong>
+                      {/* Block badge */}
+                      {(() => {
+                        const blk = exercise.trainingBlock || getBlockFromCategory(exercise.category);
+                        const blkDef = TRAINING_BLOCKS.find((b) => b.id === blk);
+                        return blkDef ? (
+                          <span style={{
+                            display: "inline-block", marginBottom: 6,
+                            fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20,
+                            background: "rgba(255,255,255,0.07)", color: "#94a3b8",
+                          }}>
+                            {blkDef.icon} {blk}
+                          </span>
+                        ) : null;
+                      })()}
 
-                      <p
-                        style={{
-                          color: "#94a3b8",
-                          margin: "8px 0",
-                          fontSize: 13,
-                          lineHeight: 1.35,
-                        }}
-                      >
-                        {exercise.category || "Categoria"} ·{" "}
-                        {exercise.duration || 0} min
+                      <strong style={{ display: "block", lineHeight: 1.25, fontSize: 13 }}>
+                        {exercise.title}
+                      </strong>
+
+                      <p style={{ color: "#94a3b8", margin: "6px 0", fontSize: 12, lineHeight: 1.3 }}>
+                        {exercise.category || "Categoria"}
                       </p>
 
                       <Badge tone={selected ? "green" : "purple"}>
-                        {selected ? "Selezionato" : "Aggiungi"}
+                        {selected ? "✓ Selezionato" : "+ Aggiungi"}
                       </Badge>
                     </button>
                   );
@@ -638,6 +698,7 @@ function emptyTraining() {
     date: new Date().toISOString().slice(0, 10),
     type: "Allenamento",
     theme: "Costruzione",
+    matchDayDistance: "MD-3",
     objective: "",
     notes: "",
     exercises: [],
@@ -730,6 +791,75 @@ function AvailablePlayers({ players }) {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── RPE Panel ────────────────────────────────────────────────────────────────
+function RpePanel({ rpe, md }) {
+  const colorMap = {
+    red:    { bg: "rgba(239,68,68,0.08)",   border: "rgba(239,68,68,0.25)",   text: "#ef4444" },
+    orange: { bg: "rgba(251,146,60,0.08)",  border: "rgba(251,146,60,0.25)",  text: "#fb923c" },
+    green:  { bg: "rgba(34,197,94,0.08)",   border: "rgba(34,197,94,0.25)",   text: "#22c55e" },
+    blue:   { bg: "rgba(56,189,248,0.08)",  border: "rgba(56,189,248,0.25)",  text: "#38bdf8" },
+    default:{ bg: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.10)", text: "#94a3b8" },
+  };
+  const c = colorMap[rpe.color] || colorMap.default;
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 14,
+      padding: "12px 16px", borderRadius: 12, marginTop: 14,
+      background: c.bg, border: `1px solid ${c.border}`,
+    }}>
+      <div style={{ textAlign: "center", minWidth: 52 }}>
+        <div style={{ fontSize: 20, fontWeight: 900, color: c.text, lineHeight: 1 }}>
+          {rpe.min}–{rpe.max}
+        </div>
+        <div style={{ fontSize: 10, color: "#475569", fontWeight: 700, textTransform: "uppercase", marginTop: 2 }}>RPE</div>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{rpe.label}</p>
+        <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{rpe.description} · {md}</p>
+      </div>
+      <div style={{ width: 70, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.08)", overflow: "hidden", flexShrink: 0 }}>
+        <div style={{ height: "100%", width: `${(rpe.max / 10) * 100}%`, borderRadius: 3, background: c.text, transition: "width .3s" }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── BlockBtn — pulsante filtro blocco nel picker ─────────────────────────────
+function BlockBtn({ active, onClick, children, color }) {
+  const colorBg = {
+    orange:  active ? "rgba(251,146,60,0.2)"  : "rgba(255,255,255,0.04)",
+    blue:    active ? "rgba(56,189,248,0.2)"  : "rgba(255,255,255,0.04)",
+    green:   active ? "rgba(34,197,94,0.2)"   : "rgba(255,255,255,0.04)",
+    default: active ? "rgba(148,163,184,0.2)" : "rgba(255,255,255,0.04)",
+  };
+  const colorBorder = {
+    orange:  active ? "rgba(251,146,60,0.4)"  : "rgba(255,255,255,0.08)",
+    blue:    active ? "rgba(56,189,248,0.4)"  : "rgba(255,255,255,0.08)",
+    green:   active ? "rgba(34,197,94,0.4)"   : "rgba(255,255,255,0.08)",
+    default: active ? "rgba(148,163,184,0.4)" : "rgba(255,255,255,0.08)",
+  };
+  const colorText = {
+    orange:  active ? "#fb923c" : "#64748b",
+    blue:    active ? "#38bdf8" : "#64748b",
+    green:   active ? "#22c55e" : "#64748b",
+    default: active ? "#94a3b8" : "#64748b",
+  };
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: "5px 12px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+        border: `1px solid ${colorBorder[color] || colorBorder.default}`,
+        background: colorBg[color] || colorBg.default,
+        color: colorText[color] || colorText.default,
+        cursor: "pointer", whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
