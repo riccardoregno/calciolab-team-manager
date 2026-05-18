@@ -335,6 +335,11 @@ export const premiumFeatures = {
     plan: "club",
     description: "Preparatore, fisioterapista, nutrizionista e consulenze.",
   },
+  exerciseLibrary: {
+    label: "Eserciziario Premium",
+    plan: "premium",
+    description: "893 esercizi con diagrammi tattici SVG, descrizioni complete e varianti.",
+  },
 };
 
 export const memberRoles = {

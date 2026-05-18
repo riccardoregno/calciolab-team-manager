@@ -20,49 +20,11 @@ function Exercises({ exercises, setExercises }) {
   const [search, setSearch] = useState("");
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [importModal, setImportModal] = useState(false);
-  const [importData, setImportData] = useState(null);
-  const [importLoading, setImportLoading] = useState(false);
-  const [importFilter, setImportFilter] = useState("Tutte");
-  const [importDone, setImportDone] = useState(null);
 
   const [form, setForm] = useState({
     ...emptyExercise(),
     intensity: "Media",
   });
-
-  // ── Import FP5 ────────────────────────────────────────────────────────────
-  async function handleOpenImport() {
-    setImportLoading(true);
-    setImportModal(true);
-    try {
-      const { eserciziarioFp5 } = await import("../data/eserciziarioFp5.js");
-      setImportData(eserciziarioFp5);
-    } catch {
-      alert("File eserciziarioFp5.js non trovato. Esegui prima: node scripts/parse-fp5.mjs");
-      setImportModal(false);
-    } finally {
-      setImportLoading(false);
-    }
-  }
-
-  function handleConfirmImport() {
-    if (!importData) return;
-    const existing = new Set(exercises.map((e) => e.id));
-    const toImport = importData
-      .filter((e) => !existing.has(e.id))
-      .filter((e) => importFilter === "Tutte" || e.category === importFilter);
-    setExercises([...exercises, ...toImport]);
-    setImportDone(toImport.length);
-  }
-
-  const importCategories = importData
-    ? ["Tutte", ...new Set(importData.map((e) => e.category))].sort()
-    : [];
-  const importPreviewCount = importData
-    ? importData.filter((e) => importFilter === "Tutte" || e.category === importFilter)
-        .filter((e) => !exercises.some((x) => x.id === e.id)).length
-    : 0;
 
   // Quando si torna dalla lavagna con un esercizio già creato, apri direttamente
   // la modale in modalità modifica per completare i dettagli
@@ -171,10 +133,6 @@ function Exercises({ exercises, setExercises }) {
           <Badge tone="blue">
             {exercises.length} esercizi
           </Badge>
-
-          <Button variant="ghost" onClick={handleOpenImport}>
-            📚 Importa Eserciziario
-          </Button>
 
           <Button onClick={() => setOpenModal(true)}>
             + Nuovo esercizio
@@ -546,99 +504,6 @@ function Exercises({ exercises, setExercises }) {
         </Modal>
       )}
 
-      {/* ── Modal Import FP5 ──────────────────────────────────────────────── */}
-      {importModal && (
-        <Modal title="📚 Importa Eserciziario" onClose={() => { setImportModal(false); setImportDone(null); setImportData(null); }}>
-          {importLoading && (
-            <div style={{ textAlign: "center", padding: "32px 0", color: "#94a3b8" }}>
-              <div style={{ fontSize: 28, marginBottom: 12 }}>⏳</div>
-              <p style={{ margin: 0 }}>Caricamento 893 esercizi...</p>
-            </div>
-          )}
-
-          {!importLoading && importDone !== null && (
-            <div style={{ textAlign: "center", padding: "24px 0" }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
-              <p style={{ fontSize: 18, fontWeight: 700, color: "#22c55e", margin: "0 0 8px" }}>
-                {importDone} esercizi importati!
-              </p>
-              <p style={{ color: "#64748b", fontSize: 13, margin: "0 0 24px" }}>
-                Ora puoi cercarli per categoria, aprirli, modificarne i disegni dalla lavagna tattica.
-              </p>
-              <Button onClick={() => { setImportModal(false); setImportDone(null); setImportData(null); }}>
-                Chiudi
-              </Button>
-            </div>
-          )}
-
-          {!importLoading && importDone === null && importData && (
-            <div style={{ display: "grid", gap: 20 }}>
-              <div style={{ padding: "14px 16px", borderRadius: 12, background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)" }}>
-                <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "#38bdf8" }}>
-                  📦 {importData.length} esercizi trovati nell&apos;eserciziario
-                </p>
-                <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-                  Già presenti nella libreria: {importData.filter(e => exercises.some(x=>x.id===e.id)).length} • Da importare: {importPreviewCount}
-                </p>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase" }}>
-                  Filtra per categoria
-                </label>
-                <select
-                  value={importFilter}
-                  onChange={(e) => setImportFilter(e.target.value)}
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#f1f5f9", fontSize: 14 }}
-                >
-                  {importCategories.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Anteprima esercizi (max 4) */}
-              <div>
-                <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>
-                  Anteprima ({importPreviewCount} da importare)
-                </p>
-                <div style={{ display: "grid", gap: 8, maxHeight: 240, overflowY: "auto" }}>
-                  {importData
-                    .filter((e) => importFilter === "Tutte" || e.category === importFilter)
-                    .filter((e) => !exercises.some((x) => x.id === e.id))
-                    .slice(0, 6)
-                    .map((e) => (
-                      <div key={e.id} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                        {e.image && (
-                          <img src={e.image} alt="" style={{ width: 56, height: 40, objectFit: "cover", borderRadius: 7, flexShrink: 0 }} />
-                        )}
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</p>
-                          <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{e.category} · {e.players ? e.players + " gioc." : ""} {e.fieldSize}</p>
-                        </div>
-                      </div>
-                    ))
-                  }
-                  {importPreviewCount > 6 && (
-                    <p style={{ textAlign: "center", color: "#475569", fontSize: 12, margin: 0 }}>
-                      ...e altri {importPreviewCount - 6} esercizi
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <Button variant="ghost" onClick={() => { setImportModal(false); setImportData(null); }}>
-                  Annulla
-                </Button>
-                <Button onClick={handleConfirmImport} disabled={importPreviewCount === 0}>
-                  Importa {importPreviewCount > 0 ? `${importPreviewCount} esercizi` : "(già tutti presenti)"}
-                </Button>
-              </div>
-            </div>
-          )}
-        </Modal>
-      )}
     </div>
   );
 }

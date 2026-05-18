@@ -485,7 +485,6 @@ function App() {
                 path="/exercise-library"
                 element={
                   gate(technicalRoles, <ExerciseLibrary
-                    exercises={exercises}
                     appSettings={previewAppSettings}
                   />)
                 }
