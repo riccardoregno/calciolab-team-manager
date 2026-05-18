@@ -486,6 +486,8 @@ function App() {
                 element={
                   gate(technicalRoles, <ExerciseLibrary
                     appSettings={previewAppSettings}
+                    exercises={exercises}
+                    setExercises={setExercises}
                   />)
                 }
               />
