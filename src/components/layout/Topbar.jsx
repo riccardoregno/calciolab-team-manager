@@ -316,6 +316,7 @@ const mobileTopbarStyles = {
     height: 56,
     margin: "-4px 0 16px",
     padding: "6px 0",
+    display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,

@@ -850,6 +850,9 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
     const point = getBoardCoordinates(event);
     if (!point) return;
 
+    // Capture pointer so drag continues even if the finger/cursor leaves the element
+    event.currentTarget.setPointerCapture(event.pointerId);
+
     const onToken = event.target.closest?.("[data-board-token]");
 
     if (activeTool.startsWith("stamp-")) {

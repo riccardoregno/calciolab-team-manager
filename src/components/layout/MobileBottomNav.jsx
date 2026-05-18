@@ -61,6 +61,9 @@ export default function MobileBottomNav() {
             borderRadius: "20px 20px 0 0",
             padding: "16px 16px calc(88px + env(safe-area-inset-bottom, 0px)) 16px",
             boxShadow: "0 -8px 40px rgba(0,0,0,0.5)",
+            maxHeight: "70vh",
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
           }}>
             <div style={{
               width: 36, height: 4, borderRadius: 99,
