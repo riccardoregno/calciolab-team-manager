@@ -9,12 +9,12 @@ import Modal from "../components/ui/Modal";
 import PageHeader from "../components/ui/PageHeader";
 import SearchBar from "../components/ui/SearchBar";
 import { styles } from "../styles/index.js";
-import { createId, getCurrentUserRole, isFeatureUnlocked } from "../utils/helpers";
+import { TRAINING_BLOCKS, CATEGORY_TO_BLOCK, getBlockFromCategory, createId, getCurrentUserRole, isFeatureUnlocked } from "../utils/helpers";
 import { emptyExercise } from "../data/initialData";
 import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
 
 // ─── Costanti ────────────────────────────────────────────────────────────────
-const filterDefaults = { category: "Tutte", intensity: "Tutte", phase: "Tutte", ageGroup: "Tutte", players: "Tutti" };
+const filterDefaults = { category: "Tutte", intensity: "Tutte", phase: "Tutte", ageGroup: "Tutte", players: "Tutti", block: "Tutti" };
 
 // Fasce giocatori (allineate con il campo players dei prompt AI)
 const PLAYER_BUCKETS = [
@@ -97,6 +97,7 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
     phases:      ["Tutte", ...uniq(catalog.map((e) => e.phase))],
     ageGroups:   ["Tutte", ...uniq(catalog.map((e) => e.ageGroup))],
     playerBuckets: PLAYER_BUCKETS.map((b) => b.label),
+    blocks: ["Tutti", ...TRAINING_BLOCKS.map((b) => b.id)],
   }), [catalog]);
 
   // ── Catalogo filtrato ───────────────────────────────────────────────────────
@@ -109,7 +110,8 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
       (filters.intensity === "Tutte" || ex.intensity === filters.intensity)  &&
       (filters.phase     === "Tutte" || ex.phase     === filters.phase)     &&
       (filters.ageGroup  === "Tutte" || ex.ageGroup  === filters.ageGroup)  &&
-      matchPlayersBucket(ex.players, filters.players)
+      matchPlayersBucket(ex.players, filters.players) &&
+      (filters.block === "Tutti" || (ex.trainingBlock || getBlockFromCategory(ex.category)) === filters.block)
     );
   }), [catalog, search, filters]);
 
@@ -210,6 +212,7 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
           <AppCard>
             <div style={libStyles.toolbar}>
               <SearchBar value={search} onChange={setSearch} placeholder="Cerca per titolo, categoria, tag..." />
+              <DarkSelect label="Blocco"      value={filters.block}     options={catOptions.blocks}        onChange={(v) => setFilters({ ...filters, block: v })} />
               <DarkSelect label="Categoria"   value={filters.category}  options={catOptions.categories}    onChange={(v) => setFilters({ ...filters, category: v })} />
               <DarkSelect label="Tipologia"   value={filters.phase}     options={catOptions.phases}        onChange={(v) => setFilters({ ...filters, phase: v })} />
               <DarkSelect label="Intensità"   value={filters.intensity} options={catOptions.intensities}   onChange={(v) => setFilters({ ...filters, intensity: v })} />
@@ -221,7 +224,7 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
               {!premiumUnlocked && <Badge tone="orange">🔒 Dettagli riservati agli abbonati Premium</Badge>}
               {isOwner && <Badge tone="green">✏️ Modalità admin</Badge>}
               {/* Reset filtri */}
-              {(filters.category !== "Tutte" || filters.phase !== "Tutte" || filters.intensity !== "Tutte" || filters.players !== "Tutti" || filters.ageGroup !== "Tutte" || search) && (
+              {(filters.category !== "Tutte" || filters.phase !== "Tutte" || filters.intensity !== "Tutte" || filters.players !== "Tutti" || filters.ageGroup !== "Tutte" || filters.block !== "Tutti" || search) && (
                 <button
                   onClick={() => { setFilters(filterDefaults); setSearch(""); }}
                   style={{ background: "none", border: "none", color: "#38bdf8", fontSize: 12, cursor: "pointer", padding: "2px 6px" }}
@@ -286,6 +289,11 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
                     <div style={libStyles.cardHead}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                          {(() => {
+                            const block = ex.trainingBlock || getBlockFromCategory(ex.category);
+                            const blockDef = TRAINING_BLOCKS.find((b) => b.id === block);
+                            return blockDef ? <Badge tone={blockDef.color}>{blockDef.icon} {block}</Badge> : null;
+                          })()}
                           <Badge tone={locked ? "orange" : "green"}>{locked ? "🔒 Premium" : "Premium"}</Badge>
                           <Badge tone={ex.intensity === "Alta" ? "red" : ex.intensity === "Bassa" ? "blue" : "default"}>
                             {ex.intensity || "Media"}
@@ -717,7 +725,7 @@ const libStyles = {
   },
   toolbar: {
     display: "grid",
-    gridTemplateColumns: "1.6fr repeat(5, minmax(110px, 1fr))",
+    gridTemplateColumns: "1.6fr repeat(6, minmax(100px, 1fr))",
     gap: 12,
     alignItems: "end",
   },

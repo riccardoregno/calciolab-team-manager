@@ -8,7 +8,7 @@ import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
 import { generateAiTrainingSession, isOpenAiConfigured } from "../services/aiSessionService";
 import { styles } from "../styles/index.js";
-import { createId, formatShortDate, generateGuidedSession } from "../utils/helpers";
+import { RPE_BY_MATCH_DAY, createId, formatShortDate, generateGuidedSession } from "../utils/helpers";
 
 const defaultPrompt = {
   objective: "Pressing",
@@ -28,6 +28,9 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
   const [generationSource, setGenerationSource] = useState("local");
   const [generationMessage, setGenerationMessage] = useState("");
   const [generating, setGenerating] = useState(false);
+
+  // RPE calcolato in base alla distanza dalla gara
+  const rpeTarget = RPE_BY_MATCH_DAY[prompt.matchDayDistance] || RPE_BY_MATCH_DAY["MD-3"];
 
   // Carica il catalogo FP5 e lo unisce agli esercizi personali
   const [fp5Catalog, setFp5Catalog] = useState([]);
@@ -63,12 +66,29 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
     setGenerationMessage("");
   }
 
+  function getRpeBlocks(md) {
+    if (md === "MD+1") return "Riscaldamento, Possesso Palla";
+    if (md === "MD-1") return "Riscaldamento, Possesso Palla, Giochi di Posizione";
+    if (md === "MD-3") return "Small Side Games, Partita a Tema, Partita Finale";
+    if (md === "MD-2") return "Giochi di Posizione, Small Side Games, Partita a Tema";
+    return "Tutti i blocchi";
+  }
+
   async function generateWithAi() {
     setGenerating(true);
     setGenerationMessage("");
 
+    const enrichedPrompt = {
+      ...prompt,
+      specialConstraints: [
+        `RPE target: ${rpeTarget.min}-${rpeTarget.max}/10 (${rpeTarget.label} — ${rpeTarget.description})`,
+        `Priorità blocchi: ${getRpeBlocks(prompt.matchDayDistance)}`,
+        prompt.specialConstraints,
+      ].filter(Boolean).join("\n"),
+    };
+
     const result = await generateAiTrainingSession({
-      prompt,
+      prompt: enrichedPrompt,
       exercises: allExercises,
       fallbackSession: localPreview,
     });
@@ -184,6 +204,53 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
         </AppCard>
 
         <AppCard title="Anteprima generata" subtitle="Puoi salvarla nelle sedute e rifinirla dal planner.">
+          {/* Pannello RPE */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 14, padding: "12px 16px",
+            borderRadius: 12, marginBottom: 16,
+            background: rpeTarget.color === "red" ? "rgba(239,68,68,0.08)" :
+                        rpeTarget.color === "green" ? "rgba(34,197,94,0.08)" :
+                        rpeTarget.color === "blue" ? "rgba(56,189,248,0.08)" :
+                        "rgba(255,255,255,0.05)",
+            border: `1px solid ${
+              rpeTarget.color === "red" ? "rgba(239,68,68,0.25)" :
+              rpeTarget.color === "green" ? "rgba(34,197,94,0.25)" :
+              rpeTarget.color === "blue" ? "rgba(56,189,248,0.25)" :
+              "rgba(255,255,255,0.1)"
+            }`,
+          }}>
+            <div style={{ textAlign: "center", minWidth: 52 }}>
+              <div style={{
+                fontSize: 22, fontWeight: 900,
+                color: rpeTarget.color === "red" ? "#ef4444" :
+                       rpeTarget.color === "green" ? "#22c55e" :
+                       rpeTarget.color === "blue" ? "#38bdf8" : "#94a3b8",
+              }}>
+                {rpeTarget.min}–{rpeTarget.max}
+              </div>
+              <div style={{ fontSize: 10, color: "#475569", fontWeight: 700, textTransform: "uppercase" }}>RPE</div>
+            </div>
+            <div>
+              <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>
+                {rpeTarget.label}
+              </p>
+              <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
+                {rpeTarget.description} · Blocchi suggeriti: {getRpeBlocks(prompt.matchDayDistance)}
+              </p>
+            </div>
+            {/* Barra visiva RPE */}
+            <div style={{ flex: 1, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.08)", overflow: "hidden", minWidth: 60 }}>
+              <div style={{
+                height: "100%",
+                width: `${(rpeTarget.max / 10) * 100}%`,
+                borderRadius: 3,
+                background: rpeTarget.color === "red" ? "#ef4444" :
+                            rpeTarget.color === "green" ? "#22c55e" :
+                            rpeTarget.color === "blue" ? "#38bdf8" : "#94a3b8",
+                transition: "width .3s",
+              }} />
+            </div>
+          </div>
           <div style={builderStyles.previewHeader}>
             <div>
               <div style={builderStyles.badges}>

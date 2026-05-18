@@ -1000,6 +1000,61 @@ export function getCoachAlerts({ players = [], matches = [], physicalTests = [],
   return alerts.slice(0, 10);
 }
 
+// ─── Training Blocks ──────────────────────────────────────────────────────────
+export const TRAINING_BLOCKS = [
+  { id: "Riscaldamento",       icon: "🔥", color: "orange" },
+  { id: "Possesso Palla",      icon: "⚽", color: "blue"   },
+  { id: "Giochi di Posizione", icon: "🎯", color: "blue"   },
+  { id: "Small Side Games",    icon: "🏃", color: "green"  },
+  { id: "Partita a Tema",      icon: "🎪", color: "default"},
+  { id: "Partita Finale",      icon: "🏆", color: "orange" },
+];
+
+export const CATEGORY_TO_BLOCK = {
+  "Riscaldamento":        "Riscaldamento",
+  "Psicocinetica":        "Riscaldamento",
+  "Rapidità":             "Riscaldamento",
+  "Tecnica individuale":  "Riscaldamento",
+  "Possesso":             "Possesso Palla",
+  "Passaggio":            "Possesso Palla",
+  "Combinazione":         "Possesso Palla",
+  "Scaglionamento":       "Giochi di Posizione",
+  "Ampiezza":             "Giochi di Posizione",
+  "Sovrapposizione":      "Giochi di Posizione",
+  "Inserimento":          "Giochi di Posizione",
+  "Taglio":               "Giochi di Posizione",
+  "Superiorità numerica": "Small Side Games",
+  "Duello":               "Small Side Games",
+  "Cross":                "Small Side Games",
+  "Gioco aereo":          "Small Side Games",
+  "Fase offensiva":       "Partita a Tema",
+  "Fase difensiva":       "Partita a Tema",
+  "Pressing":             "Partita a Tema",
+  "Penetrazione":         "Partita a Tema",
+  "Finalizzazione":       "Partita a Tema",
+  "Palle inattive":       "Partita a Tema",
+  "Partita":              "Partita Finale",
+  "Resistenza":           "Partita Finale",
+};
+
+export const RPE_BY_MATCH_DAY = {
+  "MD+1": { min: 2, max: 4, label: "Recupero attivo",     color: "blue",    description: "Sessione leggera post-gara" },
+  "MD-4": { min: 6, max: 8, label: "Carico moderato",     color: "orange",  description: "Lavoro tecnico-tattico" },
+  "MD-3": { min: 8, max: 9, label: "Picco di carico",     color: "red",     description: "Massima intensità settimanale" },
+  "MD-2": { min: 5, max: 7, label: "Carico medio",        color: "default", description: "Lavoro tattico e forma" },
+  "MD-1": { min: 2, max: 4, label: "Attivazione leggera", color: "green",   description: "Attivazione pre-gara" },
+};
+
+export function getBlockFromCategory(category) {
+  return CATEGORY_TO_BLOCK[category] || "Partita a Tema";
+}
+
+export function getRpeFromIntensity(intensity) {
+  if (intensity === "Alta")  return 8;
+  if (intensity === "Bassa") return 4;
+  return 6;
+}
+
 export function getPlayerSummary(player, { sessions = [], matches = [], physicalTests = [] } = {}){
   if(!player){
     return {
