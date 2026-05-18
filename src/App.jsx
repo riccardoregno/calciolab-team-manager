@@ -37,6 +37,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const Availability = lazy(() => import("./pages/Availability"));
 const PhysicalTests = lazy(() => import("./pages/PhysicalTests"));
 const PhysicalWorkouts = lazy(() => import("./pages/PhysicalWorkouts"));
+const GpsLoad = lazy(() => import("./pages/GpsLoad"));
 const Opponents = lazy(() => import("./pages/Opponents"));
 const PostMatch = lazy(() => import("./pages/PostMatch"));
 const ExportCenter = lazy(() => import("./pages/ExportCenter"));
@@ -111,6 +112,7 @@ function App() {
     setSessions,
     setMatches,
     setPhysicalTests,
+    setGpsSessions,
     setAppSettings,
   } = useTeamData({ teamId: auth.team?.id });
 
@@ -226,6 +228,7 @@ function App() {
   const sessions = state.sessions || [];
   const matches = state.matches || [];
   const physicalTests = state.physicalTests || [];
+  const gpsSessions = state.gpsSessions || [];
 
   function updateDevelopmentPlanPreview(plan) {
     if (!developmentPreviewPlans.includes(plan)) return;
@@ -384,6 +387,16 @@ function App() {
                     />
                   </FeatureGate>)
                 }
+              />
+
+              <Route
+                path="/gps-load"
+                element={gate(physicalRoles, <GpsLoad
+                  gpsSessions={gpsSessions}
+                  setGpsSessions={setGpsSessions}
+                  players={players}
+                  setPlayers={setPlayers}
+                />)}
               />
 
               <Route

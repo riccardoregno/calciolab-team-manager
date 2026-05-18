@@ -47,6 +47,7 @@ export const en = {
       playerPortal: "Player area",
       sponsors: "Sponsors",
       juniorRoster: "Junior squad",
+      gpsLoad: "GPS & Load",
     },
     mobile: {
       home: "Home",

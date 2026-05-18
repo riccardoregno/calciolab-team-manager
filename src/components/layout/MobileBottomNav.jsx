@@ -19,6 +19,7 @@ const SECONDARY = [
   { to: "/availability",     labelKey: "navigation.items.availability", icon: "🩺" },
   { to: "/physical-tests",   labelKey: "navigation.items.physicalTests", icon: "⏱️" },
   { to: "/physical-workouts",labelKey: "navigation.items.physicalWorkouts", icon: "🏃" },
+  { to: "/gps-load",         labelKey: "navigation.items.gpsLoad", icon: "📡" },
   { to: "/exports",          labelKey: "navigation.items.exports", icon: "🖨️" },
   { to: "/settings",         labelKey: "navigation.items.settings", icon: "⚙️" },
   { to: "/premium",          labelKey: "navigation.items.premium", icon: "💎" },

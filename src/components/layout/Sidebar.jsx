@@ -24,6 +24,7 @@ const menuGroups = [
       { to: "/availability", labelKey: "navigation.items.availability", icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
       { to: "/physical-tests", labelKey: "navigation.items.physicalTests", icon: "⏱️", featureKey: "physicalTests", roles: physicalRoles },
       { to: "/physical-workouts", labelKey: "navigation.items.physicalWorkouts", icon: "🏃", featureKey: "physicalWorkouts", roles: physicalRoles },
+      { to: "/gps-load", labelKey: "navigation.items.gpsLoad", icon: "📡", featureKey: "physicalTests", roles: physicalRoles },
     ],
   },
   {

@@ -78,6 +78,9 @@ export function useTeamData({ teamId } = {}) {
       setPhysicalTests(physicalTests) {
         setState((prev) => normalizeAppState({ ...prev, physicalTests }));
       },
+      setGpsSessions(gpsSessions) {
+        setState((prev) => normalizeAppState({ ...prev, gpsSessions }));
+      },
       setAppSettings(appSettings) {
         setState((prev) => normalizeAppState({ ...prev, appSettings }));
       },

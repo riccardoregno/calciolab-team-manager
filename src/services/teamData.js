@@ -28,6 +28,7 @@ export function getInitialState() {
     sessions:     initialSessions,
     matches:      initialMatches,
     physicalTests: initialPhysicalTests,
+    gpsSessions:  [],
   });
 }
 

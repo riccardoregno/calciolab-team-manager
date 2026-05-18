@@ -142,6 +142,32 @@ export function normalizePhysicalTest(test){
   };
 }
 
+export function normalizeGpsSession(s = {}) {
+  return {
+    id:     s.id     || "",
+    date:   s.date   || new Date().toISOString().slice(0, 10),
+    title:  s.title  || "",
+    type:   s.type   || "training",   // "training" | "match" | "test"
+    source: s.source || "manual_csv",
+    notes:  s.notes  || "",
+    rows: (s.rows || []).map((r) => ({
+      id:               r.id               || "",
+      playerId:         r.playerId         || "",
+      playerName:       r.playerName       || "",
+      duration:         Number(r.duration         || 0),
+      totalDistance:    Number(r.totalDistance     || 0),
+      highSpeedDistance:Number(r.highSpeedDistance || 0),
+      sprintDistance:   Number(r.sprintDistance    || 0),
+      maxSpeed:         Number(r.maxSpeed          || 0),
+      accelerations:    Number(r.accelerations     || 0),
+      decelerations:    Number(r.decelerations     || 0),
+      playerLoad:       Number(r.playerLoad        || 0),
+      rpe:              Number(r.rpe               || 0),
+      notes:            r.notes           || "",
+    })),
+  };
+}
+
 export function normalizeAppState(state = {}){
   return {
     players: (state.players || []).map(normalizePlayer),
@@ -149,6 +175,7 @@ export function normalizeAppState(state = {}){
     sessions: (state.sessions || []).map(normalizeSession),
     matches: (state.matches || []).map(normalizeMatch),
     physicalTests: (state.physicalTests || []).map(normalizePhysicalTest),
+    gpsSessions: (state.gpsSessions || []).map(normalizeGpsSession),
     appSettings: normalizeAppSettings(state.appSettings || {}),
   };
 }
