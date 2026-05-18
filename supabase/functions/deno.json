@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.window"]
+  },
+  "imports": {
+    "@supabase/functions-js/edge-runtime.d.ts": "https://esm.sh/@supabase/functions-js@2/edge-runtime.d.ts"
+  }
+}
