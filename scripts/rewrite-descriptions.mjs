@@ -190,7 +190,7 @@ function isGarbage(str) {
   const cleaned = str.trim().toLowerCase();
   if (cleaned.length < 10) return true;
   // Pattern tipici di garbage interno
-  if (/\bÀÀÀ\b|\bÁ\s+Á\b|ÿ\s*[A-Z]|\x00|carlo regno/i.test(str)) return true;
+  if (/\bÀÀÀ\b|\bÁ\s+Á\b|ÿ\s*[A-Z]|\x00/i.test(str)) return true;
   return false;
 }
 
