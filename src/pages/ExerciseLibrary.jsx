@@ -10,8 +10,21 @@ import PageHeader from "../components/ui/PageHeader";
 import SearchBar from "../components/ui/SearchBar";
 import { styles } from "../styles/index.js";
 import { TRAINING_BLOCKS, getBlockFromCategory, createId, getCurrentUserRole, isFeatureUnlocked } from "../utils/helpers";
+import { generateExerciseSvg, getExerciseDescription } from "../utils/exerciseContent";
 import { emptyExercise } from "../data/initialData";
 import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
+
+// Returns the image to show for an exercise card: generated SVG for fp5 catalog, stored image for personal
+function exImage(ex) {
+  if (ex.source === "fp5" || !ex.image) return generateExerciseSvg(ex);
+  return ex.image;
+}
+
+// Returns description text: generated for fp5, stored for personal
+function exDesc(ex) {
+  if (ex.source === "fp5") return getExerciseDescription(ex);
+  return ex.description || "";
+}
 
 // ─── Costanti ────────────────────────────────────────────────────────────────
 const filterDefaults = { category: "Tutte", intensity: "Tutte", phase: "Tutte", ageGroup: "Tutte", players: "Tutti", block: "Tutti" };
@@ -73,7 +86,7 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
 
   // Paginazione "I miei"
   const [myPage, setMyPage]       = useState(1);
-  const [myPageSize, setMyPageSize] = useState(25);
+  const [myPageSize] = useState(25);
 
   // Lightbox anteprima disegno
   const [lightboxSrc, setLightboxSrc] = useState(null);
@@ -138,8 +151,14 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
   [myExercises, mySearch]);
 
   // ── Reset pagina a 1 quando cambiano filtri ─────────────────────────────────
-  useEffect(() => { setPage(1); }, [search, filters]);
-  useEffect(() => { setMyPage(1); }, [mySearch]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPage(1);
+  }, [search, filters]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMyPage(1);
+  }, [mySearch]);
 
   // ── Pagine calcolate ────────────────────────────────────────────────────────
   const catalogTotalPages = pageSize === "Tutti" ? 1 : Math.ceil(filteredCatalog.length / pageSize);
@@ -299,27 +318,43 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
 
                 return (
                   <AppCard key={ex.id}>
-                    {/* ── Anteprima disegno full-width (premium) o thumbnail locked (free) ── */}
-                    {(ex.tacticalBoard || ex.image) && (
-                      locked ? (
-                        /* Free: piccolo thumbnail con lucchetto */
-                        <div style={{ ...libStyles.thumb, width: "100%", height: 80, marginBottom: 14, cursor: "default" }}>
-                          <img src={ex.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          <div style={libStyles.thumbOverlay}>🔒</div>
-                        </div>
-                      ) : (
-                        /* Premium/Owner: anteprima cliccabile full-width */
+                    {/* ── Anteprima disegno: sempre visibile per FP5; locked/premium per altri ── */}
+                    {(() => {
+                      const isFp5 = ex.source === "fp5";
+                      const hasDiagram = isFp5 || ex.tacticalBoard || ex.image;
+                      if (!hasDiagram) return null;
+
+                      const svgMarkup = isFp5 ? exImage(ex) : null;
+                      const openLightbox = () => {
+                        if (isFp5 && svgMarkup) {
+                          setLightboxSrc(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`);
+                        } else {
+                          setLightboxSrc(ex.image || null);
+                        }
+                      };
+
+                      if (locked) {
+                        return (
+                          <div style={{ ...libStyles.thumb, width: "100%", height: 80, marginBottom: 14, cursor: "default", borderRadius: 10, overflow: "hidden" }}>
+                            {svgMarkup
+                              ? <div dangerouslySetInnerHTML={{ __html: svgMarkup }} style={{ width: "100%", height: "100%", filter: "blur(1px) brightness(0.6)", pointerEvents: "none" }} />
+                              : <img src={ex.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                            <div style={libStyles.thumbOverlay}>🔒</div>
+                          </div>
+                        );
+                      }
+
+                      return (
                         <div
                           style={{ marginBottom: 14, borderRadius: 12, overflow: "hidden", cursor: "zoom-in", position: "relative" }}
-                          onClick={() => setLightboxSrc(ex.image || null)}
+                          onClick={openLightbox}
                           title="Clicca per ingrandire"
                         >
-                          <TacticalMiniPreview
-                            board={ex.tacticalBoard || null}
-                            imageSrc={ex.image || null}
-                            height={180}
-                          />
-                          {/* Hint ingrandimento */}
+                          {ex.tacticalBoard
+                            ? <TacticalMiniPreview board={ex.tacticalBoard} height={180} />
+                            : svgMarkup
+                              ? <div dangerouslySetInnerHTML={{ __html: svgMarkup }} style={{ width: "100%", lineHeight: 0 }} />
+                              : <TacticalMiniPreview imageSrc={ex.image} height={180} />}
                           <span style={{
                             position: "absolute", bottom: 8, right: 8,
                             background: "rgba(0,0,0,0.5)", color: "white",
@@ -328,8 +363,8 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
                             🔍 Ingrandisci
                           </span>
                         </div>
-                      )
-                    )}
+                      );
+                    })()}
 
                     {/* Header titolo/badge */}
                     <div style={libStyles.cardHead}>
@@ -376,23 +411,36 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
                       </div>
                     ) : (
                       <>
-                        {ex.description && (
-                          <div style={{ marginTop: 12 }}>
-                            <p style={{ margin: 0, fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
-                              {isExpanded || ex.description.length <= 160
-                                ? ex.description
-                                : `${ex.description.slice(0, 160)}…`}
-                            </p>
-                            {ex.description.length > 160 && (
-                              <button
-                                onClick={() => setExpandedId(isExpanded ? null : ex.id)}
-                                style={libStyles.expandBtn}
-                              >
-                                {isExpanded ? "Mostra meno ▲" : "Mostra tutto ▼"}
-                              </button>
-                            )}
-                          </div>
-                        )}
+                        {(() => {
+                          const desc = exDesc(ex);
+                          if (!desc) return null;
+                          // Format multi-line description (Setup / Svolgimento / Obiettivo)
+                          const lines = desc.split("\n").filter(Boolean);
+                          const isMultiline = lines.length > 1;
+                          const renderDesc = isMultiline
+                            ? lines.map((line, i) => {
+                                const [label, ...rest] = line.split(":");
+                                const body = rest.join(":").trim();
+                                return (
+                                  <p key={i} style={{ margin: "0 0 5px", fontSize: 13, color: "#cbd5e1", lineHeight: 1.55 }}>
+                                    <strong style={{ color: "#94a3b8" }}>{label}:</strong> {body}
+                                  </p>
+                                );
+                              })
+                            : <p style={{ margin: 0, fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
+                                {isExpanded || desc.length <= 160 ? desc : `${desc.slice(0, 160)}…`}
+                              </p>;
+                          return (
+                            <div style={{ marginTop: 12 }}>
+                              {isExpanded || isMultiline ? renderDesc : renderDesc}
+                              {!isMultiline && desc.length > 160 && (
+                                <button onClick={() => setExpandedId(isExpanded ? null : ex.id)} style={libStyles.expandBtn}>
+                                  {isExpanded ? "Mostra meno ▲" : "Mostra tutto ▼"}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {/* Dettagli */}
                         <div style={libStyles.details}>
