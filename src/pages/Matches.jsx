@@ -49,9 +49,9 @@ function Matches({ matches, setMatches, players = [] }) {
     };
 
     if (editingId) {
-      setMatches(matches.map((m) => (m.id === editingId ? payload : m)));
+      setMatches((prevMatches) => prevMatches.map((m) => (m.id === editingId ? payload : m)));
     } else {
-      setMatches([...matches, payload]);
+      setMatches((prevMatches) => [...prevMatches, payload]);
     }
 
     setForm(emptyMatch());
@@ -87,7 +87,7 @@ function Matches({ matches, setMatches, players = [] }) {
       confirmLabel: "Elimina",
       confirmTone: "red",
       onConfirm: () => {
-        setMatches(matches.filter((match) => match.id !== id));
+        setMatches((prevMatches) => prevMatches.filter((match) => match.id !== id));
         showToast("Partita eliminata", "info");
       },
     });

@@ -3,6 +3,8 @@ import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { createId } from "../utils/helpers";
 import { useAppSettings } from "../hooks/useAppSettings";
@@ -26,6 +28,8 @@ export default function CoachSettings({ appSettings, setAppSettings }) {
   const metrics    = settings.physicalMetrics;
 
   const [newMetric, setNewMetric] = useState({ label: "", unit: "", higherIsBetter: true, icon: "📌" });
+  const [confirmState, setConfirmState] = useState(null);
+  const { showToast, ToastContainer } = useToast();
 
   function updateMetrics(updated) {
     setAppSettings({ ...settings, physicalMetrics: updated });
@@ -36,12 +40,19 @@ export default function CoachSettings({ appSettings, setAppSettings }) {
   }
 
   function deleteCustomMetric(key) {
-    if (!confirm("Eliminare questa metrica?")) return;
-    updateMetrics(metrics.filter((m) => m.key !== key));
+    setConfirmState({
+      message: "Eliminare questa metrica?",
+      confirmLabel: "Elimina",
+      confirmTone: "red",
+      onConfirm: () => updateMetrics(metrics.filter((m) => m.key !== key)),
+    });
   }
 
   function addCustomMetric() {
-    if (!newMetric.label.trim()) return alert("Inserisci un nome per la metrica");
+    if (!newMetric.label.trim()) {
+      showToast("Inserisci un nome per la metrica", "warn");
+      return;
+    }
     const key = `custom_${createId("m")}`;
     updateMetrics([...metrics, { ...newMetric, key, enabled: true, custom: true }]);
     setNewMetric({ label: "", unit: "", higherIsBetter: true, icon: "📌" });
@@ -69,6 +80,8 @@ export default function CoachSettings({ appSettings, setAppSettings }) {
 
   return (
     <div style={styles.page}>
+      <ToastContainer />
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
         title="Parametri Coach"
         subtitle="Personalizza preparazione, soglie fisiche e dashboard iniziale"
@@ -233,7 +246,7 @@ export default function CoachSettings({ appSettings, setAppSettings }) {
             </div>
           ))}
         </div>
-        <Button variant="ghost" onClick={() => alert("Editor avanzato blocchi in arrivo")}>
+        <Button variant="ghost" onClick={() => showToast("Editor avanzato blocchi in arrivo", "info")}>
           Personalizza blocchi
         </Button>
       </AppCard>

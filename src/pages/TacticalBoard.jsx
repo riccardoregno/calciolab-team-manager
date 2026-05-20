@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { DndContext, useDraggable } from "@dnd-kit/core";
 import AppCard from "../components/ui/AppCard";
 import PageHeader from "../components/ui/PageHeader";
+import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { ArrowRight, Move, Pause, Play, Plus, Undo2 } from "lucide-react";
 import { emptyExercise } from "../data/initialData";
@@ -518,9 +519,10 @@ function interpolateItems(fromItems = [], toItems = [], progress = 1) {
   });
 }
 
-export default function TacticalBoard({ players = [], exercises = [], setExercises }) {
+export default function TacticalBoard({ players = [], setExercises }) {
   const navigate   = useNavigate();
   const location   = useLocation();
+  const { showToast, ToastContainer } = useToast();
 
   // Quando si arriva da Exercises con ?edit=<exerciseId>
   const editingExerciseId   = location.state?.exerciseId   ?? null;
@@ -1061,7 +1063,10 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
   // ─── Schema save / load ───────────────────────────────────────────────────────
   function saveCurrentSchema() {
     const name = schemaName.trim();
-    if (!name) { alert("Inserisci un nome per lo schema"); return; }
+    if (!name) {
+      showToast("Inserisci un nome per lo schema", "warn");
+      return;
+    }
     const schema = {
       id: `schema-${Date.now()}`,
       name,
@@ -1120,14 +1125,14 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
 
     if (editingExerciseId && setExercises) {
       // Aggiorna il disegno su un esercizio esistente
-      setExercises(
-        exercises.map((ex) =>
+      setExercises((prevExercises) =>
+        prevExercises.map((ex) =>
           ex.id === editingExerciseId
             ? { ...ex, tacticalBoard: boardSnapshot }
             : ex
         )
       );
-      setExFeedback({ ok: true, text: `Disegno salvato in "${name}". Torna agli esercizi per completarlo.` });
+      setExFeedback({ ok: true, text: `Disegno salvato in "${name}". Torna all'Eserciziario per completarlo.` });
     } else if (setExercises) {
       // Crea un nuovo esercizio con il disegno incorporato
       const newExercise = {
@@ -1136,8 +1141,8 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
         title:        name,
         tacticalBoard: boardSnapshot,
       };
-      setExercises([...exercises, newExercise]);
-      setExFeedback({ ok: true, text: `Esercizio "${name}" creato! Vai agli esercizi per aggiungere descrizione e dettagli.` });
+      setExercises((prevExercises) => [...prevExercises, newExercise]);
+      setExFeedback({ ok: true, text: `Esercizio "${name}" creato! Vai all'Eserciziario per aggiungere descrizione e dettagli.` });
     }
   }
 
@@ -1237,6 +1242,7 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
 
   return (
     <div>
+      <ToastContainer />
       <PageHeader
         title="Lavagna tattica"
         subtitle="Costruisci struttura, principi, rotazioni e distinta gara in un unico ambiente professionale."
@@ -1250,10 +1256,10 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
           </span>
           <button
             type="button"
-            onClick={() => navigate("/exercises")}
+            onClick={() => navigate("/exercise-library?tab=miei")}
             style={exStyles.bannerBack}
           >
-            ← Torna agli esercizi
+            ← Torna all'Eserciziario
           </button>
         </div>
       )}
@@ -1293,7 +1299,7 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
             <p style={{ color: "#94a3b8", margin: "0 0 18px", fontSize: 13, lineHeight: 1.5 }}>
               {editingExerciseId
                 ? `Il disegno corrente della lavagna verrà salvato nell'esercizio "${editingExerciseName}".`
-                : "La lavagna corrente (giocatori, linee e oggetti) verrà associata a un nuovo esercizio nella libreria."}
+                : "La lavagna corrente (giocatori, linee e oggetti) verrà associata a un nuovo esercizio nell'Eserciziario."}
             </p>
             {!editingExerciseId && (
               <input
@@ -1315,8 +1321,8 @@ export default function TacticalBoard({ players = [], exercises = [], setExercis
                 Annulla
               </button>
               {exFeedback?.ok ? (
-                <button type="button" onClick={() => navigate("/exercises")} style={exStyles.btnPrimary}>
-                  Vai agli esercizi →
+                <button type="button" onClick={() => navigate("/exercise-library?tab=miei")} style={exStyles.btnPrimary}>
+                  Vai all'Eserciziario →
                 </button>
               ) : (
                 <button type="button" onClick={exportToExercise} style={exStyles.btnPrimary}>

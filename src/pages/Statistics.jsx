@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../components/ui/PageHeader";
@@ -7,15 +7,12 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 
-import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend, Cell,
-} from "recharts";
-
 import { formatDate, normalizeAppSettings } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { loadAllPlayerStats, loadPlayerMatches } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
+
+const StatisticsCharts = lazy(() => import("../components/statistics/StatisticsCharts"));
 
 function Statistics({ events, players, appSettings = {}, setAppSettings }) {
   const auth = useAuth();
@@ -39,10 +36,12 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
   );
 
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 640);
+  const [isNarrow, setIsNarrow] = useState(() => window.innerWidth <= 1024);
 
   useEffect(() => {
     function handleResize() {
       setIsMobile(window.innerWidth <= 640);
+      setIsNarrow(window.innerWidth <= 1024);
     }
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -254,6 +253,7 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
   const topScorer = [...stats].sort((a, b) => b.goals - a.goals)[0];
   const mostMinutes = [...stats].sort((a, b) => b.minutes - a.minutes)[0];
   const coachInsights = useMemo(() => getCoachInsights(stats), [stats]);
+  const teamSummary = useMemo(() => getTeamSummary(stats), [stats]);
   const compareStats = comparePlayerIds
     .filter(Boolean)
     .map((id) => stats.find((player) => String(player.id) === String(id)))
@@ -261,7 +261,7 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
 
   if (players.length === 0) {
     return (
-      <div style={styles.page}>
+      <div style={{ ...styles.page, ...s.page }}>
         <PageHeader
           title="Statistiche"
           subtitle="Database stagione e rendimento giocatori"
@@ -276,13 +276,13 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
   }
 
   return (
-    <div style={styles.page}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+    <div style={{ ...styles.page, ...s.page }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, minWidth: 0 }}>
         <PageHeader
           title="Statistiche"
           subtitle="Analizza rendimento, minutaggio e storico stagione"
         />
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end", minWidth: 0, maxWidth: "100%" }}>
           {/* FIX #10: badge fonte dati — l'utente sa se sta vedendo dati Supabase o locali */}
           <Badge tone={statsSource === "supabase" ? "green" : "orange"}>
             {statsSource === "supabase" ? "📊 Dati cloud" : "💾 Dati locali"}
@@ -300,6 +300,33 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
         <KpiCard label="Giocatori" value={players.length} icon="👥" accent="#a78bfa" />
         <KpiCard label="Gol top scorer" value={topScorer?.goals || 0} icon="⚽" accent="#4ade80" />
         <KpiCard label="Minuti top" value={mostMinutes?.minutes || 0} icon="⏱️" accent="#fbbf24" />
+      </div>
+
+      <div style={s.summaryGrid}>
+        <SummaryCard
+          label="Produzione offensiva"
+          value={`${teamSummary.goals} G · ${teamSummary.assists} A`}
+          detail={`${teamSummary.goalContributions} contributi totali`}
+          accent="#4ade80"
+        />
+        <SummaryCard
+          label="Carico gara"
+          value={`${teamSummary.minutes} min`}
+          detail={`${teamSummary.avgMinutesPerPlayer} min medi per giocatore`}
+          accent="#fbbf24"
+        />
+        <SummaryCard
+          label="Presenza allenamenti"
+          value={teamSummary.avgTrainingPct !== null ? `${teamSummary.avgTrainingPct}%` : "—"}
+          detail={`${teamSummary.trainingPlayers} giocatori con dati registrati`}
+          accent="#38bdf8"
+        />
+        <SummaryCard
+          label="Disponibilità"
+          value={`${teamSummary.available}/${teamSummary.totalPlayers}`}
+          detail={`${teamSummary.notAvailable} da monitorare`}
+          accent={teamSummary.notAvailable > 0 ? "#fb7185" : "#22c55e"}
+        />
       </div>
 
       {coachInsights.some((i) => i.name !== "N/D") && (
@@ -321,7 +348,9 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
       )}
 
       {/* ── Grafici ── */}
-      <StatisticsCharts stats={stats} history={history} selectedPlayer={selectedPlayer} />
+      <Suspense fallback={<div style={s.chartFallback}>Caricamento grafici...</div>}>
+        <StatisticsCharts stats={stats} history={history} selectedPlayer={selectedPlayer} />
+      </Suspense>
 
       {/* ── Filtri ── */}
       <AppCard>
@@ -416,7 +445,7 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
                 key={slot}
                 value={comparePlayerIds[slot] || ""}
                 onChange={(event) => updateComparePlayer(slot, event.target.value)}
-                style={{ ...styles.input, minWidth: 160, height: 38, fontSize: 13 }}
+              style={{ ...styles.input, minWidth: isMobile ? 0 : 160, width: isMobile ? "100%" : undefined, height: 38, fontSize: 13 }}
               >
                 <option value="">{slot < 2 ? "Seleziona" : "Aggiungi"}</option>
                 {players.map((player) => (
@@ -466,10 +495,11 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
       </AppCard>
 
       {/* ── Griglia principale ── */}
-      <div style={s.mainGrid}>
+      <div style={{ ...s.mainGrid, ...(isNarrow ? s.mainGridStack : null) }}>
 
         {/* ── Tabella giocatori ── */}
-        <AppCard>
+        <div style={s.mainColumn}>
+        <AppCard style={{ minWidth: 0, overflow: "hidden" }}>
           <div style={s.tableHeader}>
             <div>
               <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2 }}>Riepilogo giocatori</h3>
@@ -484,7 +514,7 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
                   setSortBy(e.target.value);
                   setSortOrder(e.target.value === "name" ? "asc" : "desc");
                 }}
-                style={{ ...styles.input, minWidth: 170, height: 38, padding: "0 12px", fontSize: 13 }}
+                style={{ ...styles.input, minWidth: isMobile ? 0 : 170, width: isMobile ? "100%" : undefined, height: 38, padding: "0 12px", fontSize: 13 }}
               >
                 <option value="goals">Ordina: Gol</option>
                 <option value="assists">Ordina: Assist</option>
@@ -520,7 +550,7 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              style={{ ...styles.input, width: "auto", minWidth: 150 }}
+              style={{ ...styles.input, width: isMobile ? "100%" : "auto", minWidth: isMobile ? 0 : 150 }}
             >
               <option>Tutti</option>
               <option>Portieri</option>
@@ -619,9 +649,9 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
             <span>{stats.length} giocator{stats.length === 1 ? "e" : "i"} visualizzat{stats.length === 1 ? "o" : "i"}</span>
           </div>
 
-          {/* Tabella / Card mobile */}
-          {isMobile ? (
-            <div style={{ display: "grid", gap: 10 }}>
+          {/* Tabella desktop / card mobile-tablet */}
+          {isNarrow ? (
+            <div style={s.mobileCardsGrid}>
               {stats.length === 0 && (
                 <div style={s.emptyTable}>
                   Nessun giocatore corrisponde ai filtri attivi.
@@ -635,13 +665,10 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
                     key={row.id}
                     onClick={() => {
                       setSelectedPlayerId(row.id);
-                      navigate(`/player/${row.id}`);
+                      navigate(`/players/${row.id}`);
                     }}
                     style={{
-                      width: "100%",
-                      textAlign: "left",
-                      borderRadius: 14,
-                      padding: "14px 16px",
+                      ...s.mobilePlayerCard,
                       background: isTopScorer
                         ? "rgba(34,197,94,0.08)"
                         : isTopMinutes
@@ -652,8 +679,6 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
                         : isTopMinutes
                         ? "1px solid rgba(234,179,8,0.3)"
                         : "1px solid rgba(255,255,255,0.08)",
-                      color: "white",
-                      cursor: "pointer",
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
@@ -705,7 +730,7 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
               })}
             </div>
           ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div style={s.tableScroll}>
             <div style={s.table}>
               {/* Header */}
               <div style={s.colHeader}>
@@ -794,7 +819,7 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
                     key={row.id}
                     onClick={() => {
                       setSelectedPlayerId(row.id);
-                      navigate(`/player/${row.id}`);
+                       navigate(`/players/${row.id}`);
                     }}
                     style={{
                       ...s.tableRow,
@@ -880,9 +905,10 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
           </div>
           )}
         </AppCard>
+        </div>
 
         {/* ── Colonna destra ── */}
-        <div style={{ display: "grid", gap: 18 }}>
+        <div style={s.sideColumn}>
 
           {/* Scheda rapida */}
           <AppCard>
@@ -983,127 +1009,6 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
   );
 }
 
-// ── Charts ───────────────────────────────────────────────────────────────────
-
-const CHART_TOOLTIP_STYLE = {
-  contentStyle: {
-    background: "#0f172a",
-    border: "1px solid rgba(255,255,255,0.12)",
-    borderRadius: 10,
-    fontSize: 12,
-    color: "#e2e8f0",
-  },
-  cursor: { fill: "rgba(255,255,255,0.04)" },
-};
-
-function StatisticsCharts({ stats, history, selectedPlayer }) {
-  // Dati grafico 1: top 10 per gol+assist
-  const topScorers = [...stats]
-    .filter((p) => p.goals > 0 || p.assists > 0)
-    .sort((a, b) => b.goalContributions - a.goalContributions)
-    .slice(0, 10)
-    .map((p) => ({ name: p.name.split(" ")[0], goals: p.goals, assists: p.assists }));
-
-  // Dati grafico 2: minutaggio nel tempo del giocatore selezionato
-  const minutesHistory = [...history]
-    .filter((h) => h.minutes > 0)
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .map((h) => ({
-      date: h.date?.slice(5), // MM-DD
-      min: h.minutes,
-      type: h.type === "Partita" ? "⚽" : "📋",
-    }));
-
-  // Dati grafico 3: % presenze allenamenti top 12
-  const attendanceData = [...stats]
-    .filter((p) => p.trainingPct !== null)
-    .sort((a, b) => b.trainingPct - a.trainingPct)
-    .slice(0, 12)
-    .map((p) => ({
-      name: p.name.split(" ")[0],
-      pct: p.trainingPct,
-    }));
-
-  if (topScorers.length === 0 && minutesHistory.length === 0 && attendanceData.length === 0) {
-    return null;
-  }
-
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
-
-      {/* Grafico 1 — Gol + Assist */}
-      {topScorers.length > 0 && (
-        <AppCard>
-          <p style={s.sectionLabel}>Gol + Assist</p>
-          <h3 style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.2 }}>Top marcatori stagione</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={topScorers} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip {...CHART_TOOLTIP_STYLE} />
-              <Legend wrapperStyle={{ fontSize: 12, color: "#94a3b8" }} />
-              <Bar dataKey="goals" name="Gol" stackId="a" fill="#4ade80" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="assists" name="Assist" stackId="a" fill="#38bdf8" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </AppCard>
-      )}
-
-      {/* Grafico 2 — Minutaggio nel tempo */}
-      {minutesHistory.length > 1 && (
-        <AppCard>
-          <p style={s.sectionLabel}>Minutaggio nel tempo</p>
-          <h3 style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.2 }}>
-            {selectedPlayer?.name || "Giocatore"} — minuti per evento
-          </h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={minutesHistory} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip {...CHART_TOOLTIP_STYLE} formatter={(v) => [`${v} min`, "Minuti"]} />
-              <Line
-                type="monotone"
-                dataKey="min"
-                stroke="#a78bfa"
-                strokeWidth={2.5}
-                dot={{ r: 3, fill: "#a78bfa", strokeWidth: 0 }}
-                activeDot={{ r: 5, fill: "#a78bfa" }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </AppCard>
-      )}
-
-      {/* Grafico 3 — % Presenze allenamenti */}
-      {attendanceData.length > 0 && (
-        <AppCard>
-          <p style={s.sectionLabel}>Presenze allenamenti</p>
-          <h3 style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.2 }}>% partecipazione per giocatore</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={attendanceData} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 100]} tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} unit="%" />
-              <Tooltip {...CHART_TOOLTIP_STYLE} formatter={(v) => [`${v}%`, "Presenze"]} />
-              <Bar dataKey="pct" name="% Presenze" radius={[4, 4, 0, 0]}>
-                {attendanceData.map((entry) => (
-                  <Cell
-                    key={entry.name}
-                    fill={entry.pct >= 80 ? "#22c55e" : entry.pct >= 60 ? "#fbbf24" : "#f87171"}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </AppCard>
-      )}
-
-    </div>
-  );
-}
-
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function KpiCard({ icon, label, value, accent = "#38bdf8" }) {
@@ -1133,6 +1038,17 @@ function KpiCard({ icon, label, value, accent = "#38bdf8" }) {
         </div>
       </div>
     </AppCard>
+  );
+}
+
+function SummaryCard({ label, value, detail, accent = "#38bdf8" }) {
+  return (
+    <div style={{ ...s.summaryCard, borderColor: `${accent}33`, background: `linear-gradient(135deg, ${accent}14, rgba(255,255,255,0.035))` }}>
+      <div style={{ ...s.summaryAccent, background: accent }} />
+      <p style={s.summaryLabel}>{label}</p>
+      <strong style={s.summaryValue}>{value}</strong>
+      <span style={s.summaryDetail}>{detail}</span>
+    </div>
   );
 }
 
@@ -1294,6 +1210,43 @@ function getCoachInsights(stats) {
   ];
 }
 
+function getTeamSummary(stats) {
+  const totals = stats.reduce(
+    (acc, player) => {
+      acc.totalPlayers += 1;
+      acc.goals += Number(player.goals || 0);
+      acc.assists += Number(player.assists || 0);
+      acc.goalContributions += Number(player.goalContributions || 0);
+      acc.minutes += Number(player.minutes || 0);
+      acc.available += player.status === "Disponibile" ? 1 : 0;
+
+      if (player.trainingPct !== null && player.trainingPct !== undefined) {
+        acc.trainingPctSum += Number(player.trainingPct || 0);
+        acc.trainingPlayers += 1;
+      }
+
+      return acc;
+    },
+    {
+      totalPlayers: 0,
+      goals: 0,
+      assists: 0,
+      goalContributions: 0,
+      minutes: 0,
+      available: 0,
+      trainingPctSum: 0,
+      trainingPlayers: 0,
+    }
+  );
+
+  return {
+    ...totals,
+    avgMinutesPerPlayer: totals.totalPlayers ? Math.round(totals.minutes / totals.totalPlayers) : 0,
+    avgTrainingPct: totals.trainingPlayers ? Math.round(totals.trainingPctSum / totals.trainingPlayers) : null,
+    notAvailable: Math.max(0, totals.totalPlayers - totals.available),
+  };
+}
+
 function getStatsSummary(events, players, playerStatsMap = {}) {
   // Calcola il totale delle sedute di allenamento (non partite)
   const trainingSessions = events.filter((e) => e.type !== "Partita");
@@ -1445,17 +1398,27 @@ function getPlayerHistory(events, player, playerMatchesDB = []) {
 // ── Stili ─────────────────────────────────────────────────────────────────────
 
 const s = {
+  page: {
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
+    overflowX: "hidden",
+    boxSizing: "border-box",
+  },
+
   // Coach Insights
   insightsGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))",
     gap: 14,
     marginBottom: 20,
+    minWidth: 0,
   },
   insightCard: {
     display: "flex",
     alignItems: "flex-start",
     gap: 14,
+    minWidth: 0,
   },
   insightIcon: {
     fontSize: 26,
@@ -1495,16 +1458,89 @@ const s = {
   // Layout
   kpiGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))",
     gap: 16,
+    marginBottom: 20,
+    minWidth: 0,
+  },
+  summaryGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(190px, 100%), 1fr))",
+    gap: 12,
+    marginBottom: 20,
+    minWidth: 0,
+  },
+  summaryCard: {
+    position: "relative",
+    overflow: "hidden",
+    border: "1px solid",
+    borderRadius: 14,
+    padding: "14px 16px 14px 18px",
+  },
+  summaryAccent: {
+    position: "absolute",
+    left: 0,
+    top: 12,
+    bottom: 12,
+    width: 3,
+    borderRadius: 999,
+  },
+  summaryLabel: {
+    margin: "0 0 8px",
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+  },
+  summaryValue: {
+    display: "block",
+    color: "#f8fafc",
+    fontSize: 22,
+    fontWeight: 950,
+    lineHeight: 1.05,
+  },
+  summaryDetail: {
+    display: "block",
+    marginTop: 6,
+    color: "#64748b",
+    fontSize: 12,
+    lineHeight: 1.35,
+  },
+  chartFallback: {
+    minHeight: 120,
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.035)",
+    display: "grid",
+    placeItems: "center",
+    color: "#64748b",
+    fontSize: 13,
+    fontWeight: 800,
     marginBottom: 20,
   },
   mainGrid: {
     display: "grid",
-    gridTemplateColumns: "1.5fr 0.75fr",
+    gridTemplateColumns: "minmax(0, 1.5fr) minmax(280px, 0.75fr)",
     gap: 20,
     alignItems: "start",
     marginTop: 20,
+    maxWidth: "100%",
+    minWidth: 0,
+  },
+  mainGridStack: {
+    gridTemplateColumns: "minmax(0, 1fr)",
+  },
+  mainColumn: {
+    minWidth: 0,
+    maxWidth: "100%",
+    overflow: "hidden",
+  },
+  sideColumn: {
+    display: "grid",
+    gap: 18,
+    minWidth: 0,
+    maxWidth: "100%",
   },
 
   // Filtri
@@ -1518,9 +1554,10 @@ const s = {
   },
   filtersGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(170px, 100%), 1fr))",
     gap: 12,
     alignItems: "end",
+    minWidth: 0,
   },
   filterLabel: {
     display: "flex",
@@ -1539,23 +1576,28 @@ const s = {
     gap: 14,
     flexWrap: "wrap",
     marginBottom: 16,
+    minWidth: 0,
   },
   compareSelectors: {
     display: "flex",
     gap: 10,
     flexWrap: "wrap",
     justifyContent: "flex-end",
+    minWidth: 0,
+    maxWidth: "100%",
   },
   compareGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(220px, 100%), 1fr))",
     gap: 12,
+    minWidth: 0,
   },
   compareCard: {
     borderRadius: 14,
     padding: 14,
     background: "rgba(255,255,255,0.045)",
     border: "1px solid rgba(255,255,255,0.08)",
+    minWidth: 0,
   },
   compareCardHeader: {
     display: "flex",
@@ -1566,8 +1608,9 @@ const s = {
   },
   compareMetrics: {
     display: "grid",
-    gridTemplateColumns: "repeat(3,1fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(72px, 1fr))",
     gap: 8,
+    minWidth: 0,
   },
   compareMetric: {
     borderRadius: 10,
@@ -1611,12 +1654,15 @@ const s = {
     marginBottom: 16,
     flexWrap: "wrap",
     gap: 12,
+    minWidth: 0,
   },
   tableHeaderActions: {
     display: "flex",
     gap: 10,
     alignItems: "center",
     flexWrap: "wrap",
+    minWidth: 0,
+    maxWidth: "100%",
   },
 
   // Barra ricerca
@@ -1626,6 +1672,7 @@ const s = {
     flexWrap: "wrap",
     gap: 10,
     marginBottom: 12,
+    minWidth: 0,
   },
   searchIcon: {
     position: "absolute",
@@ -1698,8 +1745,16 @@ const s = {
   },
 
   // Tabella dati
+  tableScroll: {
+    overflowX: "auto",
+    overflowY: "hidden",
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
+    WebkitOverflowScrolling: "touch",
+  },
   table: {
-    minWidth: 1160,
+    minWidth: 1040,
     display: "grid",
     gap: 6,
   },
@@ -1862,6 +1917,22 @@ const s = {
   },
 
   // Mobile card stats
+  mobileCardsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
+    gap: 12,
+    minWidth: 0,
+  },
+  mobilePlayerCard: {
+    width: "100%",
+    minWidth: 0,
+    textAlign: "left",
+    borderRadius: 14,
+    padding: "14px 16px",
+    color: "white",
+    cursor: "pointer",
+    transition: "border-color 0.15s, background 0.15s, transform 0.15s",
+  },
   mobileStatRow: {
     display: "flex",
     justifyContent: "space-between",

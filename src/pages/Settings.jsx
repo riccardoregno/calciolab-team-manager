@@ -8,6 +8,8 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import AuthPanel from "../components/auth/AuthPanel";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import {
   createId,
@@ -60,9 +62,13 @@ export default function Settings({
   const [activeTab, setActiveTab] = useState(
     TABS.some((tab) => tab.key === initialTab) ? initialTab : "account"
   );
+  const [confirmState, setConfirmState] = useState(null);
+  const { showToast, ToastContainer } = useToast();
 
   return (
     <div style={{ display: "grid", gap: 0 }}>
+      <ToastContainer />
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
         title="Impostazioni"
         subtitle="Account, parametri coach e profilo società in un unico posto."
@@ -98,7 +104,12 @@ export default function Settings({
       )}
 
       {activeTab === "coach" && (
-        <CoachTab appSettings={appSettings} setAppSettings={setAppSettings} />
+        <CoachTab
+          appSettings={appSettings}
+          setAppSettings={setAppSettings}
+          setConfirmState={setConfirmState}
+          showToast={showToast}
+        />
       )}
 
       {activeTab === "club" && (
@@ -419,7 +430,7 @@ const acctStyles = {
 /* ═══════════════════════════════════════════════════════════════
    TAB 2 — Coach parameters
 ═══════════════════════════════════════════════════════════════ */
-function CoachTab({ appSettings, setAppSettings }) {
+function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
   const settings   = useAppSettings(appSettings);
   const parameters = settings.coachParameters   || {};
   const metrics    = settings.physicalMetrics    || [];
@@ -437,12 +448,19 @@ function CoachTab({ appSettings, setAppSettings }) {
   }
 
   function deleteCustomMetric(key) {
-    if (!confirm("Eliminare questa metrica?")) return;
-    updateMetrics(metrics.filter((m) => m.key !== key));
+    setConfirmState({
+      message: "Eliminare questa metrica?",
+      confirmLabel: "Elimina",
+      confirmTone: "red",
+      onConfirm: () => updateMetrics(metrics.filter((m) => m.key !== key)),
+    });
   }
 
   function addCustomMetric() {
-    if (!newMetric.label.trim()) { alert("Inserisci un nome per la metrica"); return; }
+    if (!newMetric.label.trim()) {
+      showToast("Inserisci un nome per la metrica", "warn");
+      return;
+    }
     const key = `custom_${createId("m")}`;
     updateMetrics([...metrics, { ...newMetric, key, enabled: true, custom: true }]);
     setNewMetric({ label: "", unit: "", higherIsBetter: true, icon: "📌" });
@@ -627,7 +645,7 @@ function CoachTab({ appSettings, setAppSettings }) {
             </div>
           ))}
         </div>
-        <Button variant="ghost" onClick={() => alert("Editor avanzato blocchi in arrivo")}>
+        <Button variant="ghost" onClick={() => showToast("Editor avanzato blocchi in arrivo", "info")}>
           Personalizza blocchi
         </Button>
       </AppCard>

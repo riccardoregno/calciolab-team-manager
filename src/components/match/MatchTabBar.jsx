@@ -5,25 +5,56 @@ const TABS = [
     key: "convocazione",
     label: "Convocazione",
     path: (id) => `/match-convocation/${id}`,
+    getStatus(d) {
+      if (!d) return null;
+      if (d.convocazione?.published) return "done";
+      if (d.convocazione?.playerIds?.length > 0) return "draft";
+      return null;
+    },
+    getCount(d) {
+      const n = d?.convocazione?.playerIds?.length;
+      return n ? String(n) : null;
+    },
   },
   {
     key: "scheda",
     label: "Scheda Gara",
     path: (id) => `/match-day/${id}`,
+    getStatus(d) {
+      if (!d) return null;
+      if (d.lineup?.ready) return "done";
+      if (d.lineup?.starterIds?.length > 0) return "draft";
+      return null;
+    },
+    getCount(d) {
+      const n = d?.lineup?.starterIds?.length || 0;
+      return n > 0 ? `${n}/11` : null;
+    },
   },
   {
     key: "statistiche",
     label: "Statistiche",
     path: (id) => `/match-stats/${id}`,
+    getStatus: () => null,
+    getCount:  () => null,
   },
   {
     key: "postgara",
     label: "Post Gara",
     path: (id) => `/post-match/${id}`,
+    getStatus(d) {
+      if (!d) return null;
+      const r = d.postMatch || {};
+      const filled = Object.values(r).some(
+        (v) => typeof v === "string" && v.trim().length > 0
+      );
+      return filled ? "draft" : null;
+    },
+    getCount: () => null,
   },
 ];
 
-export default function MatchTabBar({ matchId, active, matchLabel }) {
+export default function MatchTabBar({ matchId, active, matchLabel, matchData }) {
   const navigate = useNavigate();
 
   if (!matchId) return null;
@@ -35,6 +66,8 @@ export default function MatchTabBar({ matchId, active, matchLabel }) {
       <div style={s.tabRow}>
         {TABS.map((tab) => {
           const isActive = active === tab.key;
+          const status   = tab.getStatus(matchData);
+          const count    = tab.getCount(matchData);
           return (
             <button
               key={tab.key}
@@ -46,6 +79,15 @@ export default function MatchTabBar({ matchId, active, matchLabel }) {
               }}
             >
               {tab.label}
+              {status === "done" && (
+                <span style={s.badgeDone}>✓</span>
+              )}
+              {status === "draft" && count && (
+                <span style={s.badgeDraft}>{count}</span>
+              )}
+              {status === "draft" && !count && (
+                <span style={s.dotDraft} />
+              )}
               {isActive && <span style={s.activeDot} />}
             </button>
           );
@@ -90,6 +132,9 @@ const s = {
     cursor: "pointer",
     transition: "background 0.18s, border-color 0.18s",
     lineHeight: 1.2,
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
   },
   tabActive: {
     background: "linear-gradient(135deg, rgba(56,189,248,0.22), rgba(37,99,235,0.16))",
@@ -110,5 +155,33 @@ const s = {
     height: 2,
     borderRadius: 2,
     background: "#38bdf8",
+  },
+  badgeDone: {
+    fontSize: 11,
+    fontWeight: 900,
+    color: "#22c55e",
+    background: "rgba(34,197,94,0.15)",
+    border: "1px solid rgba(34,197,94,0.3)",
+    borderRadius: 6,
+    padding: "1px 5px",
+    lineHeight: 1.4,
+  },
+  badgeDraft: {
+    fontSize: 11,
+    fontWeight: 900,
+    color: "#f59e0b",
+    background: "rgba(245,158,11,0.15)",
+    border: "1px solid rgba(245,158,11,0.3)",
+    borderRadius: 6,
+    padding: "1px 5px",
+    lineHeight: 1.4,
+  },
+  dotDraft: {
+    width: 7,
+    height: 7,
+    borderRadius: "50%",
+    background: "#f59e0b",
+    display: "inline-block",
+    flexShrink: 0,
   },
 };

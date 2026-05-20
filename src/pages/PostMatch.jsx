@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -16,15 +17,22 @@ export default function PostMatch({ matches = [], setMatches }) {
     ? matches.find((m) => String(m.id) === String(id))
     : [...matches].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
+  const [lastSaved, setLastSaved] = useState(null);
+  const saveTimerRef = useRef(null);
+
   function updateReport(field, value) {
     if (!match) return;
-    setMatches(
-      matches.map((item) =>
+    setMatches((prevMatches) =>
+      prevMatches.map((item) =>
         item.id === match.id
           ? { ...item, postMatch: { ...(item.postMatch || {}), [field]: value } }
           : item
       )
     );
+    // Feedback visivo auto-salvataggio
+    clearTimeout(saveTimerRef.current);
+    setLastSaved(null);
+    saveTimerRef.current = setTimeout(() => setLastSaved(Date.now()), 300);
   }
 
   if (!match) {
@@ -60,7 +68,14 @@ export default function PostMatch({ matches = [], setMatches }) {
         matchId={match.id}
         active="postgara"
         matchLabel={match.opponent ? `vs ${match.opponent}` : undefined}
+        matchData={match}
       />
+
+      {lastSaved && (
+        <div style={s.savedBanner}>
+          ✓ Modifiche salvate automaticamente
+        </div>
+      )}
 
       {/* Intestazione partita */}
       <AppCard>
@@ -201,6 +216,16 @@ const s = {
     display: "grid",
     gap: 8,
     marginTop: 10,
+  },
+  savedBanner: {
+    padding: "9px 16px",
+    borderRadius: 12,
+    background: "rgba(34,197,94,0.12)",
+    border: "1px solid rgba(34,197,94,0.28)",
+    color: "#86efac",
+    fontSize: 13,
+    fontWeight: 700,
+    lineHeight: 1.3,
   },
   matchBtn: {
     display: "flex",

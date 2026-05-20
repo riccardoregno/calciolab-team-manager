@@ -29,7 +29,7 @@ export const en = {
       availability: "Availability",
       physicalTests: "Physical tests",
       physicalWorkouts: "Physical workouts",
-      exercises: "Exercises",
+      exercises: "Exercise editor",
       exerciseLibrary: "Exercise library",
       trainings: "Sessions",
       aiBuilder: "Generate with AI",
@@ -53,7 +53,7 @@ export const en = {
     mobile: {
       home: "Home",
       roster: "Squad",
-      exercises: "Exercises",
+      exercises: "Library",
       trainings: "Sessions",
       matches: "Matches",
       calendar: "Calendar",

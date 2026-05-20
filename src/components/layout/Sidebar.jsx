@@ -30,10 +30,8 @@ const menuGroups = [
   {
     titleKey: "navigation.groups.field",
     items: [
-      { to: "/exercises", labelKey: "navigation.items.exercises", icon: "🎯", roles: technicalRoles },
       { to: "/exercise-library", labelKey: "navigation.items.exerciseLibrary", icon: "📚", roles: technicalRoles },
       { to: "/trainings", labelKey: "navigation.items.trainings", icon: "📋", roles: technicalRoles },
-      { to: "/ai-session-builder", labelKey: "navigation.items.aiBuilder", icon: "✨", featureKey: "aiSessionBuilder", roles: technicalRoles },
       { to: "/tactical-board", labelKey: "navigation.items.tacticalBoard", icon: "🧠", roles: technicalRoles },
     ],
   },

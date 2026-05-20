@@ -220,6 +220,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         matchId={id}
         active="statistiche"
         matchLabel={match.opponent ? `vs ${match.opponent}` : undefined}
+        matchData={match}
       />
 
       <AppCard>
@@ -248,11 +249,24 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       ) : convocati.length === 0 ? (
         <AppCard>
           <p style={s.muted}>
-            Nessun convocato trovato. Aggiungi titolari e panchina dalla{" "}
-            <button style={s.link} onClick={() => navigate(`/match-day/${id}`)}>
-              Scheda gara
-            </button>
-            .
+            Nessun giocatore in distinta.{" "}
+            {match?.convocazione?.playerIds?.length > 0 ? (
+              <>
+                Hai {match.convocazione.playerIds.length} convocati — vai alla{" "}
+                <button style={s.link} onClick={() => navigate(`/match-day/${id}`)}>
+                  Scheda gara
+                </button>
+                {" "}e usa <strong style={{ color: "#93c5fd" }}>«Importa convocati»</strong> per compilare la distinta in un click.
+              </>
+            ) : (
+              <>
+                Aggiungi titolari e panchina dalla{" "}
+                <button style={s.link} onClick={() => navigate(`/match-day/${id}`)}>
+                  Scheda gara
+                </button>
+                .
+              </>
+            )}
           </p>
         </AppCard>
       ) : (

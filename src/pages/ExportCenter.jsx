@@ -281,6 +281,7 @@ function MatchDayTemplate({ match, players }) {
               <tr>
                 <th>#</th>
                 <th>Giocatore</th>
+                <th>Anno</th>
                 <th>Ruolo</th>
                 <th>Note</th>
               </tr>
@@ -290,6 +291,7 @@ function MatchDayTemplate({ match, players }) {
                 <tr key={`${item.name || "opponent"}-${index}`}>
                   <td>{item.number || "-"}</td>
                   <td>{item.name || "-"}</td>
+                  <td>{item.birthYear || "-"}</td>
                   <td>{item.role || "-"}</td>
                   <td>{item.notes || "-"}</td>
                 </tr>
@@ -298,6 +300,9 @@ function MatchDayTemplate({ match, players }) {
           </table>
         ) : (
           <p>Nessuna distinta avversaria registrata.</p>
+        )}
+        {match.opponentScouting?.attachment && (
+          <PrintBox label="Allegato distinta" value={match.opponentScouting.attachment.name || "File caricato"} />
         )}
       </Section>
 

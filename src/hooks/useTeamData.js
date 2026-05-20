@@ -64,31 +64,58 @@ export function useTeamData({ teamId } = {}) {
   const actions = useMemo(
     () => ({
       setPlayers(players) {
-        setState((prev) => normalizeAppState({ ...prev, players }));
+        setState((prev) => normalizeAppState({
+          ...prev,
+          players: typeof players === "function" ? players(prev.players) : players,
+        }));
       },
       setExercises(exercises) {
-        setState((prev) => normalizeAppState({ ...prev, exercises }));
+        setState((prev) => normalizeAppState({
+          ...prev,
+          exercises: typeof exercises === "function" ? exercises(prev.exercises) : exercises,
+        }));
       },
       setSessions(sessions) {
-        setState((prev) => normalizeAppState({ ...prev, sessions }));
+        setState((prev) => normalizeAppState({
+          ...prev,
+          sessions: typeof sessions === "function" ? sessions(prev.sessions) : sessions,
+        }));
       },
       setMatches(matches) {
-        setState((prev) => normalizeAppState({ ...prev, matches }));
+        setState((prev) => normalizeAppState({
+          ...prev,
+          matches: typeof matches === "function" ? matches(prev.matches) : matches,
+        }));
       },
       setPhysicalTests(physicalTests) {
-        setState((prev) => normalizeAppState({ ...prev, physicalTests }));
+        setState((prev) => normalizeAppState({
+          ...prev,
+          physicalTests: typeof physicalTests === "function" ? physicalTests(prev.physicalTests) : physicalTests,
+        }));
       },
       setGpsSessions(gpsSessions) {
-        setState((prev) => normalizeAppState({ ...prev, gpsSessions }));
+        setState((prev) => normalizeAppState({
+          ...prev,
+          gpsSessions: typeof gpsSessions === "function" ? gpsSessions(prev.gpsSessions) : gpsSessions,
+        }));
       },
       setInjuryRecords(injuryRecords) {
-        setState((prev) => normalizeAppState({ ...prev, injuryRecords }));
+        setState((prev) => normalizeAppState({
+          ...prev,
+          injuryRecords: typeof injuryRecords === "function" ? injuryRecords(prev.injuryRecords) : injuryRecords,
+        }));
       },
       setAppSettings(appSettings) {
-        setState((prev) => normalizeAppState({ ...prev, appSettings }));
+        setState((prev) => normalizeAppState({
+          ...prev,
+          appSettings: typeof appSettings === "function" ? appSettings(prev.appSettings) : appSettings,
+        }));
       },
       setSetPlays(setPlays) {
-        setState((prev) => normalizeAppState({ ...prev, setPlays: normalizeSetPlays(setPlays) }));
+        setState((prev) => normalizeAppState({
+          ...prev,
+          setPlays: normalizeSetPlays(typeof setPlays === "function" ? setPlays(prev.setPlays) : setPlays),
+        }));
       },
       setState(updater) {
         setState((prev) =>

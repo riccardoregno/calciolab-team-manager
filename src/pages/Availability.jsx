@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import Modal from "../components/ui/Modal";
 import EmptyState from "../components/ui/EmptyState";
+import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { createId } from "../utils/helpers";
 
@@ -23,7 +25,58 @@ const STATUS_OPTIONS = [
   { value: "Squalificato",  color: "#a855f7", bg: "rgba(168,85,247,0.12)",  border: "rgba(168,85,247,0.3)"   },
 ];
 
+const DIFFERENTIATED_WORK_TYPES = [
+  "Defaticante",
+  "Recupero infortunio",
+  "Lavoro individuale",
+  "Rientro parziale in gruppo",
+  "Carico ridotto",
+];
+
 const UNAVAILABLE = STATUS_OPTIONS.map((s) => s.value);
+
+const PREVENTION_CARDS = [
+  {
+    title: "Distorsione caviglia",
+    tag: "Prevenzione",
+    tone: "#38bdf8",
+    points: [
+      "Propriocezione monopodalica e superfici instabili",
+      "Rinforzo peronei con elastici",
+      "Progressione da statico a cambi direzione",
+    ],
+  },
+  {
+    title: "Lesione muscolare coscia",
+    tag: "Prevenzione",
+    tone: "#38bdf8",
+    points: [
+      "Nordic Hamstring 2x/settimana",
+      "Monitoraggio spike di carico settimanale",
+      "Rientro sprint progressivo prima del gruppo pieno",
+    ],
+  },
+  {
+    title: "Pubalgia / adduttori",
+    tag: "Prevenzione",
+    tone: "#38bdf8",
+    points: [
+      "Copenhagen Adduction e core stability",
+      "Riduzione cambi direzione ad alta densità",
+      "Monitoraggio dolore inguinale post-seduta",
+    ],
+  },
+  {
+    title: "Recidiva muscolare",
+    tag: "Return to Play",
+    tone: "#22c55e",
+    points: [
+      "Progressione 50% → 75% → 100% intensità",
+      "Test funzionali senza dolore prima del contatto",
+      "Controllo carico individuale per 2 settimane",
+    ],
+  },
+];
 
 function getStatusStyle(status) {
   return STATUS_OPTIONS.find((s) => s.value === status) || { color: "#94a3b8", bg: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.1)" };
@@ -35,6 +88,7 @@ function emptyForm(players) {
     playerId:        firstAvailable?.id || "",
     status:          "Infortunato",
     injuryType:      "",
+    differentiatedType: "",
     injuryStartDate: new Date().toISOString().slice(0, 10),
     expectedReturn:  "",
     notes:           "",
@@ -57,17 +111,37 @@ function calcMissed(startDate, endDate, sessions, matches) {
   return { sessionsMissed, matchesMissed };
 }
 
+function getMedicalType(status, injuryType, differentiatedType) {
+  if (status === "Differenziato") {
+    return injuryType || differentiatedType || "Lavoro differenziato";
+  }
+  return injuryType || status || "Infortunio";
+}
+
 // ─────────────────────────────────────────────
 // Componente principale
 // ─────────────────────────────────────────────
 export default function Availability({ players = [], setPlayers, sessions = [], matches = [] }) {
+  const navigate = useNavigate();
+  const { showToast, ToastContainer } = useToast();
   const [openModal, setOpenModal]       = useState(false);
   const [editingPlayerId, setEditingPlayerId] = useState(null);
   const [form, setForm]                 = useState(() => emptyForm(players));
   const [historyPlayerId, setHistoryPlayerId] = useState(null);
+  const [recoveryPlayerId, setRecoveryPlayerId] = useState(null);
+  const [recoveryDate, setRecoveryDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const injuredPlayers = players.filter((p) => UNAVAILABLE.includes(p.status || "Disponibile"));
   const availablePlayers = players.filter((p) => !UNAVAILABLE.includes(p.status || "Disponibile"));
+  const recoveryPlayer = players.find((p) => String(p.id) === String(recoveryPlayerId));
+  const recoveryActiveInjury = (recoveryPlayer?.injuries || []).find((i) => !i.endDate);
+  const recoveryStartDate = recoveryActiveInjury?.startDate || recoveryPlayer?.injuryStartDate || "";
+  const recoveryStats = recoveryPlayer
+    ? calcMissed(recoveryStartDate, recoveryDate, sessions, matches)
+    : { sessionsMissed: 0, matchesMissed: 0 };
+  const recoveryDaysOut = recoveryStartDate
+    ? Math.max(0, Math.floor((new Date(recoveryDate) - new Date(recoveryStartDate)) / 86400000))
+    : 0;
 
   // ── Apri modal aggiungi
   function openAdd() {
@@ -85,6 +159,9 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
       playerId:        player.id,
       status:          player.status || "Infortunato",
       injuryType:      active?.injuryType || player.injuryType || "",
+      differentiatedType: player.status === "Differenziato"
+        ? active?.differentiatedType || player.differentiatedType || DIFFERENTIATED_WORK_TYPES[0]
+        : "",
       injuryStartDate: active?.startDate  || player.injuryStartDate || new Date().toISOString().slice(0, 10),
       expectedReturn:  player.expectedReturn || "",
       notes:           active?.notes || player.injuryNotes || "",
@@ -94,9 +171,16 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
 
   // ── Salva infortunio (nuovo o modifica)
   function saveInjury() {
-    if (!form.playerId) return alert("Seleziona un giocatore");
+    if (!form.playerId) {
+      showToast("Seleziona un giocatore", "warn");
+      return;
+    }
+    const differentiatedType = form.status === "Differenziato"
+      ? form.differentiatedType || DIFFERENTIATED_WORK_TYPES[0]
+      : "";
+    const medicalType = getMedicalType(form.status, form.injuryType, differentiatedType);
 
-    setPlayers(players.map((p) => {
+    setPlayers((prevPlayers) => prevPlayers.map((p) => {
       if (String(p.id) !== String(form.playerId)) return p;
 
       const existingInjuries = p.injuries || [];
@@ -106,13 +190,22 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
         return {
           ...p,
           status:          form.status,
-          injuryType:      form.injuryType,
+          injuryType:      medicalType,
+          differentiatedType,
           injuryStartDate: form.injuryStartDate,
           expectedReturn:  form.expectedReturn,
           injuryNotes:     form.notes,
           injuries: existingInjuries.map((inj) =>
             !inj.endDate
-              ? { ...inj, injuryType: form.injuryType, startDate: form.injuryStartDate, notes: form.notes }
+              ? {
+                  ...inj,
+                  status: form.status,
+                  injuryType: medicalType,
+                  differentiatedType,
+                  startDate: form.injuryStartDate,
+                  expectedReturn: form.expectedReturn,
+                  notes: form.notes,
+                }
               : inj
           ),
         };
@@ -120,7 +213,8 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
         // Nuovo infortunio — aggiungi a storico
         const newInjury = {
           id:          createId("injury"),
-          injuryType:  form.injuryType,
+          injuryType:  medicalType,
+          differentiatedType,
           status:      form.status,
           startDate:   form.injuryStartDate,
           endDate:     null,
@@ -132,7 +226,8 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
         return {
           ...p,
           status:          form.status,
-          injuryType:      form.injuryType,
+          injuryType:      medicalType,
+          differentiatedType,
           injuryStartDate: form.injuryStartDate,
           expectedReturn:  form.expectedReturn,
           injuryNotes:     form.notes,
@@ -144,22 +239,33 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
     setOpenModal(false);
   }
 
-  // ── Segna rientro: chiude l'infortunio attivo e aggiorna lo storico
-  function markRecovered(playerId) {
-    if (!confirm("Segni il giocatore come recuperato?")) return;
-    const today = new Date().toISOString().slice(0, 10);
+  function openRecovery(player) {
+    setRecoveryPlayerId(player.id);
+    setRecoveryDate(new Date().toISOString().slice(0, 10));
+  }
 
-    setPlayers(players.map((p) => {
+  function closeRecovery() {
+    setRecoveryPlayerId(null);
+  }
+
+  // ── Segna rientro: chiude l'infortunio attivo e aggiorna lo storico
+  function markRecovered(playerId, recoveredAt = new Date().toISOString().slice(0, 10)) {
+    const today = recoveredAt;
+
+    setPlayers((prevPlayers) => prevPlayers.map((p) => {
       if (String(p.id) !== String(playerId)) return p;
 
-      const activeInjury = (p.injuries || []).find((i) => !i.endDate);
+      const activeInjuries = (p.injuries || []).filter((i) => !i.endDate);
+      if (!activeInjuries.length) return p;
+
+      const activeInjury = activeInjuries[0];
       const { sessionsMissed, matchesMissed } = calcMissed(
-        activeInjury?.startDate || p.injuryStartDate,
+        activeInjury.startDate || p.injuryStartDate,
         today,
         sessions,
         matches
       );
-      const daysOut = activeInjury?.startDate
+      const daysOut = activeInjury.startDate
         ? Math.max(0, Math.floor((new Date(today) - new Date(activeInjury.startDate)) / 86400000))
         : 0;
 
@@ -167,6 +273,7 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
         ...p,
         status:          "Disponibile",
         injuryType:      "",
+        differentiatedType: "",
         injuryStartDate: "",
         expectedReturn:  "",
         injuryNotes:     "",
@@ -177,6 +284,7 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
         ),
       };
     }));
+    closeRecovery();
   }
 
   const selectablePlayers = players.filter(
@@ -185,6 +293,7 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
 
   return (
     <div style={styles.page}>
+      <ToastContainer />
       <PageHeader
         title="Infortuni"
         subtitle="Gestisci stop e recuperi. I giocatori qui sotto non sono disponibili per le sedute."
@@ -200,6 +309,32 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
         })}
         <div style={{ flex: 1 }} />
       </div>
+
+      <AppCard>
+        <div style={av.sectionHeader}>
+          <div>
+            <h3 style={av.sectionTitle}>Prevenzione e Return to Play</h3>
+            <p style={av.muted}>Schede rapide per gestire rischio ricaduta, recupero e lavoro individuale.</p>
+          </div>
+        </div>
+        <div style={av.preventionGrid}>
+          {PREVENTION_CARDS.map((card) => (
+            <div key={card.title} style={av.preventionCard}>
+              <div style={av.preventionTop}>
+                <strong style={av.preventionTitle}>{card.title}</strong>
+                <span style={{ ...av.preventionTag, color: card.tone, borderColor: `${card.tone}55`, background: `${card.tone}18` }}>
+                  {card.tag}
+                </span>
+              </div>
+              <ul style={av.preventionList}>
+                {card.points.map((point) => (
+                  <li key={point}>{point}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </AppCard>
 
       {/* Lista infortuni attivi */}
       {injuredPlayers.length === 0 ? (
@@ -238,6 +373,9 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
                 {/* Dettagli */}
                 <div style={av.details}>
                   {player.injuryType && <InfoRow icon="🏥" label="Tipo" value={player.injuryType} />}
+                  {player.status === "Differenziato" && player.differentiatedType && (
+                    <InfoRow icon="🏃" label="Lavoro" value={player.differentiatedType} />
+                  )}
                   {daysOut !== null && (
                     <InfoRow icon="📅" label="Stop iniziato" value={`${startDate} · ${daysOut === 0 ? "oggi" : `${daysOut} gg fa`}`} />
                   )}
@@ -266,17 +404,21 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
                     </button>
                   )}
                   <Button variant="ghost" onClick={() => openEdit(player)} style={{ flex: 1 }}>Modifica</Button>
-                  <Button onClick={() => markRecovered(player.id)} style={{ flex: 1 }}>Rientro</Button>
+                  <Button variant="ghost" onClick={() => navigate(`/players/${player.id}`)} style={{ flex: 1 }}>Scheda</Button>
+                  <Button onClick={() => openRecovery(player)} style={{ flex: 1 }}>Rientro</Button>
                 </div>
 
                 {/* Storico infortuni inline */}
                 {historyPlayerId === player.id && pastInjuries.length > 0 && (
                   <div style={av.historyBox}>
                     <p style={av.historyTitle}>Storico infortuni — {name}</p>
-                    {[...pastInjuries].reverse().map((inj) => (
-                      <div key={inj.id} style={av.historyRow}>
+                    {[...pastInjuries].reverse().map((inj, index) => (
+                      <div key={inj.id || `${inj.startDate}-${inj.injuryType}-${index}`} style={av.historyRow}>
                         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{inj.injuryType || "—"}</span>
+                          {inj.differentiatedType && (
+                            <span style={{ fontSize: 12, color: "#fbbf24" }}>{inj.differentiatedType}</span>
+                          )}
                           <span style={{ fontSize: 12, color: "#64748b" }}>{inj.startDate} → {inj.endDate}</span>
                         </div>
                         <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
@@ -323,13 +465,19 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
                       <button onClick={() => setHistoryPlayerId(historyPlayerId === player.id ? null : player.id)} style={av.historyBtn}>
                         {historyPlayerId === player.id ? "Chiudi" : "Dettaglio"}
                       </button>
+                      <button onClick={() => navigate(`/players/${player.id}`)} style={av.historyBtn}>
+                        Scheda
+                      </button>
                     </div>
                     {historyPlayerId === player.id && (
                       <div style={{ ...av.historyBox, gridColumn: "1 / -1", marginTop: 4 }}>
-                        {[...past].reverse().map((inj) => (
-                          <div key={inj.id} style={av.historyRow}>
+                        {[...past].reverse().map((inj, index) => (
+                          <div key={inj.id || `${inj.startDate}-${inj.injuryType}-${index}`} style={av.historyRow}>
                             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                               <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{inj.injuryType || "—"}</span>
+                              {inj.differentiatedType && (
+                                <span style={{ fontSize: 12, color: "#fbbf24" }}>{inj.differentiatedType}</span>
+                              )}
                               <span style={{ fontSize: 12, color: "#64748b" }}>{inj.startDate} → {inj.endDate}</span>
                             </div>
                             <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
@@ -373,7 +521,17 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
               <label style={av.fieldLabel}>Status</label>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {STATUS_OPTIONS.map((s) => (
-                  <button key={s.value} type="button" onClick={() => setForm({ ...form, status: s.value })} style={{
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => setForm({
+                      ...form,
+                      status: s.value,
+                      differentiatedType: s.value === "Differenziato"
+                        ? form.differentiatedType || DIFFERENTIATED_WORK_TYPES[0]
+                        : "",
+                    })}
+                    style={{
                     borderRadius: 9, padding: "7px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer",
                     color: form.status === s.value ? s.color : "#94a3b8",
                     background: form.status === s.value ? s.bg : "rgba(255,255,255,0.04)",
@@ -392,6 +550,21 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
                 {INJURY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+
+            {form.status === "Differenziato" && (
+              <div style={{ display: "grid", gap: 6 }}>
+                <label style={av.fieldLabel}>Tipologia lavoro differenziato</label>
+                <select
+                  value={form.differentiatedType}
+                  onChange={(e) => setForm({ ...form, differentiatedType: e.target.value })}
+                  style={styles.input}
+                >
+                  {DIFFERENTIATED_WORK_TYPES.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div style={{ display: "grid", gap: 6 }}>
@@ -415,6 +588,53 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
             <Button variant="ghost" onClick={() => setOpenModal(false)}>Annulla</Button>
             <Button onClick={saveInjury}>{editingPlayerId ? "Aggiorna" : "Aggiungi"}</Button>
+          </div>
+        </Modal>
+      )}
+
+      {recoveryPlayer && (
+        <Modal title="Conferma rientro" onClose={closeRecovery}>
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={av.recoverySummary}>
+              <div>
+                <p style={av.fieldLabel}>Giocatore</p>
+                <strong style={{ color: "#e2e8f0", fontSize: 18 }}>
+                  {[recoveryPlayer.firstName, recoveryPlayer.lastName].filter(Boolean).join(" ") || recoveryPlayer.name || "—"}
+                </strong>
+                <p style={av.muted}>
+                  {recoveryPlayer.injuryType || recoveryActiveInjury?.injuryType || "Stop attivo"}
+                  {recoveryPlayer.differentiatedType ? ` · ${recoveryPlayer.differentiatedType}` : ""}
+                </p>
+              </div>
+              <span style={{ ...av.badge, color: "#22c55e", border: "1px solid rgba(34,197,94,0.35)", background: "rgba(34,197,94,0.12)" }}>
+                Rientro
+              </span>
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
+              <label style={av.fieldLabel}>Data rientro</label>
+              <input
+                type="date"
+                value={recoveryDate}
+                onChange={(e) => setRecoveryDate(e.target.value)}
+                style={styles.input}
+              />
+            </div>
+
+            <div style={av.recoveryStats}>
+              <StatPill color="#94a3b8" label="giorni fuori" value={recoveryDaysOut} />
+              <StatPill color="#f87171" label="sedute saltate" value={recoveryStats.sessionsMissed} />
+              <StatPill color="#fb923c" label="partite saltate" value={recoveryStats.matchesMissed} />
+            </div>
+
+            <p style={{ ...av.muted, margin: 0 }}>
+              Il giocatore tornerà disponibile e lo stop attivo verrà chiuso nello storico medico.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
+            <Button variant="ghost" onClick={closeRecovery}>Annulla</Button>
+            <Button onClick={() => markRecovered(recoveryPlayer.id, recoveryDate)}>Conferma rientro</Button>
           </div>
         </Modal>
       )}
@@ -466,6 +686,16 @@ const av = {
   historyTitle:{ margin: "0 0 6px", fontSize: 13, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 0 },
   historyRow: { paddingBottom: 10, borderBottom: "1px solid rgba(255,255,255,0.05)" },
   pastPlayerRow: { display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "center", padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", flexWrap: "wrap" },
+  recoverySummary: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", padding: 14, borderRadius: 14, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.22)" },
+  recoveryStats: { display: "flex", gap: 10, flexWrap: "wrap", padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" },
   muted:      { color: "#64748b", margin: "3px 0 0", fontSize: 12, lineHeight: 1.35 },
   fieldLabel: { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0, color: "#64748b" },
+  sectionHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 14 },
+  sectionTitle: { margin: 0, color: "#f1f5f9", fontSize: 16, lineHeight: 1.2 },
+  preventionGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 },
+  preventionCard: { padding: 14, borderRadius: 13, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" },
+  preventionTop: { display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", marginBottom: 10 },
+  preventionTitle: { color: "#e2e8f0", fontSize: 13, lineHeight: 1.25 },
+  preventionTag: { border: "1px solid", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 900, textTransform: "uppercase", whiteSpace: "nowrap" },
+  preventionList: { margin: 0, paddingLeft: 18, color: "#94a3b8", fontSize: 12, lineHeight: 1.5, display: "grid", gap: 4 },
 };

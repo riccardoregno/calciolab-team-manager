@@ -100,8 +100,8 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
       published:   pub,
       publishedAt: pub ? (existing.publishedAt || new Date().toISOString()) : (existing.publishedAt || null),
     };
-    setMatches(
-      matches.map((m) =>
+    setMatches((prevMatches) =>
+      prevMatches.map((m) =>
         String(m.id) === String(id) ? { ...m, convocazione: newConv } : m
       )
     );
@@ -133,6 +133,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
         matchId={id}
         active="convocazione"
         matchLabel={match.opponent ? `vs ${match.opponent}` : undefined}
+        matchData={match}
       />
 
       {/* ── Barra stato ── */}

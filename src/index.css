@@ -23,6 +23,25 @@ textarea {
   font: inherit;
 }
 
+select {
+  color-scheme: dark;
+}
+
+select option,
+select optgroup {
+  background: #111827;
+  color: #f8fafc;
+}
+
+select option:checked {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+select option:disabled {
+  color: #64748b;
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,

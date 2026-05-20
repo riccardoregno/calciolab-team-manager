@@ -1,41 +1,97 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import PageHeader from "../components/ui/PageHeader";
-import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
-import Badge from "../components/ui/Badge";
+import Modal from "../components/ui/Modal";
 
+import {
+  PlayerDevelopmentTab,
+  PlayerKpiStrip,
+  PlayerMedicalTab,
+  PlayerPhysicalTab,
+  PlayerProfileTab,
+  PlayerSidebar,
+  PlayerStatsTab,
+  PlayerTabs,
+} from "../components/players/PlayerDetailSections";
+import { getPreventionRecommendations } from "../components/players/playerDetailLogic";
 import { styles } from "../styles/index.js";
-import { formatShortDate, getPhysicalReference, getPlayerSummary } from "../utils/helpers";
+import { createId, getPlayerSummary } from "../utils/helpers";
+
+const DIFFERENTIATED_TYPES = [
+  "Defaticante",
+  "Recupero infortunio",
+  "Lavoro individuale",
+  "Rientro parziale in gruppo",
+  "Carico ridotto",
+];
 
 function PlayerDetail({ players, setPlayers, sessions = [], matches = [], physicalTests = [] }) {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const player = useMemo(
-    () => players.find((p) => String(p.id) === String(id)),
+    () => players.find((item) => String(item.id) === String(id)),
     [players, id]
   );
 
   const [editing, setEditing] = useState(false);
-
-  const [form, setForm] = useState({
-    ...player,
+  const [editBaseUpdatedAt, setEditBaseUpdatedAt] = useState(null);
+  const [activeTab, setActiveTab] = useState("profilo");
+  const [form, setForm] = useState({ ...player });
+  const [medicalModal, setMedicalModal] = useState(null);
+  const [conflictModal, setConflictModal] = useState(false);
+  const [medicalForm, setMedicalForm] = useState({
+    differentiatedType: DIFFERENTIATED_TYPES[1],
+    note: "",
+    returnDate: new Date().toISOString().slice(0, 10),
   });
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 760
+  );
+
+  useEffect(() => {
+    if (!player) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setForm({ ...player });
+    setEditing(false);
+    setEditBaseUpdatedAt(player._updatedAt || null);
+    setMedicalModal(null);
+    setConflictModal(false);
+    // Reset intenzionale solo al cambio atleta: includere l'intero player sovrascriverebbe edit/modali dopo ogni update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player?.id]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 759px)");
+    const handler = (event) => setIsMobile(event.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const summary = useMemo(
     () => getPlayerSummary(player, { sessions, matches, physicalTests }),
     [player, sessions, matches, physicalTests]
   );
+  const injuryHistory = useMemo(
+    () => [...(player?.injuries || [])].sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0)),
+    [player]
+  );
+  const activeInjuries = injuryHistory.filter((injury) => !injury.endDate);
+  const pastInjuries = injuryHistory.filter((injury) => injury.endDate);
+  const totalDaysOut = injuryHistory.reduce((sum, injury) => sum + Number(injury.daysOut || 0), 0);
+  const totalSessionsMissed = injuryHistory.reduce((sum, injury) => sum + Number(injury.sessionsMissed || 0), 0);
+  const totalMatchesMissed = injuryHistory.reduce((sum, injury) => sum + Number(injury.matchesMissed || 0), 0);
+  const preventionRecommendations = useMemo(
+    () => getPreventionRecommendations(injuryHistory, player),
+    [injuryHistory, player]
+  );
 
   if (!player) {
     return (
       <div style={styles.page}>
-        <PageHeader
-          title="Giocatore non trovato"
-          subtitle="Il profilo richiesto non esiste"
-        />
+        <PageHeader title="Giocatore non trovato" subtitle="Il profilo richiesto non esiste" />
       </div>
     );
   }
@@ -51,616 +107,403 @@ function PlayerDetail({ players, setPlayers, sessions = [], matches = [], physic
     if (!file) return;
 
     const reader = new FileReader();
-
     reader.onloadend = () => {
       setForm((prev) => ({
         ...prev,
         photo: reader.result,
       }));
     };
-
     reader.readAsDataURL(file);
   }
 
   function savePlayer() {
-    setPlayers(
-      players.map((p) =>
-        p.id === player.id ? form : p
-      )
-    );
+    if (hasPlayerConflict(player, editBaseUpdatedAt)) {
+      setConflictModal(true);
+      return;
+    }
+    commitPlayerSave(form);
+  }
 
+  function commitPlayerSave(nextForm) {
+    // Stampa un nuovo _updatedAt affinché la conflict detection funzioni nei salvataggi successivi.
+    const stamped = { ...nextForm, _updatedAt: new Date().toISOString() };
+    setPlayers((prev) => prev.map((item) => String(item.id) === String(id) ? stamped : item));
     setEditing(false);
+    setEditBaseUpdatedAt(stamped._updatedAt);
+  }
+
+  function forceSavePlayer() {
+    commitPlayerSave(form);
+    setConflictModal(false);
+  }
+
+  function updateMedicalRecord(updater) {
+    const nextPlayer = updater(player);
+    setPlayers((prev) => prev.map((item) => String(item.id) === String(id) ? nextPlayer : item));
+    // Sync sempre i campi medici nel form, anche se l'utente sta modificando il profilo.
+    // Senza questo, una save del profilo successiva sovrascriverà le modifiche mediche appena salvate.
+    setForm((prevForm) => ({
+      ...prevForm,
+      injuries:          nextPlayer.injuries,
+      injuryNotes:       nextPlayer.injuryNotes       ?? "",
+      status:            nextPlayer.status,
+      differentiatedType: nextPlayer.differentiatedType ?? "",
+      expectedReturn:    nextPlayer.expectedReturn    ?? "",
+    }));
+  }
+
+  function openDifferentiatedModal() {
+    setMedicalForm({
+      differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
+      note: player.injuryNotes || "",
+      returnDate: new Date().toISOString().slice(0, 10),
+    });
+    setMedicalModal("differenziato");
+  }
+
+  function saveDifferentiatedWork() {
+    const differentiatedType = medicalForm.differentiatedType || DIFFERENTIATED_TYPES[1];
+    const note = medicalForm.note.trim();
+    updateMedicalRecord((current) => ({
+      ...current,
+      status: "Differenziato",
+      differentiatedType,
+      injuryNotes: [current.injuryNotes, note].filter(Boolean).join("\n"),
+      injuries: [
+        ...(current.injuries || []),
+        {
+          id: createId("injury"),
+          injuryType: differentiatedType,
+          differentiatedType,
+          status: "Differenziato",
+          startDate: new Date().toISOString().slice(0, 10),
+          endDate: null,
+          expectedReturn: current.expectedReturn || "",
+          notes: note,
+          sessionsMissed: 0,
+          matchesMissed: 0,
+        },
+      ],
+    }));
+    setMedicalModal(null);
+  }
+
+  function openRecoveredModal() {
+    if (!activeInjuries.length) return;
+    setMedicalForm({
+      differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
+      note: "",
+      returnDate: new Date().toISOString().slice(0, 10),
+    });
+    setMedicalModal("rientro");
+  }
+
+  function saveRecovered() {
+    if (!activeInjuries.length) return;
+    const returnDate = medicalForm.returnDate || new Date().toISOString().slice(0, 10);
+    updateMedicalRecord((current) => {
+      const injuries = current.injuries || [];
+      if (!injuries.some((injury) => !injury.endDate)) return current;
+
+      return {
+        ...current,
+        status: "Disponibile",
+        injuryType: "",
+        differentiatedType: "",
+        expectedReturn: "",
+        injuryNotes: "",
+        injuries: injuries.map((injury) => {
+          if (injury.endDate) return injury;
+          const start = injury.startDate ? new Date(injury.startDate) : null;
+          const daysOut = start ? Math.max(0, Math.floor((new Date(returnDate) - start) / 86400000)) : injury.daysOut;
+          return {
+            ...injury,
+            endDate: returnDate,
+            daysOut,
+            notes: [injury.notes, medicalForm.note.trim()].filter(Boolean).join("\n"),
+          };
+        }),
+      };
+    });
+    setMedicalModal(null);
+  }
+
+  function openNoteModal() {
+    setMedicalForm({
+      differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
+      note: "",
+      returnDate: new Date().toISOString().slice(0, 10),
+    });
+    setMedicalModal("nota");
+  }
+
+  function saveMedicalNote() {
+    const note = medicalForm.note.trim();
+    if (!note) return;
+    updateMedicalRecord((current) => {
+      const injuries = current.injuries || [];
+      if (!injuries.length) {
+        return {
+          ...current,
+          injuryNotes: [current.injuryNotes, note].filter(Boolean).join("\n"),
+        };
+      }
+
+      const targetIndex = injuries.findIndex((injury) => !injury.endDate);
+      const fallbackIndex = injuries.length - 1;
+      const noteIndex = targetIndex >= 0 ? targetIndex : fallbackIndex;
+
+      return {
+        ...current,
+        injuries: injuries.map((injury, index) => index === noteIndex
+          ? { ...injury, notes: [injury.notes, note].filter(Boolean).join("\n") }
+          : injury
+        ),
+      };
+    });
+    setMedicalModal(null);
   }
 
   return (
     <div style={styles.page}>
-      <PageHeader
-        title={player.name}
-        subtitle="Scheda giocatore e database individuale"
-      />
+      <PageHeader title={player.name} subtitle="Scheda giocatore e database individuale" />
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "340px 1fr",
-          gap: 24,
-          alignItems: "start",
-        }}
-      >
-        <AppCard>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center",
-            }}
-          >
-            {form.photo ? (
-              <img
-                src={form.photo}
-                alt={form.name}
-                style={{
-                  width: 180,
-                  height: 180,
-                  borderRadius: 28,
-                  objectFit: "cover",
-                  marginBottom: 18,
-                  border: "2px solid rgba(255,255,255,0.08)",
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 180,
-                  height: 180,
-                  borderRadius: 28,
-                  background:
-                    "linear-gradient(135deg,#2563eb,#38bdf8)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 52,
-                  fontWeight: 900,
-                  marginBottom: 18,
-                }}
-              >
-                {form.name?.[0] || "P"}
-              </div>
-            )}
+      <div style={{ ...pageStyles.layout, gridTemplateColumns: isMobile ? "1fr" : pageStyles.layout.gridTemplateColumns }}>
+        <div style={pageStyles.sidebar}>
+          <PlayerSidebar
+            form={form}
+            editing={editing}
+            onImageUpload={handleImageUpload}
+            summary={summary}
+          />
+        </div>
 
-            <h2 style={{ marginBottom: 6 }}>
-              {form.name}
-            </h2>
+        <div style={pageStyles.main}>
+          <PlayerTabs activeTab={activeTab} onChange={setActiveTab} />
 
-            <p style={{ color: "#94a3b8" }}>
-              {form.role || "Ruolo"}
-            </p>
+          {(activeTab === "profilo" || activeTab === "statistiche") && (
+            <PlayerKpiStrip summary={summary} />
+          )}
 
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                flexWrap: "wrap",
-                justifyContent: "center",
-                marginTop: 12,
+          {activeTab === "profilo" && (
+            <PlayerProfileTab
+              form={form}
+              player={player}
+              editing={editing}
+              onEdit={(selectedPlayer) => {
+                setForm({ ...selectedPlayer });
+                setEditBaseUpdatedAt(selectedPlayer._updatedAt || null);
+                setEditing(true);
               }}
-            >
-              <Badge tone="blue">
-                #{form.shirtNumber || "-"}
-              </Badge>
-
-              <Badge
-                tone={
-                  form.status === "Infortunato"
-                    ? "red"
-                    : form.status === "Recupero"
-                    ? "orange"
-                    : "green"
-                }
-              >
-                {form.status || "Disponibile"}
-              </Badge>
-            </div>
-
-            {editing && (
-              <div style={{ marginTop: 20, width: "100%" }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) =>
-                    handleImageUpload(e.target.files[0])
-                  }
-                  style={styles.input}
-                />
-              </div>
-            )}
-          </div>
-          </AppCard>
-
-          <AppCard>
-            <h3 style={{ marginTop: 0 }}>Alert individuali</h3>
-            {summary.alerts.length ? (
-              <div style={detailStyles.alertList}>
-                {summary.alerts.map((alert) => (
-                  <Badge key={alert} tone="orange">{alert}</Badge>
-                ))}
-              </div>
-            ) : (
-              <p style={detailStyles.muted}>Nessun alert prioritario.</p>
-            )}
-          </AppCard>
-
-        <div style={{ display: "grid", gap: 20 }}>
-          <div style={detailStyles.kpiGrid}>
-            <MiniKpi label="Presenze" value={summary.stats.presences} />
-            <MiniKpi label="Minuti" value={summary.stats.minutes} />
-            <MiniKpi label="Gol" value={summary.stats.goals} />
-            <MiniKpi label="Assist" value={summary.stats.assists} />
-            <MiniKpi label="RPE medio" value={summary.stats.avgRpe || "-"} />
-            <MiniKpi label="Carico" value={summary.stats.load || "-"} />
-          </div>
-
-          <AppCard>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 16,
-                alignItems: "center",
-                marginBottom: 20,
+              onCancel={() => {
+                setEditing(false);
+                setForm({ ...player });
+                setEditBaseUpdatedAt(player._updatedAt || null);
               }}
-            >
-              <div>
-                <h3 style={{ margin: 0 }}>
-                  Informazioni giocatore
-                </h3>
+              onSave={savePlayer}
+              onFieldChange={updateField}
+            />
+          )}
 
-                <p
-                  style={{
-                    color: "#94a3b8",
-                    margin: "6px 0 0",
-                  }}
-                >
-                  Database tecnico e anagrafico
-                </p>
-              </div>
+          {activeTab === "statistiche" && <PlayerStatsTab summary={summary} />}
 
-              <div style={{ display: "flex", gap: 10 }}>
-                {editing ? (
-                  <>
-                    <Button
-                      variant="ghost"
-                      onClick={() => setEditing(false)}
-                    >
-                      Annulla
-                    </Button>
+          {activeTab === "fisico" && (
+            <PlayerPhysicalTab
+              form={form}
+              editing={editing}
+              latestTests={summary.latestTests}
+              onFieldChange={updateField}
+            />
+          )}
 
-                    <Button onClick={savePlayer}>
-                      Salva
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      setForm({ ...player });
-                      setEditing(true);
-                    }}
-                  >
-                    Modifica
-                  </Button>
-                )}
-              </div>
-            </div>
+          {activeTab === "medico" && (
+            <PlayerMedicalTab
+              activeInjuries={activeInjuries}
+              injuryHistory={injuryHistory}
+              pastInjuries={pastInjuries}
+              totalDaysOut={totalDaysOut}
+              totalSessionsMissed={totalSessionsMissed}
+              totalMatchesMissed={totalMatchesMissed}
+              generalInjuryNotes={player.injuryNotes}
+              preventionRecommendations={preventionRecommendations}
+              onCreateDifferentiatedWork={openDifferentiatedModal}
+              onAddMedicalNote={openNoteModal}
+              onMarkRecovered={openRecoveredModal}
+            />
+          )}
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fit,minmax(220px,1fr))",
-                gap: 14,
-              }}
-            >
-              <Field
-                label="Nome"
-                value={form.name}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("name", value)
-                }
-              />
+          {activeTab === "sviluppo" && (
+            <PlayerDevelopmentTab form={form} editing={editing} onFieldChange={updateField} />
+          )}
 
-              <Field
-                label="Ruolo"
-                value={form.role}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("role", value)
-                }
-              />
-
-              <Field
-                label="Numero maglia"
-                value={form.shirtNumber}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("shirtNumber", value)
-                }
-              />
-
-              <Field
-                label="Piede"
-                value={form.foot}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("foot", value)
-                }
-              />
-
-              <Field
-                label="Altezza"
-                value={form.height}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("height", value)
-                }
-              />
-
-              <Field
-                label="Peso"
-                value={form.weight}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("weight", value)
-                }
-              />
-
-              <Field
-                label="Nazionalità"
-                value={form.nationality}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("nationality", value)
-                }
-              />
-
-              <Field
-                label="Data nascita"
-                value={form.birthDate}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("birthDate", value)
-                }
-              />
-            </div>
-          </AppCard>
-
-          <AppCard>
-            <h3 style={{ marginTop: 0 }}>
-              Area tecnica
-            </h3>
-
-            <div
-              style={{
-                display: "grid",
-                gap: 14,
-              }}
-            >
-              <TextAreaField
-                label="Punti di forza"
-                value={form.strengths}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("strengths", value)
-                }
-              />
-
-              <TextAreaField
-                label="Da migliorare"
-                value={form.improvements}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("improvements", value)
-                }
-              />
-
-              <TextAreaField
-                label="Obiettivi individuali"
-                value={form.individualGoals}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("individualGoals", value)
-                }
-              />
-
-              <TextAreaField
-                label="Obiettivo settimanale"
-                value={form.weeklyGoal}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("weeklyGoal", value)
-                }
-              />
-            </div>
-          </AppCard>
-
-          <AppCard>
-            <h3 style={{ marginTop: 0 }}>
-              Stato fisico
-            </h3>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fit,minmax(220px,1fr))",
-                gap: 14,
-              }}
-            >
-            
-            <div>
-  <div
-    style={{
-      color: "#94a3b8",
-      fontSize: 12,
-      fontWeight: 800,
-      marginBottom: 8,
-      textTransform: "uppercase",
-    }}
-  >
-    Status
-  </div>
-
-  {editing ? (
-    <select
-      value={form.status || "Disponibile"}
-      onChange={(e) =>
-        updateField("status", e.target.value)
-      }
-      style={styles.input}
-    >
-      <option>Disponibile</option>
-      <option>Recupero</option>
-      <option>Infortunato</option>
-      <option>Permesso</option>
-    </select>
-  ) : (
-    <div
-      style={{
-        borderRadius: 16,
-        padding: 14,
-        background: "rgba(255,255,255,0.045)",
-        border: "1px solid rgba(255,255,255,0.08)",
-      }}
-    >
-      {form.status || "Disponibile"}
-    </div>
-  )}
-</div>
-
-              <Field
-                label="Problema fisico"
-                value={form.injuryType}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("injuryType", value)
-                }
-              />
-
-              <Field
-                label="Rientro previsto"
-                value={form.expectedReturn}
-                editing={editing}
-                onChange={(value) =>
-                  updateField("expectedReturn", value)
-                }
-              />
-            </div>
-          </AppCard>
-
-          <div style={detailStyles.twoGrid}>
-            <AppCard>
-              <h3 style={{ marginTop: 0 }}>Test fisici recenti</h3>
-              {summary.latestTests.length ? (
-                <div style={detailStyles.list}>
-                  {summary.latestTests.map((test) => {
-                    const reference = getPhysicalReference(test);
-                    return (
-                      <div key={test.id} style={detailStyles.listItem}>
-                        <Badge tone="blue">{formatShortDate(test.date)}</Badge>
-                        <strong>{reference.group} · MAS {reference.mas || "-"}</strong>
-                        <span>Gacon {test.gaconLevel || "-"} · 10m {test.sprint10m || "-"} · salto {test.jumpCm || "-"}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p style={detailStyles.muted}>Nessun test registrato.</p>
-              )}
-            </AppCard>
-
-            <AppCard>
-              <h3 style={{ marginTop: 0 }}>Storico recente</h3>
-              {summary.recentEvents.length ? (
-                <div style={detailStyles.list}>
-                  {summary.recentEvents.map(({ event, data }) => (
-                    <div key={`${event.type}-${event.id}`} style={detailStyles.listItem}>
-                      <Badge tone={event.type === "Partita" ? "orange" : "green"}>{event.type}</Badge>
-                      <strong>{event.title}</strong>
-                      <span>{formatShortDate(event.date)} · {data.status} · {data.minutes || 0} min · {data.goals || 0} gol · {data.assists || 0} assist</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p style={detailStyles.muted}>Nessun evento registrato.</p>
-              )}
-            </AppCard>
-          </div>
-
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/players")}
-          >
+          <Button variant="ghost" onClick={() => navigate("/players")}>
             ← Torna alla rosa
           </Button>
         </div>
       </div>
-    </div>
-  );
-}
 
-function MiniKpi({ label, value }) {
-  return (
-    <AppCard>
-      <span style={detailStyles.kpiLabel}>{label}</span>
-      <strong style={detailStyles.kpiValue}>{value}</strong>
-    </AppCard>
-  );
-}
+      {medicalModal && (
+        <Modal title={getMedicalModalTitle(medicalModal)} onClose={() => setMedicalModal(null)}>
+          <MedicalActionForm
+            type={medicalModal}
+            value={medicalForm}
+            onChange={setMedicalForm}
+              onCancel={() => setMedicalModal(null)}
+            onSubmit={
+              medicalModal === "differenziato"
+                ? saveDifferentiatedWork
+                : medicalModal === "rientro"
+                ? saveRecovered
+                : saveMedicalNote
+            }
+          />
+        </Modal>
+      )}
 
-function Field({
-  label,
-  value,
-  editing,
-  onChange,
-}) {
-  return (
-    <div>
-      <div
-        style={{
-          color: "#94a3b8",
-          fontSize: 12,
-          fontWeight: 800,
-          marginBottom: 8,
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </div>
-
-      {editing ? (
-        <input
-          value={value || ""}
-          onChange={(e) =>
-            onChange(e.target.value)
-          }
-          style={styles.input}
-        />
-      ) : (
-        <div
-          style={{
-            borderRadius: 16,
-            padding: 14,
-            background:
-              "rgba(255,255,255,0.045)",
-            border:
-              "1px solid rgba(255,255,255,0.08)",
-            minHeight: 48,
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          {value || "-"}
-        </div>
+      {conflictModal && (
+        <Modal title="Dati aggiornati da un'altra sessione" onClose={() => setConflictModal(false)}>
+          <div style={modalStyles.stack}>
+            <p style={modalStyles.helpText}>
+              Questo giocatore risulta aggiornato dopo l'apertura della modifica. Per evitare sovrascritture, puoi
+              ricaricare i dati attuali o forzare il salvataggio delle modifiche locali.
+            </p>
+            <div style={modalStyles.actions}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setForm({ ...player });
+                  setEditBaseUpdatedAt(player._updatedAt || null);
+                  setConflictModal(false);
+                }}
+              >
+                Ricarica dati attuali
+              </Button>
+              <Button onClick={forceSavePlayer}>
+                Forza salvataggio
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
 }
 
-function TextAreaField({
-  label,
-  value,
-  editing,
-  onChange,
-}) {
-  return (
-    <div>
-      <div
-        style={{
-          color: "#94a3b8",
-          fontSize: 12,
-          fontWeight: 800,
-          marginBottom: 8,
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </div>
+function hasPlayerConflict(player, editBaseUpdatedAt) {
+  if (!player?._updatedAt || !editBaseUpdatedAt) return false;
+  return String(player._updatedAt) !== String(editBaseUpdatedAt);
+}
 
-      {editing ? (
+function getMedicalModalTitle(type) {
+  if (type === "differenziato") return "Crea lavoro differenziato";
+  if (type === "rientro") return "Segna rientro";
+  return "Aggiungi nota medica";
+}
+
+function MedicalActionForm({ type, value, onChange, onCancel, onSubmit }) {
+  const canSubmit = type !== "nota" || value.note.trim();
+
+  return (
+    <div style={modalStyles.stack}>
+      {type === "differenziato" && (
+        <label style={modalStyles.field}>
+          <span style={modalStyles.label}>Tipologia</span>
+          <select
+            value={value.differentiatedType}
+            onChange={(event) => onChange((prev) => ({ ...prev, differentiatedType: event.target.value }))}
+            style={styles.input}
+          >
+            {DIFFERENTIATED_TYPES.map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {type === "rientro" && (
+        <label style={modalStyles.field}>
+          <span style={modalStyles.label}>Data rientro</span>
+          <input
+            type="date"
+            value={value.returnDate}
+            onChange={(event) => onChange((prev) => ({ ...prev, returnDate: event.target.value }))}
+            style={styles.input}
+          />
+        </label>
+      )}
+
+      <label style={modalStyles.field}>
+        <span style={modalStyles.label}>
+          {type === "rientro" ? "Nota finale" : type === "differenziato" ? "Note operative" : "Nota medica"}
+        </span>
         <textarea
-          value={value || ""}
-          onChange={(e) =>
-            onChange(e.target.value)
+          value={value.note}
+          onChange={(event) => onChange((prev) => ({ ...prev, note: event.target.value }))}
+          placeholder={
+            type === "rientro"
+              ? "Es. rientro completato senza dolore, monitorare carico per 7 giorni..."
+              : type === "differenziato"
+              ? "Es. lavoro aerobico leggero, no cambi direzione, controllo dolore post seduta..."
+              : "Es. dolore riferito, indicazioni staff medico, prevenzione consigliata..."
           }
-          style={{
-            ...styles.input,
-            minHeight: 100,
-          }}
+          style={{ ...styles.input, minHeight: 120, resize: "vertical" }}
         />
-      ) : (
-        <div
-          style={{
-            borderRadius: 16,
-            padding: 16,
-            background:
-              "rgba(255,255,255,0.045)",
-            border:
-              "1px solid rgba(255,255,255,0.08)",
-            lineHeight: 1.6,
-            color: "#cbd5e1",
-          }}
-        >
-          {value || "-"}
-        </div>
-      )}
+      </label>
+
+      <div style={modalStyles.actions}>
+        <Button variant="ghost" onClick={onCancel}>Annulla</Button>
+        <Button onClick={onSubmit} disabled={!canSubmit}>
+          Salva
+        </Button>
+      </div>
     </div>
   );
 }
 
-const detailStyles = {
-  kpiGrid: {
+const pageStyles = {
+  layout: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))",
-    gap: 12,
+    gridTemplateColumns: "340px minmax(0, 1fr)",
+    gap: 24,
+    alignItems: "start",
   },
-  kpiLabel: {
+  sidebar: {
+    display: "grid",
+    gap: 20,
+    minWidth: 0,
+  },
+  main: {
+    display: "grid",
+    gap: 20,
+    minWidth: 0,
+  },
+};
+
+const modalStyles = {
+  stack: {
+    display: "grid",
+    gap: 16,
+  },
+  field: {
+    display: "grid",
+    gap: 8,
+  },
+  label: {
     color: "#94a3b8",
     fontSize: 12,
     fontWeight: 900,
     textTransform: "uppercase",
   },
-  kpiValue: {
-    display: "block",
-    marginTop: 8,
-    fontSize: 26,
-  },
-  twoGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 20,
-  },
-  list: {
-    display: "grid",
-    gap: 10,
-  },
-  listItem: {
-    display: "grid",
-    gap: 6,
-    padding: 12,
-    borderRadius: 14,
-    background: "rgba(255,255,255,0.045)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    color: "#cbd5e1",
-  },
-  alertList: {
+  actions: {
     display: "flex",
+    justifyContent: "flex-end",
+    gap: 10,
     flexWrap: "wrap",
-    gap: 8,
   },
-  muted: {
-    color: "#94a3b8",
+  helpText: {
     margin: 0,
+    color: "#cbd5e1",
+    lineHeight: 1.55,
   },
 };
 

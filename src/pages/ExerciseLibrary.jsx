@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -8,6 +8,7 @@ import EmptyState from "../components/ui/EmptyState";
 import Modal from "../components/ui/Modal";
 import PageHeader from "../components/ui/PageHeader";
 import SearchBar from "../components/ui/SearchBar";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { styles } from "../styles/index.js";
 import { TRAINING_BLOCKS, getBlockFromCategory, createId, getCurrentUserRole, isFeatureUnlocked } from "../utils/helpers";
 import { generateExerciseSvg, getExerciseDescription } from "../utils/exerciseContent";
@@ -56,10 +57,12 @@ function matchPlayersBucket(exPlayers, bucketLabel) {
 
 // ─── Componente principale ────────────────────────────────────────────────────
 export default function ExerciseLibrary({ appSettings = {}, exercises = [], setExercises }) {
+  const location = useLocation();
   const navigate = useNavigate();
 
   // Tab attivo
-  const [tab, setTab] = useState("catalogo"); // "catalogo" | "miei"
+  const initialTab = new URLSearchParams(location.search).get("tab");
+  const [tab, setTab] = useState(initialTab === "miei" ? "miei" : "catalogo"); // "catalogo" | "miei"
 
   // Catalogo FP5
   const [fp5Raw, setFp5Raw] = useState([]);
@@ -79,6 +82,7 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
   const [editModal, setEditModal]   = useState(false);
   const [editForm, setEditForm]     = useState(null);
   const [editIsNew, setEditIsNew]   = useState(false);
+  const [confirmState, setConfirmState] = useState(null);
 
   // Paginazione catalogo
   const [page, setPage]           = useState(1);
@@ -186,30 +190,34 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
 
   function saveEdit() {
     if (!editForm) return;
-    const existing = exercises.findIndex((e) => e.id === editForm.id);
-    if (existing >= 0) {
-      setExercises(exercises.map((e) => e.id === editForm.id ? editForm : e));
-    } else {
-      setExercises([...exercises, editForm]);
-    }
+    setExercises((prevExercises) => {
+      const existing = prevExercises.some((e) => e.id === editForm.id);
+      return existing
+        ? prevExercises.map((e) => e.id === editForm.id ? editForm : e)
+        : [...prevExercises, editForm];
+    });
     setEditModal(false);
     setEditForm(null);
   }
 
   function deleteFromCatalog(id) {
-    if (!confirm("Rimuovere questo esercizio dal catalogo?")) return;
-    setExercises(exercises.filter((e) => e.id !== id));
+    setConfirmState({
+      message: "Rimuovere questo esercizio dal catalogo?",
+      confirmLabel: "Rimuovi",
+      confirmTone: "red",
+      onConfirm: () => setExercises((prevExercises) => prevExercises.filter((e) => e.id !== id)),
+    });
   }
 
   // Salva l'esercizio nello state (se non c'è già) e apre la lavagna tattica
   function openTacticalBoard() {
     if (!editForm) return;
-    const existing = exercises.find((e) => e.id === editForm.id);
-    if (!existing) {
-      setExercises([...exercises, editForm]);
-    } else {
-      setExercises(exercises.map((e) => e.id === editForm.id ? editForm : e));
-    }
+    setExercises((prevExercises) => {
+      const existing = prevExercises.some((e) => e.id === editForm.id);
+      return existing
+        ? prevExercises.map((e) => e.id === editForm.id ? editForm : e)
+        : [...prevExercises, editForm];
+    });
     setEditModal(false);
     navigate("/tactical-board", {
       state: { exerciseId: editForm.id, exerciseName: editForm.title },
@@ -219,6 +227,7 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: "grid", gap: 22 }}>
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
         title="Eserciziario"
         subtitle={
@@ -507,12 +516,12 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
           </AppCard>
 
           {filteredMy.length === 0 ? (
-            <EmptyState
-              icon="✏️"
-              title="Nessun esercizio personale"
-              text="Crea i tuoi esercizi dalla pagina Esercizi, oppure modificane uno dal Catalogo."
-              action={<Button onClick={() => navigate("/exercises")}>Vai a Esercizi</Button>}
-            />
+              <EmptyState
+                icon="✏️"
+                title="Nessun esercizio personale"
+                text="Crea i tuoi esercizi personali oppure modifica una proposta dal Catalogo."
+                action={<Button onClick={() => navigate("/exercises")}>+ Nuovo esercizio</Button>}
+              />
           ) : (
             <>
             <div style={libStyles.grid}>
@@ -547,7 +556,10 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
                   )}
 
                   <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                    <Button variant="ghost" onClick={() => navigate("/exercises")}>
+                    <Button
+                      variant="ghost"
+                      onClick={() => navigate("/exercises", { state: { editExerciseId: ex.id } })}
+                    >
                       ✏️ Modifica
                     </Button>
                   </div>

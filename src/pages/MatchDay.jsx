@@ -6,20 +6,25 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
+import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { createId, formatDate, getLineup, uniqueIds } from "../utils/helpers";
+import { deleteTeamAttachment, uploadTeamAttachment } from "../services/attachments";
+import { useAuth } from "../hooks/useAuth";
 
 function MatchDay({ matches = [], setMatches, players = [] }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const auth = useAuth();
+  const { showToast, ToastContainer } = useToast();
   const selectedMatch =
     matches.find((match) => String(match.id) === String(id)) || matches[0];
 
   function updateSelectedMatch(patch) {
     if (!selectedMatch) return;
 
-    setMatches(
-      matches.map((match) =>
+    setMatches((prevMatches) =>
+      prevMatches.map((match) =>
         match.id === selectedMatch.id
           ? {
               ...match,
@@ -172,6 +177,31 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
     });
   }
 
+  async function handleOpponentAttachment(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const attachment = await uploadTeamAttachment({
+        teamId: auth.team?.id,
+        folder: `matches/${selectedMatch.id}/opponent-lineup`,
+        file,
+      });
+
+      updateOpponentScouting({
+        attachment,
+      });
+    } catch (error) {
+      showToast(error?.message || "Upload allegato non riuscito", "error");
+    }
+    event.target.value = "";
+  }
+
+  async function removeOpponentAttachment() {
+    await deleteTeamAttachment(opponentScouting.attachment);
+    updateOpponentScouting({ attachment: null });
+  }
+
   function updateLineup(patch) {
     updateSelectedMatch({
       lineup: {
@@ -206,6 +236,18 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
     updateLineup({ [listKey]: list });
   }
 
+  function importConvocazione() {
+    const convIds = (selectedMatch.convocazione?.playerIds || []).map(String);
+    if (!convIds.length) return;
+    // Importa tutti i convocati come panchina — il mister li sposta a titolare manualmente
+    updateLineup({
+      calledUpIds: convIds,
+      benchIds:    convIds,
+      starterIds:  [],
+    });
+    showToast(`${convIds.length} convocati importati dalla convocazione`, "success");
+  }
+
   function copyPreviousLineup() {
     const previous = [...matches]
       .filter(
@@ -219,7 +261,7 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
       .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
     if (!previous) {
-      alert("Nessuna distinta precedente da copiare");
+      showToast("Nessuna distinta precedente da copiare", "info");
       return;
     }
 
@@ -228,6 +270,7 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
 
   return (
     <div style={styles.page}>
+      <ToastContainer />
       <PageHeader
         title="Match Day"
         subtitle="Convocazioni, distinta, piano gara ed export stampabile"
@@ -237,7 +280,22 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
         matchId={selectedMatch?.id}
         active="scheda"
         matchLabel={selectedMatch?.opponent ? `vs ${selectedMatch.opponent}` : undefined}
+        matchData={selectedMatch}
       />
+
+      {/* ── Banner convocazione non pubblicata ── */}
+      {selectedMatch && !selectedMatch.convocazione?.published && (
+        <div style={matchDayStyles.convoBanner}>
+          <span style={matchDayStyles.convoBannerText}>
+            {selectedMatch.convocazione?.playerIds?.length > 0
+              ? `📋 Convocazione in bozza — ${selectedMatch.convocazione.playerIds.length} giocatori selezionati, non ancora pubblicata`
+              : "📋 Convocazione non ancora compilata per questa partita"}
+          </span>
+          <Button variant="ghost" onClick={() => navigate(`/match-convocation/${selectedMatch.id}`)}>
+            Vai alla convocazione →
+          </Button>
+        </div>
+      )}
 
         <div style={matchDayStyles.selectorRow}>
         <select
@@ -286,6 +344,15 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
                 {formatDate(selectedMatch.date)} · {selectedMatch.location} ·{" "}
                 {selectedMatch.formation}
               </p>
+              <div style={matchDayStyles.resultRow}>
+                <span style={matchDayStyles.resultLabel}>Risultato</span>
+                <input
+                  value={selectedMatch.result || ""}
+                  onChange={(e) => updateNote("result", e.target.value)}
+                  placeholder="es. 2-1"
+                  style={matchDayStyles.resultInput}
+                />
+              </div>
             </div>
             <TeamMark
               logo={selectedMatch.awayLogo}
@@ -302,6 +369,20 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
             <MiniStat label="Stato" value={lineup.ready ? "Pronta" : "Bozza"} />
           </div>
         </AppCard>
+
+        {/* ── Banner import dalla Convocazione ── */}
+        {lineup.calledUpIds.length === 0 && (selectedMatch.convocazione?.playerIds?.length > 0) && (
+          <div style={matchDayStyles.importBanner}>
+            <div>
+              <strong style={{ color: "#93c5fd", fontSize: 14 }}>📋 Convocazione disponibile</strong>
+              <p style={{ ...matchDayStyles.muted, marginTop: 4 }}>
+                Hai {selectedMatch.convocazione.playerIds.length} giocatori nella convocazione —
+                importali come punto di partenza per la distinta.
+              </p>
+            </div>
+            <Button onClick={importConvocazione}>Importa convocati →</Button>
+          </div>
+        )}
 
         <div style={matchDayStyles.mainGrid}>
           <AppCard>
@@ -349,25 +430,36 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
           </AppCard>
 
           <AppCard>
-            <SectionHeader title="Piano gara" badge="Staff" />
-            <textarea
-              placeholder="Note avversario: modulo, punti forti, uscite, palle inattive..."
-              value={selectedMatch.opponentNotes || ""}
-              onChange={(event) => updateNote("opponentNotes", event.target.value)}
-              style={{ ...styles.input, minHeight: 110, resize: "vertical" }}
-            />
-            <textarea
-              placeholder="Principi, palle inattive, avversario, gestione cambi..."
-              value={selectedMatch.matchPlan || ""}
-              onChange={(event) => updateNote("matchPlan", event.target.value)}
-              style={{ ...styles.input, minHeight: 150, resize: "vertical" }}
-            />
-            <textarea
-              placeholder="Note per distinta, assenze, comunicazioni..."
-              value={selectedMatch.staffNotes || ""}
-              onChange={(event) => updateNote("staffNotes", event.target.value)}
-              style={{ ...styles.input, minHeight: 110, resize: "vertical" }}
-            />
+            <SectionHeader title="Piano di gara" badge={lineup.ready ? "✓ Pronta" : "Staff"} />
+            <div style={{ display: "grid", gap: 14 }}>
+              <div>
+                <h4 style={matchDayStyles.planLabel}>🕵️ Scouting rapido avversario</h4>
+                <textarea
+                  placeholder="Modulo, punti forti, pericoli principali, stile di gioco..."
+                  value={selectedMatch.opponentNotes || ""}
+                  onChange={(event) => updateNote("opponentNotes", event.target.value)}
+                  style={{ ...styles.input, minHeight: 90, resize: "vertical" }}
+                />
+              </div>
+              <div>
+                <h4 style={matchDayStyles.planLabel}>🎯 Piano e principi di gara</h4>
+                <textarea
+                  placeholder="Principi offensivi e difensivi, palle inattive, istruzioni per reparto, gestione cambi..."
+                  value={selectedMatch.matchPlan || ""}
+                  onChange={(event) => updateNote("matchPlan", event.target.value)}
+                  style={{ ...styles.input, minHeight: 130, resize: "vertical" }}
+                />
+              </div>
+              <div>
+                <h4 style={matchDayStyles.planLabel}>📋 Note staff / Briefing</h4>
+                <textarea
+                  placeholder="Comunicazioni allo staff, logistica, assenze dell'ultimo minuto..."
+                  value={selectedMatch.staffNotes || ""}
+                  onChange={(event) => updateNote("staffNotes", event.target.value)}
+                  style={{ ...styles.input, minHeight: 90, resize: "vertical" }}
+                />
+              </div>
+            </div>
           </AppCard>
         </div>
 
@@ -436,6 +528,38 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
             />
           </div>
 
+          <div style={matchDayStyles.attachmentBox}>
+            <div>
+              <h4 style={{ margin: 0, lineHeight: 1.2 }}>Allegato distinta</h4>
+              <p style={matchDayStyles.muted}>Carica PDF o foto della distinta avversaria ricevuta sul campo.</p>
+            </div>
+            <div style={matchDayStyles.attachmentActions}>
+              {opponentScouting.attachment ? (
+                <>
+                  <a
+                    href={opponentScouting.attachment.url || opponentScouting.attachment.dataUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={matchDayStyles.attachmentLink}
+                  >
+                    {opponentScouting.attachment.name || "Apri allegato"}
+                  </a>
+                  <Button variant="ghost" onClick={removeOpponentAttachment}>Rimuovi</Button>
+                </>
+              ) : (
+                <label style={matchDayStyles.uploadButton}>
+                  Carica file
+                  <input
+                    type="file"
+                    accept="image/*,.pdf,application/pdf"
+                    onChange={handleOpponentAttachment}
+                    style={{ display: "none" }}
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+
           <div style={matchDayStyles.opponentHeader}>
             <h4 style={{ margin: 0, lineHeight: 1.2 }}>Distinta avversaria</h4>
             <Button variant="ghost" onClick={addOpponentPlayer}>
@@ -464,6 +588,16 @@ function MatchDay({ matches = [], setMatches, players = [] }) {
                     value={player.name}
                     onChange={(event) =>
                       updateOpponentPlayer(player.id, "name", event.target.value)
+                    }
+                    style={matchDayStyles.compactInput}
+                  />
+                  <input
+                    placeholder="Anno"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={player.birthYear || ""}
+                    onChange={(event) =>
+                      updateOpponentPlayer(player.id, "birthYear", event.target.value.replace(/\D/g, "").slice(0, 4))
                     }
                     style={matchDayStyles.compactInput}
                   />
@@ -623,13 +757,17 @@ function SectionHeader({ title, badge }) {
 function getOpponentScouting(match) {
   return {
     formation: match?.opponentScouting?.formation || "",
-    lineup: match?.opponentScouting?.lineup || [],
+    lineup: (match?.opponentScouting?.lineup || []).map((player) => ({
+      ...player,
+      birthYear: player.birthYear || "",
+    })),
     keyPlayers: match?.opponentScouting?.keyPlayers || "",
     strengths: match?.opponentScouting?.strengths || "",
     weaknesses: match?.opponentScouting?.weaknesses || "",
     setPiecesFor: match?.opponentScouting?.setPiecesFor || "",
     setPiecesAgainst: match?.opponentScouting?.setPiecesAgainst || "",
     returnLegNotes: match?.opponentScouting?.returnLegNotes || "",
+    attachment: match?.opponentScouting?.attachment || null,
   };
 }
 
@@ -790,7 +928,7 @@ const matchDayStyles = {
   },
   opponentRow: {
     display: "grid",
-    gridTemplateColumns: "70px 1fr 130px 130px 1fr auto",
+    gridTemplateColumns: "70px 1fr 90px 130px 130px 1fr auto",
     gap: 8,
     alignItems: "center",
   },
@@ -801,6 +939,41 @@ const matchDayStyles = {
     background: "rgba(15,23,42,0.82)",
     color: "white",
     padding: "9px 10px",
+  },
+  attachmentBox: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap",
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 14,
+    background: "rgba(59,130,246,0.07)",
+    border: "1px solid rgba(59,130,246,0.18)",
+  },
+  attachmentActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  attachmentLink: {
+    color: "#93c5fd",
+    fontSize: 13,
+    fontWeight: 800,
+    textDecoration: "none",
+    wordBreak: "break-word",
+  },
+  uploadButton: {
+    borderRadius: 10,
+    border: "1px solid rgba(59,130,246,0.35)",
+    background: "rgba(59,130,246,0.14)",
+    color: "#bfdbfe",
+    cursor: "pointer",
+    padding: "9px 13px",
+    fontSize: 13,
+    fontWeight: 800,
   },
   previousBox: {
     display: "grid",
@@ -815,6 +988,76 @@ const matchDayStyles = {
     display: "grid",
     gap: 4,
     color: "#cbd5e1",
+  },
+
+  // Piano di gara labels
+  planLabel: {
+    margin: "0 0 6px",
+    fontSize: 13,
+    fontWeight: 800,
+    color: "#94a3b8",
+    lineHeight: 1.2,
+  },
+
+  // Risultato inline nel header
+  resultRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 12,
+  },
+  resultLabel: {
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    color: "#64748b",
+    letterSpacing: 0.4,
+  },
+  resultInput: {
+    width: 88,
+    padding: "5px 10px",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.15)",
+    background: "rgba(255,255,255,0.07)",
+    color: "white",
+    fontSize: 16,
+    fontWeight: 900,
+    textAlign: "center",
+    outline: "none",
+  },
+
+  // Import dalla convocazione
+  importBanner: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 14,
+    flexWrap: "wrap",
+    padding: "14px 18px",
+    borderRadius: 14,
+    background: "rgba(59,130,246,0.1)",
+    border: "1px solid rgba(59,130,246,0.3)",
+  },
+
+  // Banner convocazione
+  convoBanner: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap",
+    padding: "12px 16px",
+    borderRadius: 14,
+    background: "rgba(245,158,11,0.1)",
+    border: "1px solid rgba(245,158,11,0.28)",
+    marginBottom: 4,
+  },
+  convoBannerText: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#fcd34d",
+    lineHeight: 1.4,
   },
 };
 

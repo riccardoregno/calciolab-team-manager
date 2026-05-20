@@ -102,7 +102,7 @@ function Players({ players, setPlayers }) {
       injuries:    [],
     };
 
-    setPlayers([...players, newPlayer]);
+    setPlayers((prevPlayers) => [...prevPlayers, newPlayer]);
 
     setForm({
       ...emptyPlayer(),
@@ -123,7 +123,7 @@ function Players({ players, setPlayers }) {
       confirmTone: "red",
       onConfirm: () => {
         // Confronto string→string per coerenza con FIX #12 (ID sempre stringa)
-        setPlayers(players.filter((p) => String(p.id) !== String(id)));
+        setPlayers((prevPlayers) => prevPlayers.filter((p) => String(p.id) !== String(id)));
         showToast("Giocatore eliminato", "info");
       },
     });

@@ -8,6 +8,8 @@ import Badge from "../components/ui/Badge";
 import SearchBar from "../components/ui/SearchBar";
 import EmptyState from "../components/ui/EmptyState";
 import Modal from "../components/ui/Modal";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { useToast } from "../components/ui/Toast";
 
 import { styles } from "../styles/index.js";
 import { emptyExercise } from "../data/initialData";
@@ -17,10 +19,12 @@ import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
 function Exercises({ exercises, setExercises }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { showToast, ToastContainer } = useToast();
 
   const [search, setSearch] = useState("");
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [confirmState, setConfirmState] = useState(null);
 
   const [form, setForm] = useState({
     ...emptyExercise(),
@@ -31,9 +35,10 @@ function Exercises({ exercises, setExercises }) {
   // la modale in modalità modifica per completare i dettagli
   useEffect(() => {
     const fromBoard = location.state?.fromBoard;
-    if (!fromBoard?.exerciseId) return;
+    const editExerciseId = fromBoard?.exerciseId || location.state?.editExerciseId;
+    if (!editExerciseId) return;
 
-    const ex = exercises.find((e) => e.id === fromBoard.exerciseId);
+    const ex = exercises.find((e) => e.id === editExerciseId);
     if (ex) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditingId(ex.id);
@@ -68,7 +73,8 @@ function Exercises({ exercises, setExercises }) {
 
   function saveExercise() {
     if (!form.title.trim()) {
-      return alert("Inserisci il titolo esercizio");
+      showToast("Inserisci il titolo esercizio", "warn");
+      return;
     }
 
     const payload = {
@@ -77,13 +83,13 @@ function Exercises({ exercises, setExercises }) {
     };
 
     if (editingId) {
-      setExercises(
-        exercises.map((exercise) =>
+      setExercises((prevExercises) =>
+        prevExercises.map((exercise) =>
           exercise.id === editingId ? payload : exercise
         )
       );
     } else {
-      setExercises([...exercises, payload]);
+      setExercises((prevExercises) => [...prevExercises, payload]);
     }
 
     setEditingId(null);
@@ -102,16 +108,33 @@ function Exercises({ exercises, setExercises }) {
   }
 
   function deleteExercise(id) {
-    if (!confirm("Vuoi eliminare questo esercizio?")) return;
+    setConfirmState({
+      message: "Vuoi eliminare questo esercizio?",
+      confirmLabel: "Elimina",
+      confirmTone: "red",
+      onConfirm: () => setExercises((prevExercises) => prevExercises.filter((exercise) => exercise.id !== id)),
+    });
+  }
 
-    setExercises(exercises.filter((exercise) => exercise.id !== id));
+  function removeTacticalBoard(exerciseId) {
+    setConfirmState({
+      message: "Vuoi rimuovere il disegno tattico da questo esercizio?",
+      confirmLabel: "Rimuovi",
+      confirmTone: "red",
+      onConfirm: () => setExercises((prevExercises) => prevExercises.map((ex) =>
+        ex.id === exerciseId ? { ...ex, tacticalBoard: undefined } : ex
+      )),
+    });
   }
 
   return (
     <div style={styles.page}>
+      <ToastContainer />
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
-        title="Libreria Esercizi"
-        subtitle="Archivio esercizi tecnico-tattici della stagione"
+        title="Editor esercizi"
+        subtitle="Crea o modifica gli esercizi personali che poi trovi nell'Eserciziario"
+        action={<Button variant="ghost" onClick={() => navigate("/exercise-library?tab=miei")}>← Torna all'Eserciziario</Button>}
       />
 
       <div
@@ -288,13 +311,7 @@ function Exercises({ exercises, setExercises }) {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => {
-                      // rimuove il disegno
-                      if (!confirm("Vuoi rimuovere il disegno tattico da questo esercizio?")) return;
-                      setExercises(exercises.map((ex) =>
-                        ex.id === exercise.id ? { ...ex, tacticalBoard: undefined } : ex
-                      ));
-                    }}
+                    onClick={() => removeTacticalBoard(exercise.id)}
                     style={{ ...exCardStyles.addBoardBtn, borderColor: "rgba(239,68,68,0.25)", color: "#fca5a5", background: "rgba(239,68,68,0.08)" }}
                   >
                     🗑 Rimuovi disegno
@@ -432,13 +449,16 @@ function Exercises({ exercises, setExercises }) {
                 onClick={() => {
                   // Prima salva l'esercizio, poi naviga alla lavagna
                   const name = form.title.trim();
-                  if (!name) { alert("Inserisci prima il titolo esercizio"); return; }
+                  if (!name) {
+                    showToast("Inserisci prima il titolo esercizio", "warn");
+                    return;
+                  }
                   const id = editingId || createId("exercise");
                   const payload = { ...form, id };
                   if (editingId) {
-                    setExercises(exercises.map((ex) => ex.id === editingId ? payload : ex));
+                    setExercises((prevExercises) => prevExercises.map((ex) => ex.id === editingId ? payload : ex));
                   } else {
-                    setExercises([...exercises, payload]);
+                    setExercises((prevExercises) => [...prevExercises, payload]);
                   }
                   setOpenModal(false);
                   setEditingId(null);

@@ -22,31 +22,36 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
 
   function updatePlayer(playerId, field, value) {
     if (!session) return;
-    const current = session.attendance?.[playerId] || {};
-    const newAttendance = {
-      ...(session.attendance || {}),
-      [playerId]: { ...current, [field]: value },
-    };
-    setSessions(
-      sessions.map((s) =>
-        String(s.id) === String(id) ? { ...s, attendance: newAttendance } : s
-      )
+    setSessions((prevSessions) =>
+      prevSessions.map((item) => {
+        if (String(item.id) !== String(id)) return item;
+        const current = item.attendance?.[playerId] || {};
+        return {
+          ...item,
+          attendance: {
+            ...(item.attendance || {}),
+            [playerId]: { ...current, [field]: value },
+          },
+        };
+      })
     );
   }
 
   function markAll(status) {
     if (!session) return;
-    const newAttendance = {};
-    players.forEach((p) => {
-      newAttendance[String(p.id)] = {
-        ...(session.attendance?.[String(p.id)] || {}),
-        status,
-      };
-    });
-    setSessions(
-      sessions.map((s) =>
-        String(s.id) === String(id) ? { ...s, attendance: newAttendance } : s
-      )
+    setSessions((prevSessions) =>
+      prevSessions.map((item) => {
+        if (String(item.id) !== String(id)) return item;
+        const newAttendance = {};
+        players.forEach((p) => {
+          const playerId = String(p.id);
+          newAttendance[playerId] = {
+            ...(item.attendance?.[playerId] || {}),
+            status,
+          };
+        });
+        return { ...item, attendance: newAttendance };
+      })
     );
   }
 

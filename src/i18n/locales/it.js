@@ -29,7 +29,7 @@ export const it = {
       availability: "Disponibilità",
       physicalTests: "Test fisici",
       physicalWorkouts: "Lavori fisici",
-      exercises: "Esercizi",
+      exercises: "Editor esercizi",
       exerciseLibrary: "Eserciziario",
       trainings: "Sedute",
       aiBuilder: "Genera con AI",
@@ -53,7 +53,7 @@ export const it = {
     mobile: {
       home: "Home",
       roster: "Rosa",
-      exercises: "Esercizi",
+      exercises: "Eserciziario",
       trainings: "Sedute",
       matches: "Gare",
       calendar: "Calendario",

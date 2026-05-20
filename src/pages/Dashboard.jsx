@@ -403,7 +403,7 @@ function Dashboard({
                   name={realTopScorer?.goals ? realTopScorer.name : "Nessun dato"}
                   tone="green"
                   onClick={() =>
-                    realTopScorer?.id && navigate(`/player/${realTopScorer.id}`)
+                    realTopScorer?.id && navigate(`/players/${realTopScorer.id}`)
                   }
                 />
 
@@ -417,7 +417,7 @@ function Dashboard({
                   }
                   tone="blue"
                   onClick={() =>
-                    realTopAssistman?.id && navigate(`/player/${realTopAssistman.id}`)
+                    realTopAssistman?.id && navigate(`/players/${realTopAssistman.id}`)
                   }
                 />
 
@@ -427,7 +427,7 @@ function Dashboard({
                   name={realTopMinutes?.minutes ? realTopMinutes.name : "Nessun dato"}
                   tone="orange"
                   onClick={() =>
-                    realTopMinutes?.id && navigate(`/player/${realTopMinutes.id}`)
+                    realTopMinutes?.id && navigate(`/players/${realTopMinutes.id}`)
                   }
                 />
 
@@ -441,7 +441,7 @@ function Dashboard({
                   }
                   tone="purple"
                   onClick={() =>
-                    realTopPresence?.id && navigate(`/player/${realTopPresence.id}`)
+                    realTopPresence?.id && navigate(`/players/${realTopPresence.id}`)
                   }
                 />
               </div>
@@ -652,9 +652,9 @@ function Dashboard({
                 onClick={() => navigate("/players")}
               />
               <QuickAction
-                label="Esercizi"
-                icon="🎯"
-                onClick={() => navigate("/exercises")}
+                label="Eserciziario"
+                icon="📚"
+                onClick={() => navigate("/exercise-library")}
               />
               <QuickAction
                 label="Sedute"

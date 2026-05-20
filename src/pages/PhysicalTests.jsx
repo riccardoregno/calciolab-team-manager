@@ -5,6 +5,8 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { useToast } from "../components/ui/Toast";
 
 import { styles } from "../styles/index.js";
 import { createId, formatShortDate, getPhysicalReference } from "../utils/helpers";
@@ -212,6 +214,7 @@ function ChartSVG({ points, metric }) {
 // Componente principale
 // ─────────────────────────────────────────────
 export default function PhysicalTests({ players = [], physicalTests = [], setPhysicalTests, appSettings }) {
+  const { showToast, ToastContainer } = useToast();
   // FIX #13: memoizzato via hook
   const settings = useAppSettings(appSettings);
   const METRICS  = settings.physicalMetrics.filter((m) => m.enabled);
@@ -220,6 +223,7 @@ export default function PhysicalTests({ players = [], physicalTests = [], setPhy
   const [openHistory, setOpenHistory]   = useState(null);       // playerId
   const [rankMetric, setRankMetric]     = useState(null);       // null = grid
   const [chartPlayerId, setChartPlayerId] = useState(null);     // playerId per modale grafico
+  const [confirmState, setConfirmState] = useState(null);
 
   // Per ogni giocatore: tutti i test ordinati per data DESC
   const testsByPlayer = useMemo(() => {
@@ -245,18 +249,25 @@ export default function PhysicalTests({ players = [], physicalTests = [], setPhy
 
   function saveTest() {
     const f = modal.form;
-    if (!f.playerId) return alert("Seleziona un giocatore");
+    if (!f.playerId) {
+      showToast("Seleziona un giocatore", "warn");
+      return;
+    }
     if (modal.mode === "edit") {
-      setPhysicalTests(physicalTests.map((t) => t.id === modal.testId ? { ...f, id: modal.testId } : t));
+      setPhysicalTests((prevTests) => prevTests.map((t) => t.id === modal.testId ? { ...f, id: modal.testId } : t));
     } else {
-      setPhysicalTests([...physicalTests, { ...f, id: createId("pt") }]);
+      setPhysicalTests((prevTests) => [...prevTests, { ...f, id: createId("pt") }]);
     }
     closeModal();
   }
 
   function deleteTest(id) {
-    if (!confirm("Eliminare questo test?")) return;
-    setPhysicalTests(physicalTests.filter((t) => t.id !== id));
+    setConfirmState({
+      message: "Eliminare questo test?",
+      confirmLabel: "Elimina",
+      confirmTone: "red",
+      onConfirm: () => setPhysicalTests((prevTests) => prevTests.filter((t) => t.id !== id)),
+    });
   }
 
   // ── Ranking ───────────────────────────────
@@ -291,6 +302,8 @@ export default function PhysicalTests({ players = [], physicalTests = [], setPhy
 
   return (
     <div style={styles.page}>
+      <ToastContainer />
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
         title="Test fisici"
         subtitle="Monitora la condizione atletica di ogni giocatore nel tempo"

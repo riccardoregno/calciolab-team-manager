@@ -5,11 +5,13 @@ import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
+import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { createId } from "../utils/helpers";
 
-export default function SessionGenerator({ exercises = [], sessions = [], setSessions, players = [], matches = [] }) {
+export default function SessionGenerator({ exercises = [], setSessions, players = [], matches = [] }) {
   const navigate = useNavigate();
+  const { showToast, ToastContainer } = useToast();
   const [goal, setGoal] = useState("Possesso");
   const [duration, setDuration] = useState(75);
   const [intensity, setIntensity] = useState("Media");
@@ -28,7 +30,7 @@ export default function SessionGenerator({ exercises = [], sessions = [], setSes
 
   function saveProposal() {
     if (proposal.length === 0) {
-      alert("Aggiungi esercizi alla libreria prima di generare una seduta.");
+      showToast("Aggiungi esercizi alla libreria prima di generare una seduta.", "warn");
       return;
     }
 
@@ -50,13 +52,14 @@ export default function SessionGenerator({ exercises = [], sessions = [], setSes
       attendance: {},
     };
 
-    setSessions([...sessions, generated]);
+    setSessions((prevSessions) => [...prevSessions, generated]);
   }
 
   const nextMatch = [...matches].sort((a, b) => new Date(a.date) - new Date(b.date)).find((match) => new Date(match.date) >= new Date());
 
   return (
     <div>
+      <ToastContainer />
       <PageHeader
         title="Builder guidato"
         subtitle="Crea una seduta con parametri manuali: obiettivo, durata, intensità e libreria esercizi."

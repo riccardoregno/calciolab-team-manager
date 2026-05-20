@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 
 import { styles } from "./styles/index.js";
 import { useTranslation } from "./i18n";
@@ -21,7 +21,6 @@ import Auth from "./pages/Auth";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Players = lazy(() => import("./pages/Players"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail"));
-const PlayerProfile = lazy(() => import("./pages/PlayerProfile"));
 const MatchStats = lazy(() => import("./pages/MatchStats"));
 const SessionAttendance = lazy(() => import("./pages/SessionAttendance"));
 const MatchConvocation  = lazy(() => import("./pages/MatchConvocation"));
@@ -47,6 +46,11 @@ const Sponsors = lazy(() => import("./pages/Sponsors"));
 const ExerciseLibrary = lazy(() => import("./pages/ExerciseLibrary"));
 const AiSessionBuilder = lazy(() => import("./pages/AiSessionBuilder"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
+
+function LegacyPlayerRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/players/${id}`} replace />;
+}
 const JoinTeam = lazy(() => import("./pages/JoinTeam"));
 const SetPlays = lazy(() => import("./pages/SetPlays"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -272,14 +276,14 @@ function App() {
 
   function updateEventAttendance(eventId, eventType, attendance) {
     if (eventType === "Partita") {
-      setMatches(
-        matches.map((match) =>
+      setMatches((prevMatches) =>
+        prevMatches.map((match) =>
           match.id === eventId ? { ...match, attendance } : match
         )
       );
     } else {
-      setSessions(
-        sessions.map((session) =>
+      setSessions((prevSessions) =>
+        prevSessions.map((session) =>
           session.id === eventId ? { ...session, attendance } : session
         )
       );
@@ -664,13 +668,7 @@ function App() {
               <Route
                 path="/player/:id"
                 element={
-                  gate(coachRoles, <PlayerProfile
-                    players={players}
-                    matches={matches}
-                    physicalTests={physicalTests}
-                    sessions={sessions}
-                    loading={loading}
-                  />)
+                  gate(coachRoles, <LegacyPlayerRedirect />)
                 }
               />
 

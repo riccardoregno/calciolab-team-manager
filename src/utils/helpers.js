@@ -211,30 +211,77 @@ export function normalizeGpsSession(s = {}) {
   };
 }
 
+function expandSetPlayAssignments(rows = [], length, fallback = {}) {
+  return Array.from({ length }, (_, index) => ({
+    id: index + 1,
+    ...fallback,
+    ...(rows[index] || {}),
+  }));
+}
+
+function normalizeSetPlayPresets(presets = []) {
+  if (!Array.isArray(presets)) return [];
+
+  return presets
+    .filter((preset) => preset && preset.id && preset.sectionKey)
+    .map((preset) => ({
+      id: String(preset.id),
+      sectionKey: preset.sectionKey,
+      name: preset.name || "Preset",
+      payload: preset.payload || {},
+      updatedAt: preset.updatedAt || "",
+    }));
+}
+
 export function normalizeSetPlays(sp = {}) {
   const empty = {
     corners: {
-      offTakerLeft: "", offTakerRight: "",
+      offSchemeName: "", offCallCode: "", offVariant: "", offTrigger: "", offQuickNote: "",
+      offTakerLeft: "", offTakerRight: "", offSecondTakerLeft: "", offSecondTakerRight: "",
       offAssignments: Array.from({length:8}, (_,i) => ({id:i+1,playerId:"",zone:"",role:""})),
       offNotes: "",
+      defSchemeName: "", defCallCode: "", defVariant: "", defTrigger: "", defQuickNote: "",
       defSystem: "zona", defPoleSx: "", defPoleDx: "",
-      defAssignments: Array.from({length:8}, (_,i) => ({id:i+1,playerId:"",zone:""})),
+      defAssignments: Array.from({length:10}, (_,i) => ({id:i+1,playerId:"",task:"",opponent:"",zone:""})),
       defNotes: "",
     },
     freekicks: {
+      offSchemeName: "", offCallCode: "", offVariant: "", offTrigger: "", offQuickNote: "",
       offTaker1:"", offTaker2:"", offSchema:"diretto",
       offAssignments: Array.from({length:6}, (_,i) => ({id:i+1,playerId:"",zone:""})),
       offNotes: "",
-      defWall:["","","",""],
-      defAssignments: Array.from({length:6}, (_,i) => ({id:i+1,playerId:"",zone:""})),
+      defSchemeName: "", defCallCode: "", defVariant: "", defTrigger: "", defQuickNote: "",
+      defWall:["","","","","",""],
+      defAssignments: Array.from({length:6}, (_,i) => ({id:i+1,playerId:"",task:"",opponent:"",zone:""})),
       defNotes:"",
     },
     penalties: { takers:["","","","",""], notes:"" },
+    presets: [],
   };
+
+  const corners = { ...empty.corners, ...(sp.corners || {}) };
+  const freekicks = { ...empty.freekicks, ...(sp.freekicks || {}) };
+
   return {
-    corners:   { ...empty.corners,   ...(sp.corners   || {}) },
-    freekicks: { ...empty.freekicks, ...(sp.freekicks || {}) },
+    corners: {
+      ...corners,
+      defAssignments: expandSetPlayAssignments(
+        corners.defAssignments,
+        10,
+        { playerId: "", task: "", opponent: "", zone: "" }
+      ),
+    },
+    freekicks: {
+      ...freekicks,
+      defWall: [...(freekicks.defWall || []), "", "", "", "", "", ""].slice(0, 6),
+      defAssignments: expandSetPlayAssignments(
+        freekicks.defAssignments,
+        6,
+        { playerId: "", task: "", opponent: "", zone: "" }
+      ),
+    },
     penalties: { ...empty.penalties, ...(sp.penalties || {}) },
+    presets: normalizeSetPlayPresets(sp.presets || empty.presets),
   };
 }
 

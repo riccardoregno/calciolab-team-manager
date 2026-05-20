@@ -123,13 +123,13 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
     };
 
     if (editingId) {
-      setSessions(
-        sessions.map((session) =>
+      setSessions((prevSessions) =>
+        prevSessions.map((session) =>
           session.id === editingId ? payload : session
         )
       );
     } else {
-      setSessions([...sessions, payload]);
+      setSessions((prevSessions) => [...prevSessions, payload]);
     }
 
     setEditingId(null);
@@ -161,7 +161,7 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
       confirmLabel: "Elimina",
       confirmTone: "red",
       onConfirm: () => {
-        setSessions(sessions.filter((session) => session.id !== id));
+        setSessions((prevSessions) => prevSessions.filter((session) => session.id !== id));
         if (editingId === id) {
           setEditingId(null);
           setForm(emptyTraining());
@@ -195,12 +195,13 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
         className="calciolab-two-column"
         style={{
           display: "grid",
-          gridTemplateColumns: "1.1fr 0.9fr",
+          gridTemplateColumns: "minmax(0, 1.1fr) minmax(320px, 0.9fr)",
           gap: 24,
           alignItems: "start",
+          minWidth: 0,
         }}
       >
-        <div style={{ display: "grid", gap: 20 }}>
+        <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
           <div className="print-area">
   <AppCard>
     {/* 👇 SOLO PER PDF */}
@@ -225,97 +226,116 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
       )}
     </div>
 
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 16,
-        alignItems: "center",
-        marginBottom: 20,
-        flexWrap: "wrap",
-      }}
-    >
-      <div>
+    <div style={trainingStyles.formHero}>
+      <div style={{ minWidth: 0 }}>
         <div style={trainingStyles.stepHeader}>
           <span style={trainingStyles.stepBadge}>1</span>
           <span>Dati seduta</span>
         </div>
-        <h3 style={{ margin: 0, lineHeight: 1.2 }}>
+        <h3 style={trainingStyles.formTitle}>
           {editingId ? "Modifica seduta" : "Crea seduta"}
         </h3>
-        <p style={{ color: "#94a3b8", margin: "6px 0 0", lineHeight: 1.45 }}>
+        <p style={trainingStyles.formSubtitle}>
           Inserisci dati base e scegli gli esercizi
         </p>
       </div>
 
-      <Badge tone="blue">{totalMinutes} min</Badge>
+      <div style={trainingStyles.durationBadge}>
+        <span>Durata</span>
+        <strong>{totalMinutes} min</strong>
+      </div>
+    </div>
+
+    <div style={trainingStyles.sessionPreviewStrip}>
+      <SessionMeta label="Data" value={formatDate(form.date)} />
+      <SessionMeta label="Tema" value={form.theme} />
+      <SessionMeta label="Obiettivo" value={form.objective || "Da definire"} />
+      <SessionMeta label="Carico" value={form.matchDayDistance} />
     </div>
 
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+        gridTemplateColumns: "repeat(auto-fit,minmax(min(190px,100%),1fr))",
         gap: 14,
       }}
     >
-      <input
-        placeholder="Titolo seduta"
-        value={form.title}
-        onChange={(e) => setForm({ ...form, title: e.target.value })}
-        style={styles.input}
-      />
+      <label style={trainingStyles.field}>
+        <span>Titolo</span>
+        <input
+          placeholder="Es. Attivazione + possesso"
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          style={styles.input}
+        />
+      </label>
 
-      <input
-        type="date"
-        value={form.date}
-        onChange={(e) => setForm({ ...form, date: e.target.value })}
-        style={styles.input}
-      />
+      <label style={trainingStyles.field}>
+        <span>Data</span>
+        <input
+          type="date"
+          value={form.date}
+          onChange={(e) => setForm({ ...form, date: e.target.value })}
+          style={styles.input}
+        />
+      </label>
 
-      <select
-        value={form.theme}
-        onChange={(e) => setForm({ ...form, theme: e.target.value })}
-        style={styles.input}
-      >
-        <option>Costruzione</option>
-        <option>Possesso</option>
-        <option>Pressing</option>
-        <option>Transizione</option>
-        <option>Finalizzazione</option>
-        <option>Fase difensiva</option>
-        <option>Palla inattiva</option>
-      </select>
+      <label style={trainingStyles.field}>
+        <span>Tema</span>
+        <select
+          value={form.theme}
+          onChange={(e) => setForm({ ...form, theme: e.target.value })}
+          style={styles.input}
+        >
+          <option>Costruzione</option>
+          <option>Possesso</option>
+          <option>Pressing</option>
+          <option>Transizione</option>
+          <option>Finalizzazione</option>
+          <option>Fase difensiva</option>
+          <option>Palla inattiva</option>
+        </select>
+      </label>
 
-      <select
-        value={form.matchDayDistance}
-        onChange={(e) => setForm({ ...form, matchDayDistance: e.target.value })}
-        style={styles.input}
-        title="Distanza dalla prossima partita"
-      >
-        <option value="MD+1">MD+1 — Post-gara</option>
-        <option value="MD-4">MD-4 — Carico moderato</option>
-        <option value="MD-3">MD-3 — Picco di carico</option>
-        <option value="MD-2">MD-2 — Carico medio</option>
-        <option value="MD-1">MD-1 — Pre-gara</option>
-      </select>
+      <label style={trainingStyles.field}>
+        <span>Carico</span>
+        <select
+          value={form.matchDayDistance}
+          onChange={(e) => setForm({ ...form, matchDayDistance: e.target.value })}
+          style={styles.input}
+          title="Distanza dalla prossima partita"
+        >
+          <option value="MD+1">MD+1 — Post-gara</option>
+          <option value="MD-4">MD-4 — Carico moderato</option>
+          <option value="MD-3">MD-3 — Picco di carico</option>
+          <option value="MD-2">MD-2 — Carico medio</option>
+          <option value="MD-1">MD-1 — Pre-gara</option>
+        </select>
+      </label>
 
-      <input
-        placeholder="Obiettivo"
-        value={form.objective}
-        onChange={(e) => setForm({ ...form, objective: e.target.value })}
-        style={styles.input}
-      />
+      <label style={trainingStyles.field}>
+        <span>Obiettivo</span>
+        <input
+          placeholder="Es. uscita pulita sotto pressione"
+          value={form.objective}
+          onChange={(e) => setForm({ ...form, objective: e.target.value })}
+          style={styles.input}
+        />
+      </label>
 
-      <textarea
-        placeholder="Note"
-        value={form.notes}
-        onChange={(e) => setForm({ ...form, notes: e.target.value })}
-        style={{
-          ...styles.input,
-          minHeight: 44,
-          resize: "vertical",
-        }}
-      />
+      <label style={trainingStyles.field}>
+        <span>Note staff</span>
+        <textarea
+          placeholder="Indicazioni, vincoli, focus individuali..."
+          value={form.notes}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          style={{
+            ...styles.input,
+            minHeight: 44,
+            resize: "vertical",
+          }}
+        />
+      </label>
     </div>
 
     {/* Pannello RPE — distanza dalla gara */}
@@ -509,8 +529,8 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
           )}
         </div>
 
-       <div style={{ display: "grid", gap: 20 }}>
-  <AppCard style={{ marginTop: 20 }}>
+       <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
+  <AppCard>
     <div style={trainingStyles.stepHeader}>
       <span style={trainingStyles.stepBadge}>3</span>
       <span>Timeline</span>
@@ -536,19 +556,25 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
               <span style={trainingStyles.stepBadge}>4</span>
               <span>Anteprima</span>
             </div>
-            <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Anteprima</h3>
+            <div style={trainingStyles.previewCard}>
+              <div>
+                <p style={trainingStyles.previewEyebrow}>Scheda seduta</p>
+                <h2 style={trainingStyles.previewTitle}>
+                  {form.title || "Titolo non inserito"}
+                </h2>
+              </div>
 
-            <h2 style={{ marginBottom: 8, lineHeight: 1.1 }}>
-              {form.title || "Titolo non inserito"}
-            </h2>
+              <div style={trainingStyles.previewMetaGrid}>
+                <SessionMeta label="Data" value={formatDate(form.date)} />
+                <SessionMeta label="Tema" value={form.theme} />
+                <SessionMeta label="Durata" value={`${totalMinutes} min`} />
+                <SessionMeta label="Esercizi" value={selectedExercises.length} />
+              </div>
 
-            <p style={{ color: "#94a3b8", lineHeight: 1.45 }}>
-              {formatDate(form.date)} · {form.theme} · {totalMinutes} min
-            </p>
-
-            {form.objective && (
-              <p style={{ color: "#cbd5e1" }}>{form.objective}</p>
-            )}
+              {form.objective && (
+                <p style={trainingStyles.previewObjective}>{form.objective}</p>
+              )}
+            </div>
 
             <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
               {editingId && (
@@ -864,6 +890,94 @@ function BlockBtn({ active, onClick, children, color }) {
 }
 
 const trainingStyles = {
+  formHero: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 16,
+    alignItems: "flex-start",
+    marginBottom: 16,
+    flexWrap: "wrap",
+    minWidth: 0,
+  },
+  formTitle: {
+    margin: 0,
+    lineHeight: 1.12,
+    fontSize: 30,
+    fontWeight: 950,
+    letterSpacing: 0,
+  },
+  formSubtitle: {
+    color: "#94a3b8",
+    margin: "7px 0 0",
+    lineHeight: 1.45,
+    fontSize: 14,
+  },
+  durationBadge: {
+    display: "grid",
+    gap: 3,
+    minWidth: 88,
+    padding: "9px 13px",
+    borderRadius: 14,
+    background: "rgba(56,189,248,0.12)",
+    border: "1px solid rgba(56,189,248,0.3)",
+    color: "#bae6fd",
+    textAlign: "right",
+  },
+  sessionPreviewStrip: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(140px, 100%), 1fr))",
+    gap: 10,
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 16,
+    background: "rgba(15,23,42,0.45)",
+    border: "1px solid rgba(148,163,184,0.14)",
+  },
+  field: {
+    display: "grid",
+    gap: 7,
+    minWidth: 0,
+    color: "#64748b",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+  },
+  previewCard: {
+    display: "grid",
+    gap: 14,
+    padding: 16,
+    borderRadius: 16,
+    background: "linear-gradient(135deg, rgba(56,189,248,0.10), rgba(15,23,42,0.52))",
+    border: "1px solid rgba(56,189,248,0.18)",
+  },
+  previewEyebrow: {
+    margin: "0 0 6px",
+    color: "#7dd3fc",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+  },
+  previewTitle: {
+    margin: 0,
+    fontSize: 28,
+    fontWeight: 950,
+    lineHeight: 1.05,
+    letterSpacing: 0,
+  },
+  previewMetaGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(120px, 100%), 1fr))",
+    gap: 9,
+  },
+  previewObjective: {
+    margin: 0,
+    color: "#cbd5e1",
+    lineHeight: 1.45,
+    paddingTop: 12,
+    borderTop: "1px solid rgba(255,255,255,0.08)",
+  },
   sessionSummary: {
     marginBottom: 26,
     padding: 18,

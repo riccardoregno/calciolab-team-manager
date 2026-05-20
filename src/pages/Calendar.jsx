@@ -4,6 +4,7 @@ import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { formatShortDate, getAvailabilityGroups, getSessionLoad, createId } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 
@@ -32,6 +33,7 @@ function buildWeek(offsetWeeks = 0) {
 function Calendar({ events, players, setSessions, setMatches, sessions = [], matches = [] }) {
   const [view, setView] = useState("week");
   const [monthDate, setMonthDate] = useState(() => new Date());
+  const [confirmState, setConfirmState] = useState(null);
 
   function quickCreate({ date, type, title, notes }) {
     const base = {
@@ -77,8 +79,24 @@ function Calendar({ events, players, setSessions, setMatches, sessions = [], mat
   const [selectedId, setSelectedId] = useState(sortedEvents[0]?.id || "");
   const effectiveSelectedId = selectedId || sortedEvents[0]?.id || "";
 
+  function requestDeleteEvent(event) {
+    setConfirmState({
+      message: `Eliminare "${event.title}"?`,
+      confirmLabel: "Elimina",
+      confirmTone: "red",
+      onConfirm: () => {
+        if (event.type === "Partita") {
+          setMatches?.(matches.filter((m) => String(m.id) !== String(event.id)));
+        } else {
+          setSessions?.(sessions.filter((s) => String(s.id) !== String(event.id)));
+        }
+      },
+    });
+  }
+
   return (
     <div style={styles.page}>
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
         title="Calendario"
         subtitle="Gestisci eventi, presenze e statistiche partita/allenamento"
@@ -127,11 +145,7 @@ function Calendar({ events, players, setSessions, setMatches, sessions = [], mat
             events={sortedEvents}
             players={players}
             onQuickCreate={quickCreate}
-            onDeleteEvent={(event) => {
-              if (!confirm(`Eliminare "${event.title}"?`)) return;
-              if (event.type === "Partita") setMatches?.(matches.filter((m) => String(m.id) !== String(event.id)));
-              else setSessions?.(sessions.filter((s) => String(s.id) !== String(event.id)));
-            }}
+            onDeleteEvent={requestDeleteEvent}
             onEditEvent={(event, updates) => {
               if (event.type === "Partita") setMatches?.(matches.map((m) => String(m.id) === String(event.id) ? { ...m, ...updates } : m));
               else setSessions?.(sessions.map((s) => String(s.id) === String(event.id) ? { ...s, ...updates } : s));
@@ -145,11 +159,7 @@ function Calendar({ events, players, setSessions, setMatches, sessions = [], mat
             selectedId={effectiveSelectedId}
             onSelect={setSelectedId}
             onQuickCreate={quickCreate}
-            onDeleteEvent={(event) => {
-              if (!confirm(`Eliminare "${event.title}"?`)) return;
-              if (event.type === "Partita") setMatches?.(matches.filter((m) => String(m.id) !== String(event.id)));
-              else setSessions?.(sessions.filter((s) => String(s.id) !== String(event.id)));
-            }}
+            onDeleteEvent={requestDeleteEvent}
             onEditEvent={(event, updates) => {
               if (event.type === "Partita") setMatches?.(matches.map((m) => String(m.id) === String(event.id) ? { ...m, ...updates } : m));
               else setSessions?.(sessions.map((s) => String(s.id) === String(event.id) ? { ...s, ...updates } : s));

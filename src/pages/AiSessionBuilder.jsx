@@ -21,7 +21,7 @@ const defaultPrompt = {
   specialConstraints: "",
 };
 
-export default function AiSessionBuilder({ exercises = [], sessions = [], setSessions, players = [] }) {
+export default function AiSessionBuilder({ exercises = [], setSessions, players = [] }) {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState(defaultPrompt);
   const [generatedSession, setGeneratedSession] = useState(null);
@@ -106,18 +106,18 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
       duration: totalMinutes,
     };
 
-    setSessions([...sessions, payload]);
+    setSessions((prevSessions) => [...prevSessions, payload]);
     navigate("/trainings");
   }
 
   return (
     <div style={builderStyles.page}>
       <PageHeader
-        title="Builder AI"
-        subtitle="Genera una seduta da brief tecnico: obiettivo, categoria, giocatori, campo e distanza dalla gara."
+        title="Genera seduta con AI"
+        subtitle="Parti da un brief tecnico, salva la proposta e rifiniscila nella pagina Sedute."
         action={
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <Button variant="ghost" onClick={() => navigate("/trainings")}>Crea manualmente</Button>
+            <Button variant="ghost" onClick={() => navigate("/trainings")}>← Torna a Sedute</Button>
             <Badge tone={isOpenAiConfigured() ? "green" : "orange"}>
               {isOpenAiConfigured() ? "Gemini configurato" : "Fallback locale"}
             </Badge>
@@ -126,7 +126,7 @@ export default function AiSessionBuilder({ exercises = [], sessions = [], setSes
       />
 
       <div style={builderStyles.grid}>
-        <AppCard title="Brief seduta" subtitle="Questa e' la base del futuro prompt AI.">
+        <AppCard title="Brief seduta" subtitle="Imposta il contesto tecnico: l'AI proporrà una traccia modificabile.">
           <div style={builderStyles.formGrid}>
             <Field label="Obiettivo">
               <select value={prompt.objective} onChange={(event) => updatePrompt("objective", event.target.value)} style={styles.input}>

@@ -1,0 +1,225 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getVipLevel, getVipProgress, getVipReward } from "../_shared/vip.ts";
+import { sendLevelUpgradeEmail, sendVipRewardEmail } from "../_shared/vipEmail.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const {
+      teamId,
+      pointsToAdd = 0,
+      source = "manual",
+      externalId,
+      type = "vip_points",
+      metadata = {},
+    } = await req.json();
+
+    if (!teamId) {
+      throw new Error("teamId mancante");
+    }
+
+    const pointsDelta = Number(pointsToAdd || 0);
+    const eventSource = String(source || "manual");
+    const eventExternalId = externalId
+      ? String(externalId)
+      : pointsDelta !== 0
+      ? `${eventSource}-${crypto.randomUUID()}`
+      : "";
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const { data: team, error: teamError } = await supabase
+      .from("teams")
+      .select("id, vip_points, vip_level")
+      .eq("id", teamId)
+      .single();
+
+    if (teamError) throw teamError;
+    if (!team) throw new Error("Team non trovato");
+
+    const previousLevel = team.vip_level || "bronze";
+    const newPoints = Math.max(0, Number(team.vip_points || 0) + pointsDelta);
+    const newLevel = getVipLevel(newPoints).name;
+    const levelChanged = newLevel !== previousLevel;
+    const candidateReward = levelChanged ? getVipReward(newLevel) : null;
+    const rewardAlreadyGranted = candidateReward
+      ? await hasRewardAlreadyBeenGranted(supabase, teamId, candidateReward.promotionCode)
+      : false;
+    const reward = rewardAlreadyGranted ? null : candidateReward;
+
+    if (eventExternalId) {
+      const insertResult = await insertVipEvent(supabase, {
+        teamId,
+        type,
+        source: eventSource,
+        externalId: eventExternalId,
+        points: pointsDelta,
+        rewardCode: reward?.promotionCode || null,
+        metadata: {
+          ...metadata,
+          previousLevel,
+          newLevel,
+          rewardAlreadyGranted,
+        },
+      });
+
+      if (insertResult.duplicate) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            duplicate: true,
+          }),
+          {
+            status: 200,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from("teams")
+      .update({
+        vip_points: newPoints,
+        vip_level: newLevel,
+        vip_updated_at: new Date().toISOString(),
+      })
+      .eq("id", teamId);
+
+    if (updateError) {
+      if (eventExternalId) await rollbackVipEvent(supabase, eventSource, eventExternalId);
+      throw updateError;
+    }
+
+    if (levelChanged) {
+      await sendLevelUpgradeEmail({ teamId, previousLevel, newLevel, reward });
+      if (reward) await sendVipRewardEmail({ teamId, level: newLevel, reward });
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        levelChanged,
+        previousLevel,
+        newLevel,
+        newPoints,
+        reward,
+        progress: getVipProgress(newPoints),
+      }),
+      {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Errore sconosciuto";
+    return new Response(JSON.stringify({ success: false, error: message }), {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
+    });
+  }
+});
+
+async function hasRewardAlreadyBeenGranted(supabase, teamId: string, rewardCode: string) {
+  const { data, error } = await supabase
+    .from("vip_events")
+    .select("id")
+    .eq("team_id", teamId)
+    .eq("reward_code", rewardCode)
+    .limit(1);
+
+  if (error) throw error;
+  return Boolean(data?.length);
+}
+
+async function insertVipEvent(
+  supabase,
+  {
+    teamId,
+    type,
+    source,
+    externalId,
+    points,
+    rewardCode,
+    metadata,
+  }: {
+    teamId: string;
+    type: string;
+    source: string;
+    externalId: string;
+    points: number;
+    rewardCode: string | null;
+    metadata: Record<string, unknown>;
+  }
+) {
+  const { error } = await supabase
+    .from("vip_events")
+    .insert({
+      team_id: teamId,
+      type,
+      source,
+      external_id: externalId,
+      points,
+      reward_code: rewardCode,
+      metadata,
+    });
+
+  if (!error) return { duplicate: false };
+
+  if (error.code === "23505" && String(error.message || "").includes("vip_events_source_external_id_key")) {
+    return { duplicate: true };
+  }
+
+  if (error.code === "23505" && rewardCode) {
+    const retry = await supabase
+      .from("vip_events")
+      .insert({
+        team_id: teamId,
+        type,
+        source,
+        external_id: externalId,
+        points,
+        reward_code: null,
+        metadata: {
+          ...metadata,
+          rewardAlreadyGranted: true,
+        },
+      });
+
+    if (!retry.error) return { duplicate: false };
+    if (retry.error.code === "23505") return { duplicate: true };
+    throw retry.error;
+  }
+
+  throw error;
+}
+
+async function rollbackVipEvent(supabase, source: string, externalId: string) {
+  await supabase
+    .from("vip_events")
+    .delete()
+    .eq("source", source)
+    .eq("external_id", externalId);
+}
