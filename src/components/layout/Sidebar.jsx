@@ -32,6 +32,7 @@ const menuGroups = [
     items: [
       { to: "/exercise-library", labelKey: "navigation.items.exerciseLibrary", icon: "📚", roles: technicalRoles },
       { to: "/trainings", labelKey: "navigation.items.trainings", icon: "📋", roles: technicalRoles },
+      { to: "/microcycle", labelKey: "navigation.items.microcycle", icon: "🗓️", roles: technicalRoles },
       { to: "/tactical-board", labelKey: "navigation.items.tacticalBoard", icon: "🧠", roles: technicalRoles },
     ],
   },
@@ -49,6 +50,7 @@ const menuGroups = [
     titleKey: "navigation.groups.system",
     items: [
       { to: "/statistics", labelKey: "navigation.items.statistics", icon: "📊", roles: coachRoles },
+      { to: "/staff-tasks", labelKey: "navigation.items.staffTasks", icon: "✅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
       { to: "/exports", labelKey: "navigation.items.exports", icon: "🖨️", featureKey: "exports", roles: managementRoles },
       { to: "/premium", labelKey: "navigation.items.premium", icon: "💎", roles: managementRoles },
       { to: "/coach-settings", labelKey: "navigation.items.coach", icon: "🎛️", roles: physicalRoles },

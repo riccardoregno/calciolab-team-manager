@@ -7,6 +7,7 @@ import PageHeader from "../components/ui/PageHeader";
 import { useToast } from "../components/ui/Toast";
 import { createId, formatDate } from "../utils/helpers";
 import { styles } from "../styles/index.js";
+import { useTranslation } from "../i18n";
 
 const HEADER_MAP = {
   playerName:        ["playername", "player_name", "nome"],
@@ -25,7 +26,10 @@ const HEADER_MAP = {
 const TYPE_LABEL = { training: "Allenamento", match: "Partita", test: "Test" };
 const TYPE_TONE  = { training: "blue", match: "green", test: "orange" };
 
-export default function GpsLoad({ gpsSessions = [], setGpsSessions, players = [] }) {
+export default function GpsLoad({
+  gpsSessions = [], setGpsSessions, players = [] }) {
+
+  const { t } = useTranslation();
   const { showToast, ToastContainer } = useToast();
   const fileInputRef = useRef(null);
   const [pendingRows, setPendingRows] = useState([]);
@@ -87,7 +91,7 @@ export default function GpsLoad({ gpsSessions = [], setGpsSessions, players = []
   return (
     <div style={styles.page}>
       <PageHeader
-        title="GPS & Load"
+        title={t("pages.gpsLoad.title")}
         subtitle="Importa e analizza dati GPS, carico esterno, sprint e intensità della squadra."
       />
 

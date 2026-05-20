@@ -14,10 +14,14 @@ import {
   PlayerSidebar,
   PlayerStatsTab,
   PlayerTabs,
+  PlayerTechnicalOverview,
+  PlayerVideoTab,
 } from "../components/players/PlayerDetailSections";
 import { getPreventionRecommendations } from "../components/players/playerDetailLogic";
 import { styles } from "../styles/index.js";
 import { createId, getPlayerSummary } from "../utils/helpers";
+import { useIsMobile } from "../hooks/useIsMobile";
+import { useTranslation } from "../i18n";
 
 const DIFFERENTIATED_TYPES = [
   "Defaticante",
@@ -27,7 +31,10 @@ const DIFFERENTIATED_TYPES = [
   "Carico ridotto",
 ];
 
-function PlayerDetail({ players, setPlayers, sessions = [], matches = [], physicalTests = [] }) {
+function PlayerDetail({
+  players, setPlayers, sessions = [], matches = [], physicalTests = [], setStaffTasks }) {
+
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -38,7 +45,7 @@ function PlayerDetail({ players, setPlayers, sessions = [], matches = [], physic
 
   const [editing, setEditing] = useState(false);
   const [editBaseUpdatedAt, setEditBaseUpdatedAt] = useState(null);
-  const [activeTab, setActiveTab] = useState("profilo");
+  const [activeTab, setActiveTab] = useState("cartella");
   const [form, setForm] = useState({ ...player });
   const [medicalModal, setMedicalModal] = useState(null);
   const [conflictModal, setConflictModal] = useState(false);
@@ -47,9 +54,7 @@ function PlayerDetail({ players, setPlayers, sessions = [], matches = [], physic
     note: "",
     returnDate: new Date().toISOString().slice(0, 10),
   });
-  const [isMobile, setIsMobile] = useState(
-    () => typeof window !== "undefined" && window.innerWidth < 760
-  );
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!player) return;
@@ -62,13 +67,6 @@ function PlayerDetail({ players, setPlayers, sessions = [], matches = [], physic
     // Reset intenzionale solo al cambio atleta: includere l'intero player sovrascriverebbe edit/modali dopo ogni update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player?.id]);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 759px)");
-    const handler = (event) => setIsMobile(event.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
 
   const summary = useMemo(
     () => getPlayerSummary(player, { sessions, matches, physicalTests }),
@@ -87,11 +85,15 @@ function PlayerDetail({ players, setPlayers, sessions = [], matches = [], physic
     () => getPreventionRecommendations(injuryHistory, player),
     [injuryHistory, player]
   );
+  const playerVideoClips = useMemo(
+    () => getPlayerVideoClips(matches, player?.id),
+    [matches, player?.id]
+  );
 
   if (!player) {
     return (
       <div style={styles.page}>
-        <PageHeader title="Giocatore non trovato" subtitle="Il profilo richiesto non esiste" />
+        <PageHeader title={t("pages.playerDetail.notFound")} subtitle="Il profilo richiesto non esiste" />
       </div>
     );
   }
@@ -264,6 +266,37 @@ function PlayerDetail({ players, setPlayers, sessions = [], matches = [], physic
     setMedicalModal(null);
   }
 
+  function createDevelopmentTask() {
+    if (!setStaffTasks || !player) return;
+    const description = [
+      form.trainingActions && `Azioni: ${form.trainingActions}`,
+      form.weeklyGoal && `Obiettivo settimana: ${form.weeklyGoal}`,
+      form.thirtyDayGoal && `Obiettivo 30 giorni: ${form.thirtyDayGoal}`,
+      form.successMetrics && `Metriche: ${form.successMetrics}`,
+      form.videoReviewNotes && `Video: ${form.videoReviewNotes}`,
+    ].filter(Boolean).join("\n");
+
+    if (!description.trim()) return;
+
+    setStaffTasks((prev = []) => [
+      {
+        id: createId("task"),
+        title: `Piano individuale - ${player.name}`,
+        description,
+        status: "todo",
+        priority: "medium",
+        ownerRole: "assistantCoach",
+        dueDate: getRelativeDate(7),
+        playerId: String(player.id),
+        sourceType: "playerDevelopment",
+        sourceId: String(player.id),
+        createdAt: new Date().toISOString(),
+        completedAt: "",
+      },
+      ...prev,
+    ]);
+  }
+
   return (
     <div style={styles.page}>
       <PageHeader title={player.name} subtitle="Scheda giocatore e database individuale" />
@@ -281,8 +314,19 @@ function PlayerDetail({ players, setPlayers, sessions = [], matches = [], physic
         <div style={pageStyles.main}>
           <PlayerTabs activeTab={activeTab} onChange={setActiveTab} />
 
-          {(activeTab === "profilo" || activeTab === "statistiche") && (
+          {(activeTab === "cartella" || activeTab === "profilo" || activeTab === "statistiche") && (
             <PlayerKpiStrip summary={summary} />
+          )}
+
+          {activeTab === "cartella" && (
+            <PlayerTechnicalOverview
+              player={player}
+              summary={summary}
+              activeInjuries={activeInjuries}
+              injuryHistory={injuryHistory}
+              preventionRecommendations={preventionRecommendations}
+              onGoToTab={setActiveTab}
+            />
           )}
 
           {activeTab === "profilo" && (
@@ -306,6 +350,8 @@ function PlayerDetail({ players, setPlayers, sessions = [], matches = [], physic
           )}
 
           {activeTab === "statistiche" && <PlayerStatsTab summary={summary} />}
+
+          {activeTab === "video" && <PlayerVideoTab clips={playerVideoClips} />}
 
           {activeTab === "fisico" && (
             <PlayerPhysicalTab
@@ -333,7 +379,14 @@ function PlayerDetail({ players, setPlayers, sessions = [], matches = [], physic
           )}
 
           {activeTab === "sviluppo" && (
-            <PlayerDevelopmentTab form={form} editing={editing} onFieldChange={updateField} />
+            <PlayerDevelopmentTab
+              form={form}
+              editing={editing}
+              summary={summary}
+              videoClips={playerVideoClips}
+              onCreateStaffTask={createDevelopmentTask}
+              onFieldChange={updateField}
+            />
           )}
 
           <Button variant="ghost" onClick={() => navigate("/players")}>
@@ -394,10 +447,33 @@ function hasPlayerConflict(player, editBaseUpdatedAt) {
   return String(player._updatedAt) !== String(editBaseUpdatedAt);
 }
 
+function getPlayerVideoClips(matches, playerId) {
+  if (!playerId) return [];
+  return matches
+    .flatMap((match) =>
+      (match.videoAnalysis || [])
+        .filter((clip) => String(clip.playerId) === String(playerId))
+        .map((clip) => ({
+          ...clip,
+          matchId: match.id,
+          matchTitle: match.title || match.opponent || "Partita",
+          matchDate: match.date,
+          opponent: match.opponent || "",
+        }))
+    )
+    .sort((a, b) => new Date(b.matchDate || 0) - new Date(a.matchDate || 0));
+}
+
 function getMedicalModalTitle(type) {
   if (type === "differenziato") return "Crea lavoro differenziato";
   if (type === "rientro") return "Segna rientro";
   return "Aggiungi nota medica";
+}
+
+function getRelativeDate(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function MedicalActionForm({ type, value, onChange, onCancel, onSubmit }) {

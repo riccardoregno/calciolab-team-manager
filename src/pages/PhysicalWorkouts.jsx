@@ -7,6 +7,7 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
 import { generatePhysicalWorkout, normalizeAppSettings, formatDate } from "../utils/helpers";
+import { useTranslation } from "../i18n";
 
 const GROUP_TONE = {
   "Gruppo A": "green",
@@ -24,7 +25,10 @@ const GROUP_COLOR = {
   "Da testare": "#a78bfa",
 };
 
-export default function PhysicalWorkouts({ players = [], physicalTests = [], appSettings }) {
+export default function PhysicalWorkouts({
+  players = [], physicalTests = [], appSettings }) {
+
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const settings = normalizeAppSettings(appSettings);
   const [groupFilter, setGroupFilter] = useState("Tutti");
@@ -58,7 +62,7 @@ export default function PhysicalWorkouts({ players = [], physicalTests = [], app
   if (players.length === 0) {
     return (
       <div>
-        <PageHeader title="Lavori fisici" subtitle="Prescrizioni operative per gruppi, metri e recuperi" />
+        <PageHeader title={t("pages.physicalWorkouts.title")} subtitle="Prescrizioni operative per gruppi, metri e recuperi" />
         <EmptyState
           icon="🏃"
           title="Nessun giocatore"

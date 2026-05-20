@@ -14,12 +14,14 @@ const PRIMARY = [
 // ── Voci nel drawer "Altro" ───────────────────────────────────────
 const SECONDARY = [
   { to: "/exercise-library", labelKey: "navigation.items.exerciseLibrary", icon: "📚" },
+  { to: "/microcycle",       labelKey: "navigation.items.microcycle", icon: "🗓️" },
   { to: "/statistics",       labelKey: "navigation.items.statistics", icon: "📊" },
   { to: "/tactical-board",   labelKey: "navigation.items.tacticalBoard", icon: "🧠" },
   { to: "/availability",     labelKey: "navigation.items.availability", icon: "🩺" },
   { to: "/physical-tests",   labelKey: "navigation.items.physicalTests", icon: "⏱️" },
   { to: "/physical-workouts",labelKey: "navigation.items.physicalWorkouts", icon: "🏃" },
   { to: "/gps-load",         labelKey: "navigation.items.gpsLoad", icon: "📡" },
+  { to: "/staff-tasks",      labelKey: "navigation.items.staffTasks", icon: "✅" },
   { to: "/exports",          labelKey: "navigation.items.exports", icon: "🖨️" },
   { to: "/settings",         labelKey: "navigation.items.settings", icon: "⚙️" },
   { to: "/premium",          labelKey: "navigation.items.premium", icon: "💎" },

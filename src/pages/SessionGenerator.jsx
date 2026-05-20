@@ -8,8 +8,12 @@ import PageHeader from "../components/ui/PageHeader";
 import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { createId } from "../utils/helpers";
+import { useTranslation } from "../i18n";
 
-export default function SessionGenerator({ exercises = [], setSessions, players = [], matches = [] }) {
+export default function SessionGenerator({
+  exercises = [], setSessions, players = [], matches = [] }) {
+
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
   const [goal, setGoal] = useState("Possesso");
@@ -61,7 +65,7 @@ export default function SessionGenerator({ exercises = [], setSessions, players 
     <div>
       <ToastContainer />
       <PageHeader
-        title="Builder guidato"
+        title={t("pages.sessionGenerator.title")}
         subtitle="Crea una seduta con parametri manuali: obiettivo, durata, intensità e libreria esercizi."
         action={<Button variant="ghost" onClick={() => navigate("/ai-session-builder")}>Passa al Builder AI</Button>}
       />

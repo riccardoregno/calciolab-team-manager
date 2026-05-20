@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Badge from "../components/ui/Badge";
 import { normalizeAppSettings } from "../utils/helpers";
 import { supabase } from "../lib/supabaseClient";
+import { useTranslation } from "../i18n";
 
 // ─────────────────────────────────────────────
 // Dati configurazione
@@ -56,6 +57,7 @@ function recommendPlan(modules) {
 // Componente principale
 // ─────────────────────────────────────────────
 export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
+  const { t } = useTranslation();
   const navigate  = useNavigate();
   const settings  = normalizeAppSettings(appSettings) || {};
 
@@ -222,7 +224,7 @@ function Step1({ form, setForm, onNext, isMobile }) {
     <div style={ob.stepContent}>
       <div style={ob.stepHeader}>
         {!isMobile && <span style={ob.stepBadge}>Step 1 di 3</span>}
-        <h1 style={isMobile ? { ...ob.stepTitle, fontSize: 24 } : ob.stepTitle}>Benvenuto in CalcioLab 👋</h1>
+        <h1 style={isMobile ? { ...ob.stepTitle, fontSize: 24 } : ob.stepTitle}>{t("pages.onboarding.welcome")}</h1>
         <p style={ob.stepSubtitle}>
           Dicci chi sei e che squadra alleni. Personalizzeremo il workspace in base alle tue risposte.
         </p>

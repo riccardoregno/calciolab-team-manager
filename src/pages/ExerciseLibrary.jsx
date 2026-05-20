@@ -14,6 +14,7 @@ import { TRAINING_BLOCKS, getBlockFromCategory, createId, getCurrentUserRole, is
 import { generateExerciseSvg, getExerciseDescription } from "../utils/exerciseContent";
 import { emptyExercise } from "../data/initialData";
 import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
+import { useTranslation } from "../i18n";
 
 // Returns the image to show for an exercise card: generated SVG for fp5 catalog, stored image for personal
 function exImage(ex) {
@@ -56,7 +57,9 @@ function matchPlayersBucket(exPlayers, bucketLabel) {
 }
 
 // ─── Componente principale ────────────────────────────────────────────────────
-export default function ExerciseLibrary({ appSettings = {}, exercises = [], setExercises }) {
+export default function ExerciseLibrary({
+  appSettings = {}, exercises = [], setExercises }) {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -229,7 +232,7 @@ export default function ExerciseLibrary({ appSettings = {}, exercises = [], setE
     <div style={{ display: "grid", gap: 22 }}>
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
-        title="Eserciziario"
+        title={t("pages.exerciseLibrary.title")}
         subtitle={
           tab === "catalogo"
             ? `${catalog.length} esercizi nel catalogo${premiumUnlocked ? "" : " · Sblocca Premium per vedere i dettagli"}`

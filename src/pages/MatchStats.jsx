@@ -8,6 +8,7 @@ import MatchTabBar from "../components/match/MatchTabBar";
 import { loadMatchStats, savePlayerMatchStats } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
 import { normalizeAppSettings } from "../utils/helpers";
+import { useTranslation } from "../i18n";
 
 const EMPTY_ROW = {
   minutes_played: "",
@@ -62,6 +63,7 @@ function rowToStats(row) {
 }
 
 export default function MatchStats({ players = [], matches = [], appSettings = {} }) {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const auth = useAuth();
@@ -211,7 +213,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   return (
     <div style={s.page}>
       <PageHeader
-        title={`Statistiche — ${match.opponent || "Partita"}`}
+        title={`${t("pages.matchStats.title")} — ${match.opponent || t("pages.matchStats.defaultOpponent")}`}
         subtitle={subtitle}
         badge={`${convocati.length} convocati`}
       />
@@ -271,18 +273,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         </AppCard>
       ) : (
         <AppCard>
-          {/* Header colonne */}
-          <div style={s.tableHeader}>
-            <span style={s.colName}>Giocatore</span>
-            <span style={s.colNum}>Min</span>
-            <span style={s.colNum}>Gol</span>
-            <span style={s.colNum}>Assist</span>
-            <span style={s.colNum}>Gialli</span>
-            <span style={s.colNum}>Rossi</span>
-            <span style={s.colNum}>Voto</span>
-            <span style={s.colNotes}>Note</span>
-          </div>
-
+          <div style={s.playerStatsList}>
           {convocati.map((player) => {
             const pid  = String(player.id);
             const row  = rows[pid] || EMPTY_ROW;
@@ -295,83 +286,96 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
 
             return (
               <div key={pid} style={{
-                ...s.tableRow,
-                ...s.tableRowWrapper,
+                ...s.playerStatsCard,
                 borderColor: rowErrors.length > 0 ? "rgba(248,113,113,0.5)" : "rgba(255,255,255,0.04)",
               }}>
-                <div style={s.colName}>
-                  <span style={s.playerName}>{displayName}</span>
-                  <Badge tone={isStarter ? "green" : "blue"}>
-                    {isStarter ? "Titolare" : "Panchina"}
-                  </Badge>
+                <div style={s.playerStatsHeader}>
+                  <div style={s.playerIdentity}>
+                    <span style={s.playerName}>{displayName}</span>
+                    <Badge tone={isStarter ? "green" : "blue"}>
+                      {isStarter ? "Titolare" : "Panchina"}
+                    </Badge>
+                  </div>
                 </div>
 
-                <div>
-                  <input
-                    style={s.input}
-                    type="number"
-                    min="0"
-                    max="120"
-                    placeholder="—"
-                    value={row.minutes_played}
-                    onChange={(e) => updateCell(pid, "minutes_played", e.target.value)}
-                  />
-                  <span style={{ fontSize: 11, color: "#64748b", marginTop: 2, display: "block" }}>0 – 120 min</span>
+                <div style={s.statGrid}>
+                  <StatInput label="Minuti" hint="0-120" value={row.minutes_played}>
+                    <input
+                      style={s.input}
+                      type="number"
+                      min="0"
+                      max="120"
+                      placeholder="—"
+                      value={row.minutes_played}
+                      onChange={(e) => updateCell(pid, "minutes_played", e.target.value)}
+                    />
+                  </StatInput>
+                  <StatInput label="Gol" value={row.goals}>
+                    <input
+                      style={s.input}
+                      type="number"
+                      min="0"
+                      placeholder="—"
+                      value={row.goals}
+                      onChange={(e) => updateCell(pid, "goals", e.target.value)}
+                    />
+                  </StatInput>
+                  <StatInput label="Assist" value={row.assists}>
+                    <input
+                      style={s.input}
+                      type="number"
+                      min="0"
+                      placeholder="—"
+                      value={row.assists}
+                      onChange={(e) => updateCell(pid, "assists", e.target.value)}
+                    />
+                  </StatInput>
+                  <StatInput label="Gialli" hint="max 2" value={row.yellow_cards}>
+                    <input
+                      style={s.input}
+                      type="number"
+                      min="0"
+                      max="2"
+                      placeholder="—"
+                      value={row.yellow_cards}
+                      onChange={(e) => updateCell(pid, "yellow_cards", e.target.value)}
+                    />
+                  </StatInput>
+                  <StatInput label="Rossi" hint="max 1" value={row.red_cards}>
+                    <input
+                      style={s.input}
+                      type="number"
+                      min="0"
+                      max="1"
+                      placeholder="—"
+                      value={row.red_cards}
+                      onChange={(e) => updateCell(pid, "red_cards", e.target.value)}
+                    />
+                  </StatInput>
+                  <StatInput label="Voto" hint="0-10" value={row.rating}>
+                    <input
+                      style={{ ...s.input, ...s.inputRating }}
+                      type="number"
+                      min="0"
+                      max="10"
+                      step="0.5"
+                      placeholder="—"
+                      value={row.rating}
+                      onChange={(e) => updateCell(pid, "rating", e.target.value)}
+                    />
+                  </StatInput>
                 </div>
-                <input
-                  style={s.input}
-                  type="number"
-                  min="0"
-                  placeholder="—"
-                  value={row.goals}
-                  onChange={(e) => updateCell(pid, "goals", e.target.value)}
-                />
-                <input
-                  style={s.input}
-                  type="number"
-                  min="0"
-                  placeholder="—"
-                  value={row.assists}
-                  onChange={(e) => updateCell(pid, "assists", e.target.value)}
-                />
-                <input
-                  style={s.input}
-                  type="number"
-                  min="0"
-                  max="2"
-                  placeholder="—"
-                  value={row.yellow_cards}
-                  onChange={(e) => updateCell(pid, "yellow_cards", e.target.value)}
-                />
-                <input
-                  style={s.input}
-                  type="number"
-                  min="0"
-                  max="1"
-                  placeholder="—"
-                  value={row.red_cards}
-                  onChange={(e) => updateCell(pid, "red_cards", e.target.value)}
-                />
-                <div>
+
+                <label style={s.notesField}>
+                  <span style={s.fieldLabel}>Note</span>
                   <input
-                    style={{ ...s.input, ...s.inputRating }}
-                    type="number"
-                    min="0"
-                    max="10"
-                    step="0.5"
-                    placeholder="—"
-                    value={row.rating}
-                    onChange={(e) => updateCell(pid, "rating", e.target.value)}
+                    style={{ ...s.input, ...s.inputNotes }}
+                    type="text"
+                    placeholder="Nota libera"
+                    value={row.notes}
+                    onChange={(e) => updateCell(pid, "notes", e.target.value)}
                   />
-                  <span style={{ fontSize: 11, color: "#64748b", marginTop: 2, display: "block" }}>0 – 10</span>
-                </div>
-                <input
-                  style={{ ...s.input, ...s.inputNotes }}
-                  type="text"
-                  placeholder="Nota libera"
-                  value={row.notes}
-                  onChange={(e) => updateCell(pid, "notes", e.target.value)}
-                />
+                </label>
                 {rowErrors.length > 0 && (
                   <div style={s.rowErrors}>
                     {rowErrors.map((err) => (
@@ -382,9 +386,20 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
               </div>
             );
           })}
+          </div>
         </AppCard>
       )}
     </div>
+  );
+}
+
+function StatInput({ label, hint, children }) {
+  return (
+    <label style={s.statField}>
+      <span style={s.fieldLabel}>{label}</span>
+      {children}
+      {hint && <span style={s.fieldHint}>{hint}</span>}
+    </label>
   );
 }
 
@@ -397,30 +412,45 @@ const s = {
   errorMsg:   { margin: "12px 0 0", color: "#f87171", fontSize: 14, lineHeight: 1.4 },
   link:       { background: "none", border: "none", color: "#38bdf8", cursor: "pointer", padding: 0, fontSize: "inherit" },
 
-  tableHeader: {
+  playerStatsList: {
     display: "grid",
-    gridTemplateColumns: "1fr 56px 56px 64px 60px 56px 60px 1fr",
-    gap: 8,
-    padding: "8px 4px",
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
-    fontSize: 11,
-    color: "#64748b",
-    textTransform: "uppercase",
-    letterSpacing: 0,
-    marginBottom: 4,
+    gap: 12,
   },
-  tableRowWrapper: {
+  playerStatsCard: {
     border: "1px solid",
-    borderRadius: 10,
+    borderRadius: 16,
     background: "rgba(255,255,255,0.025)",
     transition: "border-color 0.2s, background 0.2s",
-  },
-  tableRow: {
     display: "grid",
-    gridTemplateColumns: "1fr 56px 56px 64px 60px 56px 60px 1fr",
-    gap: 8,
+    gap: 14,
+    padding: 14,
+  },
+  playerStatsHeader: {
+    display: "flex",
+    justifyContent: "space-between",
     alignItems: "center",
-    padding: "10px",
+    gap: 12,
+  },
+  playerIdentity: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 10,
+    minWidth: 0,
+  },
+  statGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(86px, 1fr))",
+    gap: 10,
+  },
+  statField: {
+    display: "grid",
+    gap: 5,
+    minWidth: 0,
+  },
+  notesField: {
+    display: "grid",
+    gap: 6,
   },
   rowErrors: {
     gridColumn: "1 / -1",
@@ -438,15 +468,25 @@ const s = {
     borderRadius: 8,
     padding: "2px 8px",
   },
-  colName:   { display: "flex", alignItems: "center", gap: 8, minWidth: 0 },
-  colNum:    { textAlign: "center" },
-  colNotes:  {},
-  playerName: { fontSize: 14, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 },
+  playerName: { fontSize: 15, fontWeight: 800, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 },
+  fieldLabel: {
+    color: "#64748b",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+  },
+  fieldHint: {
+    color: "#64748b",
+    fontSize: 11,
+    lineHeight: 1.2,
+  },
 
   input: {
     width: "100%",
-    padding: "6px 8px",
-    borderRadius: 8,
+    minHeight: 40,
+    padding: "8px 10px",
+    borderRadius: 10,
     border: "1px solid rgba(255,255,255,0.1)",
     background: "rgba(255,255,255,0.05)",
     color: "#e2e8f0",

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 
@@ -10,6 +11,7 @@ import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
 import { useAuth } from "../hooks/useAuth";
 import { loadAllPlayerStats } from "../services/playerProfile";
+import { useTranslation } from "../i18n";
 
 import {
   formatDate,
@@ -28,17 +30,8 @@ import {
 
 const TONE_LABEL = { red: "Urgente", orange: "Attenzione", green: "OK", blue: "Info", purple: "Nota" };
 
-const DASHBOARD_SECTIONS = [
-  { id: "nextEvent",         label: "Prossimo evento" },
-  { id: "kpis",             label: "KPI e statistiche" },
-  { id: "rosterStatus",     label: "Stato rosa" },
-  { id: "weekFocus",        label: "Focus settimana" },
-  { id: "coachAlerts",      label: "Alert coach" },
-  { id: "recentActivities", label: "Attività recenti" },
-  { id: "quickActions",     label: "Azioni rapide" },
-  { id: "rewardCenter",     label: "Reward center" },
-];
-const DEFAULT_SECTION_ORDER = DASHBOARD_SECTIONS.map((s) => s.id);
+const DASHBOARD_SECTION_KEYS = ["nextEvent", "kpis", "rosterStatus", "weekFocus", "coachAlerts", "recentActivities", "quickActions", "rewardCenter"];
+const DEFAULT_SECTION_ORDER = DASHBOARD_SECTION_KEYS;
 
 function SortableSection({ id, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -94,11 +87,13 @@ function Dashboard({
   appSettings = {},
   setAppSettings,
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const auth = useAuth();
 
   const [playerStatsMap, setPlayerStatsMap] = useState({});
   const [showPersonalize, setShowPersonalize] = useState(false);
+  const isMobile = useIsMobile();
 
   const settings = normalizeAppSettings(appSettings);
   const widgets = settings.dashboardWidgets;
@@ -237,7 +232,7 @@ function Dashboard({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1.4fr 0.8fr",
+              gridTemplateColumns: isMobile ? "1fr" : "1.4fr 0.8fr",
               gap: 24,
               alignItems: "start",
             }}
@@ -255,6 +250,7 @@ function Dashboard({
                 coachAlerts={coachAlerts}
                 setup={setup}
                 navigate={navigate}
+                isMobile={isMobile}
               />
             )}
 
@@ -348,7 +344,7 @@ function Dashboard({
                   title="Record stagionale"
                   subtitle={`${seasonRecord.played} partite giocate · ${seasonRecord.goalsFor} gol fatti · ${seasonRecord.goalsAgainst} gol subiti`}
                 />
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(90px,1fr))", gap: 14 }}>
                   <SeasonRecordStat label="Vittorie" value={seasonRecord.wins} tone="green" />
                   <SeasonRecordStat label="Pareggi" value={seasonRecord.draws} tone="blue" />
                   <SeasonRecordStat label="Sconfitte" value={seasonRecord.losses} tone="red" />
@@ -461,7 +457,7 @@ function Dashboard({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(2, 1fr)",
+                gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
                 gap: 10,
                 marginBottom: 12,
               }}
@@ -642,7 +638,7 @@ function Dashboard({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(2,1fr)",
+                gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
                 gap: 12,
               }}
             >
@@ -692,7 +688,7 @@ function Dashboard({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.1fr 0.9fr",
+                gridTemplateColumns: isMobile ? "1fr" : "1.1fr 0.9fr",
                 gap: 18,
                 alignItems: "center",
               }}
@@ -787,8 +783,8 @@ function Dashboard({
       {/* Header + gear button */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <PageHeader
-          title="Dashboard"
-          subtitle="Control room della stagione, rosa, sedute e partite"
+          title={t("pages.dashboard.title")}
+          subtitle={t("pages.dashboard.subtitle")}
         />
         <button
           type="button"
@@ -809,7 +805,7 @@ function Dashboard({
             flexShrink: 0,
           }}
         >
-          ⚙️ Personalizza
+          ⚙️ {t("pages.dashboard.personalize")}
         </button>
       </div>
 
@@ -819,12 +815,12 @@ function Dashboard({
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }}>
             <div>
               <p style={{ color: "#94a3b8", margin: 0, fontWeight: 700 }}>
-                Scegli cosa vuoi vedere e trascina le sezioni per riordinarle.
+                {t("pages.dashboard.personalizeHint")}
               </p>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <Button variant="ghost" onClick={() => navigate("/settings")}>
-                Impostazioni
+                {t("pages.dashboard.settings")}
               </Button>
               <button
                 type="button"
@@ -840,7 +836,7 @@ function Dashboard({
                   fontSize: 12,
                 }}
               >
-                Resetta ordine
+                {t("pages.dashboard.resetOrder")}
               </button>
             </div>
           </div>
@@ -927,7 +923,7 @@ function Dashboard({
               </p>
             </div>
 
-            <Button onClick={() => navigate("/premium")}>Gestisci piano</Button>
+            <Button onClick={() => navigate("/premium")}>{t("pages.dashboard.managePlan")}</Button>
           </div>
         </AppCard>
       )}
@@ -1282,6 +1278,7 @@ function CoachControlRoom({
   coachAlerts,
   setup,
   navigate,
+  isMobile = false,
 }) {
   const primaryStatus = todayEvents.length
     ? `${todayEvents.length} eventi oggi`
@@ -1319,7 +1316,7 @@ function CoachControlRoom({
 
   return (
     <AppCard>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.25fr) minmax(280px,0.75fr)", gap: 22, alignItems: "stretch" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0,1.25fr) minmax(280px,0.75fr)", gap: 22, alignItems: "stretch" }}>
         <div>
           <Badge tone={coachAlerts.length ? "orange" : "green"}>
             {coachAlerts.length ? `${coachAlerts.length} alert aperti` : "Situazione sotto controllo"}
@@ -1581,13 +1578,13 @@ function EventList({ events, emptyText }) {
 const roleDashboardStyles = {
   heroGrid: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
     gap: 22,
     marginBottom: 22,
   },
   twoColumns: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
     gap: 22,
     marginTop: 22,
   },
@@ -1711,7 +1708,7 @@ function NextMatchCard({ match, navigate }) {
         </Badge>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(90px,1fr))", gap: 8, marginBottom: 16 }}>
         {[
           { label: "Titolari", value: `${starterCount}/11` },
           { label: "Panchina", value: benchCount },
@@ -1724,7 +1721,7 @@ function NextMatchCard({ match, navigate }) {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(90px,1fr))", gap: 8 }}>
         <button
           type="button"
           onClick={() => navigate(`/match-convocation/${match.id}`)}

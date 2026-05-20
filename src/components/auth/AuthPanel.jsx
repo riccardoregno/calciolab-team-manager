@@ -8,6 +8,7 @@ import {
   signUpWithPassword,
 } from "../../services/auth";
 import { styles } from "../../styles/index.js";
+import { useTranslation } from "../../i18n";
 
 export default function AuthPanel({
   authConfigured,
@@ -16,6 +17,7 @@ export default function AuthPanel({
   team,
   authError,
 }) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,20 +45,19 @@ export default function AuthPanel({
 
     setSubmitMessage(
       mode === "signin"
-        ? "Accesso completato."
-        : "Account creato. Controlla l'email se Supabase richiede conferma."
+        ? t("components.authPanel.loginComplete")
+        : t("components.authPanel.accountCreated")
     );
   }
 
   if (!authConfigured) {
     return (
       <AppCard>
-        <h3 style={styles.cardTitle}>Workspace cloud</h3>
+        <h3 style={styles.cardTitle}>{t("components.authPanel.cloudWorkspace")}</h3>
         <p style={panelStyles.text}>
-          Configura `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` per attivare
-          login, team workspace e sincronizzazione cloud.
+          {t("components.authPanel.configureSupabase")}
         </p>
-        <Badge tone="orange">Demo locale</Badge>
+        <Badge tone="orange">{t("components.authPanel.localDemo")}</Badge>
       </AppCard>
     );
   }
@@ -66,22 +67,22 @@ export default function AuthPanel({
       <AppCard>
         <div style={panelStyles.header}>
           <div>
-            <h3 style={styles.cardTitle}>Workspace cloud</h3>
+            <h3 style={styles.cardTitle}>{t("components.authPanel.cloudWorkspace")}</h3>
             <p style={panelStyles.text}>{user.email}</p>
           </div>
-          <Badge tone="green">Connesso</Badge>
+          <Badge tone="green">{t("components.authPanel.connected")}</Badge>
         </div>
 
         <div style={panelStyles.grid}>
-          <Info label="Team" value={team?.name || "Inizializzazione"} />
-          <Info label="Stagione" value={team?.season || "-"} />
-          <Info label="Ruolo" value={team?.role || "member"} />
+          <Info label={t("components.authPanel.team")} value={team?.name || t("components.authPanel.initialization")} />
+          <Info label={t("components.authPanel.season")} value={team?.season || "-"} />
+          <Info label={t("components.authPanel.role")} value={team?.role || "member"} />
         </div>
 
         {authError && <p style={panelStyles.error}>{authError}</p>}
 
         <Button variant="ghost" onClick={signOut} disabled={authLoading}>
-          Esci dal workspace
+          {t("components.authPanel.signOut")}
         </Button>
       </AppCard>
     );
@@ -91,19 +92,18 @@ export default function AuthPanel({
     <AppCard>
       <div style={panelStyles.header}>
         <div>
-          <h3 style={styles.cardTitle}>Workspace cloud</h3>
+          <h3 style={styles.cardTitle}>{t("components.authPanel.cloudWorkspace")}</h3>
           <p style={panelStyles.text}>
-            Accedi per sincronizzare rosa, sedute, partite e statistiche sul tuo
-            team Supabase.
+            {t("components.authPanel.syncSubtitle")}
           </p>
         </div>
-        <Badge tone="blue">Supabase</Badge>
+        <Badge tone="blue">{t("components.authPanel.supabase")}</Badge>
       </div>
 
       <form onSubmit={handleSubmit} style={panelStyles.form}>
         <input
           type="email"
-          placeholder="Email"
+          placeholder={t("pages.auth.email")}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           style={styles.input}
@@ -111,7 +111,7 @@ export default function AuthPanel({
         />
         <input
           type="password"
-          placeholder="Password"
+          placeholder={t("pages.auth.password")}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           style={styles.input}
@@ -126,14 +126,14 @@ export default function AuthPanel({
 
         <div style={panelStyles.actions}>
           <Button type="submit" disabled={submitting || authLoading}>
-            {mode === "signin" ? "Accedi" : "Crea account"}
+            {mode === "signin" ? t("components.authPanel.login") : t("components.authPanel.createAccount")}
           </Button>
           <Button
             type="button"
             variant="ghost"
             onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
           >
-            {mode === "signin" ? "Registrati" : "Ho gia un account"}
+            {mode === "signin" ? t("components.authPanel.createAccount") : t("components.authPanel.alreadyHaveAccount")}
           </Button>
         </div>
       </form>

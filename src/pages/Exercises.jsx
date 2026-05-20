@@ -15,8 +15,12 @@ import { styles } from "../styles/index.js";
 import { emptyExercise } from "../data/initialData";
 import { createId } from "../utils/helpers";
 import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
+import { useTranslation } from "../i18n";
 
-function Exercises({ exercises, setExercises }) {
+function Exercises({
+  exercises, setExercises }) {
+
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast, ToastContainer } = useToast();
@@ -132,7 +136,7 @@ function Exercises({ exercises, setExercises }) {
       <ToastContainer />
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
-        title="Editor esercizi"
+        title={t("pages.exercises.title")}
         subtitle="Crea o modifica gli esercizi personali che poi trovi nell'Eserciziario"
         action={<Button variant="ghost" onClick={() => navigate("/exercise-library?tab=miei")}>← Torna all'Eserciziario</Button>}
       />

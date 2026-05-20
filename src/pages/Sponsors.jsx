@@ -6,6 +6,7 @@ import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { styles } from "../styles/index.js";
 import { createId, normalizeAppSettings, normalizeSponsor } from "../utils/helpers";
+import { useTranslation } from "../i18n";
 
 const emptySponsor = {
   name: "",
@@ -26,7 +27,9 @@ const packageValues = {
   Main: 5000,
 };
 
-export default function Sponsors({ appSettings = {}, setAppSettings }) {
+export default function Sponsors({
+  appSettings = {}, setAppSettings }) {
+  const { t } = useTranslation();
   const settings = normalizeAppSettings(appSettings);
   const hub = settings.sponsorHub;
   const [form, setForm] = useState(emptySponsor);
@@ -83,7 +86,7 @@ export default function Sponsors({ appSettings = {}, setAppSettings }) {
   return (
     <div style={sponsorStyles.page}>
       <PageHeader
-        title="Sponsor Hub"
+        title={t("pages.sponsors.title")}
         subtitle="Gestisci partner, pacchetti commerciali e informazioni da usare in report, export e comunicazioni societarie."
         badge="Piano Club"
       />

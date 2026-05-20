@@ -99,6 +99,12 @@ export function useTeamData({ teamId } = {}) {
           gpsSessions: typeof gpsSessions === "function" ? gpsSessions(prev.gpsSessions) : gpsSessions,
         }));
       },
+      setStaffTasks(staffTasks) {
+        setState((prev) => normalizeAppState({
+          ...prev,
+          staffTasks: typeof staffTasks === "function" ? staffTasks(prev.staffTasks) : staffTasks,
+        }));
+      },
       setInjuryRecords(injuryRecords) {
         setState((prev) => normalizeAppState({
           ...prev,

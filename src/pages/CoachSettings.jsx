@@ -1,5 +1,6 @@
 import { useState } from "react";
 import AppCard from "../components/ui/AppCard";
+import { useIsMobile } from "../hooks/useIsMobile";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
@@ -8,6 +9,7 @@ import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { createId } from "../utils/helpers";
 import { useAppSettings } from "../hooks/useAppSettings";
+import { useTranslation } from "../i18n";
 
 const widgetLabels = {
   hero: "Introduzione operativa",
@@ -21,7 +23,10 @@ const widgetLabels = {
   rewardCenter: "Reward e piano",
 };
 
-export default function CoachSettings({ appSettings, setAppSettings }) {
+export default function CoachSettings({
+  appSettings, setAppSettings }) {
+
+  const { t } = useTranslation();
   // FIX #13: useMemo tramite hook — evita riallocazioni O(n) ad ogni render
   const settings   = useAppSettings(appSettings);
   const parameters = settings.coachParameters;
@@ -29,6 +34,7 @@ export default function CoachSettings({ appSettings, setAppSettings }) {
 
   const [newMetric, setNewMetric] = useState({ label: "", unit: "", higherIsBetter: true, icon: "📌" });
   const [confirmState, setConfirmState] = useState(null);
+  const isMobile = useIsMobile();
   const { showToast, ToastContainer } = useToast();
 
   function updateMetrics(updated) {
@@ -83,18 +89,18 @@ export default function CoachSettings({ appSettings, setAppSettings }) {
       <ToastContainer />
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
-        title="Parametri Coach"
+        title={t("pages.coachSettings.title")}
         subtitle="Personalizza preparazione, soglie fisiche e dashboard iniziale"
       />
 
-      <div style={coachStyles.grid}>
+      <div style={{ ...coachStyles.grid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
         <AppCard>
           <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Parametri preparatore</h3>
           <div style={coachStyles.formGrid}>
             <label style={coachStyles.label}>
               Categoria
               <select value={parameters.category} onChange={(event) => updateParameters({ category: event.target.value })} style={styles.input}>
-                <option value="adulti">Adulti</option>
+                <option value="adulti">Prima squadra</option>
                 <option value="juniores">Juniores</option>
                 <option value="allievi">Allievi</option>
                 <option value="giovanissimi">Giovanissimi</option>
@@ -190,7 +196,8 @@ export default function CoachSettings({ appSettings, setAppSettings }) {
           <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0, color: "#64748b" }}>
             Aggiungi metrica personalizzata
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
+          <div style={{ overflowX: "auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr auto", gap: 10, alignItems: "end", minWidth: 480 }}>
             <div style={{ display: "grid", gap: 5 }}>
               <label style={coachStyles.label}>Nome</label>
               <input
@@ -231,6 +238,7 @@ export default function CoachSettings({ appSettings, setAppSettings }) {
               </select>
             </div>
             <Button onClick={addCustomMetric}>Aggiungi</Button>
+          </div>
           </div>
         </div>
       </AppCard>

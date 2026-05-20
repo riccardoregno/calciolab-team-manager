@@ -8,6 +8,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { createId } from "../utils/helpers";
+import { useTranslation } from "../i18n";
 
 // ─────────────────────────────────────────────
 // Costanti
@@ -121,7 +122,10 @@ function getMedicalType(status, injuryType, differentiatedType) {
 // ─────────────────────────────────────────────
 // Componente principale
 // ─────────────────────────────────────────────
-export default function Availability({ players = [], setPlayers, sessions = [], matches = [] }) {
+export default function Availability({
+  players = [], setPlayers, sessions = [], matches = [] }) {
+
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
   const [openModal, setOpenModal]       = useState(false);
@@ -295,7 +299,7 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
     <div style={styles.page}>
       <ToastContainer />
       <PageHeader
-        title="Infortuni"
+        title={t("pages.availability.title")}
         subtitle="Gestisci stop e recuperi. I giocatori qui sotto non sono disponibili per le sedute."
         action={<Button onClick={openAdd}>+ Aggiungi infortunio</Button>}
       />
@@ -566,7 +570,7 @@ export default function Availability({ players = [], setPlayers, sessions = [], 
               </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 }}>
               <div style={{ display: "grid", gap: 6 }}>
                 <label style={av.fieldLabel}>Data inizio</label>
                 <input type="date" value={form.injuryStartDate} onChange={(e) => setForm({ ...form, injuryStartDate: e.target.value })} style={styles.input} />

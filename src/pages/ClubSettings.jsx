@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -7,6 +8,7 @@ import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { styles } from "../styles/index.js";
 import { createId, getSetupProgress, hasPermission, memberRoles, normalizeAppSettings, normalizeMember } from "../utils/helpers";
+import { useTranslation } from "../i18n";
 
 const emptyMember = {
   name: "",
@@ -25,10 +27,12 @@ export default function ClubSettings({
   sessions = [],
   matches = [],
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const settings = normalizeAppSettings(appSettings);
   const [profile, setProfile] = useState(settings.workspaceProfile);
   const [memberForm, setMemberForm] = useState(emptyMember);
+  const isMobile = useIsMobile();
   const setup = getSetupProgress({ players, exercises, sessions, matches, appSettings: settings });
 
   function saveProfile() {
@@ -68,12 +72,12 @@ export default function ClubSettings({
   return (
     <div style={clubStyles.page}>
       <PageHeader
-        title="Club Settings"
+        title={t("pages.clubSettings.title")}
         subtitle="Ruoli, permessi, configurazione workspace e progresso commerciale del club."
         badge={`${setup.percent}% configurato`}
       />
 
-      <div style={clubStyles.grid}>
+      <div style={{ ...clubStyles.grid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
         <AppCard title="Profilo workspace" subtitle="Identita e obiettivi della societa.">
           <div style={clubStyles.formGrid}>
             <Field label="Societa">
@@ -82,9 +86,24 @@ export default function ClubSettings({
             <Field label="Squadra">
               <input value={profile.teamName} onChange={(event) => setProfile({ ...profile, teamName: event.target.value })} style={styles.input} />
             </Field>
+            <Field label="Campo di casa">
+              <input value={profile.homeFieldName || ""} onChange={(event) => setProfile({ ...profile, homeFieldName: event.target.value })} placeholder="Es. Centro Sportivo Comunale" style={styles.input} />
+            </Field>
+            <Field label="Indirizzo campo">
+              <input value={profile.homeFieldAddress || ""} onChange={(event) => setProfile({ ...profile, homeFieldAddress: event.target.value })} placeholder="Es. Via Roma 12, Milano" style={styles.input} />
+            </Field>
+            <Field label="Superficie campo">
+              <select value={profile.homeFieldSurface || "Erba naturale"} onChange={(event) => setProfile({ ...profile, homeFieldSurface: event.target.value })} style={styles.input}>
+                <option>Erba naturale</option>
+                <option>Erba sintetica</option>
+                <option>Ibrido</option>
+                <option>Terra</option>
+                <option>Indoor</option>
+              </select>
+            </Field>
             <Field label="Categoria">
               <select value={profile.category} onChange={(event) => setProfile({ ...profile, category: event.target.value })} style={styles.input}>
-                <option>Adulti</option>
+                <option>Prima squadra</option>
                 <option>Juniores</option>
                 <option>Allievi</option>
                 <option>Giovanissimi</option>
@@ -120,7 +139,7 @@ export default function ClubSettings({
         </AppCard>
       </div>
 
-      <div style={clubStyles.grid}>
+      <div style={{ ...clubStyles.grid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
         <AppCard title="Invita membro" subtitle="Simulazione ruoli pronta per Supabase/RLS.">
           <form onSubmit={saveMember} style={clubStyles.formGrid}>
             <Field label="Nome">
@@ -144,7 +163,7 @@ export default function ClubSettings({
           <div style={clubStyles.memberList}>
             {settings.members.length ? (
               settings.members.map((member) => (
-                <div key={member.id} style={clubStyles.memberCard}>
+                <div key={member.id} style={{ ...clubStyles.memberCard, gridTemplateColumns: isMobile ? "1fr" : "1fr 180px 1fr auto" }}>
                   <div>
                     <Badge tone={member.status === "Attivo" ? "green" : "orange"}>{member.status}</Badge>
                     <h3 style={{ lineHeight: 1.2 }}>{member.name}</h3>

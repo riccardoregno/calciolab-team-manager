@@ -7,6 +7,7 @@ import Badge from "../components/ui/Badge";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { formatShortDate, getAvailabilityGroups, getSessionLoad, createId } from "../utils/helpers";
 import { styles } from "../styles/index.js";
+import { useTranslation } from "../i18n";
 
 const EVENT_TYPES = [
   { value: "Allenamento", label: "Allenamento", tone: "green" },
@@ -30,7 +31,10 @@ function buildWeek(offsetWeeks = 0) {
   });
 }
 
-function Calendar({ events, players, setSessions, setMatches, sessions = [], matches = [] }) {
+function Calendar({
+  events, players, setSessions, setMatches, sessions = [], matches = [] }) {
+
+  const { t } = useTranslation();
   const [view, setView] = useState("week");
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [confirmState, setConfirmState] = useState(null);
@@ -98,7 +102,7 @@ function Calendar({ events, players, setSessions, setMatches, sessions = [], mat
     <div style={styles.page}>
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
-        title="Calendario"
+        title={t("pages.calendar.title")}
         subtitle="Gestisci eventi, presenze e statistiche partita/allenamento"
       />
 

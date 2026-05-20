@@ -20,6 +20,7 @@ import {
   getSubscriptionPlan,
   normalizeAppSettings,
 } from "../utils/helpers";
+import { useTranslation } from "../i18n";
 
 /* ─── Plan definitions ──────────────────────────────────────── */
 const PLANS = [
@@ -113,6 +114,7 @@ export default function Premium({
   matches = [],
   physicalTests = [],
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const auth = useAuth();
   const settings        = normalizeAppSettings(appSettings);
@@ -318,7 +320,7 @@ export default function Premium({
         `}
       </style>
       <PageHeader
-        title="Scegli il tuo piano"
+        title={t("pages.premium.title")}
         subtitle="Tutto quello che ti serve per gestire la stagione in modo professionale."
         badge={`Piano attivo: ${billing.effectivePlan.name}`}
       />

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "../i18n";
 
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -695,6 +696,7 @@ const compactInput = {
 
 // ─── Componente principale ────────────────────────────────────────────────────
 export default function SetPlays({ players = [], setPlays = {}, setSetPlays, appSettings = {} }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("corners");
   const [activeView, setActiveView] = useState("all");
   const [presetNames, setPresetNames] = useState({});
@@ -921,7 +923,7 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
       {/* ── Header ── */}
       <div className="no-print">
         <PageHeader
-          title="Palle Inattive"
+          title={t("pages.setPlays.title")}
           subtitle="Angoli, punizioni e rigori — schemi offensivi e difensivi"
           badge={<Badge tone="blue">Set Plays</Badge>}
           action={

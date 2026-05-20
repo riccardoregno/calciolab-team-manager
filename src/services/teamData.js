@@ -29,6 +29,7 @@ export function getInitialState() {
     matches:       initialMatches,
     physicalTests: initialPhysicalTests,
     gpsSessions:   [],
+    staffTasks:    [],
     injuryRecords: [],
   });
 }
@@ -149,6 +150,8 @@ async function loadTeamTablesState(teamId) {
       ...entityState,
       // GPS & Load resta local-first finché non esiste una tabella Supabase dedicata.
       gpsSessions:   localState.gpsSessions   || [],
+      // Azioni staff local-first finché non esiste una tabella Supabase dedicata.
+      staffTasks:    localState.staffTasks    || [],
       // Infortuni restano local-first finché non esiste una tabella Supabase dedicata.
       injuryRecords: localState.injuryRecords || [],
       // Se la colonna settings esiste e ha dati, usa quelli; altrimenti usa localStorage

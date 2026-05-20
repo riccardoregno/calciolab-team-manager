@@ -1,16 +1,15 @@
 import { useState, useCallback, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
+import { useTranslation } from "../i18n";
 
 /* ─── Social proof ──────────────────────────────────────────── */
-const STATS = [
-  { value: "120+", label: "squadre attive" },
-  { value: "4.8k", label: "sedute pianificate" },
-  { value: "98%",  label: "soddisfazione staff" },
-];
+const STATS_KEYS = ["activeTeams", "plannedSessions", "staffSatisfaction"];
+const STATS_VALUES = ["120+", "4.8k", "98%"];
 
 /* ─── Auth ──────────────────────────────────────────────────── */
 function Auth() {
+  const { t } = useTranslation();
   const [mode, setMode] = useState("login"); // "login" | "register" | "reset"
 
   /* form fields */
@@ -72,13 +71,13 @@ function Auth() {
 
   /* Reinvia email di conferma */
   async function resendConfirmation() {
-    if (!email) { setFeedback({ type: "error", text: "Inserisci la tua email per ricevere il link." }); return; }
+    if (!email) { setFeedback({ type: "error", text: t("pages.auth.missingEmailForResend") }); return; }
     setResendLoading(true);
     try {
       const { error } = await supabase.auth.resend({ type: "signup", email });
       if (error) setFeedback({ type: "error", text: error.message });
       else {
-        setFeedback({ type: "ok", text: "Email di conferma inviata! Controlla la casella di posta (e lo spam)." });
+        setFeedback({ type: "ok", text: t("pages.auth.confirmEmailSent") });
         setShowResend(false);
       }
     } finally { setResendLoading(false); }
@@ -91,24 +90,24 @@ function Auth() {
 
     /* ─ Reset password ─ */
     if (mode === "reset") {
-      if (!email) { setFeedback({ type: "error", text: "Inserisci la tua email." }); return; }
+      if (!email) { setFeedback({ type: "error", text: t("pages.auth.missingEmail") }); return; }
       setLoading(true);
       try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: window.location.origin + "/reset-password",
         });
         if (error) setFeedback({ type: "error", text: error.message });
-        else setFeedback({ type: "ok", text: "Email inviata! Controlla la casella di posta per reimpostare la password." });
+        else setFeedback({ type: "ok", text: t("pages.auth.resetEmailSent") });
       } finally { setLoading(false); }
       return;
     }
 
     /* ─ Login / Register common validation ─ */
-    if (!email || !password) { setFeedback({ type: "error", text: "Inserisci email e password." }); return; }
+    if (!email || !password) { setFeedback({ type: "error", text: t("pages.auth.missingEmailPassword") }); return; }
 
     if (mode === "register") {
-      if (!firstName || !lastName) { setFeedback({ type: "error", text: "Inserisci nome e cognome." }); return; }
-      if (!acceptTerms) { setFeedback({ type: "error", text: "Devi accettare i Termini di Servizio e la Privacy Policy per procedere." }); return; }
+      if (!firstName || !lastName) { setFeedback({ type: "error", text: t("pages.auth.missingName") }); return; }
+      if (!acceptTerms) { setFeedback({ type: "error", text: t("pages.auth.mustAcceptTerms") }); return; }
     }
 
     setLoading(true);
@@ -125,7 +124,7 @@ function Auth() {
           if (isUnconfirmed) {
             setFeedback({
               type: "error",
-              text: "Email non ancora confermata. Controlla la tua casella di posta e clicca il link di attivazione.",
+              text: t("pages.auth.emailNotConfirmed"),
             });
             setShowResend(true);
           } else {
@@ -168,7 +167,7 @@ function Auth() {
             newsletter_opt_in: acceptNewsletter,
             terms_accepted_at: new Date().toISOString(),
           }]);
-          if (profileError) { setFeedback({ type: "error", text: "Utente creato, ma errore nel salvataggio del profilo." }); return; }
+          if (profileError) { setFeedback({ type: "error", text: t("pages.auth.profileSaveError") }); return; }
 
           // Pulisce il token di invito dopo la registrazione
           if (inviteToken && typeof window !== "undefined") {
@@ -176,7 +175,7 @@ function Auth() {
           }
         }
 
-        setFeedback({ type: "ok", text: "Registrazione completata! Controlla la mail per confermare l'account." });
+        setFeedback({ type: "ok", text: t("pages.auth.registrationComplete") });
         setTimeout(() => switchMode("login"), 2800);
       }
     } finally { setLoading(false); }
@@ -194,15 +193,15 @@ function Auth() {
     && !acceptTerms;
 
   /* ── Labels ── */
-  const title    = mode === "login"    ? "Bentornato"
-                 : mode === "register" ? "Crea account"
-                                       : "Recupera password";
-  const subtitle = mode === "login"    ? "Accedi alla tua area allenatore"
-                 : mode === "register" ? "Configura il profilo per iniziare a lavorare con CalcioLab"
-                                       : "Inserisci la tua email: ti mandiamo un link per reimpostare la password.";
-  const btnLabel = mode === "login"    ? "Accedi"
-                 : mode === "register" ? "Registrati"
-                                       : "Invia link di recupero";
+  const title    = mode === "login"    ? t("pages.auth.welcomeBack")
+                 : mode === "register" ? t("pages.auth.createAccount")
+                                       : t("pages.auth.recoverPassword");
+  const subtitle = mode === "login"    ? t("pages.auth.loginSubtitle")
+                 : mode === "register" ? t("pages.auth.registerSubtitle")
+                                       : t("pages.auth.resetSubtitle");
+  const btnLabel = mode === "login"    ? t("pages.auth.login")
+                 : mode === "register" ? t("pages.auth.register")
+                                       : t("pages.auth.sendResetLink");
 
   const formWrapStyle = {
     ...s.formWrap,
@@ -224,7 +223,7 @@ function Auth() {
           <div style={s.mobileHeader}>
             <div style={s.brandMarkSm}>CL</div>
             <div>
-              <p style={{ ...s.eyebrow, margin: 0 }}>Coach workspace</p>
+              <p style={{ ...s.eyebrow, margin: 0 }}>{t("pages.auth.coachWorkspace")}</p>
               <strong style={{ fontSize: 20, lineHeight: 1.1 }}>CalcioLab</strong>
             </div>
           </div>
@@ -232,35 +231,35 @@ function Auth() {
           <section style={s.panel}>
             <div>
               <div style={s.brandMark}>CL</div>
-              <p style={{ ...s.eyebrow, marginTop: 22 }}>Coach workspace</p>
+              <p style={{ ...s.eyebrow, marginTop: 22 }}>{t("pages.auth.coachWorkspace")}</p>
               <h1 style={s.heroTitle}>CalcioLab</h1>
               <p style={s.heroText}>
-                Rosa, calendario, sedute e dati partita in un unico ambiente di lavoro per lo staff.
+                {t("pages.auth.heroText")}
               </p>
             </div>
 
             {/* Social proof */}
             <div style={s.statsRow}>
-              {STATS.map((st) => (
-                <div key={st.label} style={s.statItem}>
-                  <strong style={s.statValue}>{st.value}</strong>
-                  <span style={s.statLabel}>{st.label}</span>
+              {STATS_KEYS.map((key, i) => (
+                <div key={key} style={s.statItem}>
+                  <strong style={s.statValue}>{STATS_VALUES[i]}</strong>
+                  <span style={s.statLabel}>{t(`pages.auth.stats.${key}`)}</span>
                 </div>
               ))}
             </div>
 
             <div style={s.signalGrid}>
               <div style={s.signalItem}>
-                <strong>Rosa</strong>
-                <span>Giocatori, disponibilità e gruppi</span>
+                <strong>{t("pages.auth.signal1Title")}</strong>
+                <span>{t("pages.auth.signal1Text")}</span>
               </div>
               <div style={s.signalItem}>
-                <strong>Campo</strong>
-                <span>Sedute, esercizi e match day</span>
+                <strong>{t("pages.auth.signal2Title")}</strong>
+                <span>{t("pages.auth.signal2Text")}</span>
               </div>
               <div style={s.signalItem}>
-                <strong>Dati</strong>
-                <span>Statistiche e report stagione</span>
+                <strong>{t("pages.auth.signal3Title")}</strong>
+                <span>{t("pages.auth.signal3Text")}</span>
               </div>
             </div>
           </section>
@@ -270,7 +269,7 @@ function Auth() {
         <section style={s.card}>
           <div style={formWrapStyle}>
             <div style={s.cardHeader}>
-              <p style={s.eyebrow}>Accesso staff</p>
+              <p style={s.eyebrow}>{t("pages.auth.staffAccess")}</p>
               <h2 style={s.title}>{title}</h2>
             </div>
 
@@ -284,7 +283,7 @@ function Auth() {
                   <input
                     style={s.input}
                     type="text"
-                    placeholder="Nome"
+                    placeholder={t("pages.auth.firstName")}
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     autoComplete="given-name"
@@ -292,7 +291,7 @@ function Auth() {
                   <input
                     style={s.input}
                     type="text"
-                    placeholder="Cognome"
+                    placeholder={t("pages.auth.lastName")}
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     autoComplete="family-name"
@@ -326,7 +325,7 @@ function Auth() {
                     tabIndex={-1}
                     onClick={() => setShowPassword((p) => !p)}
                     style={s.eyeBtn}
-                    aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+                    aria-label={showPassword ? t("pages.auth.hidePassword") : t("pages.auth.showPassword")}
                   >
                     {showPassword
                       ? <EyeOff size={16} color="#64748b" />
@@ -357,16 +356,16 @@ function Auth() {
                       style={s.checkbox}
                     />
                     <span style={s.checkboxText}>
-                      Ho letto e accetto i{" "}
-                      <a href="/terms" target="_blank" style={s.checkboxLink}>Termini di Servizio</a>
-                      {" "}e la{" "}
-                      <a href="/privacy" target="_blank" style={s.checkboxLink}>Privacy Policy</a>.{" "}
+                      {t("pages.auth.acceptTermsPrefix")}{" "}
+                      <a href="/terms" target="_blank" style={s.checkboxLink}>{t("pages.auth.termsOfService")}</a>
+                      {" "}{t("pages.auth.acceptTermsAnd")}{" "}
+                      <a href="/privacy" target="_blank" style={s.checkboxLink}>{t("pages.auth.privacyPolicy")}</a>.{" "}
                       <span style={s.requiredStar}>*</span>
                     </span>
                   </label>
                   {showTermsWarning && (
                     <span style={{ fontSize: 12, color: "#ef4444", marginTop: -6, paddingLeft: 2 }}>
-                      ⚠️ Devi accettare i termini per procedere
+                      ⚠️ {t("pages.auth.mustAcceptTermsWarning")}
                     </span>
                   )}
 
@@ -379,10 +378,10 @@ function Auth() {
                       style={s.checkbox}
                     />
                     <span style={s.checkboxText}>
-                      Desidero ricevere{" "}
-                      <strong style={{ color: "#cbd5e1" }}>newsletter, offerte e novità</strong>{" "}
-                      di CalcioLab. Puoi disiscriverti in qualsiasi momento.{" "}
-                      <span style={s.optionalTag}>Facoltativo</span>
+                      {t("pages.auth.newsletterPrefix")}{" "}
+                      <strong style={{ color: "#cbd5e1" }}>{t("pages.auth.newsletterHighlight")}</strong>{" "}
+                      {t("pages.auth.newsletterSuffix")}{" "}
+                      <span style={s.optionalTag}>{t("common.optional")}</span>
                     </span>
                   </label>
                 </div>
@@ -403,7 +402,7 @@ function Auth() {
                   onClick={resendConfirmation}
                   disabled={resendLoading}
                 >
-                  {resendLoading ? "Invio in corso…" : "📧 Reinvia email di conferma"}
+                  {resendLoading ? t("pages.auth.sending") : `📧 ${t("pages.auth.resendConfirmEmail")}`}
                 </button>
               )}
 
@@ -415,14 +414,13 @@ function Auth() {
                 type="submit"
                 disabled={!canSubmit || loading}
               >
-                {loading ? "Attendere…" : btnLabel}
+                {loading ? t("pages.auth.pleaseWait") : btnLabel}
               </button>
 
               {/* Nota GDPR sotto il pulsante di registrazione */}
               {mode === "register" && (
                 <p style={s.gdprNote}>
-                  I tuoi dati sono trattati in conformità al GDPR (Reg. UE 2016/679).
-                  Non li condivideremo mai con terze parti senza il tuo consenso.
+                  {t("pages.auth.gdprNote")}
                 </p>
               )}
             </form>
@@ -432,21 +430,21 @@ function Auth() {
               {mode === "login" && (
                 <>
                   <button style={s.linkBtn} type="button" onClick={() => switchMode("register")}>
-                    Non hai un account? <u>Registrati</u>
+                    {t("pages.auth.noAccountRegister")}
                   </button>
                   <button style={{ ...s.linkBtn, ...s.linkBtnMuted }} type="button" onClick={() => switchMode("reset")}>
-                    Password dimenticata?
+                    {t("pages.auth.forgotPassword")}
                   </button>
                 </>
               )}
               {mode === "register" && (
                 <button style={s.linkBtn} type="button" onClick={() => switchMode("login")}>
-                  Hai già un account? <u>Accedi</u>
+                  {t("pages.auth.alreadyHaveAccountLogin")}
                 </button>
               )}
               {mode === "reset" && (
                 <button style={s.linkBtn} type="button" onClick={() => switchMode("login")}>
-                  ← Torna al login
+                  {t("pages.auth.backToLogin")}
                 </button>
               )}
             </div>
@@ -551,7 +549,7 @@ const s = {
   title:     { fontSize: 32, lineHeight: 1.1, margin: 0 },
   subtitle:  { color: "#a8b3c5", lineHeight: 1.55, fontSize: 14, margin: "0 0 22px" },
   form:      { display: "grid", gap: 12 },
-  nameGrid:  { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  nameGrid:  { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 10 },
   input: {
     padding: "13px 16px", borderRadius: 12, border: "1px solid #2b3444",
     background: "#0b1018", color: "white", fontSize: 15, outline: "none",

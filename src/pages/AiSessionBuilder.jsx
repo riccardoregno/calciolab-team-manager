@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -9,10 +10,11 @@ import PageHeader from "../components/ui/PageHeader";
 import { generateAiTrainingSession, isOpenAiConfigured } from "../services/aiSessionService";
 import { styles } from "../styles/index.js";
 import { RPE_BY_MATCH_DAY, createId, formatShortDate, generateGuidedSession } from "../utils/helpers";
+import { useTranslation } from "../i18n";
 
 const defaultPrompt = {
   objective: "Pressing",
-  category: "Adulti",
+  category: "Prima squadra",
   duration: 90,
   players: 18,
   field: "Campo intero",
@@ -21,9 +23,13 @@ const defaultPrompt = {
   specialConstraints: "",
 };
 
-export default function AiSessionBuilder({ exercises = [], setSessions, players = [] }) {
+export default function AiSessionBuilder({
+  exercises = [], setSessions, players = [] }) {
+
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState(defaultPrompt);
+  const isMobile = useIsMobile();
   const [generatedSession, setGeneratedSession] = useState(null);
   const [generationSource, setGenerationSource] = useState("local");
   const [generationMessage, setGenerationMessage] = useState("");
@@ -113,7 +119,7 @@ export default function AiSessionBuilder({ exercises = [], setSessions, players 
   return (
     <div style={builderStyles.page}>
       <PageHeader
-        title="Genera seduta con AI"
+        title={t("pages.aiSessionBuilder.title")}
         subtitle="Parti da un brief tecnico, salva la proposta e rifiniscila nella pagina Sedute."
         action={
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -125,7 +131,7 @@ export default function AiSessionBuilder({ exercises = [], setSessions, players 
         }
       />
 
-      <div style={builderStyles.grid}>
+      <div style={{ ...builderStyles.grid, gridTemplateColumns: isMobile ? "1fr" : "360px 1fr" }}>
         <AppCard title="Brief seduta" subtitle="Imposta il contesto tecnico: l'AI proporrà una traccia modificabile.">
           <div style={builderStyles.formGrid}>
             <Field label="Obiettivo">
@@ -140,7 +146,7 @@ export default function AiSessionBuilder({ exercises = [], setSessions, players 
             </Field>
             <Field label="Categoria">
               <select value={prompt.category} onChange={(event) => updatePrompt("category", event.target.value)} style={styles.input}>
-                <option>Adulti</option>
+                <option>Prima squadra</option>
                 <option>Juniores</option>
                 <option>Allievi</option>
                 <option>Giovanissimi</option>

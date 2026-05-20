@@ -29,6 +29,7 @@ const Trainings = lazy(() => import("./pages/Trainings"));
 const Sessions = lazy(() => import("./pages/Sessions"));
 const Matches = lazy(() => import("./pages/Matches"));
 const MatchDay = lazy(() => import("./pages/MatchDay"));
+const Microcycle = lazy(() => import("./pages/Microcycle"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Statistics = lazy(() => import("./pages/Statistics"));
 const TacticalBoard = lazy(() => import("./pages/TacticalBoard"));
@@ -40,6 +41,7 @@ const GpsLoad = lazy(() => import("./pages/GpsLoad"));
 const Opponents = lazy(() => import("./pages/Opponents"));
 const PostMatch = lazy(() => import("./pages/PostMatch"));
 const ExportCenter = lazy(() => import("./pages/ExportCenter"));
+const StaffTasks = lazy(() => import("./pages/StaffTasks"));
 const Premium = lazy(() => import("./pages/Premium"));
 const PlayerPortal = lazy(() => import("./pages/PlayerPortal"));
 const Sponsors = lazy(() => import("./pages/Sponsors"));
@@ -120,6 +122,7 @@ function App() {
     setMatches,
     setPhysicalTests,
     setGpsSessions,
+    setStaffTasks,
     setAppSettings,
     setSetPlays,
   } = useTeamData({ teamId: auth.team?.id });
@@ -239,6 +242,7 @@ function App() {
   const matches = state.matches || [];
   const physicalTests = state.physicalTests || [];
   const gpsSessions   = state.gpsSessions   || [];
+  const staffTasks    = state.staffTasks    || [];
 
   function updateDevelopmentPlanPreview(plan) {
     if (!developmentPreviewPlans.includes(plan)) return;
@@ -424,7 +428,7 @@ function App() {
                 path="/post-match"
                 element={
                   gate(technicalRoles, <FeatureGate featureKey="postMatch" appSettings={previewAppSettings}>
-                    <PostMatch matches={matches} setMatches={setMatches} />
+                    <PostMatch matches={matches} setMatches={setMatches} players={players} setStaffTasks={setStaffTasks} />
                   </FeatureGate>)
                 }
               />
@@ -433,7 +437,7 @@ function App() {
                 path="/post-match/:id"
                 element={
                   gate(technicalRoles, <FeatureGate featureKey="postMatch" appSettings={previewAppSettings}>
-                    <PostMatch matches={matches} setMatches={setMatches} />
+                    <PostMatch matches={matches} setMatches={setMatches} players={players} setStaffTasks={setStaffTasks} />
                   </FeatureGate>)
                 }
               />
@@ -450,9 +454,22 @@ function App() {
                       sessions={sessions}
                       matches={matches}
                       physicalTests={physicalTests}
+                      gpsSessions={gpsSessions}
                       appSettings={previewAppSettings}
                     />
                   </FeatureGate>)
+                }
+              />
+
+              <Route
+                path="/staff-tasks"
+                element={
+                  gate(["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"], <StaffTasks
+                    staffTasks={staffTasks}
+                    setStaffTasks={setStaffTasks}
+                    players={players}
+                    matches={matches}
+                  />)
                 }
               />
 
@@ -565,6 +582,7 @@ function App() {
                       matches={matches}
                       setMatches={setMatches}
                       players={players}
+                      appSettings={previewAppSettings}
                     />
                   </FeatureGate>)
                 }
@@ -578,6 +596,7 @@ function App() {
                       matches={matches}
                       setMatches={setMatches}
                       players={players}
+                      appSettings={previewAppSettings}
                     />
                   </FeatureGate>)
                 }
@@ -612,6 +631,7 @@ function App() {
                     players={players}
                     matches={matches}
                     setMatches={setMatches}
+                    appSettings={previewAppSettings}
                   />)
                 }
               />
@@ -661,6 +681,7 @@ function App() {
                     sessions={sessions}
                     matches={matches}
                     physicalTests={physicalTests}
+                    setStaffTasks={setStaffTasks}
                   />)
                 }
               />
@@ -690,12 +711,25 @@ function App() {
               />
 
               <Route
+                path="/microcycle"
+                element={
+                  gate(technicalRoles, <Microcycle
+                    sessions={sessions}
+                    matches={matches}
+                    players={players}
+                    gpsSessions={gpsSessions}
+                  />)
+                }
+              />
+
+              <Route
                 path="/matches"
                 element={
                   gate(coachRoles, <Matches
                     matches={matches}
                     setMatches={setMatches}
                     players={players}
+                    appSettings={previewAppSettings}
                   />)
                 }
               />

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "../i18n";
 
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
@@ -11,10 +12,15 @@ import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 import { styles } from "../styles/index.js";
-import { createId, formatDate } from "../utils/helpers";
+import { createId, formatDate, normalizeAppSettings } from "../utils/helpers";
 
-function Matches({ matches, setMatches, players = [] }) {
+function Matches({ matches, setMatches, players = [], appSettings = {} }) {
+  const { t } = useTranslation();
   const { showToast, ToastContainer } = useToast();
+  const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
+  const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
+  const clubLogo = workspaceProfile.logo || "";
+  const clubLogoSize = Number(workspaceProfile.logoSize || 100);
   const [confirmState, setConfirmState] = useState(null);
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -37,7 +43,7 @@ function Matches({ matches, setMatches, players = [] }) {
 
   function saveMatch() {
     if (!form.opponent.trim()) {
-      showToast("Inserisci l’avversario", "warn");
+      showToast(t("pages.matches.missingOpponent"), "warn");
       return;
     }
 
@@ -45,7 +51,8 @@ function Matches({ matches, setMatches, players = [] }) {
       ...form,
       id: editingId || createId("match"),
       type: "Partita",
-      title: `CalcioLab - ${form.opponent}`,
+      title: `${clubName} - ${form.opponent}`,
+      homeLogo: form.homeLogo || clubLogo,
     };
 
     if (editingId) {
@@ -54,10 +61,10 @@ function Matches({ matches, setMatches, players = [] }) {
       setMatches((prevMatches) => [...prevMatches, payload]);
     }
 
-    setForm(emptyMatch());
+    setForm(emptyMatch(clubLogo));
     setEditingId(null);
     setOpenModal(false);
-    showToast(editingId ? "Partita aggiornata" : "Partita salvata", "ok");
+    showToast(editingId ? t("pages.matches.matchUpdated") : t("pages.matches.matchSaved"), "ok");
   }
 
   function editMatch(match) {
@@ -81,14 +88,40 @@ function Matches({ matches, setMatches, players = [] }) {
     setOpenModal(true);
   }
 
+  function openNewMatch() {
+    setEditingId(null);
+    setForm(emptyMatch(clubLogo));
+    setOpenModal(true);
+  }
+
+  function importCalendar(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const rows = parseCsv(String(reader.result || ""));
+      const imported = rows
+        .map((row) => calendarRowToMatch(row, clubLogo, clubName))
+        .filter(Boolean);
+
+      if (!imported.length) {
+        showToast(t("pages.matches.noValidMatches"), "warn");
+        return;
+      }
+
+      setMatches((prevMatches) => [...prevMatches, ...imported]);
+      showToast(t("pages.matches.matchesImported", { count: imported.length }), "ok");
+    };
+    reader.readAsText(file);
+  }
+
   function deleteMatch(id) {
     setConfirmState({
-      message: "Vuoi eliminare questa partita?",
-      confirmLabel: "Elimina",
+      message: t("pages.matches.deleteConfirm"),
+      confirmLabel: t("common.delete"),
       confirmTone: "red",
       onConfirm: () => {
         setMatches((prevMatches) => prevMatches.filter((match) => match.id !== id));
-        showToast("Partita eliminata", "info");
+        showToast(t("pages.matches.matchDeleted"), "info");
       },
     });
   }
@@ -98,14 +131,23 @@ function Matches({ matches, setMatches, players = [] }) {
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <ToastContainer />
       <PageHeader
-        title="Partite"
-        subtitle="Match center, risultati, loghi squadre e note tecniche"
+        title={t("pages.matches.title")}
+        subtitle={t("pages.matches.subtitle")}
         action={
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <Link to="/match-day" style={{ textDecoration: "none" }}>
-              <Button variant="ghost">Match Day</Button>
+              <Button variant="ghost">{t("pages.matches.matchDay")}</Button>
             </Link>
-            <Button onClick={() => setOpenModal(true)}>+ Nuova partita</Button>
+            <label style={{ display: "inline-flex" }}>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(event) => importCalendar(event.target.files?.[0])}
+                style={{ display: "none" }}
+              />
+              <Button variant="ghost">{t("pages.matches.importCsv")}</Button>
+            </label>
+            <Button onClick={openNewMatch}>{t("pages.matches.newMatch")}</Button>
           </div>
         }
       />
@@ -124,17 +166,17 @@ function Matches({ matches, setMatches, players = [] }) {
           border: "1px solid rgba(255,255,255,0.08)",
         }}
       >
-        <Badge tone="blue">{matches.length} partite</Badge>
+        <Badge tone="blue">{matches.length} {t("pages.matches.matchesCount")}</Badge>
         <p style={{ color: "#94a3b8", margin: 0, lineHeight: 1.45 }}>
-          Archivio gare, convocazioni, distinta e statistiche partita.
+          {t("pages.matches.archiveSubtitle")}
         </p>
       </div>
 
       {matches.length === 0 ? (
         <EmptyState
           icon="🏟️"
-          title="Nessuna partita salvata"
-          text="Aggiungi la prima gara per iniziare lo storico."
+          title={t("pages.matches.noMatchesTitle")}
+          text={t("pages.matches.noMatchesText")}
         />
       ) : (
         <div
@@ -157,8 +199,9 @@ function Matches({ matches, setMatches, players = [] }) {
               >
                 <TeamBox
                   logo={match.homeLogo}
-                  name="CalcioLab"
-                  fallback="CL"
+                  logoSize={clubLogoSize}
+                  name={clubName}
+                  fallback={clubName.slice(0, 2).toUpperCase()}
                   gradient="linear-gradient(135deg,#2563eb,#38bdf8)"
                 />
 
@@ -195,10 +238,10 @@ function Matches({ matches, setMatches, players = [] }) {
                   marginBottom: 18,
                 }}
               >
-                <MiniInfo label="Campo" value={match.location || "-"} />
-                <MiniInfo label="Modulo" value={match.formation || "-"} />
+                <MiniInfo label={t("pages.matches.field")} value={match.location || "-"} />
+                <MiniInfo label={t("pages.matches.formation")} value={match.formation || "-"} />
                 <MiniInfo
-                  label="Convocati"
+                  label={t("pages.matches.calledUp")}
                   value={`${match.lineup?.calledUpIds?.length || 0}/${players.length}`}
                 />
               </div>
@@ -222,11 +265,11 @@ function Matches({ matches, setMatches, players = [] }) {
                     marginBottom: 8,
                   }}
                 >
-                  Note partita
+                  {t("pages.matches.matchNotes")}
                 </div>
 
                 <p style={{ margin: 0, color: "#cbd5e1", lineHeight: 1.5 }}>
-                  {match.notes || "Nessuna nota inserita."}
+                  {match.notes || t("pages.matches.noNotes")}
                 </p>
               </div>
 
@@ -234,14 +277,14 @@ function Matches({ matches, setMatches, players = [] }) {
               {match.convocazione?.published && (
                 <div style={{ marginBottom: 10, marginTop: 14 }}>
                   <Badge tone="green">
-                    ✓ Convocazione pubblicata · {match.convocazione.playerIds?.length || 0} giocatori
+                    ✓ {t("pages.matches.convocationPublished")} · {match.convocazione.playerIds?.length || 0} {t("common.players")}
                   </Badge>
                 </div>
               )}
               {match.convocazione && !match.convocazione.published && match.convocazione.playerIds?.length > 0 && (
                 <div style={{ marginBottom: 10 }}>
                   <Badge tone="orange">
-                    Bozza convocazione · {match.convocazione.playerIds.length} selezionati
+                    {t("pages.matches.convocationDraft")} · {match.convocazione.playerIds.length} {t("pages.matches.selected")}
                   </Badge>
                 </div>
               )}
@@ -255,7 +298,7 @@ function Matches({ matches, setMatches, players = [] }) {
                     variant={match.convocazione?.published ? "ghost" : "primary"}
                     style={{ width: "100%" }}
                   >
-                    {match.convocazione?.published ? "✓ Convocazione" : "Convoca"}
+                    {match.convocazione?.published ? `✓ ${t("pages.matches.convocation")}` : t("pages.matches.callUp")}
                   </Button>
                 </Link>
 
@@ -264,7 +307,7 @@ function Matches({ matches, setMatches, players = [] }) {
                   style={{ flex: 1, textDecoration: "none", minWidth: 100 }}
                 >
                   <Button variant="ghost" style={{ width: "100%" }}>
-                    Scheda gara
+                    {t("pages.matches.matchSheet")}
                   </Button>
                 </Link>
 
@@ -273,7 +316,7 @@ function Matches({ matches, setMatches, players = [] }) {
                   style={{ flex: 1, textDecoration: "none", minWidth: 100 }}
                 >
                   <Button variant="ghost" style={{ width: "100%" }}>
-                    Statistiche
+                    {t("pages.matches.statistics")}
                   </Button>
                 </Link>
 
@@ -282,7 +325,7 @@ function Matches({ matches, setMatches, players = [] }) {
                   onClick={() => editMatch(match)}
                   style={{ flex: 1, minWidth: 90 }}
                 >
-                  Modifica
+                  {t("common.edit")}
                 </Button>
 
                 <Button
@@ -290,7 +333,7 @@ function Matches({ matches, setMatches, players = [] }) {
                   onClick={() => deleteMatch(match.id)}
                   style={{ flex: 1, minWidth: 80 }}
                 >
-                  Elimina
+                  {t("common.delete")}
                 </Button>
               </div>
             </AppCard>
@@ -300,11 +343,11 @@ function Matches({ matches, setMatches, players = [] }) {
 
       {openModal && (
         <Modal
-          title={editingId ? "Modifica partita" : "Nuova partita"}
+          title={editingId ? t("pages.matches.editMatch") : t("pages.matches.newMatchTitle")}
           onClose={() => {
             setOpenModal(false);
             setEditingId(null);
-            setForm(emptyMatch());
+            setForm(emptyMatch(clubLogo));
           }}
         >
           <div
@@ -315,7 +358,7 @@ function Matches({ matches, setMatches, players = [] }) {
             }}
           >
             <input
-              placeholder="Avversario"
+              placeholder={t("pages.matches.opponentPlaceholder")}
               value={form.opponent}
               onChange={(e) => setForm({ ...form, opponent: e.target.value })}
               style={styles.input}
@@ -333,13 +376,13 @@ function Matches({ matches, setMatches, players = [] }) {
               onChange={(e) => setForm({ ...form, location: e.target.value })}
               style={styles.input}
             >
-              <option>Casa</option>
-              <option>Trasferta</option>
-              <option>Neutro</option>
+              <option value="Casa">{t("pages.matches.home")}</option>
+              <option value="Trasferta">{t("pages.matches.away")}</option>
+              <option value="Neutro">{t("pages.matches.neutral")}</option>
             </select>
 
             <input
-              placeholder="Risultato es. 2-1"
+              placeholder={t("pages.matches.resultPlaceholder")}
               value={form.result}
               onChange={(e) => setForm({ ...form, result: e.target.value })}
               style={styles.input}
@@ -359,19 +402,19 @@ function Matches({ matches, setMatches, players = [] }) {
             </select>
 
             <LogoUploader
-              label="Logo CalcioLab"
+              label={t("pages.matches.homeLogo")}
               value={form.homeLogo}
               onChange={(file) => handleLogoUpload("homeLogo", file)}
             />
 
             <LogoUploader
-              label="Logo avversario"
+              label={t("pages.matches.awayLogo")}
               value={form.awayLogo}
               onChange={(file) => handleLogoUpload("awayLogo", file)}
             />
 
             <textarea
-              placeholder="Note partita"
+              placeholder={t("pages.matches.notesPlaceholder")}
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               style={{
@@ -395,14 +438,14 @@ function Matches({ matches, setMatches, players = [] }) {
               onClick={() => {
                 setOpenModal(false);
                 setEditingId(null);
-                setForm(emptyMatch());
+                setForm(emptyMatch(clubLogo));
               }}
             >
-              Annulla
+              {t("common.cancel")}
             </Button>
 
             <Button onClick={saveMatch}>
-              {editingId ? "Aggiorna partita" : "Salva partita"}
+              {editingId ? t("pages.matches.updateMatch") : t("pages.matches.saveMatch")}
             </Button>
           </div>
         </Modal>
@@ -411,7 +454,7 @@ function Matches({ matches, setMatches, players = [] }) {
   );
 }
 
-function TeamBox({ logo, name, fallback, gradient }) {
+function TeamBox({ logo, logoSize = 100, name, fallback, gradient }) {
   return (
     <div
       style={{
@@ -423,18 +466,30 @@ function TeamBox({ logo, name, fallback, gradient }) {
       }}
     >
       {logo ? (
-        <img
-          src={logo}
-          alt={name}
+        <div
           style={{
             width: 68,
             height: 68,
-            objectFit: "cover",
             borderRadius: 16,
             marginBottom: 10,
+            overflow: "hidden",
+            display: "grid",
+            placeItems: "center",
             border: "1px solid rgba(255,255,255,0.12)",
           }}
-        />
+        >
+          <img
+            src={logo}
+            alt={name}
+            style={{
+              width: `${Number(logoSize || 100)}%`,
+              height: `${Number(logoSize || 100)}%`,
+              objectFit: "contain",
+              maxWidth: "160%",
+              maxHeight: "160%",
+            }}
+          />
+        </div>
       ) : (
         <div
           style={{
@@ -536,7 +591,7 @@ function MiniInfo({ label, value }) {
   );
 }
 
-function emptyMatch() {
+function emptyMatch(homeLogo = "") {
   return {
     opponent: "",
     date: new Date().toISOString().slice(0, 10),
@@ -548,7 +603,7 @@ function emptyMatch() {
     lineup: emptyLineup(),
     matchPlan: "",
     staffNotes: "",
-    homeLogo: "",
+    homeLogo,
     awayLogo: "",
   };
 }
@@ -559,6 +614,102 @@ function emptyLineup() {
     starterIds: [],
     benchIds: [],
   };
+}
+
+function parseCsv(text) {
+  const lines = text
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return [];
+
+  const headers = splitCsvLine(lines[0]).map((header) => normalizeHeader(header));
+  return lines.slice(1).map((line) => {
+    const values = splitCsvLine(line);
+    return headers.reduce((row, header, index) => {
+      row[header] = values[index] || "";
+      return row;
+    }, {});
+  });
+}
+
+function splitCsvLine(line) {
+  const result = [];
+  let current = "";
+  let quoted = false;
+
+  for (const char of line) {
+    if (char === "\"") {
+      quoted = !quoted;
+    } else if ((char === "," || char === ";") && !quoted) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+
+  result.push(current.trim());
+  return result.map((value) => value.replace(/^"|"$/g, ""));
+}
+
+function normalizeHeader(value) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "_")
+    .replace(/[àá]/g, "a")
+    .replace(/[èé]/g, "e")
+    .replace(/[ìí]/g, "i")
+    .replace(/[òó]/g, "o")
+    .replace(/[ùú]/g, "u");
+}
+
+function pick(row, keys) {
+  return keys.map((key) => row[key]).find((value) => String(value || "").trim()) || "";
+}
+
+function calendarRowToMatch(row, clubLogo, clubName) {
+  const opponent = pick(row, ["avversario", "opponent", "squadra", "team", "contro"]);
+  const date = normalizeDate(pick(row, ["data", "date", "giorno"]));
+  if (!opponent || !date) return null;
+
+  const locationRaw = pick(row, ["campo", "location", "casa_trasferta", "sede"]);
+  const location = /trasf|away|fuori/i.test(locationRaw)
+    ? "Trasferta"
+    : /neut/i.test(locationRaw)
+      ? "Neutro"
+      : "Casa";
+  const competition = pick(row, ["competizione", "competition", "campionato", "torneo"]);
+
+  return {
+    ...emptyMatch(clubLogo),
+    id: createId("match"),
+    type: "Partita",
+    opponent,
+    date,
+    location,
+    competition,
+    result: pick(row, ["risultato", "result"]),
+    formation: pick(row, ["modulo", "formation"]) || "4-2-3-1",
+    notes: pick(row, ["note", "notes"]),
+    title: `${clubName} - ${opponent}`,
+  };
+}
+
+function normalizeDate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const match = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (!match) return "";
+
+  const day = match[1].padStart(2, "0");
+  const month = match[2].padStart(2, "0");
+  const year = match[3].length === 2 ? `20${match[3]}` : match[3];
+  return `${year}-${month}-${day}`;
 }
 
 export default Matches;

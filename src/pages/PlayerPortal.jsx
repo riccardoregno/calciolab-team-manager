@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "../i18n";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -24,6 +26,7 @@ export default function PlayerPortal({
   appSettings = {},
   setAppSettings,
 }) {
+  const { t } = useTranslation();
   const settings     = normalizeAppSettings(appSettings);
   const portal       = settings.playerPortal;
   const comms        = settings.communications || [];
@@ -34,6 +37,7 @@ export default function PlayerPortal({
   const [draftProgram, setDraftProgram] = useState("");
   const [draftGoal,    setDraftGoal]    = useState("");
   const [draftNote,    setDraftNote]    = useState("");
+  const isMobile = useIsMobile();
 
   const selectedPlayer = players.find((p) =>
     sameId(p.id, selectedPlayerId || players[0]?.id)
@@ -124,7 +128,7 @@ export default function PlayerPortal({
   return (
     <div style={ps.page}>
       <PageHeader
-        title={isPlayerView ? "La mia area" : "Area Giocatori"}
+        title={isPlayerView ? t("pages.playerPortal.myArea") : t("pages.playerPortal.title")}
         subtitle={
           isPlayerView
             ? "Convocazioni, programma personale, comunicazioni staff e rendimento."
@@ -148,6 +152,7 @@ export default function PlayerPortal({
           activeProgram={savedProgram}
           activeGoal={savedGoal}
           activeNote={savedNote}
+          isMobile={isMobile}
         />
       ) : (
         <StaffView
@@ -172,6 +177,7 @@ export default function PlayerPortal({
           onSave={savePlayerPortalData}
           onAddComm={addComm}
           onDeleteComm={deleteComm}
+          isMobile={isMobile}
         />
       )}
     </div>
@@ -187,10 +193,10 @@ function StaffView({
   portal, comms,
   activeProgram, activeGoal, activeNote,
   onUpdatePortal, onPlayerChange, onProgramChange, onGoalChange, onNoteChange,
-  onSave, onAddComm, onDeleteComm,
+  onSave, onAddComm, onDeleteComm, isMobile,
 }) {
   return (
-    <div style={ps.staffLayout}>
+    <div style={{ ...ps.staffLayout, gridTemplateColumns: isMobile ? "1fr" : "360px minmax(0,1fr)" }}>
       {/* Colonna sinistra: controlli */}
       <div style={{ display: "grid", gap: 18, alignContent: "start" }}>
         {/* Pannello controllo portale */}
@@ -322,7 +328,7 @@ function PlayerView({
   selectedPlayer, summary, latestTest, physicalReference,
   nextEvents, myConvocations,
   players, portal, comms,
-  activeProgram, activeGoal, activeNote,
+  activeProgram, activeGoal, activeNote, isMobile,
 }) {
   const upcoming = myConvocations.filter(
     (m) => new Date(m.date) >= todayStart()
@@ -332,7 +338,7 @@ function PlayerView({
   );
 
   return (
-    <div style={ps.playerLayout}>
+    <div style={{ ...ps.playerLayout, gridTemplateColumns: isMobile ? "1fr" : "minmax(0,1.4fr) minmax(280px,0.6fr)" }}>
       {/* Colonna principale */}
       <div style={{ display: "grid", gap: 18, alignContent: "start" }}>
         {/* Welcome + stats */}
@@ -530,8 +536,10 @@ function ConvocazioneRow({ match, players, highlightId, showFull = false }) {
   const [expanded, setExpanded] = useState(false);
   const isFuture  = new Date(match.date) >= todayStart();
   const conv      = match.convocazione || {};
+  const details   = conv.details || {};
   const pids      = (conv.playerIds || []).map(String);
   const isIn      = highlightId ? pids.includes(String(highlightId)) : null;
+  const meetingInfo = [details.meetingTime, details.meetingPlace].filter(Boolean).join(" · ");
 
   const convocati = showFull
     ? pids.map((pid) => players.find((p) => String(p.id) === pid)).filter(Boolean)
@@ -567,6 +575,27 @@ function ConvocazioneRow({ match, players, highlightId, showFull = false }) {
             {formatDate(match.date)}
             {match.location && ` · ${match.location}`}
           </p>
+          {(details.matchTime || meetingInfo || details.lockerRoom || details.kit) && (
+            <div style={{ display: "grid", gap: 3, marginTop: 6 }}>
+              {details.matchTime && (
+                <p style={{ ...ps.muted, fontSize: 12, margin: 0 }}>Ora gara: {details.matchTime}</p>
+              )}
+              {meetingInfo && (
+                <p style={{ ...ps.muted, fontSize: 12, margin: 0 }}>Raduno: {meetingInfo}</p>
+              )}
+              {details.lockerRoom && (
+                <p style={{ ...ps.muted, fontSize: 12, margin: 0 }}>Spogliatoio: {details.lockerRoom}</p>
+              )}
+              {details.kit && (
+                <p style={{ ...ps.muted, fontSize: 12, margin: 0 }}>Kit: {details.kit}</p>
+              )}
+            </div>
+          )}
+          {details.message && (
+            <p style={{ ...ps.muted, fontSize: 12, marginTop: 4, fontWeight: 700 }}>
+              {details.message}
+            </p>
+          )}
           {conv.notes && (
             <p style={{ ...ps.muted, fontSize: 12, marginTop: 4, fontStyle: "italic" }}>
               📋 {conv.notes}
@@ -840,9 +869,9 @@ const ps = {
     borderRadius: 10, margin: 0,
     background: "rgba(56,189,248,0.07)", border: "1px solid rgba(56,189,248,0.15)",
   },
-  kpiGrid: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 },
+  kpiGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(100px,1fr))", gap: 10 },
   metric:  { padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", textAlign: "center" },
-  twoCol:  { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
+  twoCol:  { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 },
   infoBlock: { padding: 14, borderRadius: 12, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(255,255,255,0.07)" },
   infoTitle: { margin: "0 0 6px", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0, color: "#475569" },
   infoValue: { margin: 0, color: "#cbd5e1", fontSize: 14, lineHeight: 1.5 },

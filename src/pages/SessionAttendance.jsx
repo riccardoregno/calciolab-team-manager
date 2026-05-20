@@ -4,6 +4,7 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { formatDate } from "../utils/helpers";
+import { useTranslation } from "../i18n";
 
 const STATUS_OPTIONS = ["Presente", "Assente", "Infortunato", "Permesso"];
 
@@ -15,6 +16,7 @@ const STATUS_TONE = {
 };
 
 export default function SessionAttendance({ players = [], sessions = [], setSessions }) {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -102,7 +104,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   return (
     <div style={s.page}>
       <PageHeader
-        title={`Presenze — ${session.title || "Seduta"}`}
+        title={`${t("pages.sessionAttendance.title")} — ${session.title || t("pages.sessionAttendance.defaultSession")}`}
         subtitle={subtitle}
         badge={`${players.length} giocatori`}
       />

@@ -19,6 +19,7 @@ import {
 } from "../utils/helpers";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useNotifications } from "../hooks/useNotifications";
+import { useTranslation } from "../i18n";
 
 /* ─── tab list ─────────────────────────────────────────────── */
 const TABS = [
@@ -57,6 +58,7 @@ export default function Settings({
   sessions = [],
   matches = [],
 }) {
+  const { t } = useTranslation();
   const location = useLocation();
   const initialTab = new URLSearchParams(location.search).get("tab");
   const [activeTab, setActiveTab] = useState(
@@ -70,8 +72,8 @@ export default function Settings({
       <ToastContainer />
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
-        title="Impostazioni"
-        subtitle="Account, parametri coach e profilo società in un unico posto."
+        title={t("pages.settings.title")}
+        subtitle={t("pages.settings.subtitle")}
       />
 
       {/* ── Tab bar ── */}
@@ -487,7 +489,7 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
                 onChange={(e) => updateParameters({ category: e.target.value })}
                 style={styles.input}
               >
-                <option value="adulti">Adulti</option>
+                <option value="adulti">Prima squadra</option>
                 <option value="juniores">Juniores</option>
                 <option value="allievi">Allievi</option>
                 <option value="giovanissimi">Giovanissimi</option>
@@ -657,7 +659,8 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
    TAB 3 — Club & members
 ═══════════════════════════════════════════════════════════════ */
 const DEFAULT_WORKSPACE_PROFILE = {
-  clubName: "", teamName: "", category: "Adulti",
+  clubName: "", teamName: "", category: "Prima squadra", logoSize: 100,
+  homeFieldName: "", homeFieldAddress: "", homeFieldSurface: "Erba naturale",
   userRole: "headCoach", seasonGoal: "", currentSeason: "2025/26",
 };
 
@@ -732,6 +735,15 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
     setAppSettings?.({ ...settings, workspaceProfile: profile });
   }
 
+  function handleClubLogoUpload(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfile((prev) => ({ ...prev, logo: reader.result }));
+    };
+    reader.readAsDataURL(file);
+  }
+
   function updateMemberRole(memberId, role) {
     const currentMembers = settings.members || [];
     setAppSettings?.({
@@ -775,6 +787,48 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
       <div style={s.grid2}>
         <AppCard title="Profilo società" subtitle="Identità, squadra, categoria e obiettivi della stagione.">
           <div style={s.formStack}>
+            <div style={s.clubLogoBox}>
+              {profile.logo ? (
+                <div style={s.clubLogoFrame}>
+                  <img
+                    src={profile.logo}
+                    alt={profile.clubName || "Logo società"}
+                    style={{
+                      ...s.clubLogoPreview,
+                      width: `${Number(profile.logoSize || 100)}%`,
+                      height: `${Number(profile.logoSize || 100)}%`,
+                    }}
+                  />
+                </div>
+              ) : (
+                <div style={s.clubLogoFallback}>{(profile.clubName || "CL").slice(0, 2).toUpperCase()}</div>
+              )}
+              <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+                <strong style={{ lineHeight: 1.2 }}>Logo società</strong>
+                <span style={{ color: "#94a3b8", fontSize: 13, lineHeight: 1.4 }}>
+                  Verrà usato automaticamente come logo della tua squadra nelle partite.
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => handleClubLogoUpload(event.target.files?.[0])}
+                  style={styles.input}
+                />
+                {profile.logo && (
+                  <label style={s.logoSizeControl}>
+                    Dimensione logo: {Number(profile.logoSize || 100)}%
+                    <input
+                      type="range"
+                      min="60"
+                      max="160"
+                      step="5"
+                      value={Number(profile.logoSize || 100)}
+                      onChange={(event) => setProfile({ ...profile, logoSize: Number(event.target.value) })}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
             <ClubField label="Società">
               <input
                 value={profile.clubName}
@@ -789,13 +843,42 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                 style={styles.input}
               />
             </ClubField>
+            <ClubField label="Campo di casa">
+              <input
+                value={profile.homeFieldName || ""}
+                onChange={(e) => setProfile({ ...profile, homeFieldName: e.target.value })}
+                placeholder="Es. Centro Sportivo Comunale"
+                style={styles.input}
+              />
+            </ClubField>
+            <ClubField label="Indirizzo campo">
+              <input
+                value={profile.homeFieldAddress || ""}
+                onChange={(e) => setProfile({ ...profile, homeFieldAddress: e.target.value })}
+                placeholder="Es. Via Roma 12, Milano"
+                style={styles.input}
+              />
+            </ClubField>
+            <ClubField label="Superficie campo">
+              <select
+                value={profile.homeFieldSurface || "Erba naturale"}
+                onChange={(e) => setProfile({ ...profile, homeFieldSurface: e.target.value })}
+                style={styles.input}
+              >
+                <option>Erba naturale</option>
+                <option>Erba sintetica</option>
+                <option>Ibrido</option>
+                <option>Terra</option>
+                <option>Indoor</option>
+              </select>
+            </ClubField>
             <ClubField label="Categoria">
               <select
                 value={profile.category}
                 onChange={(e) => setProfile({ ...profile, category: e.target.value })}
                 style={styles.input}
               >
-                <option>Adulti</option>
+                <option>Prima squadra</option>
                 <option>Juniores</option>
                 <option>Allievi</option>
                 <option>Giovanissimi</option>
@@ -1229,6 +1312,11 @@ const s = {
   clubIntroStats: { display: "grid", gridTemplateColumns: "repeat(3, minmax(80px,1fr))", gap: 10 },
   infoMini: { display: "grid", gap: 5, minWidth: 86, padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", fontSize: 11, fontWeight: 900, textTransform: "uppercase" },
   formStack:     { display: "grid", gap: 12 },
+  clubLogoBox:   { display: "grid", gridTemplateColumns: "92px minmax(0,1fr)", gap: 14, alignItems: "center", padding: 14, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" },
+  clubLogoFrame: { width: 92, height: 92, borderRadius: 18, overflow: "hidden", display: "grid", placeItems: "center", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(15,23,42,0.7)" },
+  clubLogoPreview: { maxWidth: "160%", maxHeight: "160%", objectFit: "contain", transition: "width 0.2s ease, height 0.2s ease" },
+  clubLogoFallback: { width: 92, height: 92, borderRadius: 18, display: "grid", placeItems: "center", background: "linear-gradient(135deg,#2563eb,#38bdf8)", color: "white", fontWeight: 950, fontSize: 26 },
+  logoSizeControl: { display: "grid", gap: 6, color: "#94a3b8", fontSize: 12, fontWeight: 800 },
   clubField:     { display: "grid", gap: 4, color: "#94a3b8", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0 },
   progressTrack: { height: 12, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 10 },
   progressBar:   { height: "100%", borderRadius: 999, background: "linear-gradient(135deg,#22c55e,#38bdf8)", transition: "width 0.4s" },

@@ -21,7 +21,8 @@ export default function Topbar({
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [openNotifications, setOpenNotifications] = useState(false);
-  const [openProfile, setOpenProfile] = useState(false);
+  const [openProfileMobile, setOpenProfileMobile] = useState(false);
+  const [openProfileDesktop, setOpenProfileDesktop] = useState(false);
 
   const firstName = profile?.first_name || "Coach";
   const lastName = profile?.last_name || "";
@@ -113,7 +114,7 @@ export default function Topbar({
     return [...upcomingSessions, ...upcomingMatches, ...injuredPlayers].slice(0, 5);
   }, [sessions, matches, players, t]);
 
-  function renderProfileMenu(extraStyle = {}) {
+  function renderProfileMenu(extraStyle = {}, onClose = () => {}) {
     return (
       <div style={{ ...styles.topbarProfileMenu, ...extraStyle }}>
         <div style={styles.topbarProfileMenuHeader}>
@@ -128,7 +129,7 @@ export default function Topbar({
         <Link
           to="/settings"
           style={styles.topbarProfileMenuItem}
-          onClick={() => setOpenProfile(false)}
+          onClick={onClose}
         >
           ⚙️ {t("topbar.settings")}
         </Link>
@@ -136,7 +137,7 @@ export default function Topbar({
         <Link
           to="/statistics"
           style={styles.topbarProfileMenuItem}
-          onClick={() => setOpenProfile(false)}
+          onClick={onClose}
         >
           📊 {t("topbar.performanceDashboard")}
         </Link>
@@ -144,7 +145,7 @@ export default function Topbar({
         <Link
           to="/players"
           style={styles.topbarProfileMenuItem}
-          onClick={() => setOpenProfile(false)}
+          onClick={onClose}
         >
           👥 {t("topbar.rosterManagement")}
         </Link>
@@ -152,7 +153,7 @@ export default function Topbar({
         <Link
           to="/trainings"
           style={styles.topbarProfileMenuItem}
-          onClick={() => setOpenProfile(false)}
+          onClick={onClose}
         >
           🗓️ {t("topbar.planning")}
         </Link>
@@ -175,20 +176,24 @@ export default function Topbar({
         </div>
       </div>
 
-      <div style={{ position: "relative" }}>
-        <button
-          type="button"
-          style={mobileTopbarStyles.avatarButton}
-          onClick={() => setOpenProfile(!openProfile)}
-          aria-label={t("common.profileCoach")}
-        >
-          {initials}
-        </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <LanguageSelector compact />
 
-        {openProfile && renderProfileMenu({
-          right: 0,
-          width: "min(280px, calc(100vw - 28px))",
-        })}
+        <div style={{ position: "relative" }}>
+          <button
+            type="button"
+            style={mobileTopbarStyles.avatarButton}
+            onClick={() => setOpenProfileMobile(!openProfileMobile)}
+            aria-label={t("common.profileCoach")}
+          >
+            {initials}
+          </button>
+
+          {openProfileMobile && renderProfileMenu(
+            { right: 0, width: "min(280px, calc(100vw - 28px))" },
+            () => setOpenProfileMobile(false),
+          )}
+        </div>
       </div>
     </header>
 
@@ -247,6 +252,8 @@ export default function Topbar({
           {t("topbar.newSession")}
         </Link>
 
+        <LanguageSelector compact />
+
         <div style={{ position: "relative" }}>
           <button
             style={styles.topbarIconButton}
@@ -286,7 +293,7 @@ export default function Topbar({
         <div style={{ position: "relative" }}>
           <button
             style={styles.topbarProfileButton}
-            onClick={() => setOpenProfile(!openProfile)}
+            onClick={() => setOpenProfileDesktop(!openProfileDesktop)}
           >
             <div style={styles.topbarAvatar}>{initials}</div>
 
@@ -300,7 +307,10 @@ export default function Topbar({
             <span style={styles.topbarChevron}>⌄</span>
           </button>
 
-          {openProfile && renderProfileMenu()}
+          {openProfileDesktop && renderProfileMenu(
+            {},
+            () => setOpenProfileDesktop(false),
+          )}
         </div>
       </div>
     </header>

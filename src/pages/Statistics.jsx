@@ -11,10 +11,13 @@ import { formatDate, normalizeAppSettings } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { loadAllPlayerStats, loadPlayerMatches } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
+import { useTranslation } from "../i18n";
 
 const StatisticsCharts = lazy(() => import("../components/statistics/StatisticsCharts"));
 
-function Statistics({ events, players, appSettings = {}, setAppSettings }) {
+function Statistics({
+  events, players, appSettings = {}, setAppSettings }) {
+  const { t } = useTranslation();
   const auth = useAuth();
   const navigate = useNavigate();
   const settings = normalizeAppSettings(appSettings);
@@ -263,7 +266,7 @@ function Statistics({ events, players, appSettings = {}, setAppSettings }) {
     return (
       <div style={{ ...styles.page, ...s.page }}>
         <PageHeader
-          title="Statistiche"
+          title={t("pages.statistics.title")}
           subtitle="Database stagione e rendimento giocatori"
         />
         <EmptyState

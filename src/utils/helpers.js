@@ -76,6 +76,15 @@ export function normalizePlayer(player){
     status: player.status || "Disponibile",
     returnPhase: player.returnPhase || "",
     weeklyGoal: player.weeklyGoal || "",
+    strengths: player.strengths || "",
+    improvements: player.improvements || "",
+    individualGoals: player.individualGoals || "",
+    thirtyDayGoal: player.thirtyDayGoal || "",
+    developmentFocus: player.developmentFocus || "",
+    trainingActions: player.trainingActions || "",
+    videoReviewNotes: player.videoReviewNotes || "",
+    successMetrics: player.successMetrics || "",
+    coachFeedback: player.coachFeedback || "",
     ratings: player.ratings || {},
     gruppo: player.gruppo || "prima",
     injuries: Array.isArray(player.injuries) ? player.injuries : [],
@@ -106,6 +115,8 @@ export function normalizeMatch(match){
     id: match.id ? String(match.id) : match.id,
     type: "Partita",
     title: match.title || `CalcioLab - ${match.opponent || "Avversario"}`,
+    homeLogo: match.homeLogo || "",
+    awayLogo: match.awayLogo || "",
     attendance: match.attendance || {},
     lineup: {
       calledUpIds: match.lineup?.calledUpIds || [],
@@ -131,6 +142,17 @@ export function normalizeMatch(match){
       returnLegNotes: match.opponentScouting?.returnLegNotes || "",
       attachment: normalizeAttachment(match.opponentScouting?.attachment),
     },
+    videoAnalysis: (match.videoAnalysis || []).map((clip) => ({
+      id: clip.id || createId("clip"),
+      minute: clip.minute || "",
+      category: clip.category || "Tattica",
+      phase: clip.phase || "Possesso",
+      playerId: clip.playerId ? String(clip.playerId) : "",
+      audience: clip.audience || "Staff",
+      url: clip.url || "",
+      tags: clip.tags || "",
+      note: clip.note || "",
+    })),
     staffNotes: match.staffNotes || "",
   };
 }
@@ -208,6 +230,23 @@ export function normalizeGpsSession(s = {}) {
       rpe:              Number(r.rpe               || 0),
       notes:            r.notes           || "",
     })),
+  };
+}
+
+export function normalizeStaffTask(task = {}) {
+  return {
+    id: task.id || createId("task"),
+    title: task.title || "",
+    description: task.description || "",
+    status: ["todo", "doing", "done"].includes(task.status) ? task.status : "todo",
+    priority: ["high", "medium", "low"].includes(task.priority) ? task.priority : "medium",
+    ownerRole: task.ownerRole || "headCoach",
+    dueDate: task.dueDate || "",
+    playerId: task.playerId ? String(task.playerId) : "",
+    sourceType: task.sourceType || "manual",
+    sourceId: task.sourceId ? String(task.sourceId) : "",
+    createdAt: task.createdAt || new Date().toISOString(),
+    completedAt: task.completedAt || "",
   };
 }
 
@@ -293,6 +332,7 @@ export function normalizeAppState(state = {}){
     matches: (state.matches || []).map(normalizeMatch),
     physicalTests: (state.physicalTests || []).map(normalizePhysicalTest),
     gpsSessions: (state.gpsSessions || []).map(normalizeGpsSession),
+    staffTasks: (state.staffTasks || []).map(normalizeStaffTask),
     injuryRecords: (state.injuryRecords || []).map(normalizeInjuryRecord),
     appSettings: normalizeAppSettings(state.appSettings || {}),
     setPlays: normalizeSetPlays(state.setPlays || {}),
@@ -488,6 +528,10 @@ export const DEFAULT_PHYSICAL_METRICS = [
 ];
 
 export function normalizeAppSettings(settings = {}){
+  const workspaceCategory = settings.workspaceProfile?.category === "Adulti"
+    ? "Prima squadra"
+    : settings.workspaceProfile?.category;
+
   return {
     subscription: {
       plan: settings.subscription?.plan || "free",
@@ -547,7 +591,12 @@ export function normalizeAppSettings(settings = {}){
     workspaceProfile: {
       clubName: settings.workspaceProfile?.clubName || "CalcioLab",
       teamName: settings.workspaceProfile?.teamName || "",
-      category: settings.workspaceProfile?.category || "Adulti",
+      logo: settings.workspaceProfile?.logo || "",
+      logoSize: Number(settings.workspaceProfile?.logoSize || 100),
+      category: workspaceCategory || "Prima squadra",
+      homeFieldName: settings.workspaceProfile?.homeFieldName || "",
+      homeFieldAddress: settings.workspaceProfile?.homeFieldAddress || "",
+      homeFieldSurface: settings.workspaceProfile?.homeFieldSurface || "Erba naturale",
       seasonGoal: settings.workspaceProfile?.seasonGoal || "",
       currentSeason: settings.workspaceProfile?.currentSeason || "2025/2026",
       userRole: settings.workspaceProfile?.userRole || "headCoach",
@@ -853,7 +902,7 @@ export function generateGuidedSession({
   players = 18,
   intensity = "Media",
   field = "Campo intero",
-  category = "Adulti",
+  category = "Prima squadra",
   matchDayDistance = "MD-3",
 } = {}){
   const targetDuration = Number(duration || 90);
@@ -861,6 +910,7 @@ export function generateGuidedSession({
   const selected = [];
   let total = 0;
 
+  const categoryAliases = category === "Prima squadra" ? ["Prima squadra", "Adulti"] : [category];
   const scoreExercise = (exercise) => {
     const haystack = [
       exercise.title,
@@ -873,7 +923,7 @@ export function generateGuidedSession({
     ].join(" ").toLowerCase();
     const intensityScore = exercise.intensity === intensity ? 2 : 0;
     const objectiveScore = haystack.includes(objectiveText) ? 5 : 0;
-    const categoryScore = exercise.ageGroup === category || exercise.ageGroup === "Tutte" ? 1 : 0;
+    const categoryScore = categoryAliases.includes(exercise.ageGroup) || exercise.ageGroup === "Tutte" ? 1 : 0;
     return objectiveScore + intensityScore + categoryScore;
   };
 

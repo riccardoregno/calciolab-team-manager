@@ -11,6 +11,7 @@ import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { createId, formatShortDate, getPhysicalReference } from "../utils/helpers";
 import { useAppSettings } from "../hooks/useAppSettings";
+import { useTranslation } from "../i18n";
 
 const GROUP_TONE = { "Gruppo A": "green", "Gruppo B": "blue", "Gruppo C": "orange", "Gruppo D": "red", "Da testare": "purple" };
 
@@ -213,7 +214,10 @@ function ChartSVG({ points, metric }) {
 // ─────────────────────────────────────────────
 // Componente principale
 // ─────────────────────────────────────────────
-export default function PhysicalTests({ players = [], physicalTests = [], setPhysicalTests, appSettings }) {
+export default function PhysicalTests({
+  players = [], physicalTests = [], setPhysicalTests, appSettings }) {
+
+  const { t } = useTranslation();
   const { showToast, ToastContainer } = useToast();
   // FIX #13: memoizzato via hook
   const settings = useAppSettings(appSettings);
@@ -305,7 +309,7 @@ export default function PhysicalTests({ players = [], physicalTests = [], setPhy
       <ToastContainer />
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
-        title="Test fisici"
+        title={t("pages.physicalTests.title")}
         subtitle="Monitora la condizione atletica di ogni giocatore nel tempo"
       />
 

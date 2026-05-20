@@ -6,8 +6,10 @@ import { styles } from "../../styles/index.js";
 import { formatShortDate, getPhysicalReference } from "../../utils/helpers";
 
 const PLAYER_TABS = [
+  { key: "cartella", label: "Cartella" },
   { key: "profilo", label: "Profilo" },
   { key: "statistiche", label: "Statistiche" },
+  { key: "video", label: "Video" },
   { key: "fisico", label: "Stato fisico" },
   { key: "medico", label: "Storico medico" },
   { key: "sviluppo", label: "Sviluppo" },
@@ -129,17 +131,227 @@ export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSa
   );
 }
 
-export function PlayerDevelopmentTab({ form, editing, onFieldChange }) {
+export function PlayerTechnicalOverview({
+  player,
+  summary,
+  activeInjuries,
+  injuryHistory,
+  preventionRecommendations,
+  onGoToTab,
+}) {
+  const availabilityScore = getAvailabilityScore(player, activeInjuries);
+  const workloadTone = summary.stats.load > 900 ? "orange" : summary.stats.load > 0 ? "green" : "blue";
+  const readinessTone = availabilityScore >= 80 ? "green" : availabilityScore >= 50 ? "orange" : "red";
+  const latestEvent = summary.recentEvents[0];
+  const latestTest = summary.latestTests[0];
+
+  const priorities = [
+    player.status && player.status !== "Disponibile"
+      ? `Gestire status: ${player.status}${player.expectedReturn ? `, rientro ${player.expectedReturn}` : ""}`
+      : "",
+    summary.stats.load > 900 ? "Monitorare carico recente alto" : "",
+    !latestTest ? "Programmare un test fisico di riferimento" : "",
+    !player.weeklyGoal ? "Definire obiettivo settimanale individuale" : "",
+    preventionRecommendations.length ? "Applicare scheda prevenzione consigliata" : "",
+  ].filter(Boolean);
+
   return (
-    <AppCard>
-      <h3 style={{ marginTop: 0 }}>Area tecnica</h3>
-      <div style={{ display: "grid", gap: 14 }}>
-        <TextAreaField label="Punti di forza" value={form.strengths} editing={editing} onChange={(value) => onFieldChange("strengths", value)} />
-        <TextAreaField label="Da migliorare" value={form.improvements} editing={editing} onChange={(value) => onFieldChange("improvements", value)} />
-        <TextAreaField label="Obiettivi individuali" value={form.individualGoals} editing={editing} onChange={(value) => onFieldChange("individualGoals", value)} />
-        <TextAreaField label="Obiettivo settimanale" value={form.weeklyGoal} editing={editing} onChange={(value) => onFieldChange("weeklyGoal", value)} />
-      </div>
-    </AppCard>
+    <div style={sectionStyles.overviewGrid}>
+      <AppCard>
+        <div style={sectionStyles.overviewHead}>
+          <div>
+            <p style={sectionStyles.eyebrow}>Cartella tecnica</p>
+            <h3 style={sectionStyles.overviewTitle}>Sintesi staff</h3>
+            <p style={sectionStyles.cardSubtitle}>
+              Stato, rendimento recente, carico e priorita operative del giocatore.
+            </p>
+          </div>
+          <div style={sectionStyles.readinessBox}>
+            <strong>{availabilityScore}%</strong>
+            <span>readiness</span>
+          </div>
+        </div>
+
+        <div style={sectionStyles.overviewKpis}>
+          <MiniStatus label="Disponibilita" value={player.status || "Disponibile"} tone={readinessTone} />
+          <MiniStatus label="Carico" value={summary.stats.load || "-"} tone={workloadTone} />
+          <MiniStatus label="Minuti" value={summary.stats.minutes || "-"} tone="blue" />
+          <MiniStatus label="Ultimo test" value={latestTest?.date ? formatShortDate(latestTest.date) : "-"} tone={latestTest ? "green" : "orange"} />
+        </div>
+      </AppCard>
+
+      <AppCard>
+        <div style={sectionStyles.cardHeader}>
+          <div>
+            <h3 style={{ margin: 0 }}>Priorita staff</h3>
+            <p style={sectionStyles.cardSubtitle}>Cosa guardare prima della prossima seduta</p>
+          </div>
+          <Badge tone={priorities.length ? "orange" : "green"}>{priorities.length || "Ok"}</Badge>
+        </div>
+        {priorities.length ? (
+          <div style={sectionStyles.priorityList}>
+            {priorities.map((item) => <span key={item}>{item}</span>)}
+          </div>
+        ) : (
+          <p style={sectionStyles.muted}>Nessuna priorita critica registrata.</p>
+        )}
+      </AppCard>
+
+      <AppCard>
+        <div style={sectionStyles.cardHeader}>
+          <div>
+            <h3 style={{ margin: 0 }}>Obiettivi individuali</h3>
+            <p style={sectionStyles.cardSubtitle}>Focus tecnico e comportamentale</p>
+          </div>
+          <Button variant="ghost" onClick={() => onGoToTab("sviluppo")}>Apri sviluppo</Button>
+        </div>
+        <div style={sectionStyles.objectiveGrid}>
+          <ReadOnlyText label="Punti di forza" value={player.strengths} />
+          <ReadOnlyText label="Da migliorare" value={player.improvements} />
+          <ReadOnlyText label="Obiettivo settimanale" value={player.weeklyGoal} />
+        </div>
+      </AppCard>
+
+      <AppCard>
+        <div style={sectionStyles.cardHeader}>
+          <div>
+            <h3 style={{ margin: 0 }}>Trend recente</h3>
+            <p style={sectionStyles.cardSubtitle}>Ultimi eventi registrati</p>
+          </div>
+          <Button variant="ghost" onClick={() => onGoToTab("statistiche")}>Dettaglio</Button>
+        </div>
+        {latestEvent ? (
+          <div style={sectionStyles.list}>
+            {summary.recentEvents.slice(0, 4).map(({ event, data }) => (
+              <div key={`${event.type}-${event.id}`} style={sectionStyles.listItem}>
+                <Badge tone={event.type === "Partita" ? "orange" : "green"}>{event.type}</Badge>
+                <strong>{event.title}</strong>
+                <span>{formatShortDate(event.date)} · {data.status || "—"} · RPE {data.rpe || "-"} · {data.minutes || 0} min</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={sectionStyles.muted}>Nessun evento recente registrato.</p>
+        )}
+      </AppCard>
+
+      <AppCard>
+        <div style={sectionStyles.cardHeader}>
+          <div>
+            <h3 style={{ margin: 0 }}>Medico e prevenzione</h3>
+            <p style={sectionStyles.cardSubtitle}>Storico, alert e prevenzione ricadute</p>
+          </div>
+          <Button variant="ghost" onClick={() => onGoToTab("medico")}>Apri medico</Button>
+        </div>
+        <div style={sectionStyles.overviewKpis}>
+          <MiniStatus label="Infortuni attivi" value={activeInjuries.length} tone={activeInjuries.length ? "red" : "green"} />
+          <MiniStatus label="Storico" value={injuryHistory.length} tone="blue" />
+          <MiniStatus label="Prevenzione" value={preventionRecommendations.length || "-"} tone={preventionRecommendations.length ? "orange" : "green"} />
+        </div>
+        {preventionRecommendations[0] && (
+          <p style={{ ...sectionStyles.muted, marginTop: 12 }}>
+            Scheda suggerita: {preventionRecommendations[0].title}
+          </p>
+        )}
+      </AppCard>
+    </div>
+  );
+}
+
+export function PlayerDevelopmentTab({ form, editing, summary, videoClips = [], onCreateStaffTask, onFieldChange }) {
+  const actionCount = [
+    form.weeklyGoal,
+    form.thirtyDayGoal,
+    form.trainingActions,
+    form.successMetrics,
+    form.videoReviewNotes,
+  ].filter((value) => String(value || "").trim()).length;
+
+  return (
+    <div style={sectionStyles.developmentGrid}>
+      <AppCard>
+        <div style={sectionStyles.cardHeader}>
+          <div>
+            <p style={sectionStyles.eyebrow}>Individual development plan</p>
+            <h3 style={{ margin: 0 }}>Piano di sviluppo</h3>
+            <p style={sectionStyles.cardSubtitle}>
+              Obiettivi, azioni in campo, clip da rivedere e metriche di controllo.
+            </p>
+          </div>
+          <Badge tone={actionCount >= 4 ? "green" : "orange"}>{actionCount}/5</Badge>
+        </div>
+
+        <div style={sectionStyles.developmentKpis}>
+          <MiniStatus label="Minuti" value={summary.stats.minutes || "-"} tone="blue" />
+          <MiniStatus label="RPE medio" value={summary.stats.avgRpe || "-"} tone="orange" />
+          <MiniStatus label="Clip" value={videoClips.length} tone={videoClips.length ? "purple" : "blue"} />
+          <MiniStatus label="Carico" value={summary.stats.load || "-"} tone="green" />
+        </div>
+      </AppCard>
+
+      <AppCard>
+        <h3 style={{ marginTop: 0 }}>Profilo tecnico</h3>
+        <div style={{ display: "grid", gap: 14 }}>
+          <TextAreaField label="Punti di forza" value={form.strengths} editing={editing} onChange={(value) => onFieldChange("strengths", value)} />
+          <TextAreaField label="Da migliorare" value={form.improvements} editing={editing} onChange={(value) => onFieldChange("improvements", value)} />
+          <TextAreaField label="Focus sviluppo" value={form.developmentFocus} editing={editing} onChange={(value) => onFieldChange("developmentFocus", value)} />
+        </div>
+      </AppCard>
+
+      <AppCard>
+        <div style={sectionStyles.cardHeader}>
+          <div>
+            <h3 style={{ margin: 0 }}>Obiettivi e azioni</h3>
+            <p style={sectionStyles.cardSubtitle}>Trasforma il piano individuale in lavoro assegnato allo staff</p>
+          </div>
+          {onCreateStaffTask && (
+            <Button variant="ghost" onClick={onCreateStaffTask}>
+              Crea azione staff
+            </Button>
+          )}
+        </div>
+        <div style={{ display: "grid", gap: 14 }}>
+          <TextAreaField label="Obiettivo settimanale" value={form.weeklyGoal} editing={editing} onChange={(value) => onFieldChange("weeklyGoal", value)} />
+          <TextAreaField label="Obiettivo 30 giorni" value={form.thirtyDayGoal} editing={editing} onChange={(value) => onFieldChange("thirtyDayGoal", value)} />
+          <TextAreaField label="Azioni in allenamento" value={form.trainingActions} editing={editing} onChange={(value) => onFieldChange("trainingActions", value)} />
+          <TextAreaField label="Metriche di controllo" value={form.successMetrics} editing={editing} onChange={(value) => onFieldChange("successMetrics", value)} />
+        </div>
+      </AppCard>
+
+      <AppCard>
+        <div style={sectionStyles.cardHeader}>
+          <div>
+            <h3 style={{ margin: 0 }}>Video e feedback</h3>
+            <p style={sectionStyles.cardSubtitle}>Clip utili da rivedere nel percorso individuale</p>
+          </div>
+          <Badge tone={videoClips.length ? "blue" : "orange"}>{videoClips.length} clip</Badge>
+        </div>
+
+        {videoClips.length ? (
+          <div style={sectionStyles.list}>
+            {videoClips.slice(0, 4).map((clip) => (
+              <div key={`${clip.matchId}-${clip.id}`} style={sectionStyles.videoClip}>
+                <div style={sectionStyles.videoClipTop}>
+                  <Badge tone="orange">{clip.minute ? `${clip.minute}'` : "Video"}</Badge>
+                  <span>{formatShortDate(clip.matchDate)} · {clip.category}</span>
+                </div>
+                <strong>{clip.phase || "Fase non indicata"}</strong>
+                <p>{clip.note || clip.tags || "Clip da rivedere."}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={sectionStyles.muted}>Nessuna clip collegata al giocatore.</p>
+        )}
+
+        <div style={{ marginTop: 14 }}>
+          <TextAreaField label="Note video review" value={form.videoReviewNotes} editing={editing} onChange={(value) => onFieldChange("videoReviewNotes", value)} />
+        </div>
+        <div style={{ marginTop: 14 }}>
+          <TextAreaField label="Feedback staff" value={form.coachFeedback} editing={editing} onChange={(value) => onFieldChange("coachFeedback", value)} />
+        </div>
+      </AppCard>
+    </div>
   );
 }
 
@@ -302,6 +514,65 @@ export function PlayerStatsTab({ summary }) {
   );
 }
 
+export function PlayerVideoTab({ clips }) {
+  const grouped = clips.reduce((acc, clip) => {
+    const key = clip.category || "Altro";
+    acc[key] = acc[key] || [];
+    acc[key].push(clip);
+    return acc;
+  }, {});
+
+  return (
+    <AppCard>
+      <div style={sectionStyles.cardHeader}>
+        <div>
+          <h3 style={{ margin: 0 }}>Video individuale</h3>
+          <p style={sectionStyles.cardSubtitle}>Clip taggate da post gara, correzioni e buone giocate.</p>
+        </div>
+        <Badge tone={clips.length ? "blue" : "orange"}>{clips.length} clip</Badge>
+      </div>
+
+      {clips.length ? (
+        <div style={sectionStyles.videoGrid}>
+          {Object.entries(grouped).map(([category, items]) => (
+            <div key={category} style={sectionStyles.videoGroup}>
+              <div style={sectionStyles.videoGroupHead}>
+                <strong>{category}</strong>
+                <Badge tone="purple">{items.length}</Badge>
+              </div>
+              <div style={sectionStyles.list}>
+                {items.map((clip) => (
+                  <div key={`${clip.matchId}-${clip.id}`} style={sectionStyles.videoClip}>
+                    <div style={sectionStyles.videoClipTop}>
+                      <Badge tone="orange">{clip.minute ? `${clip.minute}'` : "Video"}</Badge>
+                      <span>{formatShortDate(clip.matchDate)} · {clip.matchTitle}</span>
+                    </div>
+                    <strong>{clip.phase || "Fase non indicata"}</strong>
+                    <p>{clip.note || clip.tags || "Nessuna nota tecnica inserita."}</p>
+                    <div style={sectionStyles.videoMeta}>
+                      {clip.tags && <span>{clip.tags}</span>}
+                      {clip.audience && <span>{clip.audience}</span>}
+                      {clip.url && (
+                        <a href={clip.url} target="_blank" rel="noreferrer">
+                          Apri clip
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p style={sectionStyles.muted}>
+          Nessuna clip collegata. Aggiungi clip da Post Gara selezionando questo giocatore.
+        </p>
+      )}
+    </AppCard>
+  );
+}
+
 function MiniKpi({ label, value }) {
   return (
     <AppCard>
@@ -309,6 +580,32 @@ function MiniKpi({ label, value }) {
       <strong style={sectionStyles.kpiValue}>{value}</strong>
     </AppCard>
   );
+}
+
+function MiniStatus({ label, value, tone }) {
+  return (
+    <div style={sectionStyles.miniStatus}>
+      <Badge tone={tone}>{label}</Badge>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function ReadOnlyText({ label, value }) {
+  return (
+    <div style={sectionStyles.readOnlySummary}>
+      <span>{label}</span>
+      <strong>{value || "-"}</strong>
+    </div>
+  );
+}
+
+function getAvailabilityScore(player, activeInjuries) {
+  if (activeInjuries.length || player.status === "Infortunato") return 25;
+  if (player.status === "Recupero") return 55;
+  if (player.status === "Differenziato") return 65;
+  if (player.status === "Squalificato") return 45;
+  return 100;
 }
 
 function StatusField({ value, editing, onChange }) {
@@ -400,6 +697,18 @@ const sectionStyles = {
   tabButtonActive: { background: "rgba(56,189,248,0.16)", borderColor: "rgba(56,189,248,0.35)", color: "#f8fafc" },
   cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, marginBottom: 16, flexWrap: "wrap" },
   cardSubtitle: { color: "#94a3b8", margin: "6px 0 0", lineHeight: 1.45 },
+  overviewGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 16 },
+  overviewHead: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" },
+  eyebrow: { margin: "0 0 6px", color: "#38bdf8", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.6 },
+  overviewTitle: { margin: "0 0 6px", fontSize: 24, lineHeight: 1.12 },
+  readinessBox: { minWidth: 108, borderRadius: 16, padding: "12px 14px", textAlign: "right", display: "grid", gap: 4, color: "#bfdbfe", background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.24)" },
+  overviewKpis: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 10, marginTop: 16 },
+  miniStatus: { display: "grid", gap: 8, padding: 12, borderRadius: 14, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" },
+  priorityList: { display: "grid", gap: 8, color: "#fcd34d", fontSize: 13, fontWeight: 800 },
+  objectiveGrid: { display: "grid", gap: 10 },
+  readOnlySummary: { display: "grid", gap: 6, padding: 12, borderRadius: 14, background: "rgba(15,23,42,0.55)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8" },
+  developmentGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 16 },
+  developmentKpis: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 10 },
   formGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 },
   fieldLabel: { color: "#94a3b8", fontSize: 12, fontWeight: 800, marginBottom: 8, textTransform: "uppercase" },
   readOnlyBox: { borderRadius: 16, padding: 14, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", minHeight: 48, display: "flex", alignItems: "center" },
@@ -415,6 +724,12 @@ const sectionStyles = {
   preventionList: { margin: 0, paddingLeft: 18, display: "grid", gap: 5, color: "#94a3b8", fontSize: 12, lineHeight: 1.45 },
   list: { display: "grid", gap: 10 },
   listItem: { display: "grid", gap: 6, padding: 12, borderRadius: 14, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", color: "#cbd5e1" },
+  videoGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 14 },
+  videoGroup: { display: "grid", gap: 10 },
+  videoGroupHead: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  videoClip: { display: "grid", gap: 8, padding: 12, borderRadius: 14, background: "rgba(15,23,42,0.62)", border: "1px solid rgba(255,255,255,0.08)", color: "#cbd5e1" },
+  videoClipTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, color: "#94a3b8", fontSize: 12, flexWrap: "wrap" },
+  videoMeta: { display: "flex", flexWrap: "wrap", gap: 8, color: "#94a3b8", fontSize: 12 },
   alertList: { display: "flex", flexWrap: "wrap", gap: 8 },
   muted: { color: "#94a3b8", margin: 0 },
   injuryTimeline: { display: "grid", gap: 10 },

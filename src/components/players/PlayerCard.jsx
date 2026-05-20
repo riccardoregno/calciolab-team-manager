@@ -2,9 +2,11 @@ import { useNavigate } from "react-router-dom";
 
 import Button from "../ui/Button";
 import Badge from "../ui/Badge";
+import { useTranslation } from "../../i18n";
 
 function PlayerCard({ player, onDelete }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const initials = player.name
     ? player.name
@@ -98,7 +100,7 @@ function PlayerCard({ player, onDelete }) {
               lineHeight: 1.35,
             }}
           >
-            {player.role || "Ruolo non impostato"}
+            {player.role || t("components.playerCard.noRole")}
           </p>
         </div>
 
@@ -110,9 +112,9 @@ function PlayerCard({ player, onDelete }) {
             gap: 10,
           }}
         >
-          <MiniValue label="Maglia" value={player.shirtNumber || player.number || "-"} />
-          <MiniValue label="Piede" value={player.foot || "-"} />
-          <MiniValue label="Età" value={player.age || "-"} />
+          <MiniValue label={t("components.playerCard.shirtNumber")} value={player.shirtNumber || player.number || "-"} />
+          <MiniValue label={t("components.playerCard.foot")} value={player.foot || "-"} />
+          <MiniValue label={t("components.playerCard.age")} value={player.age || "-"} />
         </div>
 
         <div
@@ -128,7 +130,7 @@ function PlayerCard({ player, onDelete }) {
             onClick={() => navigate(`/players/${player.id}`)}
             style={{ flex: "1 1 110px" }}
           >
-            Scheda
+            {t("components.playerCard.profile")}
           </Button>
 
           <Button
@@ -136,7 +138,7 @@ function PlayerCard({ player, onDelete }) {
             onClick={onDelete}
             style={{ flex: "1 1 110px" }}
           >
-            Elimina
+            {t("common.delete")}
           </Button>
         </div>
       </div>

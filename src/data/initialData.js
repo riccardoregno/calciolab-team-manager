@@ -143,7 +143,7 @@ export const initialExercises = [
     image: "",
     premium: true,
     tags: ["pressing", "riaggressione", "linea alta"],
-    ageGroup: "Adulti",
+    ageGroup: "Prima squadra",
     playersRange: "16-20",
     goal: "Pressing",
   },

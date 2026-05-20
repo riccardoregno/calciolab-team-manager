@@ -13,8 +13,12 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 import { styles } from "../styles/index.js";
 import { createId, formatDate, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
+import { useTranslation } from "../i18n";
 
-function Trainings({ exercises, sessions, setSessions, players = [] }) {
+function Trainings({
+  exercises, sessions, setSessions, players = [] }) {
+
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
   const [confirmState, setConfirmState] = useState(null);
@@ -181,7 +185,7 @@ function Trainings({ exercises, sessions, setSessions, players = [] }) {
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <ToastContainer />
       <PageHeader
-        title="Sedute"
+        title={t("pages.trainings.title")}
         subtitle="Costruisci allenamenti, ordina esercizi e gestisci il carico della squadra"
         action={
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>

@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "../i18n";
 import AppCard from "../components/ui/AppCard";
+import { useIsMobile } from "../hooks/useIsMobile";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { styles } from "../styles/index.js";
@@ -9,11 +11,13 @@ import {
   getLineup,
   getPhysicalReference,
   getPlayerSummary,
+  RPE_BY_MATCH_DAY,
 } from "../utils/helpers";
 
 const exportTypes = [
   { id: "training", label: "Seduta", description: "Piano campo pronto da stampare" },
   { id: "matchday", label: "Match Day", description: "Distinta, ruoli e scouting avversario" },
+  { id: "microcycle", label: "Microciclo", description: "Settimana gara, carichi e alert staff" },
   { id: "postmatch", label: "Post gara", description: "Report tecnico e focus settimana" },
   { id: "player", label: "Scheda giocatore", description: "Dati individuali, test e carico" },
 ];
@@ -24,12 +28,15 @@ export default function ExportCenter({
   matches = [],
   exercises = [],
   physicalTests = [],
+  gpsSessions = [],
   appSettings = {},
 }) {
+  const { t } = useTranslation();
   const [type, setType] = useState("training");
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
+  const isMobile = useIsMobile();
 
   const sortedSessions = useMemo(
     () => [...sessions].sort((a, b) => new Date(b.date) - new Date(a.date)),
@@ -53,7 +60,7 @@ export default function ExportCenter({
   return (
     <div style={pageStyles.page}>
       <PageHeader
-        title="Export Center"
+        title={t("pages.exportCenter.title")}
         subtitle="Template professionali per consegnare sedute, gara, report e schede giocatore in PDF."
         action={
           <Button onClick={() => window.print()}>
@@ -62,7 +69,7 @@ export default function ExportCenter({
         }
       />
 
-      <div className="export-workspace" style={pageStyles.workspace}>
+      <div className="export-workspace" style={{ ...pageStyles.workspace, gridTemplateColumns: isMobile ? "1fr" : "360px 1fr" }}>
         <AppCard title="Contenuto" subtitle="Scegli cosa preparare per staff, giocatori o archivio.">
           <div style={pageStyles.typeGrid}>
             {exportTypes.map((item) => (
@@ -99,7 +106,7 @@ export default function ExportCenter({
               </Field>
             )}
 
-            {(type === "matchday" || type === "postmatch") && (
+            {(type === "matchday" || type === "postmatch" || type === "microcycle") && (
               <Field label="Partita">
                 <select
                   value={effectiveMatchId}
@@ -145,6 +152,15 @@ export default function ExportCenter({
             {type === "matchday" && (
               <MatchDayTemplate match={selectedMatch} players={players} />
             )}
+            {type === "microcycle" && (
+              <MicrocycleTemplate
+                match={selectedMatch}
+                sessions={sessions}
+                matches={matches}
+                players={players}
+                gpsSessions={gpsSessions}
+              />
+            )}
             {type === "postmatch" && (
               <PostMatchTemplate match={selectedMatch} players={players} />
             )}
@@ -161,6 +177,107 @@ export default function ExportCenter({
         </AppCard>
       </div>
     </div>
+  );
+}
+
+const microcycleDays = [
+  { key: "MD+1", offset: -6, focus: "Recupero gara precedente", plan: "Rigenerante, terapie, scarico" },
+  { key: "MD-4", offset: -4, focus: "Principi e carico", plan: "Tecnico-tattico, volume medio" },
+  { key: "MD-3", offset: -3, focus: "Picco settimanale", plan: "Alta intensita', duelli, reparti" },
+  { key: "MD-2", offset: -2, focus: "Piano gara", plan: "Strategia, palle inattive, undici" },
+  { key: "MD-1", offset: -1, focus: "Rifinitura", plan: "Attivazione, chiarezza compiti" },
+  { key: "MD", offset: 0, focus: "Gara", plan: "Match day" },
+];
+
+function MicrocycleTemplate({ match, sessions, matches, players, gpsSessions }) {
+  if (!match) return <EmptyPrint title="Nessuna partita disponibile" />;
+
+  const matchDate = toDateKey(match.date);
+  const week = microcycleDays.map((day) => {
+    const date = addDays(matchDate, day.offset);
+    const daySessions = sessions.filter((session) => toDateKey(session.date) === date);
+    const dayMatches = matches.filter((item) => toDateKey(item.date) === date);
+    const dayGps = gpsSessions.filter((session) => toDateKey(session.date) === date);
+    const sessionLoad = daySessions.reduce((sum, session) => {
+      return sum + Number(session.duration || 0) * Number(session.rpe || 0);
+    }, 0);
+    const gpsDistance = dayGps.reduce((sum, session) => {
+      return sum + (session.rows || []).reduce((rowSum, row) => rowSum + Number(row.distance || row.totalDistance || 0), 0);
+    }, 0);
+    return { ...day, date, daySessions, dayMatches, sessionLoad, gpsDistance };
+  });
+
+  const unavailable = players.filter((player) =>
+    ["Infortunato", "Recupero", "Differenziato", "Squalificato", "Assente", "Permesso"].includes(player.status)
+  );
+  const totalSessions = week.reduce((sum, day) => sum + day.daySessions.length, 0);
+  const totalLoad = week.reduce((sum, day) => sum + day.sessionLoad, 0);
+  const totalGpsDistance = week.reduce((sum, day) => sum + day.gpsDistance, 0);
+
+  return (
+    <article>
+      <PrintHeader
+        eyebrow="Microciclo gara"
+        title={match.title}
+        meta={[formatDate(match.date), match.opponent || "Avversario da definire", match.competition || "Gara"]}
+      />
+
+      <KpiGrid
+        items={[
+          { label: "Sedute settimana", value: totalSessions },
+          { label: "Carico stimato", value: totalLoad },
+          { label: "GPS totale", value: totalGpsDistance ? `${Math.round(totalGpsDistance / 100) / 10} km` : "-" },
+          { label: "Alert rosa", value: unavailable.length },
+        ]}
+      />
+
+      <Section title="Settimana gara">
+        <table>
+          <thead>
+            <tr>
+              <th>Giorno</th>
+              <th>Data</th>
+              <th>Focus</th>
+              <th>Contenuto</th>
+              <th>RPE target</th>
+              <th>Load</th>
+            </tr>
+          </thead>
+          <tbody>
+            {week.map((day) => {
+              const rpe = RPE_BY_MATCH_DAY[day.key];
+              const content = [
+                ...day.daySessions.map((session) => session.title || "Seduta"),
+                ...day.dayMatches.map((item) => item.title || "Partita"),
+              ];
+              return (
+                <tr key={day.key}>
+                  <td><strong>{day.key}</strong></td>
+                  <td>{formatShortDate(day.date)}</td>
+                  <td>{day.focus}</td>
+                  <td>{content.join(", ") || day.plan}</td>
+                  <td>{rpe ? `${rpe.min}-${rpe.max}` : "-"}</td>
+                  <td>{day.sessionLoad || "-"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Section>
+
+      <Section title="Alert staff">
+        <div className="print-grid two">
+          <PrintBox
+            label="Non disponibili / limitati"
+            value={unavailable.map((player) => `${player.name} (${player.status})`).join(", ") || "Nessun alert registrato"}
+          />
+          <PrintBox
+            label="Priorita' settimana"
+            value={`Preparare ${match.opponent || "avversario"}, rifinitura MD-1, palle inattive e gestione carichi individuali.`}
+          />
+        </div>
+      </Section>
+    </article>
   );
 }
 
@@ -322,9 +439,9 @@ function PostMatchTemplate({ match, players }) {
   if (!match) return <EmptyPrint title="Nessuna partita disponibile" />;
 
   const report = match.postMatch || {};
-  const positivePlayers = (report.positivePlayers || [])
-    .map((id) => findPlayer(players, id)?.name)
-    .filter(Boolean);
+  const videoClips = match.videoAnalysis || [];
+  const positivePlayers = getPositivePlayersText(report.positivePlayers, players);
+  const completion = getReportCompletion(report);
 
   return (
     <article>
@@ -338,8 +455,8 @@ function PostMatchTemplate({ match, players }) {
         items={[
           { label: "Avversario", value: match.opponent || "-" },
           { label: "Risultato", value: match.result || "-" },
-          { label: "Minuti analizzati", value: report.keyMoments ? "Completo" : "Da completare" },
-          { label: "Giocatori evidenziati", value: positivePlayers.length },
+          { label: "Report staff", value: `${completion}%` },
+          { label: "Clip video", value: videoClips.length },
         ]}
       />
 
@@ -349,15 +466,53 @@ function PostMatchTemplate({ match, players }) {
           <PrintBox label="Cosa migliorare" value={report.notWorked || "-"} />
           <PrintBox label="Momenti chiave" value={report.keyMoments || "-"} />
           <PrintBox label="Focus prossima settimana" value={report.nextWeekFocus || "-"} />
+          <PrintBox label="Correzioni tattiche" value={report.tacticalCorrections || "-"} />
+          <PrintBox label="Azioni in allenamento" value={report.trainingActions || "-"} />
         </div>
       </Section>
 
       <Section title="Giocatori e alert">
         <div className="print-grid two">
-          <PrintBox label="Note positive" value={positivePlayers.join(", ") || "-"} />
+          <PrintBox label="Note positive" value={positivePlayers || "-"} />
           <PrintBox label="Alert fisici" value={report.physicalAlerts || "-"} />
         </div>
       </Section>
+
+      <Section title="Palle inattive, video e staff">
+        <div className="print-grid two">
+          <PrintBox label="Review palle inattive" value={report.setPiecesReview || "-"} />
+          <PrintBox label="Sintesi video" value={report.videoClips || "-"} />
+          <PrintBox label="Lezioni sull'avversario" value={report.opponentLessons || "-"} />
+          <PrintBox label="Decisioni staff" value={report.staffDecisions || "-"} />
+        </div>
+      </Section>
+
+      {videoClips.length > 0 && (
+        <Section title="Clip taggate">
+          <table>
+            <thead>
+              <tr>
+                <th>Minuto</th>
+                <th>Categoria</th>
+                <th>Fase</th>
+                <th>Giocatore</th>
+                <th>Nota</th>
+              </tr>
+            </thead>
+            <tbody>
+              {videoClips.map((clip) => (
+                <tr key={clip.id}>
+                  <td>{clip.minute || "-"}</td>
+                  <td>{clip.category || "-"}</td>
+                  <td>{clip.phase || "-"}</td>
+                  <td>{findPlayer(players, clip.playerId)?.name || "-"}</td>
+                  <td>{clip.note || clip.tags || clip.url || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Section>
+      )}
     </article>
   );
 }
@@ -368,6 +523,8 @@ function PlayerTemplate({ player, sessions, matches, physicalTests, appSettings 
   const summary = getPlayerSummary(player, { sessions, matches, physicalTests });
   const latestTest = summary.latestTests[0];
   const reference = getPhysicalReference(latestTest, appSettings.coachParameters);
+  const activeInjuries = (player.injuries || []).filter((injury) => injury.status !== "rientrato" && !injury.endDate);
+  const readiness = getReadinessScore(player, summary);
 
   return (
     <article>
@@ -382,7 +539,7 @@ function PlayerTemplate({ player, sessions, matches, physicalTests, appSettings 
           { label: "Presenze", value: summary.stats.presences },
           { label: "Minuti", value: summary.stats.minutes },
           { label: "Gol + assist", value: `${summary.stats.goals} + ${summary.stats.assists}` },
-          { label: "Carico", value: summary.stats.load },
+          { label: "Readiness", value: `${readiness}%` },
         ]}
       />
 
@@ -458,6 +615,18 @@ function PlayerTemplate({ player, sessions, matches, physicalTests, appSettings 
         <div className="print-grid two">
           <PrintBox label="Obiettivo individuale" value={player.weeklyGoal || "-"} />
           <PrintBox label="Alert" value={summary.alerts.join(", ") || "-"} />
+          <PrintBox label="Punti di forza" value={player.strengths || player.developmentNotes?.strengths || "-"} />
+          <PrintBox label="Aree da migliorare" value={player.improvements || player.developmentNotes?.improvements || "-"} />
+        </div>
+      </Section>
+
+      <Section title="Medico e prevenzione">
+        <div className="print-grid two">
+          <PrintBox
+            label="Status medico"
+            value={activeInjuries.length ? activeInjuries.map((injury) => injury.injuryType || injury.type || "Infortunio").join(", ") : player.status || "Disponibile"}
+          />
+          <PrintBox label="Note prevenzione" value={player.injuryNotes || player.preventionNotes || "-"} />
         </div>
       </Section>
     </article>
@@ -561,6 +730,61 @@ function sameId(a, b) {
 
 function findPlayer(players, id) {
   return players.find((player) => sameId(player.id, id));
+}
+
+function toDateKey(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(value, days) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function getPositivePlayersText(value, players) {
+  if (Array.isArray(value)) {
+    return value
+      .map((id) => findPlayer(players, id)?.name || id)
+      .filter(Boolean)
+      .join(", ");
+  }
+  return value || "";
+}
+
+function getReportCompletion(report = {}) {
+  const fields = [
+    "worked",
+    "notWorked",
+    "keyMoments",
+    "nextWeekFocus",
+    "positivePlayers",
+    "physicalAlerts",
+    "tacticalCorrections",
+    "trainingActions",
+    "setPiecesReview",
+    "staffDecisions",
+  ];
+  const completed = fields.filter((field) => {
+    const value = report[field];
+    return Array.isArray(value) ? value.length > 0 : Boolean(String(value || "").trim());
+  }).length;
+  return Math.round((completed / fields.length) * 100);
+}
+
+function getReadinessScore(player, summary) {
+  let score = 100;
+  if (player.status === "Infortunato") score -= 55;
+  if (player.status === "Recupero") score -= 35;
+  if (player.status === "Differenziato") score -= 25;
+  if (player.status === "Squalificato") score -= 20;
+  if (!summary.latestTests.length) score -= 10;
+  if ((player.injuries || []).some((injury) => injury.status !== "rientrato" && !injury.endDate)) score -= 20;
+  return Math.max(0, Math.min(100, score));
 }
 
 const pageStyles = {

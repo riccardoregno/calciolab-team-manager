@@ -3,10 +3,14 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { formatShortDate, getAvailabilityGroups, getSessionLoad } from "../utils/helpers";
+import { useTranslation } from "../i18n";
 
 const weekDays = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 
-export default function WeekPlan({ sessions = [], matches = [], players = [] }) {
+export default function WeekPlan({
+  sessions = [], matches = [], players = [] }) {
+
+  const { t } = useTranslation();
   const week = buildCurrentWeek();
   const events = [...sessions, ...matches];
   const availability = getAvailabilityGroups(players);
@@ -15,7 +19,7 @@ export default function WeekPlan({ sessions = [], matches = [], players = [] }) 
   return (
     <div>
       <PageHeader
-        title="Programma Settimana"
+        title={t("pages.weekPlan.title")}
         subtitle="Vista lun-dom con sedute, partite, carico e alert rosa"
       />
 
@@ -134,4 +138,3 @@ const weekStyles = {
   alertGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 },
   alertColumn: { display: "grid", gap: 8, padding: 14, borderRadius: 16, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", color: "#cbd5e1" },
 };
-

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useTranslation } from "../i18n";
 
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
@@ -25,6 +26,7 @@ const GROUP_LABELS = {
 };
 
 function Players({ players, setPlayers }) {
+  const { t } = useTranslation();
   const location = useLocation();
   const urlGruppo = new URLSearchParams(location.search).get("gruppo") || "tutti";
 
@@ -83,7 +85,7 @@ function Players({ players, setPlayers }) {
   // Ora usiamo setPlayers() — la persistenza Supabase avviene tramite useTeamData con schema corretto.
   function addPlayer() {
     if (!form.firstName.trim() || !form.lastName.trim()) {
-      showToast("Inserisci nome e cognome del giocatore", "warn");
+      showToast(t("pages.players.missingName"), "warn");
       return;
     }
 
@@ -113,18 +115,18 @@ function Players({ players, setPlayers }) {
     });
 
     setOpenModal(false);
-    showToast("Giocatore aggiunto", "ok");
+    showToast(t("pages.players.playerAdded"), "ok");
   }
 
   function deletePlayer(id) {
     setConfirmState({
-      message: "Vuoi eliminare questo giocatore?",
-      confirmLabel: "Elimina",
+      message: t("pages.players.deleteConfirm"),
+      confirmLabel: t("common.delete"),
       confirmTone: "red",
       onConfirm: () => {
         // Confronto string→string per coerenza con FIX #12 (ID sempre stringa)
         setPlayers((prevPlayers) => prevPlayers.filter((p) => String(p.id) !== String(id)));
-        showToast("Giocatore eliminato", "info");
+        showToast(t("pages.players.playerDeleted"), "info");
       },
     });
   }
@@ -134,22 +136,22 @@ function Players({ players, setPlayers }) {
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <ToastContainer />
       <PageHeader
-        title="Gestione Rosa"
-        subtitle="Database giocatori e gestione squadra"
-        action={<Button onClick={() => setOpenModal(true)}>+ Nuovo giocatore</Button>}
+        title={t("pages.players.title")}
+        subtitle={t("pages.players.subtitle")}
+        action={<Button onClick={() => setOpenModal(true)}>{t("pages.players.newPlayer")}</Button>}
       />
 
       <AppCard style={{ marginBottom: 22 }}>
         <div style={pStyles.toolbar}>
           <div style={pStyles.counterGrid}>
-            <MetricCard label="Giocatori totali" value={players.length} tone="blue" />
+            <MetricCard label={t("pages.players.totalPlayers")} value={players.length} tone="blue" />
             <MetricCard
-              label="Disponibili"
+              label={t("pages.players.available")}
               value={players.filter((p) => (p.status || "Disponibile") === "Disponibile").length}
               tone="green"
             />
             <MetricCard
-              label="Infortunati"
+              label={t("pages.players.injured")}
               value={players.filter((p) => p.status === "Infortunato").length}
               tone="red"
             />
@@ -162,7 +164,7 @@ function Players({ players, setPlayers }) {
             <SearchBar
               value={search}
               onChange={setSearch}
-              placeholder="Cerca per nome, ruolo..."
+              placeholder={t("pages.players.searchPlaceholder")}
             />
           </div>
         </div>
@@ -182,7 +184,7 @@ function Players({ players, setPlayers }) {
                   color: gruppoFilter === g ? "#e2e8f0" : "#94a3b8",
                 }}
               >
-                {g === "tutti" ? `Tutti (${players.length})` : `${GROUP_LABELS[g] || g} (${countByGroup[g] || 0})`}
+                {g === "tutti" ? `${t("pages.players.all")} (${players.length})` : `${GROUP_LABELS[g] || g} (${countByGroup[g] || 0})`}
               </button>
             ))}
           </div>
@@ -192,8 +194,8 @@ function Players({ players, setPlayers }) {
       {filteredPlayers.length === 0 ? (
         <EmptyState
           icon="⚽"
-          title="Nessun giocatore trovato"
-          text="Crea il primo giocatore della tua rosa."
+          title={t("pages.players.noPlayersFound")}
+          text={t("pages.players.noPlayersText")}
         />
       ) : (
         <div
@@ -214,7 +216,7 @@ function Players({ players, setPlayers }) {
       )}
 
       {openModal && (
-        <Modal title="Nuovo giocatore" onClose={() => setOpenModal(false)}>
+        <Modal title={t("pages.players.modalTitle")} onClose={() => setOpenModal(false)}>
           <div
             style={{
               display: "grid",
@@ -223,7 +225,7 @@ function Players({ players, setPlayers }) {
             }}
           >
             <input
-              placeholder="Nome"
+              placeholder={t("pages.players.firstName")}
               value={form.firstName}
               onChange={(e) =>
                 setForm({ ...form, firstName: e.target.value })
@@ -232,7 +234,7 @@ function Players({ players, setPlayers }) {
             />
 
             <input
-              placeholder="Cognome"
+              placeholder={t("pages.players.lastName")}
               value={form.lastName}
               onChange={(e) =>
                 setForm({ ...form, lastName: e.target.value })
@@ -241,14 +243,14 @@ function Players({ players, setPlayers }) {
             />
 
             <input
-              placeholder="Ruolo"
+              placeholder={t("pages.players.role")}
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
               style={styles.input}
             />
 
             <input
-              placeholder="Numero"
+              placeholder={t("pages.players.number")}
               value={form.shirtNumber}
               onChange={(e) =>
                 setForm({ ...form, shirtNumber: e.target.value })
@@ -317,10 +319,10 @@ function Players({ players, setPlayers }) {
             }}
           >
             <Button variant="ghost" onClick={() => setOpenModal(false)}>
-              Annulla
+              {t("common.cancel")}
             </Button>
 
-            <Button onClick={addPlayer}>Salva giocatore</Button>
+            <Button onClick={addPlayer}>{t("pages.players.addPlayer")}</Button>
           </div>
         </Modal>
       )}

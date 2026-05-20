@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "../../i18n";
 
 function Modal({ title, children, onClose }) {
+  const { t } = useTranslation();
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== "undefined" && window.innerWidth < 640
   );
@@ -79,7 +81,7 @@ function Modal({ title, children, onClose }) {
 
           <button
             type="button"
-            aria-label="Chiudi"
+            aria-label={t("common.close")}
             onClick={onClose}
             style={{
               width: 44,

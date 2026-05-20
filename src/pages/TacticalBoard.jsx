@@ -8,6 +8,7 @@ import { styles } from "../styles/index.js";
 import { ArrowRight, Move, Pause, Play, Plus, Undo2 } from "lucide-react";
 import { emptyExercise } from "../data/initialData";
 import { createId } from "../utils/helpers";
+import { useTranslation } from "../i18n";
 
 // ─── Persistenza localStorage ─────────────────────────────────────────────────
 const STORAGE_KEY = "calciolab_tactical_board_v1";
@@ -519,7 +520,10 @@ function interpolateItems(fromItems = [], toItems = [], progress = 1) {
   });
 }
 
-export default function TacticalBoard({ players = [], setExercises }) {
+export default function TacticalBoard({
+  players = [], setExercises }) {
+
+  const { t } = useTranslation();
   const navigate   = useNavigate();
   const location   = useLocation();
   const { showToast, ToastContainer } = useToast();
@@ -1244,7 +1248,7 @@ export default function TacticalBoard({ players = [], setExercises }) {
     <div>
       <ToastContainer />
       <PageHeader
-        title="Lavagna tattica"
+        title={t("pages.tacticalBoard.title")}
         subtitle="Costruisci struttura, principi, rotazioni e distinta gara in un unico ambiente professionale."
       />
 

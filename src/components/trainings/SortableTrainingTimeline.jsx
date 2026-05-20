@@ -15,8 +15,10 @@ import { CSS } from "@dnd-kit/utilities";
 
 import AppCard from "../ui/AppCard";
 import Badge from "../ui/Badge";
+import { useTranslation } from "../../i18n";
 
 function SortableTrainingTimeline({ exercises = [], onReorder }) {
+  const { t } = useTranslation();
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -48,9 +50,9 @@ function SortableTrainingTimeline({ exercises = [], onReorder }) {
   if (exercises.length === 0) {
     return (
       <AppCard>
-        <h3 style={{ marginTop: 0 }}>Timeline seduta</h3>
+        <h3 style={{ marginTop: 0 }}>{t("components.trainingTimeline.title")}</h3>
         <p style={{ color: "#94a3b8" }}>
-          Aggiungi esercizi per costruire la seduta.
+          {t("components.trainingTimeline.emptyText")}
         </p>
       </AppCard>
     );
@@ -89,9 +91,9 @@ function SortableTrainingTimeline({ exercises = [], onReorder }) {
         }}
       >
         <div>
-          <h3 style={{ margin: 0 }}>Timeline seduta</h3>
+          <h3 style={{ margin: 0 }}>{t("components.trainingTimeline.title")}</h3>
           <p style={{ color: "#94a3b8", margin: "6px 0 0" }}>
-            Trascina gli esercizi per riordinare la seduta
+            {t("components.trainingTimeline.dragSubtitle")}
           </p>
         </div>
 
@@ -130,6 +132,7 @@ function SortableTrainingTimeline({ exercises = [], onReorder }) {
 }
 
 function SortableTimelineItem({ id, item, index, start, end, duration, total }) {
+  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -188,11 +191,11 @@ function SortableTimelineItem({ id, item, index, start, end, duration, total }) 
         >
           <div>
   <div className="print-only" style={{ fontWeight: 800, marginBottom: 6 }}>
-    Esercizio {index + 1}
+    {t("components.trainingTimeline.exerciseN", { n: index + 1 })}
   </div>
 
   <strong style={{ fontSize: 16 }}>
-    {item.title || item.name || `Esercizio ${index + 1}`}
+    {item.title || item.name || t("components.trainingTimeline.exerciseN", { n: index + 1 })}
   </strong>
 
             <p
@@ -205,7 +208,7 @@ function SortableTimelineItem({ id, item, index, start, end, duration, total }) 
               {item.category ||
                 item.objective ||
                 item.variantNotes ||
-                "Blocco allenamento"}
+                t("components.trainingTimeline.trainingBlock")}
             </p>
           </div>
 
