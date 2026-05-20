@@ -290,7 +290,7 @@ function StaffView({
           ) : (
             <div style={ps.list}>
               {allPublishedConvocations.map((m) => (
-                <ConvocazioneRow key={m.id} match={m} players={[]} highlightId={null} />
+                <ConvocazioneRow key={m.id} match={m} players={players} highlightId={null} showFull />
               ))}
             </div>
           )}

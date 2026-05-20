@@ -167,8 +167,16 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
 
         {saved && (
           <p style={s.savedMsg}>
-            {published ? "✓ Convocazione pubblicata — visibile ai giocatori nel portale." : "✓ Bozza salvata."}
+            {published ? "✓ Convocazione pubblicata." : "✓ Bozza salvata."}
           </p>
+        )}
+        {published && (
+          <div style={s.portalRow}>
+            <span style={s.portalMsg}>🎽 Visibile ai giocatori nel portale</span>
+            <Button variant="ghost" onClick={() => navigate("/player-portal")}>
+              Apri portale →
+            </Button>
+          </div>
         )}
       </AppCard>
 
@@ -331,6 +339,23 @@ const s = {
     color: "#22c55e",
     fontSize: 14,
     fontWeight: 600,
+  },
+  portalRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 10,
+    padding: "8px 12px",
+    borderRadius: 10,
+    background: "rgba(34,197,94,0.08)",
+    border: "1px solid rgba(34,197,94,0.2)",
+    flexWrap: "wrap",
+  },
+  portalMsg: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#86efac",
   },
 
   textarea: {
