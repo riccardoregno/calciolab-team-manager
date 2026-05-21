@@ -9,6 +9,7 @@ import PageHeader from "../components/ui/PageHeader";
 import { styles } from "../styles/index.js";
 import { formatDate, RPE_BY_MATCH_DAY } from "../utils/helpers";
 import { useTranslation } from "../i18n";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 const MICRO_DAYS = [
   { key: "MD+1", offset: -6, focusKey: "pages.microcycle.focusMDp1" },
@@ -137,6 +138,7 @@ export default function Microcycle({
   sessions = [], matches = [], players = [], gpsSessions = [] }) {
 
   const { t } = useTranslation();
+  const isMobile = useIsMobile(760);
   const navigate = useNavigate();
 
   const today = useMemo(() => new Date(), []);
@@ -238,7 +240,7 @@ export default function Microcycle({
         <Kpi title={t("pages.microcycle.kpiUnavailable")} value={unavailablePlayers.length} hint={t("pages.microcycle.kpiUnavailableHint")} tone="red" />
       </div>
 
-      <div style={mc.mainGrid}>
+      <div style={{ ...mc.mainGrid, gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) minmax(280px, 360px)" }}>
         <section style={mc.timeline}>
           {microDays.map((day) => (
             <MicroDayCard

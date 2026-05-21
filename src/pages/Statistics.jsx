@@ -12,6 +12,7 @@ import { styles } from "../styles/index.js";
 import { loadAllPlayerStats, loadPlayerMatches } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../i18n";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 const StatisticsCharts = lazy(() => import("../components/statistics/StatisticsCharts"));
 
@@ -38,17 +39,8 @@ function Statistics({
     players.slice(0, 2).map((player) => String(player.id))
   );
 
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 640);
-  const [isNarrow, setIsNarrow] = useState(() => window.innerWidth <= 1024);
-
-  useEffect(() => {
-    function handleResize() {
-      setIsMobile(window.innerWidth <= 640);
-      setIsNarrow(window.innerWidth <= 1024);
-    }
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const isMobile = useIsMobile(641);
+  const isNarrow = useIsMobile(1025);
 
   // Modalità allenatore
   const [coachMode, setCoachMode] = useState(false);

@@ -15,11 +15,13 @@ import { styles } from "../styles/index.js";
 import { createId, formatDate, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 function Trainings({
   exercises, sessions, setSessions, players = [] }) {
 
   const { t } = useTranslation();
+  const isMobile = useIsMobile(760);
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast, ToastContainer } = useToast();
@@ -227,7 +229,7 @@ function Trainings({
         className="calciolab-two-column"
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(0, 1.1fr) minmax(320px, 0.9fr)",
+          gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1.1fr) minmax(320px, 0.9fr)",
           gap: 24,
           alignItems: "start",
           minWidth: 0,
