@@ -26,6 +26,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyMatch());
   const [importSummary, setImportSummary] = useState(null);
+  const [importPreview, setImportPreview] = useState(null);
 
   function handleLogoUpload(field, file) {
     if (!file) return;
@@ -114,23 +115,31 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
         return;
       }
 
-      setMatches((prevMatches) => {
-        const existingKeys = new Set(prevMatches.map(getMatchIdentity));
-        const uniqueImported = imported.filter((match) => !existingKeys.has(getMatchIdentity(match)));
-        const nextMatches = [...prevMatches, ...uniqueImported].sort(sortMatchesByDate);
+      const existingKeys = new Set(matches.map(getMatchIdentity));
+      const uniqueImported = imported.filter((match) => !existingKeys.has(getMatchIdentity(match)));
+      const duplicates = imported.filter((match) => existingKeys.has(getMatchIdentity(match)));
 
-        setImportSummary({
-          total: imported.length,
-          added: uniqueImported.length,
-          skipped: imported.length - uniqueImported.length,
-          fileName: file.name,
-        });
-
-        showToast(t("pages.matches.matchesImported", { count: uniqueImported.length }), uniqueImported.length ? "ok" : "info");
-        return nextMatches;
+      setImportPreview({
+        fileName: file.name,
+        total: imported.length,
+        newMatches: uniqueImported.sort(sortMatchesByDate),
+        duplicates,
       });
     };
     reader.readAsText(file);
+  }
+
+  function confirmCalendarImport() {
+    const newMatches = importPreview?.newMatches || [];
+    setMatches((prevMatches) => [...prevMatches, ...newMatches].sort(sortMatchesByDate));
+    setImportSummary({
+      total: importPreview?.total || 0,
+      added: newMatches.length,
+      skipped: importPreview?.duplicates?.length || 0,
+      fileName: importPreview?.fileName || "",
+    });
+    setImportPreview(null);
+    showToast(t("pages.matches.matchesImported", { count: newMatches.length }), newMatches.length ? "ok" : "info");
   }
 
   function deleteMatch(id) {
@@ -161,7 +170,10 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
               <input
                 type="file"
                 accept=".csv,text/csv"
-                onChange={(event) => importCalendar(event.target.files?.[0])}
+                onChange={(event) => {
+                  importCalendar(event.target.files?.[0]);
+                  event.target.value = "";
+                }}
                 style={{ display: "none" }}
               />
               <Button variant="ghost">{t("pages.matches.importCsv")}</Button>
@@ -519,6 +531,90 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
           </div>
         </Modal>
       )}
+
+      {importPreview && (
+        <Modal
+          title="Anteprima import calendario"
+          onClose={() => setImportPreview(null)}
+        >
+          <div style={{ display: "grid", gap: 16 }}>
+            <div style={previewStyles.summaryGrid}>
+              <PreviewStat label="File" value={importPreview.fileName} />
+              <PreviewStat label="Gare lette" value={importPreview.total} />
+              <PreviewStat label="Nuove" value={importPreview.newMatches.length} tone="#86efac" />
+              <PreviewStat label="Duplicate" value={importPreview.duplicates.length} tone="#fbbf24" />
+            </div>
+
+            <div>
+              <h3 style={previewStyles.title}>Gare che verranno importate</h3>
+              {importPreview.newMatches.length === 0 ? (
+                <p style={previewStyles.muted}>Nessuna nuova gara: il calendario sembra già importato.</p>
+              ) : (
+                <div style={previewStyles.tableWrap}>
+                  <table style={previewStyles.table}>
+                    <thead>
+                      <tr>
+                        <th style={previewStyles.th}>Data</th>
+                        <th style={previewStyles.th}>Ora</th>
+                        <th style={previewStyles.th}>Avversario</th>
+                        <th style={previewStyles.th}>Sede</th>
+                        <th style={previewStyles.th}>Campo</th>
+                        <th style={previewStyles.th}>Competizione</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importPreview.newMatches.map((match) => (
+                        <tr key={getMatchIdentity(match)}>
+                          <td style={previewStyles.td}>{formatDate(match.date)}</td>
+                          <td style={previewStyles.td}>{match.time || "-"}</td>
+                          <td style={previewStyles.td}>{match.opponent}</td>
+                          <td style={previewStyles.td}>{match.location}</td>
+                          <td style={previewStyles.td}>{formatMatchVenue(match)}</td>
+                          <td style={previewStyles.td}>{[match.competition, match.matchday].filter(Boolean).join(" · ") || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {importPreview.duplicates.length > 0 && (
+              <div>
+                <h3 style={previewStyles.title}>Duplicate ignorate</h3>
+                <div style={previewStyles.duplicateGrid}>
+                  {importPreview.duplicates.slice(0, 8).map((match) => (
+                    <span key={getMatchIdentity(match)} style={previewStyles.duplicatePill}>
+                      {formatDate(match.date)} · {match.time || "--:--"} · {match.opponent}
+                    </span>
+                  ))}
+                  {importPreview.duplicates.length > 8 && (
+                    <span style={previewStyles.duplicatePill}>+{importPreview.duplicates.length - 8} altre</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div style={previewStyles.actions}>
+              <Button variant="ghost" onClick={() => setImportPreview(null)}>
+                Annulla
+              </Button>
+              <Button onClick={confirmCalendarImport} disabled={importPreview.newMatches.length === 0}>
+                Conferma import
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function PreviewStat({ label, value, tone = "#e2e8f0" }) {
+  return (
+    <div style={previewStyles.stat}>
+      <span style={previewStyles.statLabel}>{label}</span>
+      <strong style={{ ...previewStyles.statValue, color: tone }}>{value}</strong>
     </div>
   );
 }
@@ -823,5 +919,93 @@ function formatMatchVenue(match) {
     match.venueAddress,
   ].filter(Boolean).join(" · ") || "-";
 }
+
+const previewStyles = {
+  summaryGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))",
+    gap: 10,
+  },
+  stat: {
+    borderRadius: 12,
+    padding: 12,
+    background: "rgba(255,255,255,0.055)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    minWidth: 0,
+  },
+  statLabel: {
+    display: "block",
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+    marginBottom: 6,
+  },
+  statValue: {
+    display: "block",
+    fontSize: 18,
+    lineHeight: 1.2,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  title: {
+    margin: "0 0 10px",
+    fontSize: 16,
+    lineHeight: 1.2,
+  },
+  muted: {
+    color: "#94a3b8",
+    margin: 0,
+  },
+  tableWrap: {
+    overflowX: "auto",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    minWidth: 720,
+  },
+  th: {
+    padding: "10px 12px",
+    textAlign: "left",
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    background: "rgba(255,255,255,0.055)",
+    borderBottom: "1px solid rgba(255,255,255,0.08)",
+  },
+  td: {
+    padding: "10px 12px",
+    color: "#e2e8f0",
+    fontSize: 13,
+    borderBottom: "1px solid rgba(255,255,255,0.06)",
+    verticalAlign: "top",
+  },
+  duplicateGrid: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  duplicatePill: {
+    borderRadius: 999,
+    padding: "7px 10px",
+    background: "rgba(251,191,36,0.1)",
+    border: "1px solid rgba(251,191,36,0.22)",
+    color: "#fde68a",
+    fontSize: 12,
+    fontWeight: 800,
+  },
+  actions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+};
 
 export default Matches;
