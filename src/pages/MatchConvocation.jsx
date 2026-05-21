@@ -40,6 +40,17 @@ function getHomeVenue(profile = {}) {
     .join(" — ");
 }
 
+function getMatchVenue(match = {}, fallbackVenue = "") {
+  const importedVenue = [match.venueName, match.venueAddress]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(" — ");
+
+  if (importedVenue) return importedVenue;
+  if (match.location === "Casa" && fallbackVenue) return fallbackVenue;
+  return match.location || "";
+}
+
 const CONVOCATION_DETAIL_FIELDS = [
   "matchTime",
   "meetingTime",
@@ -50,11 +61,11 @@ const CONVOCATION_DETAIL_FIELDS = [
   "message",
 ];
 
-function getDefaultConvocationDetails(isHomeMatch, homeVenue) {
+function getDefaultConvocationDetails(match, isHomeMatch, venue) {
   return {
-    matchTime: "",
+    matchTime: match?.time || "",
     meetingTime: "",
-    meetingPlace: isHomeMatch ? homeVenue : "",
+    meetingPlace: isHomeMatch || venue ? venue : "",
     lockerRoom: "",
     kit: "",
     staffContact: "",
@@ -134,14 +145,15 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
   const existing = match?.convocazione || {};
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
   const homeVenue = getHomeVenue(workspaceProfile);
+  const matchVenue = getMatchVenue(match, homeVenue);
   const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
   const clubLogo = workspaceProfile.logo || "";
   const clubLogoSize = Number(workspaceProfile.logoSize || 100);
   const isHomeMatch = match?.location === "Casa";
-  const defaultNotes = isHomeMatch && homeVenue
-    ? `Raduno presso ${homeVenue}`
+  const defaultNotes = matchVenue
+    ? `Raduno presso ${matchVenue}`
     : "";
-  const defaultDetails = getDefaultConvocationDetails(isHomeMatch, homeVenue);
+  const defaultDetails = getDefaultConvocationDetails(match, isHomeMatch, matchVenue);
 
   const [selectedIds, setSelectedIds] = useState(() =>
     Array.isArray(existing.playerIds) ? existing.playerIds.map(String) : []
@@ -157,7 +169,8 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
   // resync se il match cambia dall'esterno
   useEffect(() => {
     const c = match?.convocazione || {};
-    const nextDefaults = getDefaultConvocationDetails(isHomeMatch, homeVenue);
+    const nextMatchVenue = getMatchVenue(match, homeVenue);
+    const nextDefaults = getDefaultConvocationDetails(match, isHomeMatch, nextMatchVenue);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIds(Array.isArray(c.playerIds) ? c.playerIds.map(String) : []);
     setNotes(c.notes || defaultNotes);
@@ -165,7 +178,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
     setPublished(Boolean(c.published));
     setCopiedLabel("");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, defaultNotes, homeVenue, isHomeMatch]);
+  }, [id, defaultNotes, homeVenue, isHomeMatch, match?.time, match?.venueName, match?.venueAddress]);
 
   if (!match) {
     return (
@@ -263,7 +276,8 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
 
   const subtitle = [
     formatDate(match.date),
-    isHomeMatch && homeVenue ? homeVenue : match.location,
+    match.time ? `Ore ${match.time}` : null,
+    matchVenue || match.location,
     match.result || null,
   ]
     .filter(Boolean)
@@ -272,7 +286,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
   const convocati = selectedIds
     .map((pid) => players.find((p) => String(p.id) === pid))
     .filter(Boolean);
-  const sheetVenue = isHomeMatch && homeVenue ? homeVenue : match.location;
+  const sheetVenue = matchVenue || match.location;
   const meetingInfo = formatMeeting(details);
   const fullMessage = buildConvocationText({
     clubName,
@@ -374,7 +388,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
             <input
               value={details.meetingPlace}
               onChange={(e) => updateDetails("meetingPlace", e.target.value)}
-              placeholder={homeVenue || "Es. Campo comunale, via Roma 12"}
+              placeholder={matchVenue || homeVenue || "Es. Campo comunale, via Roma 12"}
               style={s.input}
             />
           </label>
