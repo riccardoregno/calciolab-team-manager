@@ -12,7 +12,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { useAuth } from "../hooks/useAuth";
 import { loadAllPlayerStats } from "../services/playerProfile";
 import { useTranslation } from "../i18n";
-
+import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
 
 import {
   formatDate,
@@ -33,11 +33,6 @@ import {
 
 const DASHBOARD_SECTION_KEYS = ["nextEvent", "kpis", "rosterStatus", "weekFocus", "coachAlerts", "recentActivities", "quickActions", "rewardCenter"];
 const DEFAULT_SECTION_ORDER = DASHBOARD_SECTION_KEYS;
-const OBJECTIVE_STATUS = {
-  todo: { labelKey: "pages.dashboard.objectiveTodo", tone: "orange" },
-  worked: { labelKey: "pages.dashboard.objectiveWorked", tone: "blue" },
-  solved: { labelKey: "pages.dashboard.objectiveSolved", tone: "green" },
-};
 
 function SortableSection({ id, children }) {
   const { t } = useTranslation();
@@ -83,10 +78,6 @@ function SortableSection({ id, children }) {
       {children}
     </div>
   );
-}
-
-function getObjectiveStatusMeta(status) {
-  return OBJECTIVE_STATUS[status] || OBJECTIVE_STATUS.todo;
 }
 
 function getOpenPostMatchCorrections(sessions = [], matches = []) {

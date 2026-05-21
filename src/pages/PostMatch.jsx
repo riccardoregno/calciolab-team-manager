@@ -8,19 +8,11 @@ import MatchTabBar from "../components/match/MatchTabBar";
 import { styles } from "../styles/index.js";
 import { createId, formatDate } from "../utils/helpers";
 import { useTranslation } from "../i18n";
+import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
 
 const clipCategories = ["Tattica", "Tecnica", "Fisico", "Palla inattiva", "Errore", "Occasione", "Transizione"];
 const clipPhases = ["Possesso", "Non possesso", "Transizione +", "Transizione -", "Corner", "Punizione", "Rimessa", "Rigore"];
 const clipAudiences = ["Staff", "Squadra", "Individuale", "Reparto"];
-const OBJECTIVE_STATUS = {
-  todo: { label: "Da lavorare", tone: "orange" },
-  worked: { label: "Lavorato", tone: "blue" },
-  solved: { label: "Risolto", tone: "green" },
-};
-
-function getObjectiveStatusMeta(status) {
-  return OBJECTIVE_STATUS[status] || OBJECTIVE_STATUS.todo;
-}
 
 export default function PostMatch({
   matches = [], setMatches, players = [], sessions = [], setStaffTasks }) {
@@ -141,28 +133,26 @@ export default function PostMatch({
       report.setPiecesReview && `Palle inattive: ${report.setPiecesReview}`,
     ].filter(Boolean).join("\n");
 
-    navigate("/trainings", {
-      state: {
-        draftTraining: {
-          title: `Seduta post-gara${match.opponent ? ` vs ${match.opponent}` : ""}`,
-          date: getRelativeDate(1),
-          type: "Allenamento",
-          theme: report.setPiecesReview ? "Palla inattiva" : "Transizione",
-          matchDayDistance: "MD+1",
-          objective,
-          notes: notes ? `Da report post-gara:\n${notes}` : "",
-          exercises: [],
-          attendance: {},
-          sourceType: "postMatch",
-          sourceMatchId: String(match.id),
-          sourceMatchLabel: match.opponent || match.title || "",
-          sourceMatchDate: match.date || "",
-          sourceSummary: objective,
-          objectiveStatus: "todo",
-          objectiveReview: "",
-        },
-      },
-    });
+    const draftTraining = {
+      title: `Seduta post-gara${match.opponent ? ` vs ${match.opponent}` : ""}`,
+      date: getRelativeDate(1),
+      type: "Allenamento",
+      theme: report.setPiecesReview ? "Palla inattiva" : "Transizione",
+      matchDayDistance: "MD+1",
+      objective,
+      notes: notes ? `Da report post-gara:\n${notes}` : "",
+      exercises: [],
+      attendance: {},
+      sourceType: "postMatch",
+      sourceMatchId: String(match.id),
+      sourceMatchLabel: match.opponent || match.title || "",
+      sourceMatchDate: match.date || "",
+      sourceSummary: objective,
+      objectiveStatus: "todo",
+      objectiveReview: "",
+    };
+    sessionStorage.setItem("trainings_draft", JSON.stringify(draftTraining));
+    navigate("/trainings", { state: { draftTraining } });
   }
 
   if (!match) {

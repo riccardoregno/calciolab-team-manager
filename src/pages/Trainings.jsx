@@ -14,16 +14,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { styles } from "../styles/index.js";
 import { createId, formatDate, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 import { useTranslation } from "../i18n";
-
-const OBJECTIVE_STATUS = {
-  todo: { label: "Da lavorare", tone: "orange" },
-  worked: { label: "Lavorato", tone: "blue" },
-  solved: { label: "Risolto", tone: "green" },
-};
-
-function getObjectiveStatusMeta(status) {
-  return OBJECTIVE_STATUS[status] || OBJECTIVE_STATUS.todo;
-}
+import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
 
 function Trainings({
   exercises, sessions, setSessions, players = [] }) {
@@ -52,7 +43,18 @@ function Trainings({
     return [...(exercises || []), ...fp5Only];
   }, [exercises, fp5Catalog]);
 
-  const [form, setForm] = useState(() => getInitialTrainingForm(location.state?.draftTraining));
+  const [form, setForm] = useState(() => {
+    const fromState = location.state?.draftTraining;
+    if (fromState) return getInitialTrainingForm(fromState);
+    try {
+      const stored = sessionStorage.getItem("trainings_draft");
+      if (stored) {
+        sessionStorage.removeItem("trainings_draft");
+        return getInitialTrainingForm(JSON.parse(stored));
+      }
+    } catch (_) {}
+    return getInitialTrainingForm(null);
+  });
 
   useEffect(() => {
     const draftTraining = location.state?.draftTraining;
@@ -333,6 +335,7 @@ function Trainings({
           <option value="Finalizzazione">{t("pages.trainings.themeFinalizzazione")}</option>
           <option value="Fase difensiva">{t("pages.trainings.themeFaseDifensiva")}</option>
           <option value="Palla inattiva">{t("pages.trainings.themePallaInattiva")}</option>
+          <option value="Recupero">{t("pages.trainings.themeRecupero")}</option>
         </select>
       </label>
 
@@ -627,22 +630,22 @@ function Trainings({
               {form.sourceType === "postMatch" && (
                 <div style={trainingStyles.objectiveReviewBox}>
                   <label style={trainingStyles.field}>
-                    <span>Stato obiettivo</span>
+                    <span>{t("pages.trainings.objectiveStatus")}</span>
                     <select
                       value={form.objectiveStatus || "todo"}
                       onChange={(event) => setForm({ ...form, objectiveStatus: event.target.value })}
                       style={styles.input}
                     >
                       {Object.entries(OBJECTIVE_STATUS).map(([value, meta]) => (
-                        <option key={value} value={value}>{meta.label}</option>
+                        <option key={value} value={value}>{t(meta.labelKey)}</option>
                       ))}
                     </select>
                   </label>
 
                   <label style={trainingStyles.field}>
-                    <span>Verifica staff</span>
+                    <span>{t("pages.trainings.staffReview")}</span>
                     <textarea
-                      placeholder="Cosa abbiamo corretto? Cosa resta da rivedere?"
+                      placeholder={t("pages.trainings.staffReviewPlaceholder")}
                       value={form.objectiveReview || ""}
                       onChange={(event) => setForm({ ...form, objectiveReview: event.target.value })}
                       style={{ ...styles.input, minHeight: 72, resize: "vertical" }}

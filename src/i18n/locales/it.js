@@ -1,4 +1,9 @@
 export const it = {
+  objectiveStatus: {
+    todo:   "Da lavorare",
+    worked: "Lavorato",
+    solved: "Risolto",
+  },
   common: {
     appName: "CalcioLab",
     coachPlatform: "Coach Platform",
@@ -898,6 +903,10 @@ export const it = {
       themeFinalizzazione: "Finalizzazione",
       themeFaseDifensiva: "Fase difensiva",
       themePallaInattiva: "Palla inattiva",
+      themeRecupero: "Recupero",
+      objectiveStatus: "Stato obiettivo",
+      staffReview: "Verifica staff",
+      staffReviewPlaceholder: "Cosa abbiamo corretto? Cosa resta da rivedere?",
       loadMDp1: "MD+1 — Post-gara",
       loadMDm4: "MD-4 — Carico moderato",
       loadMDm3: "MD-3 — Picco di carico",

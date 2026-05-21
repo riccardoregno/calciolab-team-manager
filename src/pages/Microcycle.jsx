@@ -190,11 +190,9 @@ export default function Microcycle({
   const gpsDistance = microDays.reduce((sum, day) => sum + day.gps.distance, 0);
 
   function createTrainingFromDay(day) {
-    navigate("/trainings", {
-      state: {
-        draftTraining: buildTrainingDraft(day, postMatchFocus, anchorMatch),
-      },
-    });
+    const draftTraining = buildTrainingDraft(day, postMatchFocus, anchorMatch);
+    sessionStorage.setItem("trainings_draft", JSON.stringify(draftTraining));
+    navigate("/trainings", { state: { draftTraining } });
   }
 
   if (!anchorMatch) {

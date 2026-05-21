@@ -1,7 +1,19 @@
-export function formatDate(d){
+function getAppLocale() {
+  try {
+    const lang = typeof window !== "undefined"
+      ? window.localStorage.getItem("calciolab_language")
+      : null;
+    const map = { it: "it-IT", en: "en-GB" };
+    return map[lang] || "it-IT";
+  } catch (_) {
+    return "it-IT";
+  }
+}
+
+export function formatDate(d, locale){
   if(!d) return "-";
 
-  return new Intl.DateTimeFormat("it-IT",{
+  return new Intl.DateTimeFormat(locale || getAppLocale(),{
     weekday:"long",
     day:"2-digit",
     month:"long",
@@ -9,10 +21,10 @@ export function formatDate(d){
   }).format(new Date(d));
 }
 
-export function formatShortDate(d){
+export function formatShortDate(d, locale){
   if(!d) return "-";
 
-  return new Intl.DateTimeFormat("it-IT",{
+  return new Intl.DateTimeFormat(locale || getAppLocale(),{
     day:"2-digit",
     month:"2-digit",
     year:"numeric"
