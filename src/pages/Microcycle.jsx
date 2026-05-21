@@ -59,6 +59,45 @@ function getPlayerName(player) {
   return [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "Giocatore";
 }
 
+function hasText(value) {
+  return String(value || "").trim().length > 0;
+}
+
+function getPostMatchMicrocycleFocus(match) {
+  const report = match?.postMatch || {};
+  const rows = [
+    { label: "Focus prossima settimana", value: report.nextWeekFocus },
+    { label: "Azioni in allenamento", value: report.trainingActions },
+    { label: "Recupero", value: report.recoveryPlan || report.physicalAlerts },
+    { label: "Correzioni tattiche", value: report.tacticalCorrections || report.notWorked },
+    { label: "Palle inattive", value: report.setPiecesReview },
+  ].filter((row) => hasText(row.value));
+
+  if (!rows.length) return null;
+
+  return {
+    match,
+    rows,
+    nextWeekFocus: report.nextWeekFocus,
+    trainingActions: report.trainingActions,
+    recoveryPlan: report.recoveryPlan || report.physicalAlerts,
+    tacticalCorrections: report.tacticalCorrections || report.notWorked,
+    setPiecesReview: report.setPiecesReview,
+  };
+}
+
+function getPostMatchDaySuggestion(dayKey, focus) {
+  if (!focus) return "";
+  const suggestions = {
+    "MD+1": focus.recoveryPlan,
+    "MD-4": focus.nextWeekFocus || focus.trainingActions,
+    "MD-3": focus.trainingActions || focus.tacticalCorrections,
+    "MD-2": focus.tacticalCorrections || focus.setPiecesReview,
+    "MD-1": focus.setPiecesReview || focus.nextWeekFocus,
+  };
+  return suggestions[dayKey] || "";
+}
+
 export default function Microcycle({
   sessions = [], matches = [], players = [], gpsSessions = [] }) {
 
@@ -79,6 +118,7 @@ export default function Microcycle({
   }, [matches, today]);
 
   const anchorMatch = nextMatch || lastMatch;
+  const postMatchFocus = useMemo(() => getPostMatchMicrocycleFocus(lastMatch), [lastMatch]);
 
   const microDays = useMemo(() => {
     if (!anchorMatch?.date) return [];
@@ -160,6 +200,7 @@ export default function Microcycle({
             <MicroDayCard
               key={day.key}
               day={day}
+              postMatchSuggestion={getPostMatchDaySuggestion(day.key, postMatchFocus)}
               onOpenSession={(id) => navigate(`/session-attendance/${id}`)}
               onOpenMatch={(id) => navigate(`/match-day/${id}`)}
               onCreateSession={() => navigate("/trainings")}
@@ -168,6 +209,34 @@ export default function Microcycle({
         </section>
 
         <aside style={mc.side}>
+          {postMatchFocus && (
+            <AppCard>
+              <div style={mc.cardHead}>
+                <div>
+                  <p style={mc.eyebrow}>Dal post-gara</p>
+                  <h3 style={mc.sideTitle}>Obiettivi microciclo</h3>
+                </div>
+                <Badge tone="purple">Report</Badge>
+              </div>
+
+              <div style={mc.focusList}>
+                {postMatchFocus.rows.map((row) => (
+                  <div key={row.label} style={mc.focusRow}>
+                    <span>{row.label}</span>
+                    <p>{row.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div style={mc.sideActions}>
+                <Button variant="ghost" onClick={() => navigate(`/post-match/${postMatchFocus.match.id}`)}>
+                  Apri post-gara
+                </Button>
+                <Button onClick={() => navigate("/trainings")}>Crea seduta</Button>
+              </div>
+            </AppCard>
+          )}
+
           <AppCard>
             <div style={mc.cardHead}>
               <div>
@@ -222,7 +291,7 @@ export default function Microcycle({
   );
 }
 
-function MicroDayCard({ day, onOpenSession, onOpenMatch, onCreateSession }) {
+function MicroDayCard({ day, postMatchSuggestion, onOpenSession, onOpenMatch, onCreateSession }) {
   const hasWork = day.sessions.length || day.matches.length;
   return (
     <AppCard>
@@ -249,6 +318,13 @@ function MicroDayCard({ day, onOpenSession, onOpenMatch, onCreateSession }) {
             <MiniMetric label="Load" value={day.realLoad || "—"} />
             <MiniMetric label="GPS" value={day.gps.distance ? `${Math.round(day.gps.distance / 1000)} km` : "—"} />
           </div>
+
+          {postMatchSuggestion && (
+            <div style={mc.suggestionBox}>
+              <Badge tone="purple">Post-gara</Badge>
+              <span>{postMatchSuggestion}</span>
+            </div>
+          )}
 
           {hasWork ? (
             <div style={mc.eventList}>
@@ -363,6 +439,17 @@ const mc = {
     gap: 5,
   },
   eventList: { display: "grid", gap: 8 },
+  suggestionBox: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 10,
+    borderRadius: 14,
+    padding: "10px 12px",
+    background: "rgba(168,85,247,0.10)",
+    border: "1px solid rgba(168,85,247,0.24)",
+    color: "#e9d5ff",
+    lineHeight: 1.4,
+  },
   eventRow: {
     width: "100%",
     border: "1px solid rgba(255,255,255,0.08)",
@@ -408,4 +495,11 @@ const mc = {
   },
   playerName: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   sideActions: { display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 },
+  focusList: { display: "grid", gap: 10 },
+  focusRow: {
+    borderRadius: 14,
+    padding: "11px 12px",
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
 };
