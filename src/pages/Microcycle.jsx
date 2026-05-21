@@ -98,6 +98,35 @@ function getPostMatchDaySuggestion(dayKey, focus) {
   return suggestions[dayKey] || "";
 }
 
+function getTrainingThemeFromDay(dayKey) {
+  if (dayKey === "MD+1") return "Recupero";
+  if (dayKey === "MD-4") return "Possesso";
+  if (dayKey === "MD-3") return "Transizione";
+  if (dayKey === "MD-2") return "Fase difensiva";
+  if (dayKey === "MD-1") return "Palla inattiva";
+  return "Costruzione";
+}
+
+function buildTrainingDraft(day, focus, match) {
+  const suggestion = getPostMatchDaySuggestion(day.key, focus);
+  const focusRows = focus?.rows || [];
+  const sourceRows = focusRows
+    .map((row) => `${row.label}: ${row.value}`)
+    .join("\n");
+
+  return {
+    title: `${day.key} · ${day.planned?.label || "Seduta"}${match?.opponent ? ` vs ${match.opponent}` : ""}`,
+    date: day.dateKey,
+    type: "Allenamento",
+    theme: getTrainingThemeFromDay(day.key),
+    matchDayDistance: day.key,
+    objective: suggestion || focus?.nextWeekFocus || "",
+    notes: sourceRows ? `Da report post-gara:\n${sourceRows}` : "",
+    exercises: [],
+    attendance: {},
+  };
+}
+
 export default function Microcycle({
   sessions = [], matches = [], players = [], gpsSessions = [] }) {
 
@@ -155,6 +184,14 @@ export default function Microcycle({
   const weeklyLoad = microDays.reduce((sum, day) => sum + day.realLoad, 0);
   const gpsDistance = microDays.reduce((sum, day) => sum + day.gps.distance, 0);
 
+  function createTrainingFromDay(day) {
+    navigate("/trainings", {
+      state: {
+        draftTraining: buildTrainingDraft(day, postMatchFocus, anchorMatch),
+      },
+    });
+  }
+
   if (!anchorMatch) {
     return (
       <div style={styles.page}>
@@ -203,7 +240,7 @@ export default function Microcycle({
               postMatchSuggestion={getPostMatchDaySuggestion(day.key, postMatchFocus)}
               onOpenSession={(id) => navigate(`/session-attendance/${id}`)}
               onOpenMatch={(id) => navigate(`/match-day/${id}`)}
-              onCreateSession={() => navigate("/trainings")}
+              onCreateSession={() => createTrainingFromDay(day)}
             />
           ))}
         </section>
@@ -232,7 +269,9 @@ export default function Microcycle({
                 <Button variant="ghost" onClick={() => navigate(`/post-match/${postMatchFocus.match.id}`)}>
                   Apri post-gara
                 </Button>
-                <Button onClick={() => navigate("/trainings")}>Crea seduta</Button>
+                <Button onClick={() => createTrainingFromDay(microDays[1] || microDays[0])}>
+                  Crea seduta
+                </Button>
               </div>
             </AppCard>
           )}

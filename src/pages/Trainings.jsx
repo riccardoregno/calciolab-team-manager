@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
@@ -20,6 +20,7 @@ function Trainings({
 
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast, ToastContainer } = useToast();
   const [confirmState, setConfirmState] = useState(null);
   const [search, setSearch] = useState("");
@@ -41,7 +42,15 @@ function Trainings({
     return [...(exercises || []), ...fp5Only];
   }, [exercises, fp5Catalog]);
 
-  const [form, setForm] = useState(emptyTraining());
+  const [form, setForm] = useState(() => getInitialTrainingForm(location.state?.draftTraining));
+
+  useEffect(() => {
+    const draftTraining = location.state?.draftTraining;
+    if (!draftTraining) return;
+
+    showToast("Bozza seduta caricata dal microciclo", "info");
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate, showToast]);
 
   // RPE calcolato dalla distanza dalla gara
   const rpeTarget = RPE_BY_MATCH_DAY[form.matchDayDistance] || RPE_BY_MATCH_DAY["MD-3"];
@@ -733,6 +742,16 @@ function emptyTraining() {
     notes: "",
     exercises: [],
     attendance: {},
+  };
+}
+
+function getInitialTrainingForm(draftTraining) {
+  if (!draftTraining) return emptyTraining();
+  return {
+    ...emptyTraining(),
+    ...draftTraining,
+    exercises: draftTraining.exercises || [],
+    attendance: draftTraining.attendance || {},
   };
 }
 
