@@ -100,6 +100,9 @@ function MatchDay({
   const matchVenue = getMatchVenue(selectedMatch, workspaceProfile);
   const convocationDetails = selectedMatch.convocazione?.details || {};
   const convocationCount = selectedMatch.convocazione?.playerIds?.length || 0;
+  const preMatchChecklist = getPreMatchChecklist(selectedMatch);
+  const checklistItems = getChecklistItems({ match: selectedMatch, venue: matchVenue });
+  const completedChecklist = checklistItems.filter((item) => preMatchChecklist.items[item.key]).length;
   const matchMeta = [
     formatDate(selectedMatch.date),
     selectedMatch.time ? `Ore ${selectedMatch.time}` : "",
@@ -154,6 +157,14 @@ function MatchDay({
       done: scoutingCount >= 3,
       action: "Scouting",
       onClick: () => document.getElementById("match-opponent-scouting")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    },
+    {
+      key: "logistica",
+      title: "Logistica",
+      detail: `${completedChecklist}/${checklistItems.length} controlli pre-gara`,
+      done: completedChecklist === checklistItems.length,
+      action: "Checklist",
+      onClick: () => document.getElementById("match-pre-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" }),
     },
     {
       key: "stats",
@@ -227,6 +238,27 @@ function MatchDay({
       opponentScouting: {
         ...opponentScouting,
         ...patch,
+      },
+    });
+  }
+
+  function updatePreMatchChecklist(patch) {
+    updateSelectedMatch({
+      preMatchChecklist: {
+        ...preMatchChecklist,
+        ...patch,
+        items: {
+          ...preMatchChecklist.items,
+          ...(patch.items || {}),
+        },
+      },
+    });
+  }
+
+  function toggleChecklistItem(key) {
+    updatePreMatchChecklist({
+      items: {
+        [key]: !preMatchChecklist.items[key],
       },
     });
   }
@@ -517,6 +549,73 @@ function MatchDay({
             Precompila da calendario
           </Button>
         </div>
+
+        <AppCard>
+          <SectionHeader
+            title="Checklist pre-gara"
+            badge={`${completedChecklist}/${checklistItems.length}`}
+          />
+          <div id="match-pre-checklist" />
+          <div style={matchDayStyles.checklistMetaGrid}>
+            <label style={matchDayStyles.smallField}>
+              Arrivo staff
+              <input
+                type="time"
+                value={preMatchChecklist.staffArrivalTime}
+                onChange={(event) => updatePreMatchChecklist({ staffArrivalTime: event.target.value })}
+                style={matchDayStyles.smallInput}
+              />
+            </label>
+            <label style={matchDayStyles.smallField}>
+              Responsabile
+              <input
+                value={preMatchChecklist.staffResponsible}
+                onChange={(event) => updatePreMatchChecklist({ staffResponsible: event.target.value })}
+                placeholder="Es. Team manager"
+                style={matchDayStyles.smallInput}
+              />
+            </label>
+            <label style={matchDayStyles.smallField}>
+              Arbitro / contatto gara
+              <input
+                value={preMatchChecklist.refereeInfo}
+                onChange={(event) => updatePreMatchChecklist({ refereeInfo: event.target.value })}
+                placeholder="Da confermare"
+                style={matchDayStyles.smallInput}
+              />
+            </label>
+          </div>
+          <div style={matchDayStyles.checklistGrid}>
+            {checklistItems.map((item) => {
+              const checked = Boolean(preMatchChecklist.items[item.key]);
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => toggleChecklistItem(item.key)}
+                  style={{
+                    ...matchDayStyles.checklistItem,
+                    ...(checked ? matchDayStyles.checklistItemDone : {}),
+                  }}
+                >
+                  <span style={checked ? matchDayStyles.checkIconDone : matchDayStyles.checkIconTodo}>
+                    {checked ? "✓" : ""}
+                  </span>
+                  <span>
+                    <strong>{item.label}</strong>
+                    <small>{item.detail}</small>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <textarea
+            value={preMatchChecklist.logisticsNotes}
+            onChange={(event) => updatePreMatchChecklist({ logisticsNotes: event.target.value })}
+            placeholder="Note operative: documenti, multe, maglie, acqua, materiale, indicazioni per staff e dirigenti..."
+            style={{ ...styles.input, marginTop: 12, minHeight: 80, resize: "vertical" }}
+          />
+        </AppCard>
 
         {/* ── Banner import dalla Convocazione ── */}
         {lineup.calledUpIds.length === 0 && (selectedMatch.convocazione?.playerIds?.length > 0) && (
@@ -1016,6 +1115,63 @@ function getOpponentScouting(match) {
   };
 }
 
+function getPreMatchChecklist(match) {
+  const checklist = match?.preMatchChecklist || {};
+  return {
+    items: checklist.items || {},
+    staffArrivalTime: checklist.staffArrivalTime || "",
+    staffResponsible: checklist.staffResponsible || "",
+    refereeInfo: checklist.refereeInfo || "",
+    logisticsNotes: checklist.logisticsNotes || "",
+  };
+}
+
+function getChecklistItems({ match, venue }) {
+  const details = match?.convocazione?.details || {};
+  return [
+    {
+      key: "documents",
+      label: "Documenti e tessere",
+      detail: "Controllo lista gara, documenti giocatori e autorizzazioni",
+    },
+    {
+      key: "kits",
+      label: "Divise e materiale gara",
+      detail: details.kit || "Completi gara, portieri, pettorine e cambio colore",
+    },
+    {
+      key: "water",
+      label: "Acqua e supporto panchina",
+      detail: "Acqua, ghiaccio, borse, asciugamani e materiale staff",
+    },
+    {
+      key: "medical",
+      label: "Borsa medica",
+      detail: "Primo soccorso, tape, ghiaccio istantaneo e farmaci consentiti",
+    },
+    {
+      key: "field",
+      label: "Campo e spogliatoio",
+      detail: venue || details.meetingPlace || "Verifica campo, accessi e spogliatoio",
+    },
+    {
+      key: "referee",
+      label: "Arbitro e distinta",
+      detail: "Consegna distinta, riconoscimento e comunicazioni ufficiali",
+    },
+    {
+      key: "opponentLineup",
+      label: "Distinta avversaria",
+      detail: match?.opponentScouting?.attachment ? "Allegato gia caricato" : "Caricare PDF/foto appena disponibile",
+    },
+    {
+      key: "warmup",
+      label: "Warm-up e palloni",
+      detail: "Palloni, cinesini, elastici e spazio riscaldamento",
+    },
+  ];
+}
+
 function hasText(value) {
   return String(value || "").trim().length > 0;
 }
@@ -1282,6 +1438,69 @@ const matchDayStyles = {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: 18,
+  },
+  checklistMetaGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+    gap: 10,
+    marginBottom: 14,
+  },
+  smallField: {
+    display: "grid",
+    gap: 6,
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+  },
+  smallInput: {
+    width: "100%",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.1)",
+    background: "rgba(15,23,42,0.82)",
+    color: "white",
+    padding: "9px 10px",
+    boxSizing: "border-box",
+  },
+  checklistGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))",
+    gap: 10,
+  },
+  checklistItem: {
+    display: "grid",
+    gridTemplateColumns: "24px 1fr",
+    gap: 10,
+    alignItems: "start",
+    textAlign: "left",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 12,
+    padding: 12,
+    background: "rgba(255,255,255,0.04)",
+    color: "#e2e8f0",
+    cursor: "pointer",
+  },
+  checklistItemDone: {
+    border: "1px solid rgba(34,197,94,0.32)",
+    background: "rgba(34,197,94,0.1)",
+  },
+  checkIconTodo: {
+    width: 22,
+    height: 22,
+    borderRadius: 8,
+    border: "1px solid rgba(148,163,184,0.4)",
+    background: "rgba(15,23,42,0.8)",
+  },
+  checkIconDone: {
+    width: 22,
+    height: 22,
+    borderRadius: 8,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(34,197,94,0.22)",
+    color: "#86efac",
+    fontWeight: 900,
   },
   sectionHeader: {
     display: "flex",
