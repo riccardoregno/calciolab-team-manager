@@ -33,6 +33,11 @@ import {
 
 const DASHBOARD_SECTION_KEYS = ["nextEvent", "kpis", "rosterStatus", "weekFocus", "coachAlerts", "recentActivities", "quickActions", "rewardCenter"];
 const DEFAULT_SECTION_ORDER = DASHBOARD_SECTION_KEYS;
+const OBJECTIVE_STATUS = {
+  todo: { labelKey: "pages.dashboard.objectiveTodo", tone: "orange" },
+  worked: { labelKey: "pages.dashboard.objectiveWorked", tone: "blue" },
+  solved: { labelKey: "pages.dashboard.objectiveSolved", tone: "green" },
+};
 
 function SortableSection({ id, children }) {
   const { t } = useTranslation();
@@ -78,6 +83,27 @@ function SortableSection({ id, children }) {
       {children}
     </div>
   );
+}
+
+function getObjectiveStatusMeta(status) {
+  return OBJECTIVE_STATUS[status] || OBJECTIVE_STATUS.todo;
+}
+
+function getOpenPostMatchCorrections(sessions = [], matches = []) {
+  return sessions
+    .filter((session) =>
+      session.sourceType === "postMatch" && (session.objectiveStatus || "todo") !== "solved"
+    )
+    .map((session) => {
+      const match = matches.find((item) => String(item.id) === String(session.sourceMatchId));
+      return { ...session, sourceMatch: match };
+    })
+    .sort((a, b) => {
+      const statusWeight = { todo: 0, worked: 1, solved: 2 };
+      const byStatus = (statusWeight[a.objectiveStatus || "todo"] ?? 0) - (statusWeight[b.objectiveStatus || "todo"] ?? 0);
+      if (byStatus !== 0) return byStatus;
+      return new Date(a.date || 0) - new Date(b.date || 0);
+    });
 }
 
 function Dashboard({
@@ -174,6 +200,7 @@ function Dashboard({
     return date >= today && date <= weekEnd;
   }).slice(0, 5);
   const upcomingWeekEvents = upcomingWeekAgenda.length;
+  const openCorrections = getOpenPostMatchCorrections(sessions, matches);
 
   const availablePlayers = players.filter(
     (p) => !p.status || p.status === "Disponibile"
@@ -998,6 +1025,14 @@ function Dashboard({
         </div>
       </AppCard>
 
+      {openCorrections.length > 0 && (
+        <OpenCorrectionsCard
+          corrections={openCorrections}
+          navigate={navigate}
+          t={t}
+        />
+      )}
+
       {/* Sezioni draggable */}
       <DndContext onDragEnd={handleSectionDragEnd} collisionDetection={closestCenter}>
         <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
@@ -1178,6 +1213,64 @@ function SponsorRoleDashboard({ appSettings, matches }) {
         </AppCard>
       </div>
     </div>
+  );
+}
+
+function OpenCorrectionsCard({ corrections, navigate, t }) {
+  const todoCount = corrections.filter((item) => (item.objectiveStatus || "todo") === "todo").length;
+  const workedCount = corrections.filter((item) => item.objectiveStatus === "worked").length;
+
+  return (
+    <AppCard style={{ marginBottom: 18 }}>
+      <div style={correctionStyles.head}>
+        <div>
+          <Badge tone={todoCount ? "orange" : "blue"}>
+            {t("pages.dashboard.openCorrectionsBadge", { count: corrections.length })}
+          </Badge>
+          <h2 style={correctionStyles.title}>{t("pages.dashboard.openCorrectionsTitle")}</h2>
+          <p style={correctionStyles.muted}>{t("pages.dashboard.openCorrectionsSubtitle")}</p>
+        </div>
+
+        <div style={correctionStyles.stats}>
+          <MiniStatus label={t("pages.dashboard.objectiveTodo")} value={todoCount} tone="orange" />
+          <MiniStatus label={t("pages.dashboard.objectiveWorked")} value={workedCount} tone="blue" />
+        </div>
+      </div>
+
+      <div style={correctionStyles.list}>
+        {corrections.slice(0, 4).map((session) => {
+          const status = getObjectiveStatusMeta(session.objectiveStatus);
+          const matchLabel = session.sourceMatchLabel || session.sourceMatch?.opponent || session.sourceMatch?.title || t("pages.dashboard.sourceReport");
+          return (
+            <div key={session.id} style={correctionStyles.row}>
+              <div style={{ minWidth: 0 }}>
+                <div style={correctionStyles.rowTop}>
+                  <strong>{session.sourceSummary || session.objective || session.title}</strong>
+                  <Badge tone={status.tone}>{t(status.labelKey)}</Badge>
+                </div>
+                <p style={correctionStyles.meta}>
+                  {matchLabel} · {formatDate(session.date)} · {session.theme || t("common.session")}
+                </p>
+                {session.objectiveReview && (
+                  <p style={correctionStyles.review}>{session.objectiveReview}</p>
+                )}
+              </div>
+
+              <div style={correctionStyles.actions}>
+                {session.sourceMatchId && (
+                  <Button variant="ghost" onClick={() => navigate(`/post-match/${session.sourceMatchId}`)}>
+                    {t("navigation.items.postMatch")}
+                  </Button>
+                )}
+                <Button onClick={() => navigate("/trainings")}>
+                  {t("pages.dashboard.openSession")}
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </AppCard>
   );
 }
 
@@ -1655,6 +1748,70 @@ const roleDashboardStyles = {
     borderRadius: 12,
     background: "rgba(255,255,255,0.045)",
     border: "1px solid rgba(255,255,255,0.08)",
+  },
+};
+
+const correctionStyles = {
+  head: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gap: 18,
+    alignItems: "start",
+  },
+  title: {
+    margin: "12px 0 6px",
+    lineHeight: 1.12,
+  },
+  muted: {
+    margin: 0,
+    color: "#94a3b8",
+    lineHeight: 1.45,
+  },
+  stats: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(90px, 1fr))",
+    gap: 10,
+    minWidth: 210,
+  },
+  list: {
+    display: "grid",
+    gap: 10,
+    marginTop: 16,
+  },
+  row: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gap: 14,
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 16,
+    background: "rgba(255,255,255,0.045)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+  rowTop: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+    minWidth: 0,
+  },
+  meta: {
+    margin: "6px 0 0",
+    color: "#94a3b8",
+    lineHeight: 1.35,
+    fontSize: 13,
+  },
+  review: {
+    margin: "8px 0 0",
+    color: "#c4b5fd",
+    lineHeight: 1.35,
+    fontSize: 13,
+  },
+  actions: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
   },
 };
 
