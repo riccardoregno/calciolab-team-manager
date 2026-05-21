@@ -207,13 +207,13 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
         <AppCard>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <div>
-              <h3 style={{ margin: "0 0 6px", lineHeight: 1.2 }}>Import calendario completato</h3>
+              <h3 style={{ margin: "0 0 6px", lineHeight: 1.2 }}>{t("pages.matches.importCompleted")}</h3>
               <p style={{ color: "#94a3b8", margin: 0 }}>
-                {importSummary.fileName} · {importSummary.added} gare aggiunte
-                {importSummary.skipped > 0 ? ` · ${importSummary.skipped} duplicate ignorate` : ""}
+                {importSummary.fileName} · {importSummary.added} {t("pages.matches.matchesAdded")}
+                {importSummary.skipped > 0 ? ` · ${importSummary.skipped} ${t("pages.matches.duplicatesIgnored")}` : ""}
               </p>
             </div>
-            <Button variant="ghost" onClick={() => setImportSummary(null)}>Nascondi</Button>
+            <Button variant="ghost" onClick={() => setImportSummary(null)}>{t("pages.matches.hideImport")}</Button>
           </div>
         </AppCard>
       )}
@@ -442,28 +442,28 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
             />
 
             <input
-              placeholder="Competizione / girone"
+              placeholder={t("pages.matches.competitionPlaceholder")}
               value={form.competition}
               onChange={(e) => setForm({ ...form, competition: e.target.value })}
               style={styles.input}
             />
 
             <input
-              placeholder="Giornata"
+              placeholder={t("pages.matches.matchdayPlaceholder")}
               value={form.matchday}
               onChange={(e) => setForm({ ...form, matchday: e.target.value })}
               style={styles.input}
             />
 
             <input
-              placeholder="Nome campo"
+              placeholder={t("pages.matches.venueNamePlaceholder")}
               value={form.venueName}
               onChange={(e) => setForm({ ...form, venueName: e.target.value })}
               style={styles.input}
             />
 
             <input
-              placeholder="Indirizzo campo"
+              placeholder={t("pages.matches.venueAddressPlaceholder")}
               value={form.venueAddress}
               onChange={(e) => setForm({ ...form, venueAddress: e.target.value })}
               style={styles.input}
@@ -534,32 +534,32 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
 
       {importPreview && (
         <Modal
-          title="Anteprima import calendario"
+          title={t("pages.matches.importPreviewTitle")}
           onClose={() => setImportPreview(null)}
         >
           <div style={{ display: "grid", gap: 16 }}>
             <div style={previewStyles.summaryGrid}>
-              <PreviewStat label="File" value={importPreview.fileName} />
-              <PreviewStat label="Gare lette" value={importPreview.total} />
-              <PreviewStat label="Nuove" value={importPreview.newMatches.length} tone="#86efac" />
-              <PreviewStat label="Duplicate" value={importPreview.duplicates.length} tone="#fbbf24" />
+              <PreviewStat label={t("pages.matches.importFile")} value={importPreview.fileName} />
+              <PreviewStat label={t("pages.matches.importRead")} value={importPreview.total} />
+              <PreviewStat label={t("pages.matches.importNew")} value={importPreview.newMatches.length} tone="#86efac" />
+              <PreviewStat label={t("pages.matches.importDuplicates")} value={importPreview.duplicates.length} tone="#fbbf24" />
             </div>
 
             <div>
-              <h3 style={previewStyles.title}>Gare che verranno importate</h3>
+              <h3 style={previewStyles.title}>{t("pages.matches.matchesToImport")}</h3>
               {importPreview.newMatches.length === 0 ? (
-                <p style={previewStyles.muted}>Nessuna nuova gara: il calendario sembra già importato.</p>
+                <p style={previewStyles.muted}>{t("pages.matches.noNewMatches")}</p>
               ) : (
                 <div style={previewStyles.tableWrap}>
                   <table style={previewStyles.table}>
                     <thead>
                       <tr>
-                        <th style={previewStyles.th}>Data</th>
-                        <th style={previewStyles.th}>Ora</th>
-                        <th style={previewStyles.th}>Avversario</th>
-                        <th style={previewStyles.th}>Sede</th>
-                        <th style={previewStyles.th}>Campo</th>
-                        <th style={previewStyles.th}>Competizione</th>
+                        <th style={previewStyles.th}>{t("common.date")}</th>
+                        <th style={previewStyles.th}>{t("pages.matches.importTimeCol")}</th>
+                        <th style={previewStyles.th}>{t("pages.matches.opponentPlaceholder")}</th>
+                        <th style={previewStyles.th}>{t("pages.matches.importVenueType")}</th>
+                        <th style={previewStyles.th}>{t("pages.matches.importVenueName")}</th>
+                        <th style={previewStyles.th}>{t("pages.matches.importCompetition")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -581,7 +581,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
 
             {importPreview.duplicates.length > 0 && (
               <div>
-                <h3 style={previewStyles.title}>Duplicate ignorate</h3>
+                <h3 style={previewStyles.title}>{t("pages.matches.ignoredDuplicates")}</h3>
                 <div style={previewStyles.duplicateGrid}>
                   {importPreview.duplicates.slice(0, 8).map((match) => (
                     <span key={getMatchIdentity(match)} style={previewStyles.duplicatePill}>
@@ -589,7 +589,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
                     </span>
                   ))}
                   {importPreview.duplicates.length > 8 && (
-                    <span style={previewStyles.duplicatePill}>+{importPreview.duplicates.length - 8} altre</span>
+                    <span style={previewStyles.duplicatePill}>+{importPreview.duplicates.length - 8} {t("pages.matches.moreItems")}</span>
                   )}
                 </div>
               </div>
@@ -597,10 +597,10 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
 
             <div style={previewStyles.actions}>
               <Button variant="ghost" onClick={() => setImportPreview(null)}>
-                Annulla
+                {t("common.cancel")}
               </Button>
               <Button onClick={confirmCalendarImport} disabled={importPreview.newMatches.length === 0}>
-                Conferma import
+                {t("pages.matches.confirmImport")}
               </Button>
             </div>
           </div>

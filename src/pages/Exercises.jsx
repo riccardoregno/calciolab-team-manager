@@ -77,7 +77,7 @@ function Exercises({
 
   function saveExercise() {
     if (!form.title.trim()) {
-      showToast("Inserisci il titolo esercizio", "warn");
+      showToast(t("pages.exercises.titleRequired"), "warn");
       return;
     }
 
@@ -113,8 +113,8 @@ function Exercises({
 
   function deleteExercise(id) {
     setConfirmState({
-      message: "Vuoi eliminare questo esercizio?",
-      confirmLabel: "Elimina",
+      message: t("pages.exercises.deleteConfirm"),
+      confirmLabel: t("pages.exercises.deleteLabel"),
       confirmTone: "red",
       onConfirm: () => setExercises((prevExercises) => prevExercises.filter((exercise) => exercise.id !== id)),
     });
@@ -122,8 +122,8 @@ function Exercises({
 
   function removeTacticalBoard(exerciseId) {
     setConfirmState({
-      message: "Vuoi rimuovere il disegno tattico da questo esercizio?",
-      confirmLabel: "Rimuovi",
+      message: t("pages.exercises.removeBoardConfirm"),
+      confirmLabel: t("pages.exercises.removeBoardLabel"),
       confirmTone: "red",
       onConfirm: () => setExercises((prevExercises) => prevExercises.map((ex) =>
         ex.id === exerciseId ? { ...ex, tacticalBoard: undefined } : ex
@@ -137,8 +137,8 @@ function Exercises({
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
         title={t("pages.exercises.title")}
-        subtitle="Crea o modifica gli esercizi personali che poi trovi nell'Eserciziario"
-        action={<Button variant="ghost" onClick={() => navigate("/exercise-library?tab=miei")}>← Torna all'Eserciziario</Button>}
+        subtitle={t("pages.exercises.subtitle")}
+        action={<Button variant="ghost" onClick={() => navigate("/exercise-library?tab=miei")}>{t("pages.exercises.backBtn")}</Button>}
       />
 
       <div
@@ -154,16 +154,16 @@ function Exercises({
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cerca esercizio..."
+          placeholder={t("pages.exercises.searchPlaceholder")}
         />
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <Badge tone="blue">
-            {exercises.length} esercizi
+            {t("pages.exercises.exerciseCount", { count: exercises.length })}
           </Badge>
 
           <Button onClick={() => setOpenModal(true)}>
-            + Nuovo esercizio
+            {t("pages.exercises.newExercise")}
           </Button>
         </div>
       </div>
@@ -171,8 +171,8 @@ function Exercises({
       {filteredExercises.length === 0 ? (
         <EmptyState
           icon="⚽"
-          title="Nessun esercizio trovato"
-          text="Crea il primo esercizio della libreria."
+          title={t("pages.exercises.noExercises")}
+          text={t("pages.exercises.noExercisesText")}
         />
       ) : (
         <div
@@ -194,9 +194,9 @@ function Exercises({
                       state: { exerciseId: exercise.id, exerciseName: exercise.title },
                     })}
                     style={exCardStyles.editBoardBtn}
-                    title="Modifica disegno nella lavagna tattica"
+                    title={t("pages.exercises.editBoardBtn")}
                   >
-                    ✏️ Modifica disegno
+                    {t("pages.exercises.editBoardBtn")}
                   </button>
                 </div>
               )}
@@ -241,8 +241,8 @@ function Exercises({
                       margin: "6px 0 0",
                     }}
                   >
-                    {exercise.category || "Categoria"} ·{" "}
-                    {exercise.level || "Livello"}
+                    {exercise.category || t("pages.exercises.categoryFallback")} ·{" "}
+                    {exercise.level || t("pages.exercises.levelFallback")}
                   </p>
                 </div>
 
@@ -265,7 +265,7 @@ function Exercises({
                   lineHeight: 1.5,
                 }}
               >
-                {exercise.description || "Nessuna descrizione"}
+                {exercise.description || t("pages.exercises.descriptionFallback")}
               </p>
 
               <div
@@ -276,14 +276,14 @@ function Exercises({
                   marginTop: 16,
                 }}
               >
-                <MiniInfo label="Durata" value={`${exercise.duration || 0} min`} />
-                <MiniInfo label="Giocatori" value={exercise.players || "-"} />
-                <MiniInfo label="Campo" value={exercise.fieldSize || "-"} />
+                <MiniInfo label={t("pages.exercises.infoLabelDuration")} value={`${exercise.duration || 0} min`} />
+                <MiniInfo label={t("pages.exercises.infoLabelPlayers")} value={exercise.players || "-"} />
+                <MiniInfo label={t("pages.exercises.infoLabelField")} value={exercise.fieldSize || "-"} />
               </div>
 
               {exercise.coachingPoints && (
                 <div style={{ marginTop: 18 }}>
-                  <h4 style={{ marginBottom: 8 }}>Coaching points</h4>
+                  <h4 style={{ marginBottom: 8 }}>{t("pages.exercises.coachingPointsTitle")}</h4>
 
                   <p style={{ color: "#94a3b8", lineHeight: 1.5 }}>
                     {exercise.coachingPoints}
@@ -297,7 +297,7 @@ function Exercises({
                   onClick={() => editExercise(exercise)}
                   style={{ flex: 1, minWidth: 90 }}
                 >
-                  Modifica
+                  {t("pages.exercises.editBtn")}
                 </Button>
 
                 {/* Disegno nella lavagna */}
@@ -308,9 +308,9 @@ function Exercises({
                       state: { exerciseId: exercise.id, exerciseName: exercise.title },
                     })}
                     style={exCardStyles.addBoardBtn}
-                    title="Crea un disegno tattico per questo esercizio"
+                    title={t("pages.exercises.addBoardBtn")}
                   >
-                    🖊️ Aggiungi disegno
+                    {t("pages.exercises.addBoardBtn")}
                   </button>
                 ) : (
                   <button
@@ -318,7 +318,7 @@ function Exercises({
                     onClick={() => removeTacticalBoard(exercise.id)}
                     style={{ ...exCardStyles.addBoardBtn, borderColor: "rgba(239,68,68,0.25)", color: "#fca5a5", background: "rgba(239,68,68,0.08)" }}
                   >
-                    🗑 Rimuovi disegno
+                    {t("pages.exercises.removeBoardBtn")}
                   </button>
                 )}
 
@@ -327,7 +327,7 @@ function Exercises({
                   onClick={() => deleteExercise(exercise.id)}
                   style={{ flex: 1, minWidth: 80 }}
                 >
-                  Elimina
+                  {t("pages.exercises.deleteBtn")}
                 </Button>
               </div>
             </AppCard>
@@ -337,7 +337,7 @@ function Exercises({
 
       {openModal && (
         <Modal
-          title={editingId ? "Modifica esercizio" : "Nuovo esercizio"}
+          title={editingId ? t("pages.exercises.modalEditTitle") : t("pages.exercises.modalAddTitle")}
           onClose={() => {
             setOpenModal(false);
             setEditingId(null);
@@ -356,7 +356,7 @@ function Exercises({
             }}
           >
             <input
-              placeholder="Titolo esercizio"
+              placeholder={t("pages.exercises.fieldTitle")}
               value={form.title}
               onChange={(e) =>
                 setForm({ ...form, title: e.target.value })
@@ -365,7 +365,7 @@ function Exercises({
             />
 
             <input
-              placeholder="Categoria"
+              placeholder={t("pages.exercises.fieldCategory")}
               value={form.category}
               onChange={(e) =>
                 setForm({ ...form, category: e.target.value })
@@ -374,7 +374,7 @@ function Exercises({
             />
 
             <input
-              placeholder="Durata"
+              placeholder={t("pages.exercises.fieldDuration")}
               value={form.duration}
               onChange={(e) =>
                 setForm({ ...form, duration: e.target.value })
@@ -383,7 +383,7 @@ function Exercises({
             />
 
             <input
-              placeholder="N. giocatori"
+              placeholder={t("pages.exercises.fieldPlayers")}
               value={form.players}
               onChange={(e) =>
                 setForm({ ...form, players: e.target.value })
@@ -398,13 +398,13 @@ function Exercises({
               }
               style={styles.input}
             >
-              <option>Bassa</option>
-              <option>Media</option>
-              <option>Alta</option>
+              <option value="Bassa">{t("pages.exercises.intBassa")}</option>
+              <option value="Media">{t("pages.exercises.intMedia")}</option>
+              <option value="Alta">{t("pages.exercises.intAlta")}</option>
             </select>
 
             <input
-              placeholder="Dimensioni campo"
+              placeholder={t("pages.exercises.fieldFieldSize")}
               value={form.fieldSize}
               onChange={(e) =>
                 setForm({ ...form, fieldSize: e.target.value })
@@ -413,7 +413,7 @@ function Exercises({
             />
 
             <textarea
-              placeholder="Descrizione"
+              placeholder={t("pages.exercises.fieldDescription")}
               value={form.description}
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
@@ -426,7 +426,7 @@ function Exercises({
             />
 
             <textarea
-              placeholder="Coaching points"
+              placeholder={t("pages.exercises.fieldCoachingPoints")}
               value={form.coachingPoints}
               onChange={(e) =>
                 setForm({ ...form, coachingPoints: e.target.value })
@@ -440,7 +440,7 @@ function Exercises({
 
             <div style={{ gridColumn: "1 / -1", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
               <label style={{ ...styles.input, cursor: "pointer", flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
-                📷 Carica immagine
+                {t("pages.exercises.uploadImage")}
                 <input
                   type="file"
                   accept="image/*"
@@ -454,7 +454,7 @@ function Exercises({
                   // Prima salva l'esercizio, poi naviga alla lavagna
                   const name = form.title.trim();
                   if (!name) {
-                    showToast("Inserisci prima il titolo esercizio", "warn");
+                    showToast(t("pages.exercises.titleRequired"), "warn");
                     return;
                   }
                   const id = editingId || createId("exercise");
@@ -471,7 +471,7 @@ function Exercises({
                 }}
                 style={exCardStyles.boardShortcutBtn}
               >
-                🖊️ Disegna su lavagna
+                {t("pages.exercises.drawBoardBtn")}
               </button>
             </div>
           </div>
@@ -481,7 +481,7 @@ function Exercises({
             <div style={{ marginTop: 18, borderRadius: 14, overflow: "hidden" }}>
               <TacticalMiniPreview board={form.tacticalBoard} height={180} />
               <p style={{ color: "#64748b", fontSize: 12, margin: "8px 0 0", fontWeight: 700 }}>
-                Disegno tattico allegato — modifica dalla lavagna una volta salvato.
+                {t("pages.exercises.tacticalBoardAttached")}
               </p>
             </div>
           )}
@@ -519,11 +519,11 @@ function Exercises({
               variant="ghost"
               onClick={() => setOpenModal(false)}
             >
-              Annulla
+              {t("pages.exercises.cancel")}
             </Button>
 
             <Button onClick={saveExercise}>
-              {editingId ? "Aggiorna esercizio" : "Salva esercizio"}
+              {editingId ? t("pages.exercises.updateExercise") : t("pages.exercises.saveExercise")}
             </Button>
           </div>
         </Modal>

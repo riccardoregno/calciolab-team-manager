@@ -5,12 +5,14 @@ import PageHeader from "../components/ui/PageHeader";
 import { formatShortDate, getAvailabilityGroups, getSessionLoad } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
-const weekDays = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
-
 export default function WeekPlan({
   sessions = [], matches = [], players = [] }) {
 
   const { t } = useTranslation();
+  const weekDays = [
+    t("pages.weekPlan.dayMon"), t("pages.weekPlan.dayTue"), t("pages.weekPlan.dayWed"),
+    t("pages.weekPlan.dayThu"), t("pages.weekPlan.dayFri"), t("pages.weekPlan.daySat"), t("pages.weekPlan.daySun"),
+  ];
   const week = buildCurrentWeek();
   const events = [...sessions, ...matches];
   const availability = getAvailabilityGroups(players);
@@ -20,14 +22,14 @@ export default function WeekPlan({
     <div>
       <PageHeader
         title={t("pages.weekPlan.title")}
-        subtitle="Vista lun-dom con sedute, partite, carico e alert rosa"
+        subtitle={t("pages.weekPlan.subtitle")}
       />
 
       <div style={weekStyles.kpiGrid}>
-        <Kpi label="Sedute" value={sessions.length} tone="green" />
-        <Kpi label="Partite" value={matches.length} tone="orange" />
-        <Kpi label="Carico stimato" value={weeklyLoad || "-"} tone="purple" />
-        <Kpi label="A rischio" value={availability.injured.length + availability.limited.length} tone="red" />
+        <Kpi label={t("pages.weekPlan.kpiSessions")} value={sessions.length} tone="green" />
+        <Kpi label={t("pages.weekPlan.kpiMatches")} value={matches.length} tone="orange" />
+        <Kpi label={t("pages.weekPlan.kpiLoad")} value={weeklyLoad || "-"} tone="purple" />
+        <Kpi label={t("pages.weekPlan.kpiAtRisk")} value={availability.injured.length + availability.limited.length} tone="red" />
       </div>
 
       <div style={weekStyles.grid}>
@@ -42,7 +44,7 @@ export default function WeekPlan({
                   <p style={weekStyles.muted}>{formatShortDate(day.key)}</p>
                 </div>
                 <Badge tone={dayEvents.length ? "blue" : "purple"}>
-                  {dayEvents.length || "Off"}
+                  {dayEvents.length || t("pages.weekPlan.dayOff")}
                 </Badge>
               </div>
 
@@ -54,11 +56,11 @@ export default function WeekPlan({
                         {event.type}
                       </Badge>
                       <strong>{event.title}</strong>
-                      <span>{event.theme || event.opponent || event.objective || "Obiettivo da definire"}</span>
+                      <span>{event.theme || event.opponent || event.objective || t("pages.weekPlan.dayObjectiveFallback")}</span>
                     </div>
                   ))
                 ) : (
-                  <p style={weekStyles.muted}>Recupero, analisi o riposo.</p>
+                  <p style={weekStyles.muted}>{t("pages.weekPlan.dayRestText")}</p>
                 )}
               </div>
             </AppCard>
@@ -69,16 +71,16 @@ export default function WeekPlan({
       <AppCard>
         <div style={weekStyles.alertHeader}>
           <div>
-            <h3 style={{ margin: 0 }}>Alert staff</h3>
-            <p style={weekStyles.muted}>Giocatori da monitorare nella settimana</p>
+            <h3 style={{ margin: 0 }}>{t("pages.weekPlan.alertTitle")}</h3>
+            <p style={weekStyles.muted}>{t("pages.weekPlan.alertSubtitle")}</p>
           </div>
-          <Button onClick={() => window.print()}>Stampa settimana</Button>
+          <Button onClick={() => window.print()}>{t("pages.weekPlan.printWeek")}</Button>
         </div>
 
         <div style={weekStyles.alertGrid}>
-          <AlertColumn title="Infortunati" players={availability.injured} />
-          <AlertColumn title="Recupero/Differenziato" players={availability.limited} />
-          <AlertColumn title="Squalificati" players={availability.suspended} />
+          <AlertColumn title={t("pages.weekPlan.alertInjured")} players={availability.injured} />
+          <AlertColumn title={t("pages.weekPlan.alertRecovery")} players={availability.limited} />
+          <AlertColumn title={t("pages.weekPlan.alertSuspended")} players={availability.suspended} />
         </div>
       </AppCard>
     </div>
@@ -86,17 +88,18 @@ export default function WeekPlan({
 }
 
 function AlertColumn({ title, players }) {
+  const { t } = useTranslation();
   return (
     <div style={weekStyles.alertColumn}>
       <strong>{title}</strong>
       {players.length ? (
         players.map((player) => (
           <span key={player.id}>
-            {player.name} {player.expectedReturn ? `- rientro ${player.expectedReturn}` : ""}
+            {player.name} {player.expectedReturn ? t("pages.weekPlan.expectedReturn", { date: player.expectedReturn }) : ""}
           </span>
         ))
       ) : (
-        <span>Nessun giocatore</span>
+        <span>{t("pages.weekPlan.alertNoPlayers")}</span>
       )}
     </div>
   );

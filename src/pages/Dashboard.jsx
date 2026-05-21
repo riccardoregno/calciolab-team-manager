@@ -13,6 +13,7 @@ import { useAuth } from "../hooks/useAuth";
 import { loadAllPlayerStats } from "../services/playerProfile";
 import { useTranslation } from "../i18n";
 
+
 import {
   formatDate,
   formatShortDate,
@@ -28,12 +29,13 @@ import {
   normalizeAppSettings,
 } from "../utils/helpers";
 
-const TONE_LABEL = { red: "Urgente", orange: "Attenzione", green: "OK", blue: "Info", purple: "Nota" };
+// TONE_LABEL is now built inside each component that uses it via t()
 
 const DASHBOARD_SECTION_KEYS = ["nextEvent", "kpis", "rosterStatus", "weekFocus", "coachAlerts", "recentActivities", "quickActions", "rewardCenter"];
 const DEFAULT_SECTION_ORDER = DASHBOARD_SECTION_KEYS;
 
 function SortableSection({ id, children }) {
+  const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
 
@@ -69,7 +71,7 @@ function SortableSection({ id, children }) {
           background: "rgba(255,255,255,0.04)",
           border: "1px solid rgba(255,255,255,0.07)",
         }}
-        title="Trascina per riordinare"
+        title={t("pages.dashboard.dragHandle")}
       >
         ⠿
       </div>
@@ -266,32 +268,32 @@ function Dashboard({
                   <NextMatchCard match={nextEvent} navigate={navigate} />
                 ) : (
                   <>
-                    <h3 style={{ marginTop: 0 }}>Prossimo evento</h3>
+                    <h3 style={{ marginTop: 0 }}>{t("pages.dashboard.nextEvent")}</h3>
                     {nextEvent ? (
                       <div>
                         <Badge tone="green">{nextEvent.type}</Badge>
                         <h2 style={{ marginBottom: 8 }}>{nextEvent.title}</h2>
                         <p style={{ color: "#94a3b8" }}>{formatDate(nextEvent.date)}</p>
                         <p style={{ color: "#cbd5e1" }}>
-                          {nextEvent.theme || "Seduta programmata"}
+                          {nextEvent.theme || t("pages.dashboard.scheduledSession")}
                         </p>
                         <Button
                           variant="ghost"
                           style={{ marginTop: 14 }}
                           onClick={() => navigate("/trainings")}
                         >
-                          Vai alle sedute
+                          {t("pages.dashboard.goToSessions")}
                         </Button>
                       </div>
                     ) : (
                       <>
-                        <p style={{ color: "#94a3b8" }}>Nessun evento programmato.</p>
+                        <p style={{ color: "#94a3b8" }}>{t("pages.dashboard.noScheduledEvent")}</p>
                         <Button
                           variant="ghost"
                           style={{ marginTop: 10 }}
                           onClick={() => navigate("/calendar")}
                         >
-                          Apri calendario
+                          {t("pages.dashboard.openCalendar")}
                         </Button>
                       </>
                     )}
@@ -315,57 +317,57 @@ function Dashboard({
               }}
             >
               <KpiCard
-                label="Giocatori"
+                label={t("pages.dashboard.teamPlayers")}
                 value={players.length}
                 icon="👥"
-                note={`${availablePlayers} disponibili`}
+                note={`${availablePlayers} ${t("pages.dashboard.available")}`}
               />
               <KpiCard
-                label="Gol squadra"
+                label={t("pages.dashboard.teamGoals")}
                 value={totalGoals}
                 icon="⚽"
-                note={realTopScorer?.goals ? `Top: ${realTopScorer.name}` : "Nessun gol"}
+                note={realTopScorer?.goals ? `Top: ${realTopScorer.name}` : t("pages.dashboard.noGoals")}
               />
               <KpiCard
-                label="Assist squadra"
+                label={t("pages.dashboard.teamAssists")}
                 value={totalAssists}
                 icon="🅰️"
                 note={
                   realTopAssistman?.assists
                     ? `Top: ${realTopAssistman.name}`
-                    : "Nessun assist"
+                    : t("pages.dashboard.noAssists")
                 }
               />
               <KpiCard
-                label="Minuti totali"
+                label={t("pages.dashboard.totalMinutes")}
                 value={totalMinutes}
                 icon="⏱️"
-                note={realTopMinutes?.minutes ? `Top: ${realTopMinutes.name}` : "Nessun minuto registrato"}
+                note={realTopMinutes?.minutes ? `Top: ${realTopMinutes.name}` : t("pages.dashboard.noMinutes")}
               />
             </div>
 
             {seasonRecord.played > 0 && (
               <AppCard style={{ marginBottom: 24 }}>
                 <SectionTitle
-                  title="Record stagionale"
-                  subtitle={`${seasonRecord.played} partite giocate · ${seasonRecord.goalsFor} gol fatti · ${seasonRecord.goalsAgainst} gol subiti`}
+                  title={t("pages.dashboard.seasonRecord")}
+                  subtitle={`${seasonRecord.played} ${t("pages.dashboard.matchesPlayed")} · ${seasonRecord.goalsFor} ${t("pages.dashboard.goalsMade")} · ${seasonRecord.goalsAgainst} ${t("pages.dashboard.goalsConceeded")}`}
                 />
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(90px,1fr))", gap: 14 }}>
-                  <SeasonRecordStat label="Vittorie" value={seasonRecord.wins} tone="green" />
-                  <SeasonRecordStat label="Pareggi" value={seasonRecord.draws} tone="blue" />
-                  <SeasonRecordStat label="Sconfitte" value={seasonRecord.losses} tone="red" />
+                  <SeasonRecordStat label={t("pages.dashboard.wins")} value={seasonRecord.wins} tone="green" />
+                  <SeasonRecordStat label={t("pages.dashboard.draws")} value={seasonRecord.draws} tone="blue" />
+                  <SeasonRecordStat label={t("pages.dashboard.losses")} value={seasonRecord.losses} tone="red" />
                 </div>
                 <div style={{ marginTop: 14, display: "flex", gap: 18, flexWrap: "wrap" }}>
                   <div style={srStyles.pill}>
-                    <span style={srStyles.pillLabel}>Gol fatti</span>
+                    <span style={srStyles.pillLabel}>{t("pages.dashboard.goalsScoredLabel")}</span>
                     <strong style={{ ...srStyles.pillValue, color: "#22c55e" }}>{seasonRecord.goalsFor}</strong>
                   </div>
                   <div style={srStyles.pill}>
-                    <span style={srStyles.pillLabel}>Gol subiti</span>
+                    <span style={srStyles.pillLabel}>{t("pages.dashboard.goalsConcededLabel")}</span>
                     <strong style={{ ...srStyles.pillValue, color: "#f87171" }}>{seasonRecord.goalsAgainst}</strong>
                   </div>
                   <div style={srStyles.pill}>
-                    <span style={srStyles.pillLabel}>Differenza reti</span>
+                    <span style={srStyles.pillLabel}>{t("pages.dashboard.goalDifference")}</span>
                     <strong style={{
                       ...srStyles.pillValue,
                       color: seasonRecord.goalsFor - seasonRecord.goalsAgainst >= 0 ? "#22c55e" : "#f87171",
@@ -375,7 +377,7 @@ function Dashboard({
                     </strong>
                   </div>
                   <div style={srStyles.pill}>
-                    <span style={srStyles.pillLabel}>% vittorie</span>
+                    <span style={srStyles.pillLabel}>{t("pages.dashboard.winPercentage")}</span>
                     <strong style={srStyles.pillValue}>
                       {seasonRecord.played > 0
                         ? Math.round((seasonRecord.wins / seasonRecord.played) * 100)
@@ -388,8 +390,8 @@ function Dashboard({
 
             <AppCard>
               <SectionTitle
-                title="Top performers"
-                subtitle="Classifica stagionale per gol, assist, minuti e presenze"
+                title={t("pages.dashboard.topPerformers")}
+                subtitle={t("pages.dashboard.topPerformersSubtitle")}
               />
 
               <div
@@ -400,9 +402,9 @@ function Dashboard({
                 }}
               >
                 <TopPerformer
-                  label="Top scorer"
+                  label={t("pages.dashboard.topScorer")}
                   value={realTopScorer?.goals || 0}
-                  name={realTopScorer?.goals ? realTopScorer.name : "Nessun dato"}
+                  name={realTopScorer?.goals ? realTopScorer.name : t("pages.dashboard.noData")}
                   tone="green"
                   onClick={() =>
                     realTopScorer?.id && navigate(`/players/${realTopScorer.id}`)
@@ -410,12 +412,12 @@ function Dashboard({
                 />
 
                 <TopPerformer
-                  label="Top assist"
+                  label={t("pages.dashboard.topAssist")}
                   value={realTopAssistman?.assists || 0}
                   name={
                     realTopAssistman?.assists
                       ? realTopAssistman.name
-                      : "Nessun dato"
+                      : t("pages.dashboard.noData")
                   }
                   tone="blue"
                   onClick={() =>
@@ -424,9 +426,9 @@ function Dashboard({
                 />
 
                 <TopPerformer
-                  label="Più minuti"
+                  label={t("pages.dashboard.mostMinutes")}
                   value={realTopMinutes?.minutes || 0}
-                  name={realTopMinutes?.minutes ? realTopMinutes.name : "Nessun dato"}
+                  name={realTopMinutes?.minutes ? realTopMinutes.name : t("pages.dashboard.noData")}
                   tone="orange"
                   onClick={() =>
                     realTopMinutes?.id && navigate(`/players/${realTopMinutes.id}`)
@@ -434,12 +436,12 @@ function Dashboard({
                 />
 
                 <TopPerformer
-                  label="Più presenze"
+                  label={t("pages.dashboard.mostPresences")}
                   value={realTopPresence?.appearances || 0}
                   name={
                     realTopPresence?.appearances
                       ? realTopPresence.name
-                      : "Nessun dato"
+                      : t("pages.dashboard.noData")
                   }
                   tone="purple"
                   onClick={() =>
@@ -456,8 +458,8 @@ function Dashboard({
         return (
           <AppCard>
             <SectionTitle
-              title="Stato rosa"
-              subtitle="Disponibilità generale squadra"
+              title={t("pages.dashboard.rosterStatus")}
+              subtitle={t("pages.dashboard.rosterAvailability")}
             />
 
             <div
@@ -469,22 +471,22 @@ function Dashboard({
               }}
             >
               <MiniStatus
-                label="Disponibili"
+                label={t("pages.dashboard.availableCount")}
                 value={players.filter((p) => !p.status || p.status === "Disponibile").length}
                 tone="green"
               />
               <MiniStatus
-                label="Infortunati"
+                label={t("pages.dashboard.injuredCount")}
                 value={players.filter((p) => p.status === "Infortunato").length}
                 tone="red"
               />
               <MiniStatus
-                label="Squalificati"
+                label={t("pages.dashboard.suspendedCount")}
                 value={players.filter((p) => p.status === "Squalificato").length}
                 tone="purple"
               />
               <MiniStatus
-                label="In recupero"
+                label={t("pages.dashboard.recoveringCount")}
                 value={players.filter((p) => p.status === "Recupero" || p.status === "Differenziato").length}
                 tone="orange"
               />
@@ -492,10 +494,10 @@ function Dashboard({
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
               <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>
-                Totale rosa: {players.length}
+                {t("pages.dashboard.totalRoster")} {players.length}
               </span>
               <Button variant="ghost" onClick={() => navigate("/players")}>
-                Vai alla rosa
+                {t("pages.dashboard.goToRoster")}
               </Button>
             </div>
           </AppCard>
@@ -506,8 +508,8 @@ function Dashboard({
         return (
           <AppCard>
             <SectionTitle
-              title="Focus settimana"
-              subtitle={`${upcomingWeekEvents} eventi nei prossimi 7 giorni`}
+              title={t("pages.dashboard.weekFocus")}
+              subtitle={`${upcomingWeekEvents} ${t("pages.dashboard.weekEvents")}`}
             />
 
             {upcomingWeekAgenda.length ? (
@@ -518,11 +520,11 @@ function Dashboard({
                   return (
                     <FocusItem
                       key={`${event.type}-${event.id}-${event.date}`}
-                      label={isMatch ? "Partita" : event.type || "Seduta"}
-                      title={isMatch ? `CalcioLab - ${event.opponent || "Avversario"}` : event.title || "Seduta"}
+                      label={isMatch ? t("common.match") : event.type || t("common.session")}
+                      title={isMatch ? `CalcioLab - ${event.opponent || t("pages.matches.opponentPlaceholder")}` : event.title || t("common.session")}
                       meta={`${formatDate(event.date)}${event.theme ? ` · ${event.theme}` : ""}`}
                       tone={isMatch ? "orange" : "green"}
-                      action={isMatch ? "Apri gara" : "Apri sedute"}
+                      action={isMatch ? t("pages.dashboard.openMatch") : t("pages.dashboard.openSession")}
                       onClick={() => openAgendaEvent(event)}
                     />
                   );
@@ -532,13 +534,13 @@ function Dashboard({
               <div>
                 <EmptyState
                   icon="📅"
-                  title="Settimana vuota"
-                  text="Pianifica una seduta o inserisci una partita per dare ritmo alla settimana."
+                  title={t("pages.dashboard.emptyWeek")}
+                  text={t("pages.dashboard.emptyWeekText")}
                 />
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-                  <Button onClick={() => navigate("/trainings")}>Nuova seduta</Button>
-                  <Button variant="ghost" onClick={() => navigate("/matches")}>Nuova partita</Button>
+                  <Button onClick={() => navigate("/trainings")}>{t("pages.dashboard.newSession")}</Button>
+                  <Button variant="ghost" onClick={() => navigate("/matches")}>{t("pages.dashboard.newMatch")}</Button>
                 </div>
               </div>
             )}
@@ -550,13 +552,15 @@ function Dashboard({
         return (
           <AppCard>
             <SectionTitle
-              title="Alert coach"
-              subtitle="Cose importanti da guardare subito"
+              title={t("pages.dashboard.coachAlerts")}
+              subtitle={t("pages.dashboard.coachAlertsSubtitle")}
             />
 
             {coachAlerts.length ? (
               <div style={{ display: "grid", gap: 10 }}>
-                {coachAlerts.map((alert, index) => (
+                {coachAlerts.map((alert, index) => {
+                  const toneLabels = { red: t("pages.dashboard.toneUrgent"), orange: t("pages.dashboard.toneWarning"), green: t("pages.dashboard.toneOk"), blue: t("pages.dashboard.toneInfo"), purple: t("pages.dashboard.toneNote") };
+                  return (
                   <div
                     key={`${alert.text}-${index}`}
                     style={{
@@ -569,13 +573,14 @@ function Dashboard({
                       border: "1px solid rgba(255,255,255,0.08)",
                     }}
                   >
-                    <Badge tone={alert.tone}>{TONE_LABEL[alert.tone] || alert.tone}</Badge>
+                    <Badge tone={alert.tone}>{toneLabels[alert.tone] || alert.tone}</Badge>
                     <span>{alert.text}</span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
-              <p style={{ color: "#94a3b8" }}>Nessun alert prioritario.</p>
+              <p style={{ color: "#94a3b8" }}>{t("pages.dashboard.noAlerts")}</p>
             )}
           </AppCard>
         );
@@ -585,15 +590,15 @@ function Dashboard({
         return (
           <AppCard>
             <SectionTitle
-              title="Ultime attività"
-              subtitle="Sedute e partite più recenti"
+              title={t("pages.dashboard.recentActivities")}
+              subtitle={t("pages.dashboard.recentActivitiesSubtitle")}
             />
 
             {recentActivities.length === 0 ? (
               <EmptyState
                 icon="📭"
-                title="Nessuna attività"
-                text="Crea una seduta o una partita per popolare la dashboard."
+                title={t("pages.dashboard.noActivity")}
+                text={t("pages.dashboard.noActivityText")}
               />
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
@@ -637,8 +642,8 @@ function Dashboard({
         return (
           <AppCard>
             <SectionTitle
-              title="Azioni rapide"
-              subtitle="Crea o consulta velocemente"
+              title={t("pages.dashboard.quickActions")}
+              subtitle={t("pages.dashboard.quickActionsSubtitle")}
             />
 
             <div
@@ -649,37 +654,37 @@ function Dashboard({
               }}
             >
               <QuickAction
-                label="Rosa"
+                label={t("navigation.items.roster")}
                 icon="👥"
                 onClick={() => navigate("/players")}
               />
               <QuickAction
-                label="Eserciziario"
+                label={t("navigation.items.exerciseLibrary")}
                 icon="📚"
                 onClick={() => navigate("/exercise-library")}
               />
               <QuickAction
-                label="Sedute"
+                label={t("navigation.items.trainings")}
                 icon="📋"
                 onClick={() => navigate("/trainings")}
               />
               <QuickAction
-                label="Match Day"
+                label={t("navigation.items.matchDay")}
                 icon="⚽"
                 onClick={() => navigate("/match-day")}
               />
               <QuickAction
-                label="Lavori fisici"
+                label={t("navigation.items.physicalWorkouts")}
                 icon="🏃"
                 onClick={() => navigate("/physical-workouts")}
               />
               <QuickAction
-                label="Calendario"
+                label={t("navigation.items.calendar")}
                 icon="📅"
                 onClick={() => navigate("/calendar")}
               />
               <QuickAction
-                label="Genera con AI"
+                label={t("navigation.items.aiBuilder")}
                 icon="✨"
                 onClick={() => navigate("/ai-session-builder")}
               />
@@ -700,15 +705,14 @@ function Dashboard({
               }}
             >
               <div>
-                <Badge tone="purple">Piano {plan.name}</Badge>
+                <Badge tone="purple">{t("pages.premium.activePlanBadge", { plan: plan.name })}</Badge>
 
                 <h2 style={{ margin: "12px 0 6px" }}>
-                  Livello {reward.level} - {reward.title}
+                  {t("pages.premium.levelLabel", { level: reward.level, title: reward.title })}
                 </h2>
 
                 <p style={{ color: "#94a3b8", margin: 0 }}>
-                  {reward.points} punti attività · sconto potenziale{" "}
-                  {reward.discount}%.
+                  {reward.points} {t("pages.premium.activityPoints")} · {t("pages.premium.potentialDiscount")} {reward.discount}%
                 </p>
 
                 <div
@@ -739,12 +743,12 @@ function Dashboard({
                 }}
               >
                 <Button variant="ghost" onClick={() => navigate("/premium")}>
-                  Premium e reward
+                  {t("pages.dashboard.rewardAndPremium")}
                 </Button>
 
                 {plan.id === "free" && (
                   <Button onClick={() => navigate("/premium")}>
-                    Sblocca funzioni
+                    {t("pages.dashboard.unlockFeatures")}
                   </Button>
                 )}
               </div>
@@ -848,17 +852,17 @@ function Dashboard({
           </div>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {Object.entries({
-              hero: "Intro",
-              nextEvent: "Evento",
-              kpis: "KPI",
-              weekFocus: "Settimana",
-              rosterStatus: "Rosa",
-              coachAlerts: "Alert",
-              recentActivities: "Attività",
-              quickActions: "Azioni",
-              rewardCenter: "Reward",
-            }).map(([key, label]) => (
+            {[
+              ["hero", t("pages.dashboard.widgetIntro")],
+              ["nextEvent", t("pages.dashboard.widgetEvent")],
+              ["kpis", t("pages.dashboard.widgetKpi")],
+              ["weekFocus", t("pages.dashboard.widgetWeek")],
+              ["rosterStatus", t("pages.dashboard.widgetRoster")],
+              ["coachAlerts", t("pages.dashboard.widgetAlerts")],
+              ["recentActivities", t("pages.dashboard.widgetActivities")],
+              ["quickActions", t("pages.dashboard.widgetActions")],
+              ["rewardCenter", t("pages.dashboard.widgetReward")],
+            ].map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => toggleWidget(key)}
@@ -908,24 +912,24 @@ function Dashboard({
                 {billing.trialActive
                   ? "Trial"
                   : billing.trialExpired
-                  ? "Trial scaduto"
+                  ? t("pages.dashboard.trialExpired")
                   : "Free"}
               </Badge>
 
               <h2 style={{ margin: "12px 0 6px" }}>
                 {billing.trialActive
-                  ? `${billing.trialDaysLeft} giorni rimasti di prova ${billing.effectivePlan.name}`
+                  ? t("pages.dashboard.trialDaysLeft", { days: billing.trialDaysLeft, plan: billing.effectivePlan.name })
                   : billing.trialExpired
-                  ? "Riattiva un piano per sbloccare le funzioni avanzate"
-                  : "Avvia una prova Premium o Club"}
+                  ? t("pages.dashboard.reactivatePlan")
+                  : t("pages.dashboard.startTrialText")}
               </h2>
 
               <p style={{ color: "#94a3b8", margin: 0 }}>
                 {billing.trialActive
-                  ? "Accesso completo a tutte le funzioni durante il periodo di prova."
+                  ? t("pages.dashboard.trialActiveText")
                   : billing.trialExpired
-                  ? "Il tuo periodo di prova è terminato. Scegli un piano per continuare."
-                  : "Passa a Premium o Club per sbloccare match day, statistiche avanzate e molto altro."}
+                  ? t("pages.dashboard.trialExpiredText")
+                  : t("pages.dashboard.upgradeText")}
               </p>
             </div>
 
@@ -949,12 +953,11 @@ function Dashboard({
             </Badge>
 
             <h2 style={{ margin: "12px 0 6px" }}>
-              {setup.next ? setup.next.label : "Workspace pronto"}
+              {setup.next ? setup.next.label : t("pages.dashboard.workspaceReady")}
             </h2>
 
             <p style={{ color: "#94a3b8", margin: 0 }}>
-              {setup.completed}/{setup.total} passaggi completati per rendere
-              CalcioLab pronto a staff, giocatori e club.
+              {t("pages.dashboard.setupStepsCompleted", { completed: setup.completed, total: setup.total })}
             </p>
 
             <div
@@ -985,11 +988,11 @@ function Dashboard({
             }}
           >
             <Button variant="ghost" onClick={() => navigate("/onboarding")}>
-              Onboarding
+              {t("pages.dashboard.onboarding")}
             </Button>
 
             <Button onClick={() => navigate(setup.next?.path || "/settings")}>
-              Prossimo passo
+              {t("pages.dashboard.nextStep")}
             </Button>
           </div>
         </div>
@@ -1020,6 +1023,7 @@ function PlayerRoleDashboard({
   physicalTests,
   appSettings,
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const player = players[0];
   const summary = getPlayerSummary(player, { sessions, matches, physicalTests });
@@ -1034,46 +1038,45 @@ function PlayerRoleDashboard({
   return (
     <div>
       <PageHeader
-        title="Dashboard Giocatore"
-        subtitle="Programma personale, prossimi impegni e rendimento individuale"
-        badge="Vista Player"
+        title={t("pages.dashboard.playerDashboardTitle")}
+        subtitle={t("pages.dashboard.playerDashboardSubtitle")}
+        badge={t("pages.dashboard.playerView")}
       />
 
       <div style={roleDashboardStyles.heroGrid}>
         <AppCard>
           <Badge tone={player?.status === "Disponibile" ? "green" : "orange"}>
-            {player?.status || "Profilo atleta"}
+            {player?.status || t("pages.dashboard.athleteProfile")}
           </Badge>
 
           <h2 style={roleDashboardStyles.heroTitle}>
-            {player?.name || "Giocatore"}
+            {player?.name || t("common.player")}
           </h2>
 
           <p style={roleDashboardStyles.muted}>
-            {player?.role || "Ruolo non definito"}{" "}
+            {player?.role || t("pages.dashboard.undefinedRole")}{" "}
             {player?.shirtNumber ? `· #${player.shirtNumber}` : ""}
           </p>
 
           <div style={roleDashboardStyles.kpiGrid}>
-            <MiniStatus label="Minuti" value={summary.stats.minutes} tone="blue" />
-            <MiniStatus label="Gol" value={summary.stats.goals} tone="green" />
-            <MiniStatus label="Assist" value={summary.stats.assists} tone="purple" />
+            <MiniStatus label={t("common.minutes")} value={summary.stats.minutes} tone="blue" />
+            <MiniStatus label={t("common.goals")} value={summary.stats.goals} tone="green" />
+            <MiniStatus label={t("common.assists")} value={summary.stats.assists} tone="purple" />
           </div>
         </AppCard>
 
         <AppCard>
           <SectionTitle
-            title="Programma personale"
-            subtitle="Indicazioni assegnate dallo staff"
+            title={t("pages.dashboard.personalProgram")}
+            subtitle={t("pages.dashboard.personalProgramSubtitle")}
           />
 
           <p style={roleDashboardStyles.bodyText}>
-            {program ||
-              "Nessun programma individuale assegnato. Controlla l'area giocatori dopo il prossimo aggiornamento dello staff."}
+            {program || t("pages.dashboard.noProgramAssigned")}
           </p>
 
           <Button onClick={() => navigate("/player-portal")}>
-            Apri area giocatori
+            {t("pages.dashboard.openPlayerArea")}
           </Button>
         </AppCard>
       </div>
@@ -1081,22 +1084,22 @@ function PlayerRoleDashboard({
       <div style={roleDashboardStyles.twoColumns}>
         <AppCard>
           <SectionTitle
-            title="Profilo fisico"
-            subtitle="Ultimo test e gruppo di lavoro"
+            title={t("pages.dashboard.physicalProfile")}
+            subtitle={t("pages.dashboard.physicalProfileSubtitle")}
           />
 
           <InfoRows
             rows={[
-              ["Ultimo test", latestTest ? formatShortDate(latestTest.date) : "Da testare"],
-              ["Gruppo", reference.group],
+              [t("pages.dashboard.lastTest"), latestTest ? formatShortDate(latestTest.date) : t("pages.dashboard.toBeTested")],
+              [t("pages.dashboard.group"), reference.group],
               ["MAS", reference.mas ? `${reference.mas} km/h` : "-"],
             ]}
           />
         </AppCard>
 
         <AppCard>
-          <SectionTitle title="Prossimi impegni" subtitle="Calendario personale" />
-          <EventList events={nextEvents} emptyText="Nessun impegno programmato." />
+          <SectionTitle title={t("pages.dashboard.upcomingEvents")} subtitle={t("pages.dashboard.personalCalendar")} />
+          <EventList events={nextEvents} emptyText={t("pages.dashboard.noUpcomingEvents")} />
         </AppCard>
       </div>
     </div>
@@ -1104,6 +1107,7 @@ function PlayerRoleDashboard({
 }
 
 function SponsorRoleDashboard({ appSettings, matches }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const hub = appSettings.sponsorHub;
   const activeSponsors = hub.sponsors.filter((sponsor) => sponsor.active);
@@ -1117,36 +1121,36 @@ function SponsorRoleDashboard({ appSettings, matches }) {
   return (
     <div>
       <PageHeader
-        title="Dashboard Sponsor"
-        subtitle="Visibilità, offerte community e report dedicati ai partner"
-        badge="Vista Sponsor"
+        title={t("pages.dashboard.sponsorDashboardTitle")}
+        subtitle={t("pages.dashboard.sponsorDashboardSubtitle")}
+        badge={t("pages.dashboard.sponsorView")}
       />
 
       <div style={roleDashboardStyles.heroGrid}>
         <AppCard>
-          <Badge tone="purple">Partner Club</Badge>
+          <Badge tone="purple">{t("pages.dashboard.partnerClub")}</Badge>
 
           <h2 style={roleDashboardStyles.heroTitle}>
-            {mainSponsor?.name || "Sponsor principale da configurare"}
+            {mainSponsor?.name || t("pages.dashboard.noMainSponsor")}
           </h2>
 
           <p style={roleDashboardStyles.muted}>
-            {activeSponsors.length} sponsor attivi nel club.
+            {t("pages.dashboard.activeSponsorsCount", { count: activeSponsors.length })}
           </p>
 
-          <Button onClick={() => navigate("/sponsors")}>Apri sponsor hub</Button>
+          <Button onClick={() => navigate("/sponsors")}>{t("pages.dashboard.openSponsorHub")}</Button>
         </AppCard>
 
         <AppCard>
           <SectionTitle
-            title="Offerta community"
-            subtitle="Contenuto visibile a famiglie e squadra"
+            title={t("pages.dashboard.communityOffer")}
+            subtitle={t("pages.dashboard.communityOfferSubtitle")}
           />
 
           <p style={roleDashboardStyles.bodyText}>
             {mainSponsor?.offer ||
               activeSponsors[0]?.offer ||
-              "Nessuna offerta sponsor ancora inserita."}
+              t("pages.dashboard.noSponsorOffer")}
           </p>
         </AppCard>
       </div>
@@ -1154,23 +1158,23 @@ function SponsorRoleDashboard({ appSettings, matches }) {
       <div style={roleDashboardStyles.twoColumns}>
         <AppCard>
           <SectionTitle
-            title="Visibilità promessa"
-            subtitle="Asset e spazi commerciali"
+            title={t("pages.dashboard.promisedVisibility")}
+            subtitle={t("pages.dashboard.promisedVisibilitySubtitle")}
           />
 
           <p style={roleDashboardStyles.bodyText}>
             {mainSponsor?.visibility ||
-              "Dashboard, report PDF, pagina squadra e materiali club."}
+              t("pages.dashboard.defaultVisibility")}
           </p>
         </AppCard>
 
         <AppCard>
           <SectionTitle
-            title="Ultime partite"
-            subtitle="Contesto per report e comunicazioni"
+            title={t("pages.dashboard.recentMatchesTitle")}
+            subtitle={t("pages.dashboard.recentMatchesSubtitle")}
           />
 
-          <EventList events={recentMatches} emptyText="Nessuna partita registrata." />
+          <EventList events={recentMatches} emptyText={t("pages.dashboard.noMatchesRecorded")} />
         </AppCard>
       </div>
     </div>
@@ -1178,6 +1182,7 @@ function SponsorRoleDashboard({ appSettings, matches }) {
 }
 
 function PhysicalRoleDashboard({ players, matches, physicalTests, coachAlerts }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const testedPlayerIds = new Set(
     physicalTests.map((test) => String(test.playerId))
@@ -1195,37 +1200,37 @@ function PhysicalRoleDashboard({ players, matches, physicalTests, coachAlerts })
   return (
     <div>
       <PageHeader
-        title="Dashboard Preparatore"
-        subtitle="Test, gruppi fisici, carichi e disponibilità della rosa"
-        badge="Vista Prep."
+        title={t("pages.dashboard.physicalDashboardTitle")}
+        subtitle={t("pages.dashboard.physicalDashboardSubtitle")}
+        badge={t("pages.dashboard.physicalView")}
       />
 
       <div style={roleDashboardStyles.kpiGrid}>
         <KpiCard
-          label="Giocatori"
+          label={t("common.players")}
           value={players.length}
           icon="👥"
-          note="Rosa monitorata"
+          note={t("pages.dashboard.monitoredRoster")}
         />
         <KpiCard
-          label="Test registrati"
+          label={t("pages.dashboard.registeredTests")}
           value={physicalTests.length}
           icon="⏱️"
-          note={`${untestedPlayers.length} da testare`}
+          note={t("pages.dashboard.toBeTested2", { count: untestedPlayers.length })}
         />
         <KpiCard
-          label="Prossima gara"
+          label={t("pages.dashboard.nextMatch")}
           value={nextMatch ? formatShortDate(nextMatch.date) : "-"}
           icon="⚽"
-          note={nextMatch?.opponent || "Da programmare"}
+          note={nextMatch?.opponent || t("pages.dashboard.toBeScheduled")}
         />
       </div>
 
       <div style={roleDashboardStyles.twoColumns}>
         <AppCard>
           <SectionTitle
-            title="Ultimi test"
-            subtitle="Riferimenti per i lavori individuali"
+            title={t("pages.dashboard.latestTests")}
+            subtitle={t("pages.dashboard.latestTestsSubtitle")}
           />
 
           {latestTests.length ? (
@@ -1236,35 +1241,38 @@ function PhysicalRoleDashboard({ players, matches, physicalTests, coachAlerts })
                 );
                 const reference = getPhysicalReference(test);
                 return [
-                  player?.name || "Giocatore",
+                  player?.name || t("common.player"),
                   `${reference.group} · ${reference.mas || "-"} km/h`,
                 ];
               })}
             />
           ) : (
-            <p style={roleDashboardStyles.muted}>Nessun test fisico registrato.</p>
+            <p style={roleDashboardStyles.muted}>{t("pages.dashboard.noPhysicalTests")}</p>
           )}
 
-          <Button onClick={() => navigate("/physical-tests")}>Aggiorna test</Button>
+          <Button onClick={() => navigate("/physical-tests")}>{t("pages.dashboard.updateTests")}</Button>
         </AppCard>
 
         <AppCard>
-          <SectionTitle title="Alert fisici" subtitle="Priorità per la settimana" />
+          <SectionTitle title={t("pages.dashboard.physicalAlerts")} subtitle={t("pages.dashboard.physicalAlertsSubtitle")} />
 
           {coachAlerts.length ? (
             <div style={{ display: "grid", gap: 10 }}>
-              {coachAlerts.slice(0, 5).map((alert, index) => (
+              {coachAlerts.slice(0, 5).map((alert, index) => {
+                const toneLabels = { red: t("pages.dashboard.toneUrgent"), orange: t("pages.dashboard.toneWarning"), green: t("pages.dashboard.toneOk"), blue: t("pages.dashboard.toneInfo"), purple: t("pages.dashboard.toneNote") };
+                return (
                 <div
                   key={`${alert.text}-${index}`}
                   style={roleDashboardStyles.alertRow}
                 >
-                  <Badge tone={alert.tone}>{TONE_LABEL[alert.tone] || alert.tone}</Badge>
+                  <Badge tone={alert.tone}>{toneLabels[alert.tone] || alert.tone}</Badge>
                   <span>{alert.text}</span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <p style={roleDashboardStyles.muted}>Nessun alert prioritario.</p>
+            <p style={roleDashboardStyles.muted}>{t("pages.dashboard.noAlerts")}</p>
           )}
         </AppCard>
       </div>
@@ -1286,35 +1294,38 @@ function CoachControlRoom({
   navigate,
   isMobile = false,
 }) {
+  const { t } = useTranslation();
+  const toneLabels = { red: t("pages.dashboard.toneUrgent"), orange: t("pages.dashboard.toneWarning"), green: t("pages.dashboard.toneOk"), blue: t("pages.dashboard.toneInfo"), purple: t("pages.dashboard.toneNote") };
+
   const primaryStatus = todayEvents.length
-    ? `${todayEvents.length} eventi oggi`
+    ? t("pages.dashboard.eventsToday", { count: todayEvents.length })
     : nextEvent
-    ? `Prossimo: ${formatShortDate(nextEvent.date)}`
-    : "Nessun evento";
+    ? t("pages.dashboard.nextEventDate", { date: formatShortDate(nextEvent.date) })
+    : t("pages.dashboard.noEvent");
 
   const actions = [
     !nextTraining && {
-      label: "Pianifica seduta",
+      label: t("pages.dashboard.planSchedule"),
       path: "/trainings",
       variant: "primary",
     },
     !nextMatch && {
-      label: "Inserisci partita",
+      label: t("pages.dashboard.insertMatch"),
       path: "/matches",
       variant: "ghost",
     },
     coachAlerts.length > 0 && {
-      label: "Controlla alert",
+      label: t("pages.dashboard.checkAlerts"),
       path: "/players",
       variant: "ghost",
     },
     setup.next && {
-      label: "Completa setup",
+      label: t("pages.dashboard.completeSetup"),
       path: setup.next.path,
       variant: "ghost",
     },
     {
-      label: "Nuova seduta",
+      label: t("pages.dashboard.newSession"),
       path: "/trainings",
       variant: "primary",
     },
@@ -1325,7 +1336,7 @@ function CoachControlRoom({
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0,1.25fr) minmax(280px,0.75fr)", gap: 22, alignItems: "stretch" }}>
         <div>
           <Badge tone={coachAlerts.length ? "orange" : "green"}>
-            {coachAlerts.length ? `${coachAlerts.length} alert aperti` : "Situazione sotto controllo"}
+            {coachAlerts.length ? t("pages.dashboard.alertsOpen", { count: coachAlerts.length }) : t("pages.dashboard.underControl")}
           </Badge>
 
           <h2 style={{ fontSize: 30, margin: "16px 0 8px", lineHeight: 1.08 }}>
@@ -1334,25 +1345,25 @@ function CoachControlRoom({
 
           <p style={{ color: "#94a3b8", maxWidth: 640, lineHeight: 1.55, margin: 0 }}>
             {nextEvent
-              ? `${nextEvent.title || nextEvent.opponent || "Evento"} · ${formatDate(nextEvent.date)}`
-              : "Programma la prossima attività per dare allo staff una direzione operativa chiara."}
+              ? `${nextEvent.title || nextEvent.opponent || t("pages.dashboard.widgetEvent")} · ${formatDate(nextEvent.date)}`
+              : t("pages.dashboard.noOperationalUrgencyHint")}
           </p>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10, marginTop: 18 }}>
-            <ControlRoomMetric label="Oggi" value={todayEvents.length} tone={todayEvents.length ? "green" : "blue"} />
-            <ControlRoomMetric label="7 giorni" value={upcomingWeekEvents} tone="blue" />
-            <ControlRoomMetric label="Disponibili" value={`${availablePlayers}/${playersCount}`} tone="green" />
-            <ControlRoomMetric label="Da monitorare" value={unavailablePlayers} tone={unavailablePlayers ? "orange" : "green"} />
+            <ControlRoomMetric label={t("pages.dashboard.today")} value={todayEvents.length} tone={todayEvents.length ? "green" : "blue"} />
+            <ControlRoomMetric label={t("pages.dashboard.days7")} value={upcomingWeekEvents} tone="blue" />
+            <ControlRoomMetric label={t("pages.dashboard.availableCount")} value={`${availablePlayers}/${playersCount}`} tone="green" />
+            <ControlRoomMetric label={t("pages.dashboard.monitor")} value={unavailablePlayers} tone={unavailablePlayers ? "orange" : "green"} />
           </div>
         </div>
 
         <div style={{ display: "grid", gap: 10, alignContent: "space-between" }}>
           <div style={{ display: "grid", gap: 8 }}>
             {(coachAlerts.length ? coachAlerts.slice(0, 2) : [
-              { text: "Nessuna urgenza operativa", tone: "green" },
+              { text: t("pages.dashboard.noOperationalUrgency"), tone: "green" },
             ]).map((alert, index) => (
               <div key={`${alert.text}-${index}`} style={controlRoomStyles.alert}>
-                <Badge tone={alert.tone || "blue"}>{TONE_LABEL[alert.tone] || alert.tone || "Info"}</Badge>
+                <Badge tone={alert.tone || "blue"}>{toneLabels[alert.tone] || alert.tone || t("common.info")}</Badge>
                 <span>{alert.text}</span>
               </div>
             ))}
@@ -1691,6 +1702,7 @@ const srStyles = {
 
 /* ─── NextMatchCard ─────────────────────────────────────────── */
 function NextMatchCard({ match, navigate }) {
+  const { t } = useTranslation();
   const starterCount = (match.lineup?.starterIds || []).length;
   const benchCount   = (match.lineup?.benchIds   || []).length;
   const lineupReady  = match.lineup?.ready;
@@ -1700,7 +1712,7 @@ function NextMatchCard({ match, navigate }) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
         <div>
-          <Badge tone="orange">Prossima partita</Badge>
+          <Badge tone="orange">{t("pages.dashboard.nextMatchLabel")}</Badge>
           <h2 style={{ margin: "10px 0 4px", lineHeight: 1.15 }}>
             CalcioLab <span style={{ color: "#64748b" }}>vs</span> {match.opponent}
           </h2>
@@ -1711,16 +1723,16 @@ function NextMatchCard({ match, navigate }) {
           </p>
         </div>
         <Badge tone={lineupReady ? "green" : "orange"}>
-          {lineupReady ? "Distinta pronta" : "Bozza"}
+          {lineupReady ? t("pages.dashboard.lineupReady") : t("pages.dashboard.lineupDraft")}
         </Badge>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(90px,1fr))", gap: 8, marginBottom: 16 }}>
         {[
-          { label: "Titolari", value: `${starterCount}/11` },
-          { label: "Panchina", value: benchCount },
-          { label: "Modulo",   value: match.formation || "—" },
-          { label: "Logistica", value: `${checklistProgress.done}/${checklistProgress.total}` },
+          { label: t("pages.dashboard.starters"), value: `${starterCount}/11` },
+          { label: t("pages.dashboard.bench"), value: benchCount },
+          { label: t("pages.matches.formation"),   value: match.formation || "—" },
+          { label: t("pages.dashboard.logistics"), value: `${checklistProgress.done}/${checklistProgress.total}` },
         ].map(({ label, value }) => (
           <div key={label} style={{ borderRadius: 10, padding: "10px 8px", background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", textAlign: "center" }}>
             <p style={{ color: "#64748b", margin: "0 0 4px", fontSize: 11, fontWeight: 800, textTransform: "uppercase" }}>{label}</p>
@@ -1735,21 +1747,21 @@ function NextMatchCard({ match, navigate }) {
           onClick={() => navigate(`/match-convocation/${match.id}`)}
           style={nmcBtn}
         >
-          Convocazione
+          {t("pages.matches.convocation")}
         </button>
         <button
           type="button"
           onClick={() => navigate(`/match-day/${match.id}`)}
           style={{ ...nmcBtn, background: "linear-gradient(135deg,rgba(56,189,248,0.22),rgba(37,99,235,0.16))", border: "1px solid rgba(56,189,248,0.3)", color: "#38bdf8" }}
         >
-          Scheda Gara
+          {t("pages.matches.matchSheet")}
         </button>
         <button
           type="button"
           onClick={() => navigate(`/match-stats/${match.id}`)}
           style={nmcBtn}
         >
-          Statistiche
+          {t("pages.matches.statistics")}
         </button>
       </div>
     </div>

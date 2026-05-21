@@ -60,7 +60,7 @@ function Statistics({
   const effectiveSelectedPlayerId = selectedPlayerId || players[0]?.id || "";
 
   function exportCSV() {
-    const headers = ["Giocatore", "Ruolo", "Stato", "Presenze", "Assenze", "Infortuni", "Pres. all.", "% All.", "Minuti", "Media min", "Gol", "Assist", "G+A", "Min/Gol", "Min/G+A", "Ammonizioni", "Espulsioni"];
+    const headers = t("pages.statistics.csvHeaders").split(",");
     const rows = stats.map((r) => [
       r.name,
       r.role || "",
@@ -255,7 +255,7 @@ function Statistics({
 
   const topScorer = [...stats].sort((a, b) => b.goals - a.goals)[0];
   const mostMinutes = [...stats].sort((a, b) => b.minutes - a.minutes)[0];
-  const coachInsights = useMemo(() => getCoachInsights(stats), [stats]);
+  const coachInsights = useMemo(() => getCoachInsights(stats, t), [stats, t]);
   const teamSummary = useMemo(() => getTeamSummary(stats), [stats]);
   const compareStats = comparePlayerIds
     .filter(Boolean)
@@ -267,12 +267,12 @@ function Statistics({
       <div style={{ ...styles.page, ...s.page }}>
         <PageHeader
           title={t("pages.statistics.title")}
-          subtitle="Database stagione e rendimento giocatori"
+          subtitle={t("pages.statistics.subtitle")}
         />
         <EmptyState
           icon="📊"
-          title="Nessun dato disponibile"
-          text="Aggiungi giocatori ed eventi per iniziare a generare statistiche."
+          title={t("pages.statistics.noDataTitle")}
+          text={t("pages.statistics.noDataText")}
         />
       </div>
     );
@@ -282,16 +282,16 @@ function Statistics({
     <div style={{ ...styles.page, ...s.page }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, minWidth: 0 }}>
         <PageHeader
-          title="Statistiche"
-          subtitle="Analizza rendimento, minutaggio e storico stagione"
+          title={t("pages.statistics.title")}
+          subtitle={t("pages.statistics.subtitle")}
         />
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end", minWidth: 0, maxWidth: "100%" }}>
           {/* FIX #10: badge fonte dati — l'utente sa se sta vedendo dati Supabase o locali */}
           <Badge tone={statsSource === "supabase" ? "green" : "orange"}>
-            {statsSource === "supabase" ? "📊 Dati cloud" : "💾 Dati locali"}
+            {statsSource === "supabase" ? t("pages.statistics.cloudData") : t("pages.statistics.localData")}
           </Badge>
           <Button variant="ghost" onClick={() => navigate("/exports")}>
-            Report PDF
+            {t("pages.statistics.reportPdf")}
           </Button>
           <SeasonSelector activeSeason={activeSeason} onChange={changeSeason} />
         </div>
@@ -299,35 +299,35 @@ function Statistics({
 
       {/* ── KPI ── */}
       <div style={s.kpiGrid} className="no-mobile-override">
-        <KpiCard label="Eventi totali" value={filteredEvents.length} icon="📅" accent="#38bdf8" />
-        <KpiCard label="Giocatori" value={players.length} icon="👥" accent="#a78bfa" />
-        <KpiCard label="Gol top scorer" value={topScorer?.goals || 0} icon="⚽" accent="#4ade80" />
-        <KpiCard label="Minuti top" value={mostMinutes?.minutes || 0} icon="⏱️" accent="#fbbf24" />
+        <KpiCard label={t("pages.statistics.totalEvents")} value={filteredEvents.length} icon="📅" accent="#38bdf8" />
+        <KpiCard label={t("common.players")} value={players.length} icon="👥" accent="#a78bfa" />
+        <KpiCard label={t("pages.statistics.topScorerGoals")} value={topScorer?.goals || 0} icon="⚽" accent="#4ade80" />
+        <KpiCard label={t("pages.statistics.topMinutes")} value={mostMinutes?.minutes || 0} icon="⏱️" accent="#fbbf24" />
       </div>
 
       <div style={s.summaryGrid}>
         <SummaryCard
-          label="Produzione offensiva"
+          label={t("pages.statistics.offensiveProduction")}
           value={`${teamSummary.goals} G · ${teamSummary.assists} A`}
-          detail={`${teamSummary.goalContributions} contributi totali`}
+          detail={`${teamSummary.goalContributions} ${t("pages.statistics.totalContributions")}`}
           accent="#4ade80"
         />
         <SummaryCard
-          label="Carico gara"
+          label={t("pages.statistics.matchLoad")}
           value={`${teamSummary.minutes} min`}
-          detail={`${teamSummary.avgMinutesPerPlayer} min medi per giocatore`}
+          detail={`${teamSummary.avgMinutesPerPlayer} ${t("pages.statistics.avgMinutesPerPlayer")}`}
           accent="#fbbf24"
         />
         <SummaryCard
-          label="Presenza allenamenti"
+          label={t("pages.statistics.trainingPresence")}
           value={teamSummary.avgTrainingPct !== null ? `${teamSummary.avgTrainingPct}%` : "—"}
-          detail={`${teamSummary.trainingPlayers} giocatori con dati registrati`}
+          detail={`${teamSummary.trainingPlayers} ${t("pages.statistics.playersWithData")}`}
           accent="#38bdf8"
         />
         <SummaryCard
-          label="Disponibilità"
+          label={t("pages.statistics.availability")}
           value={`${teamSummary.available}/${teamSummary.totalPlayers}`}
-          detail={`${teamSummary.notAvailable} da monitorare`}
+          detail={`${teamSummary.notAvailable} ${t("pages.statistics.toMonitor")}`}
           accent={teamSummary.notAvailable > 0 ? "#fb7185" : "#22c55e"}
         />
       </div>
@@ -351,29 +351,29 @@ function Statistics({
       )}
 
       {/* ── Grafici ── */}
-      <Suspense fallback={<div style={s.chartFallback}>Caricamento grafici...</div>}>
+      <Suspense fallback={<div style={s.chartFallback}>{t("pages.statistics.loadingCharts")}</div>}>
         <StatisticsCharts stats={stats} history={history} selectedPlayer={selectedPlayer} />
       </Suspense>
 
       {/* ── Filtri ── */}
       <AppCard>
-        <p style={s.sectionLabel}>Filtri</p>
+        <p style={s.sectionLabel}>{t("pages.statistics.filters")}</p>
         <div style={s.filtersGrid}>
           <label style={s.filterLabel}>
-            Tipo evento
+            {t("pages.statistics.eventType")}
             <select
               value={eventType}
               onChange={(e) => setEventType(e.target.value)}
               style={styles.input}
             >
-              <option>Tutti</option>
-              <option>Allenamento</option>
-              <option>Partita</option>
+              <option value="Tutti">{t("pages.statistics.allEvents")}</option>
+              <option value="Allenamento">{t("pages.statistics.training")}</option>
+              <option value="Partita">{t("pages.statistics.match")}</option>
             </select>
           </label>
 
           <label style={s.filterLabel}>
-            Dal
+            {t("pages.statistics.from")}
             <input
               type="date"
               value={fromDate}
@@ -383,7 +383,7 @@ function Statistics({
           </label>
 
           <label style={s.filterLabel}>
-            Al
+            {t("pages.statistics.to")}
             <input
               type="date"
               value={toDate}
@@ -393,7 +393,7 @@ function Statistics({
           </label>
 
           <label style={s.filterLabel}>
-            Giocatore
+            {t("pages.statistics.playerFilter")}
             <select
               value={effectiveSelectedPlayerId}
               onChange={(e) => setSelectedPlayerId(e.target.value)}
@@ -428,7 +428,7 @@ function Statistics({
               }}
               style={s.resetBtn}
             >
-              Reset filtri
+              {t("pages.statistics.resetFilters")}
             </button>
           </div>
         </div>
@@ -437,9 +437,9 @@ function Statistics({
       <AppCard>
         <div style={s.compareHeader}>
           <div>
-            <p style={s.sectionLabel}>Confronta giocatori</p>
+            <p style={s.sectionLabel}>{t("pages.statistics.compareTitle")}</p>
             <h3 style={{ margin: "4px 0 0", fontSize: 18, lineHeight: 1.2 }}>
-              Lettura affiancata rendimento rosa
+              {t("pages.statistics.compareSubtitle")}
             </h3>
           </div>
           <div style={s.compareSelectors}>
@@ -450,7 +450,7 @@ function Statistics({
                 onChange={(event) => updateComparePlayer(slot, event.target.value)}
               style={{ ...styles.input, minWidth: isMobile ? 0 : 160, width: isMobile ? "100%" : undefined, height: 38, fontSize: 13 }}
               >
-                <option value="">{slot < 2 ? "Seleziona" : "Aggiungi"}</option>
+                <option value="">{slot < 2 ? t("pages.statistics.selectPlayer") : t("pages.statistics.addPlayer")}</option>
                 {players.map((player) => (
                   <option key={player.id} value={player.id}>
                     {player.name}
@@ -469,21 +469,21 @@ function Statistics({
                   <div>
                     <strong style={{ fontSize: 16 }}>{player.name}</strong>
                     <p style={{ margin: "4px 0 0", color: "#94a3b8", fontSize: 12 }}>
-                      {player.role || "Ruolo non impostato"} · {player.status}
+                      {player.role || t("pages.statistics.roleNotSet")} · {player.status}
                     </p>
                   </div>
                   <Badge tone={player.status === "Disponibile" ? "green" : "orange"}>
-                    {player.presences} pres.
+                    {t("pages.statistics.comparePresences", { count: player.presences })}
                   </Badge>
                 </div>
 
                 <div style={s.compareMetrics}>
-                  <CompareMetric label="Min" value={player.minutes} />
-                  <CompareMetric label="Media" value={player.avgMinutes} />
-                  <CompareMetric label="Gol" value={player.goals} color="#4ade80" />
-                  <CompareMetric label="Assist" value={player.assists} color="#38bdf8" />
-                  <CompareMetric label="G+A" value={player.goalContributions} color="#a78bfa" />
-                  <CompareMetric label="% All." value={player.trainingPct !== null ? `${player.trainingPct}%` : "—"} />
+                  <CompareMetric label={t("pages.statistics.minAbbr")} value={player.minutes} />
+                  <CompareMetric label={t("pages.statistics.avgAbbr")} value={player.avgMinutes} />
+                  <CompareMetric label={t("common.goals")} value={player.goals} color="#4ade80" />
+                  <CompareMetric label={t("common.assists")} value={player.assists} color="#38bdf8" />
+                  <CompareMetric label={t("pages.statistics.gaAbbr")} value={player.goalContributions} color="#a78bfa" />
+                  <CompareMetric label={t("pages.statistics.trainingPctAbbr")} value={player.trainingPct !== null ? `${player.trainingPct}%` : "—"} />
                 </div>
               </div>
             ))}
@@ -491,8 +491,8 @@ function Statistics({
         ) : (
           <EmptyState
             icon="📊"
-            title="Seleziona almeno un giocatore"
-            text="Usa i menu sopra per confrontare rendimento, minutaggio e presenza agli allenamenti."
+            title={t("pages.statistics.noCompareTitle")}
+            text={t("pages.statistics.noCompareText")}
           />
         )}
       </AppCard>
@@ -505,9 +505,9 @@ function Statistics({
         <AppCard style={{ minWidth: 0, overflow: "hidden" }}>
           <div style={s.tableHeader}>
             <div>
-              <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2 }}>Riepilogo giocatori</h3>
+              <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2 }}>{t("pages.statistics.playerSummary")}</h3>
               <p style={{ color: "#64748b", margin: "4px 0 0", fontSize: 13, lineHeight: 1.4 }}>
-                Presenze · Minuti · Gol · Assist · Disciplina
+                {t("pages.statistics.playerSummarySubtitle")}
               </p>
             </div>
             <div style={s.tableHeaderActions}>
@@ -519,20 +519,20 @@ function Statistics({
                 }}
                 style={{ ...styles.input, minWidth: isMobile ? 0 : 170, width: isMobile ? "100%" : undefined, height: 38, padding: "0 12px", fontSize: 13 }}
               >
-                <option value="goals">Ordina: Gol</option>
-                <option value="assists">Ordina: Assist</option>
-                <option value="minutes">Ordina: Minuti</option>
-                <option value="presences">Ordina: Presenze</option>
-                <option value="trainingPct">Ordina: % Presenze all.</option>
-                <option value="avgMinutes">Ordina: Media minuti</option>
-                <option value="goalContributions">Ordina: Gol + Assist</option>
-                <option value="yellowCards">Ordina: Ammonizioni</option>
-                <option value="redCards">Ordina: Espulsioni</option>
-                <option value="name">Ordina: Nome</option>
+                <option value="goals">{t("pages.statistics.sortGoals")}</option>
+                <option value="assists">{t("pages.statistics.sortAssists")}</option>
+                <option value="minutes">{t("pages.statistics.sortMinutes")}</option>
+                <option value="presences">{t("pages.statistics.sortPresences")}</option>
+                <option value="trainingPct">{t("pages.statistics.sortTrainingPct")}</option>
+                <option value="avgMinutes">{t("pages.statistics.sortAvgMinutes")}</option>
+                <option value="goalContributions">{t("pages.statistics.sortGoalContributions")}</option>
+                <option value="yellowCards">{t("pages.statistics.sortYellowCards")}</option>
+                <option value="redCards">{t("pages.statistics.sortRedCards")}</option>
+                <option value="name">{t("pages.statistics.sortName")}</option>
               </select>
               <Badge tone="purple">Live DB</Badge>
-              <button onClick={exportCSV} style={s.exportBtn} title="Esporta tabella visibile come CSV">
-                ⬇ CSV
+              <button onClick={exportCSV} style={s.exportBtn} title={t("pages.statistics.exportTitle")}>
+                {t("pages.statistics.exportCsv")}
               </button>
             </div>
           </div>
@@ -543,7 +543,7 @@ function Statistics({
                 <span style={s.searchIcon}>&#8981;</span>
               <input
                 type="text"
-                placeholder="Cerca giocatore..."
+                placeholder={t("pages.statistics.searchPlayer")}
                 value={searchPlayer}
                 onChange={(e) => setSearchPlayer(e.target.value)}
                 style={{ ...styles.input, paddingLeft: 36 }}
@@ -555,11 +555,11 @@ function Statistics({
               onChange={(e) => setRoleFilter(e.target.value)}
               style={{ ...styles.input, width: isMobile ? "100%" : "auto", minWidth: isMobile ? 0 : 150 }}
             >
-              <option>Tutti</option>
-              <option>Portieri</option>
-              <option>Difensori</option>
-              <option>Centrocampisti</option>
-              <option>Attaccanti</option>
+              <option value="Tutti">{t("pages.statistics.allRoles")}</option>
+              <option value="Portieri">{t("pages.statistics.goalkeepers")}</option>
+              <option value="Difensori">{t("pages.statistics.defenders")}</option>
+              <option value="Centrocampisti">{t("pages.statistics.midfielders")}</option>
+              <option value="Attaccanti">{t("pages.statistics.forwards")}</option>
             </select>
 
             <label style={s.checkboxLabel}>
@@ -569,7 +569,7 @@ function Statistics({
                 onChange={(e) => setOnlyWithStats(e.target.checked)}
                 style={{ accentColor: "#38bdf8" }}
               />
-              Solo con statistiche
+              {t("pages.statistics.onlyWithStats")}
             </label>
 
             <button
@@ -582,7 +582,7 @@ function Statistics({
                 color: coachMode ? "#38bdf8" : "white",
               }}
             >
-              {coachMode ? "Coach attivo" : "Coach mode"}
+              {coachMode ? t("pages.statistics.coachModeActive") : t("pages.statistics.coachMode")}
             </button>
           </div>
 
@@ -592,15 +592,15 @@ function Statistics({
               <div style={s.coachPanelHeader}>
                 <span style={s.coachDot} />
                 <div>
-                  <strong style={{ fontSize: 14 }}>Filtri decisionali</strong>
+                  <strong style={{ fontSize: 14 }}>{t("pages.statistics.decisionFilters")}</strong>
                   <p style={{ margin: "2px 0 0", color: "#94a3b8", fontSize: 12 }}>
-                    Filtra per soglie minime di rendimento
+                    {t("pages.statistics.filterByThresholds")}
                   </p>
                 </div>
               </div>
               <div style={s.coachGrid}>
                 <label style={s.filterLabel}>
-                  Min. minuti totali
+                  {t("pages.statistics.minTotalMinutes")}
                   <input
                     type="number"
                     min="0"
@@ -611,7 +611,7 @@ function Statistics({
                   />
                 </label>
                 <label style={s.filterLabel}>
-                  Min. gol
+                  {t("pages.statistics.minGoals")}
                   <input
                     type="number"
                     min="0"
@@ -622,7 +622,7 @@ function Statistics({
                   />
                 </label>
                 <label style={s.filterLabel}>
-                  Min. presenze
+                  {t("pages.statistics.minPresences")}
                   <input
                     type="number"
                     min="0"
@@ -633,7 +633,7 @@ function Statistics({
                   />
                 </label>
                 <label style={s.filterLabel}>
-                  Media min. minima
+                  {t("pages.statistics.minAvgMinutes")}
                   <input
                     type="number"
                     min="0"
@@ -649,7 +649,7 @@ function Statistics({
 
           {/* Contatore risultati */}
           <div style={s.resultCount}>
-            <span>{stats.length} giocator{stats.length === 1 ? "e" : "i"} visualizzat{stats.length === 1 ? "o" : "i"}</span>
+            <span>{stats.length === 1 ? t("pages.statistics.playersShown", { count: stats.length }) : t("pages.statistics.playersShownPlural", { count: stats.length })}</span>
           </div>
 
           {/* Tabella desktop / card mobile-tablet */}
@@ -657,7 +657,7 @@ function Statistics({
             <div style={s.mobileCardsGrid}>
               {stats.length === 0 && (
                 <div style={s.emptyTable}>
-                  Nessun giocatore corrisponde ai filtri attivi.
+                  {t("pages.statistics.noPlayersMatch")}
                 </div>
               )}
               {stats.map((row) => {
@@ -699,23 +699,23 @@ function Statistics({
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px" }} className="no-mobile-override">
                       <div style={s.mobileStatRow}>
-                        <span style={s.mobileStatLabel}>Presenze</span>
+                        <span style={s.mobileStatLabel}>{t("pages.statistics.presAbbr")}</span>
                         <span style={s.mobileStatValue}>{row.presences}</span>
                       </div>
                       <div style={s.mobileStatRow}>
-                        <span style={s.mobileStatLabel}>Minuti</span>
+                        <span style={s.mobileStatLabel}>{t("pages.statistics.minAbbr")}</span>
                         <span style={s.mobileStatValue}>{row.minutes}</span>
                       </div>
                       <div style={s.mobileStatRow}>
-                        <span style={s.mobileStatLabel}>Gol</span>
+                        <span style={s.mobileStatLabel}>{t("common.goals")}</span>
                         <span style={{ ...s.mobileStatValue, color: row.goals > 0 ? "#4ade80" : "#94a3b8" }}>{row.goals}</span>
                       </div>
                       <div style={s.mobileStatRow}>
-                        <span style={s.mobileStatLabel}>Assist</span>
+                        <span style={s.mobileStatLabel}>{t("common.assists")}</span>
                         <span style={{ ...s.mobileStatValue, color: row.assists > 0 ? "#38bdf8" : "#94a3b8" }}>{row.assists}</span>
                       </div>
                       <div style={s.mobileStatRow}>
-                        <span style={s.mobileStatLabel}>% All.</span>
+                        <span style={s.mobileStatLabel}>{t("pages.statistics.trainingPctAbbr")}</span>
                         <span style={{
                           ...s.mobileStatValue,
                           color: row.trainingPct === null ? "#475569" : row.trainingPct >= 80 ? "#22c55e" : row.trainingPct >= 60 ? "#fbbf24" : "#f87171",
@@ -724,7 +724,7 @@ function Statistics({
                         </span>
                       </div>
                       <div style={s.mobileStatRow}>
-                        <span style={s.mobileStatLabel}>🟨 / 🟥</span>
+                        <span style={s.mobileStatLabel}>{t("pages.statistics.cardsLabel")}</span>
                         <span style={s.mobileStatValue}>{row.yellowCards} / {row.redCards}</span>
                       </div>
                     </div>
@@ -741,57 +741,57 @@ function Statistics({
                   onClick={() => handleSort("name")}
                   style={{ ...s.thClickable, color: sortBy === "name" ? "#38bdf8" : "#64748b" }}
                 >
-                  Giocatore {sortArrow("name")}
+                  {t("common.player")} {sortArrow("name")}
                 </span>
-                <span style={{ color: "#64748b" }}>Stato</span>
+                <span style={{ color: "#64748b" }}>{t("common.status")}</span>
                 <span
                   onClick={() => handleSort("presences")}
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "presences" ? "#38bdf8" : "#64748b" }}
                 >
-                  Pres. {sortArrow("presences")}
+                  {t("pages.statistics.presAbbr")} {sortArrow("presences")}
                 </span>
-                <span style={{ ...s.thNum, color: "#64748b" }}>Ass.</span>
-                <span style={{ ...s.thNum, color: "#64748b" }}>Inf.</span>
-                <span style={{ ...s.thNum, color: "#64748b" }}>Pres. all.</span>
+                <span style={{ ...s.thNum, color: "#64748b" }}>{t("pages.statistics.absAbbr")}</span>
+                <span style={{ ...s.thNum, color: "#64748b" }}>{t("pages.statistics.injAbbr")}</span>
+                <span style={{ ...s.thNum, color: "#64748b" }}>{t("pages.statistics.trainingPresAbbr")}</span>
                 <span
                   onClick={() => handleSort("trainingPct")}
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "trainingPct" ? "#22d3ee" : "#64748b" }}
-                  title="% presenze allenamenti"
+                  title={t("pages.statistics.trainingAttendancePct")}
                 >
-                  % All. {sortArrow("trainingPct")}
+                  {t("pages.statistics.trainingPctAbbr")} {sortArrow("trainingPct")}
                 </span>
                 <span
                   onClick={() => handleSort("minutes")}
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "minutes" ? "#38bdf8" : "#64748b" }}
                 >
-                  Min {sortArrow("minutes")}
+                  {t("pages.statistics.minAbbr")} {sortArrow("minutes")}
                 </span>
                 <span
                   onClick={() => handleSort("avgMinutes")}
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "avgMinutes" ? "#38bdf8" : "#64748b" }}
                 >
-                  Media {sortArrow("avgMinutes")}
+                  {t("pages.statistics.avgAbbr")} {sortArrow("avgMinutes")}
                 </span>
                 <span
                   onClick={() => handleSort("goals")}
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "goals" ? "#4ade80" : "#64748b" }}
                 >
-                  Gol {sortArrow("goals")}
+                  {t("common.goals")} {sortArrow("goals")}
                 </span>
                 <span
                   onClick={() => handleSort("assists")}
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "assists" ? "#38bdf8" : "#64748b" }}
                 >
-                  Ass. {sortArrow("assists")}
+                  {t("common.assists")} {sortArrow("assists")}
                 </span>
                 <span
                   onClick={() => handleSort("goalContributions")}
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "goalContributions" ? "#a78bfa" : "#64748b" }}
                 >
-                  G+A {sortArrow("goalContributions")}
+                  {t("pages.statistics.gaAbbr")} {sortArrow("goalContributions")}
                 </span>
-                <span style={{ ...s.thNum, color: "#64748b" }}>Min/G</span>
-                <span style={{ ...s.thNum, color: "#64748b" }}>Min/G+A</span>
+                <span style={{ ...s.thNum, color: "#64748b" }}>{t("pages.statistics.minPerGoalAbbr")}</span>
+                <span style={{ ...s.thNum, color: "#64748b" }}>{t("pages.statistics.minPerGAAbbr")}</span>
                 <span
                   onClick={() => handleSort("yellowCards")}
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "yellowCards" ? "#fbbf24" : "#64748b" }}
@@ -808,7 +808,7 @@ function Statistics({
 
               {stats.length === 0 && (
                 <div style={s.emptyTable}>
-                  Nessun giocatore corrisponde ai filtri attivi.
+                  {t("pages.statistics.noPlayersMatch")}
                 </div>
               )}
 
@@ -859,8 +859,8 @@ function Statistics({
                     <span style={s.playerName}>
                       <strong>{row.name}</strong>
                       {row.role && <span style={s.roleChip}>{row.role}</span>}
-                      {isTopScorer && <span style={s.tagGoal}>⚽ Top scorer</span>}
-                      {isTopMinutes && !isTopScorer && <span style={s.tagMinutes}>⏱ Più minuti</span>}
+                      {isTopScorer && <span style={s.tagGoal}>⚽ {t("pages.dashboard.topScorer")}</span>}
+                      {isTopMinutes && !isTopScorer && <span style={s.tagMinutes}>⏱ {t("pages.dashboard.mostMinutes")}</span>}
                     </span>
                     <span style={{ ...s.statusCell, color: row.status === "Disponibile" ? "#86efac" : "#fdba74" }}>
                       {row.status || "—"}
@@ -916,7 +916,7 @@ function Statistics({
           {/* Scheda rapida */}
           <AppCard>
             <h3 style={s.sideTitle}>
-              Scheda rapida
+              {t("pages.statistics.quickCard")}
             </h3>
 
             <select
@@ -950,16 +950,16 @@ function Statistics({
                   <div>
                     <h2 style={{ margin: 0, fontSize: 18, lineHeight: 1.2 }}>{selectedPlayer.name}</h2>
                     <p style={{ color: "#64748b", margin: "4px 0 0", fontSize: 13, lineHeight: 1.35 }}>
-                      {selectedPlayer.role || "Ruolo non impostato"}
+                      {selectedPlayer.role || t("pages.statistics.roleNotSet")}
                     </p>
                   </div>
                 </div>
 
                 <div style={s.miniGrid}>
-                  <MiniStat label="Presenze" value={selectedStats?.presences || 0} icon="📋" />
-                  <MiniStat label="Minuti" value={selectedStats?.minutes || 0} icon="⏱️" />
-                  <MiniStat label="Gol" value={selectedStats?.goals || 0} icon="⚽" color="#4ade80" />
-                  <MiniStat label="Assist" value={selectedStats?.assists || 0} icon="🅰️" color="#38bdf8" />
+                  <MiniStat label={t("pages.statistics.presences")} value={selectedStats?.presences || 0} icon="📋" />
+                  <MiniStat label={t("common.minutes")} value={selectedStats?.minutes || 0} icon="⏱️" />
+                  <MiniStat label={t("common.goals")} value={selectedStats?.goals || 0} icon="⚽" color="#4ade80" />
+                  <MiniStat label={t("common.assists")} value={selectedStats?.assists || 0} icon="🅰️" color="#38bdf8" />
                 </div>
               </div>
             )}
@@ -968,14 +968,14 @@ function Statistics({
           {/* Storico eventi */}
           <AppCard>
             <h3 style={s.sideTitle}>
-              Storico eventi
+              {t("pages.statistics.eventHistory")}
             </h3>
 
             {history.length === 0 ? (
               <div style={s.emptyHistory}>
                 <span style={{ fontSize: 28 }}>📭</span>
                 <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: 13 }}>
-                  Nessun evento registrato
+                  {t("pages.statistics.noEventHistory")}
                 </p>
               </div>
             ) : (
@@ -1079,12 +1079,13 @@ function CompareMetric({ label, value, color = "#e2e8f0" }) {
 }
 
 function SeasonSelector({ activeSeason, onChange }) {
+  const { t } = useTranslation();
   const SEASONS = ["2023/2024", "2024/2025", "2025/2026", "2026/2027"];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
       <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0, color: "#475569" }}>
-        Stagione attiva
+        {t("pages.statistics.activeSeason")}
       </span>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
         {SEASONS.map((s) => (
@@ -1153,7 +1154,7 @@ function StatChip({ label, value, color }) {
 
 // ── Logic (invariata) ─────────────────────────────────────────────────────────
 
-function getCoachInsights(stats) {
+function getCoachInsights(stats, t) {
   const withMinutes = stats.filter((p) => p.minutes > 0);
   const withGoals = stats.filter((p) => p.goals > 0);
 
@@ -1180,35 +1181,35 @@ function getCoachInsights(stats) {
   return [
     {
       icon: "⚡",
-      title: "Più efficiente",
+      title: t("pages.statistics.mostEfficient"),
       name: efficient?.name || "N/D",
-      value: efficient ? `${efficient.goals} gol` : "-",
+      value: efficient ? t("pages.statistics.efficientGoals", { count: efficient.goals }) : "-",
       description: efficient
-        ? "Miglior rapporto gol/minuti."
-        : "Servono gol e minuti per calcolarlo.",
+        ? t("pages.statistics.efficientDesc")
+        : t("pages.statistics.efficientNoData"),
     },
     {
       icon: "🧱",
-      title: "Più utilizzato",
+      title: t("pages.statistics.mostUsed"),
       name: mostUsed?.name || "N/D",
-      value: mostUsed ? `${mostUsed.minutes} min` : "-",
-      description: "Giocatore con più minutaggio.",
+      value: mostUsed ? t("pages.statistics.mostUsedMinutes", { count: mostUsed.minutes }) : "-",
+      description: t("pages.statistics.mostUsedDesc"),
     },
     {
       icon: "🎯",
-      title: "Più decisivo",
+      title: t("pages.statistics.mostDecisive"),
       name: decisive?.name || "N/D",
-      value: decisive ? `${decisive.goals + decisive.assists} G+A` : "-",
-      description: "Somma gol + assist.",
+      value: decisive ? t("pages.statistics.decisiveGA", { count: decisive.goals + decisive.assists }) : "-",
+      description: t("pages.statistics.decisiveDesc"),
     },
     {
       icon: "👀",
-      title: "Da monitorare",
+      title: t("pages.statistics.toMonitorLabel"),
       name: monitor?.name || "N/D",
       value: monitor
-        ? `${Math.round(monitor.minutes / Math.max(monitor.presences, 1))} min/pres`
+        ? t("pages.statistics.monitorValue", { avg: Math.round(monitor.minutes / Math.max(monitor.presences, 1)) })
         : "-",
-      description: "Presenze alte, media minuti bassa.",
+      description: t("pages.statistics.monitorDesc"),
     },
   ];
 }

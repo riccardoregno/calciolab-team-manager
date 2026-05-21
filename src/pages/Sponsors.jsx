@@ -87,21 +87,21 @@ export default function Sponsors({
     <div style={sponsorStyles.page}>
       <PageHeader
         title={t("pages.sponsors.title")}
-        subtitle="Gestisci partner, pacchetti commerciali e informazioni da usare in report, export e comunicazioni societarie."
-        badge="Piano Club"
+        subtitle={t("pages.sponsors.subtitle")}
+        badge={t("pages.sponsors.badgePlan")}
       />
 
       <div style={sponsorStyles.kpiGrid}>
-        <Kpi label="Sponsor attivi" value={activeSponsors.length} />
-        <Kpi label="Valore annuo stimato" value={`€ ${yearlyValue.toLocaleString("it-IT")}`} />
-        <Kpi label="Main sponsor" value={mainSponsor?.name || "Da scegliere"} />
+        <Kpi label={t("pages.sponsors.kpiActive")} value={activeSponsors.length} />
+        <Kpi label={t("pages.sponsors.kpiYearlyValue")} value={`€ ${yearlyValue.toLocaleString("it-IT")}`} />
+        <Kpi label={t("pages.sponsors.kpiMainSponsor")} value={mainSponsor?.name || t("pages.sponsors.kpiMainSponsorFallback")} />
       </div>
 
       <div style={sponsorStyles.grid}>
-        <AppCard title={editingId ? "Modifica sponsor" : "Nuovo sponsor"} subtitle="Prepara slot vendibili e offerte locali.">
+        <AppCard title={editingId ? t("pages.sponsors.formTitleEdit") : t("pages.sponsors.formTitleNew")} subtitle={t("pages.sponsors.formSubtitle")}>
           <form onSubmit={submitSponsor} style={sponsorStyles.form}>
             <label style={sponsorStyles.label}>
-              Nome sponsor
+              {t("pages.sponsors.fieldName")}
               <input
                 value={form.name}
                 onChange={(event) => setForm({ ...form, name: event.target.value })}
@@ -112,7 +112,7 @@ export default function Sponsors({
 
             <div style={sponsorStyles.two}>
               <label style={sponsorStyles.label}>
-                Pacchetto
+                {t("pages.sponsors.fieldPackage")}
                 <select
                   value={form.package}
                   onChange={(event) => setForm({ ...form, package: event.target.value })}
@@ -126,7 +126,7 @@ export default function Sponsors({
               </label>
 
               <label style={sponsorStyles.label}>
-                Contatto
+                {t("pages.sponsors.fieldContact")}
                 <input
                   value={form.contact}
                   onChange={(event) => setForm({ ...form, contact: event.target.value })}
@@ -136,7 +136,7 @@ export default function Sponsors({
             </div>
 
             <label style={sponsorStyles.label}>
-              Sito / link
+              {t("pages.sponsors.fieldWebsite")}
               <input
                 value={form.website}
                 onChange={(event) => setForm({ ...form, website: event.target.value })}
@@ -145,7 +145,7 @@ export default function Sponsors({
             </label>
 
             <label style={sponsorStyles.label}>
-              Offerta per community
+              {t("pages.sponsors.fieldOffer")}
               <textarea
                 value={form.offer}
                 onChange={(event) => setForm({ ...form, offer: event.target.value })}
@@ -154,7 +154,7 @@ export default function Sponsors({
             </label>
 
             <label style={sponsorStyles.label}>
-              Visibilita promessa
+              {t("pages.sponsors.fieldVisibility")}
               <textarea
                 value={form.visibility}
                 onChange={(event) => setForm({ ...form, visibility: event.target.value })}
@@ -163,12 +163,12 @@ export default function Sponsors({
             </label>
 
             <Button type="submit">
-              {editingId ? "Salva sponsor" : "Aggiungi sponsor"}
+              {editingId ? t("pages.sponsors.saveSponsor") : t("pages.sponsors.addSponsor")}
             </Button>
           </form>
         </AppCard>
 
-        <AppCard title="Sponsor attivi" subtitle="Schede pronte per comunicazione, PDF e report societa'.">
+        <AppCard title={t("pages.sponsors.activeTitle")} subtitle={t("pages.sponsors.activeSubtitle")}>
           <div style={sponsorStyles.sponsorList}>
             {hub.sponsors.length ? (
               hub.sponsors.map((sponsor) => (
@@ -176,53 +176,53 @@ export default function Sponsors({
                   <div style={sponsorStyles.sponsorHeader}>
                     <div>
                       <Badge tone={sponsor.active ? "green" : "orange"}>
-                        {sponsor.active ? "Attivo" : "Pausa"}
+                        {sponsor.active ? t("pages.sponsors.statusActive") : t("pages.sponsors.statusPaused")}
                       </Badge>
                       <h3 style={{ margin: "10px 0 4px" }}>{sponsor.name}</h3>
                       <p style={sponsorStyles.muted}>
-                        {sponsor.package} · € {(packageValues[sponsor.package] || 0).toLocaleString("it-IT")} stimati
+                        {sponsor.package} · {t("pages.sponsors.estimatedValue", { value: (packageValues[sponsor.package] || 0).toLocaleString("it-IT") })}
                       </p>
                     </div>
                     <div style={sponsorStyles.actions}>
-                      <Button variant="ghost" onClick={() => editSponsor(sponsor)}>Modifica</Button>
+                      <Button variant="ghost" onClick={() => editSponsor(sponsor)}>{t("pages.sponsors.editSponsor")}</Button>
                       <Button variant="ghost" onClick={() => toggleSponsor(sponsor)}>
-                        {sponsor.active ? "Pausa" : "Riattiva"}
+                        {sponsor.active ? t("pages.sponsors.pauseSponsor") : t("pages.sponsors.reactivateSponsor")}
                       </Button>
                     </div>
                   </div>
-                  <p style={sponsorStyles.bodyText}>{sponsor.offer || "Nessuna offerta inserita."}</p>
+                  <p style={sponsorStyles.bodyText}>{sponsor.offer || t("pages.sponsors.noOffer")}</p>
                   <p style={sponsorStyles.bodyText}>
-                    <strong>Visibilita:</strong> {sponsor.visibility}
+                    <strong>{t("pages.sponsors.visibilityLabel")}</strong> {sponsor.visibility}
                   </p>
                   <div style={sponsorStyles.footerActions}>
                     <Button
                       variant={String(hub.mainSponsorId) === String(sponsor.id) ? "primary" : "ghost"}
                       onClick={() => updateHub({ mainSponsorId: sponsor.id })}
                     >
-                      {String(hub.mainSponsorId) === String(sponsor.id) ? "Main sponsor" : "Imposta main"}
+                      {String(hub.mainSponsorId) === String(sponsor.id) ? t("pages.sponsors.isMain") : t("pages.sponsors.setMain")}
                     </Button>
                   </div>
                 </div>
               ))
             ) : (
-              <p style={sponsorStyles.muted}>Nessuno sponsor inserito.</p>
+              <p style={sponsorStyles.muted}>{t("pages.sponsors.noSponsors")}</p>
             )}
           </div>
         </AppCard>
       </div>
 
-      <AppCard title="Report sponsor" subtitle="Traccia il valore da comunicare a societa' e partner.">
+      <AppCard title={t("pages.sponsors.reportTitle")} subtitle={t("pages.sponsors.reportSubtitle")}>
         <div style={sponsorStyles.reportGrid}>
           <div style={sponsorStyles.reportBox}>
-            <strong>Asset inclusi</strong>
-            <p>Dashboard club, export PDF, report post gara, pagina sponsor e offerte community.</p>
+            <strong>{t("pages.sponsors.assetTitle")}</strong>
+            <p>{t("pages.sponsors.assetText")}</p>
           </div>
           <label style={sponsorStyles.label}>
-            Note report visibilita
+            {t("pages.sponsors.reportNotesLabel")}
             <textarea
               value={hub.reportNotes}
               onChange={(event) => updateHub({ reportNotes: event.target.value })}
-              placeholder="Es. Logo presente nei PDF gara, 4 comunicazioni mensili, offerta dedicata alle famiglie..."
+              placeholder={t("pages.sponsors.reportNotesPlaceholder")}
               style={{ ...styles.input, minHeight: 120 }}
             />
           </label>

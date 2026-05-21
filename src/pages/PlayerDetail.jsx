@@ -93,7 +93,7 @@ function PlayerDetail({
   if (!player) {
     return (
       <div style={styles.page}>
-        <PageHeader title={t("pages.playerDetail.notFound")} subtitle="Il profilo richiesto non esiste" />
+        <PageHeader title={t("pages.playerDetail.notFound")} subtitle={t("pages.playerDetail.notFoundSubtitle")} />
       </div>
     );
   }
@@ -299,7 +299,7 @@ function PlayerDetail({
 
   return (
     <div style={styles.page}>
-      <PageHeader title={player.name} subtitle="Scheda giocatore e database individuale" />
+      <PageHeader title={player.name} subtitle={t("pages.playerDetail.subtitle")} />
 
       <div style={{ ...pageStyles.layout, gridTemplateColumns: isMobile ? "1fr" : pageStyles.layout.gridTemplateColumns }}>
         <div style={pageStyles.sidebar}>
@@ -390,13 +390,13 @@ function PlayerDetail({
           )}
 
           <Button variant="ghost" onClick={() => navigate("/players")}>
-            ← Torna alla rosa
+            {t("pages.playerDetail.back")}
           </Button>
         </div>
       </div>
 
       {medicalModal && (
-        <Modal title={getMedicalModalTitle(medicalModal)} onClose={() => setMedicalModal(null)}>
+        <Modal title={getMedicalModalTitle(medicalModal, t)} onClose={() => setMedicalModal(null)}>
           <MedicalActionForm
             type={medicalModal}
             value={medicalForm}
@@ -414,11 +414,10 @@ function PlayerDetail({
       )}
 
       {conflictModal && (
-        <Modal title="Dati aggiornati da un'altra sessione" onClose={() => setConflictModal(false)}>
+        <Modal title={t("pages.playerDetail.conflictTitle")} onClose={() => setConflictModal(false)}>
           <div style={modalStyles.stack}>
             <p style={modalStyles.helpText}>
-              Questo giocatore risulta aggiornato dopo l'apertura della modifica. Per evitare sovrascritture, puoi
-              ricaricare i dati attuali o forzare il salvataggio delle modifiche locali.
+              {t("pages.playerDetail.conflictText")}
             </p>
             <div style={modalStyles.actions}>
               <Button
@@ -429,10 +428,10 @@ function PlayerDetail({
                   setConflictModal(false);
                 }}
               >
-                Ricarica dati attuali
+                {t("pages.playerDetail.reloadData")}
               </Button>
               <Button onClick={forceSavePlayer}>
-                Forza salvataggio
+                {t("pages.playerDetail.forceSave")}
               </Button>
             </div>
           </div>
@@ -464,10 +463,10 @@ function getPlayerVideoClips(matches, playerId) {
     .sort((a, b) => new Date(b.matchDate || 0) - new Date(a.matchDate || 0));
 }
 
-function getMedicalModalTitle(type) {
-  if (type === "differenziato") return "Crea lavoro differenziato";
-  if (type === "rientro") return "Segna rientro";
-  return "Aggiungi nota medica";
+function getMedicalModalTitle(type, t) {
+  if (type === "differenziato") return t("pages.playerDetail.createDifferentiatedWork");
+  if (type === "rientro") return t("pages.playerDetail.markReturn");
+  return t("pages.playerDetail.addMedicalNote");
 }
 
 function getRelativeDate(days) {
@@ -477,13 +476,14 @@ function getRelativeDate(days) {
 }
 
 function MedicalActionForm({ type, value, onChange, onCancel, onSubmit }) {
+  const { t } = useTranslation();
   const canSubmit = type !== "nota" || value.note.trim();
 
   return (
     <div style={modalStyles.stack}>
       {type === "differenziato" && (
         <label style={modalStyles.field}>
-          <span style={modalStyles.label}>Tipologia</span>
+          <span style={modalStyles.label}>{t("pages.playerDetail.typology")}</span>
           <select
             value={value.differentiatedType}
             onChange={(event) => onChange((prev) => ({ ...prev, differentiatedType: event.target.value }))}
@@ -498,7 +498,7 @@ function MedicalActionForm({ type, value, onChange, onCancel, onSubmit }) {
 
       {type === "rientro" && (
         <label style={modalStyles.field}>
-          <span style={modalStyles.label}>Data rientro</span>
+          <span style={modalStyles.label}>{t("pages.playerDetail.returnDate")}</span>
           <input
             type="date"
             value={value.returnDate}
@@ -510,26 +510,26 @@ function MedicalActionForm({ type, value, onChange, onCancel, onSubmit }) {
 
       <label style={modalStyles.field}>
         <span style={modalStyles.label}>
-          {type === "rientro" ? "Nota finale" : type === "differenziato" ? "Note operative" : "Nota medica"}
+          {type === "rientro" ? t("pages.playerDetail.finalNote") : type === "differenziato" ? t("pages.playerDetail.operationalNotes") : t("pages.playerDetail.medicalNote")}
         </span>
         <textarea
           value={value.note}
           onChange={(event) => onChange((prev) => ({ ...prev, note: event.target.value }))}
           placeholder={
             type === "rientro"
-              ? "Es. rientro completato senza dolore, monitorare carico per 7 giorni..."
+              ? t("pages.playerDetail.returnNotePlaceholder")
               : type === "differenziato"
-              ? "Es. lavoro aerobico leggero, no cambi direzione, controllo dolore post seduta..."
-              : "Es. dolore riferito, indicazioni staff medico, prevenzione consigliata..."
+              ? t("pages.playerDetail.differentiatedPlaceholder")
+              : t("pages.playerDetail.medicalNotePlaceholder")
           }
           style={{ ...styles.input, minHeight: 120, resize: "vertical" }}
         />
       </label>
 
       <div style={modalStyles.actions}>
-        <Button variant="ghost" onClick={onCancel}>Annulla</Button>
+        <Button variant="ghost" onClick={onCancel}>{t("common.cancel")}</Button>
         <Button onClick={onSubmit} disabled={!canSubmit}>
-          Salva
+          {t("common.save")}
         </Button>
       </div>
     </div>

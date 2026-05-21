@@ -101,7 +101,7 @@ export default function AiSessionBuilder({
 
     setGeneratedSession(result.session);
     setGenerationSource(result.source);
-    setGenerationMessage(result.warning || "Seduta generata con Gemini AI.");
+    setGenerationMessage(result.warning || t("pages.aiSessionBuilder.aiMsg"));
     setGenerating(false);
   }
 
@@ -120,60 +120,60 @@ export default function AiSessionBuilder({
     <div style={builderStyles.page}>
       <PageHeader
         title={t("pages.aiSessionBuilder.title")}
-        subtitle="Parti da un brief tecnico, salva la proposta e rifiniscila nella pagina Sedute."
+        subtitle={t("pages.aiSessionBuilder.subtitle")}
         action={
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <Button variant="ghost" onClick={() => navigate("/trainings")}>← Torna a Sedute</Button>
+            <Button variant="ghost" onClick={() => navigate("/trainings")}>{t("pages.aiSessionBuilder.backBtn")}</Button>
             <Badge tone={isOpenAiConfigured() ? "green" : "orange"}>
-              {isOpenAiConfigured() ? "Gemini configurato" : "Fallback locale"}
+              {isOpenAiConfigured() ? t("pages.aiSessionBuilder.geminiConfigured") : t("pages.aiSessionBuilder.localFallback")}
             </Badge>
           </div>
         }
       />
 
       <div style={{ ...builderStyles.grid, gridTemplateColumns: isMobile ? "1fr" : "360px 1fr" }}>
-        <AppCard title="Brief seduta" subtitle="Imposta il contesto tecnico: l'AI proporrà una traccia modificabile.">
+        <AppCard title={t("pages.aiSessionBuilder.briefTitle")} subtitle={t("pages.aiSessionBuilder.briefSubtitle")}>
           <div style={builderStyles.formGrid}>
-            <Field label="Obiettivo">
+            <Field label={t("pages.aiSessionBuilder.fieldObjective")}>
               <select value={prompt.objective} onChange={(event) => updatePrompt("objective", event.target.value)} style={styles.input}>
-                <option>Possesso</option>
-                <option>Pressing</option>
-                <option>Transizione</option>
-                <option>Finalizzazione</option>
-                <option>Fase difensiva</option>
-                <option>Palla inattiva</option>
+                <option value="Possesso">{t("pages.aiSessionBuilder.objPossesso")}</option>
+                <option value="Pressing">{t("pages.aiSessionBuilder.objPressing")}</option>
+                <option value="Transizione">{t("pages.aiSessionBuilder.objTransizione")}</option>
+                <option value="Finalizzazione">{t("pages.aiSessionBuilder.objFinalizzazione")}</option>
+                <option value="Fase difensiva">{t("pages.aiSessionBuilder.objDifensiva")}</option>
+                <option value="Palla inattiva">{t("pages.aiSessionBuilder.objPallaInattiva")}</option>
               </select>
             </Field>
-            <Field label="Categoria">
+            <Field label={t("pages.aiSessionBuilder.fieldCategory")}>
               <select value={prompt.category} onChange={(event) => updatePrompt("category", event.target.value)} style={styles.input}>
-                <option>Prima squadra</option>
-                <option>Juniores</option>
-                <option>Allievi</option>
-                <option>Giovanissimi</option>
+                <option value="Prima squadra">{t("pages.aiSessionBuilder.catPrima")}</option>
+                <option value="Juniores">{t("pages.aiSessionBuilder.catJuniores")}</option>
+                <option value="Allievi">{t("pages.aiSessionBuilder.catAllievi")}</option>
+                <option value="Giovanissimi">{t("pages.aiSessionBuilder.catGiovanissimi")}</option>
               </select>
             </Field>
-            <Field label="Durata">
+            <Field label={t("pages.aiSessionBuilder.fieldDuration")}>
               <input type="number" min="30" value={prompt.duration} onChange={(event) => updatePrompt("duration", Number(event.target.value))} style={styles.input} />
             </Field>
-            <Field label="Giocatori">
+            <Field label={t("pages.aiSessionBuilder.fieldPlayers")}>
               <input type="number" min="6" value={prompt.players} onChange={(event) => updatePrompt("players", Number(event.target.value))} style={styles.input} />
             </Field>
-            <Field label="Campo">
+            <Field label={t("pages.aiSessionBuilder.fieldField")}>
               <select value={prompt.field} onChange={(event) => updatePrompt("field", event.target.value)} style={styles.input}>
-                <option>Campo intero</option>
-                <option>Mezzo campo</option>
-                <option>Un quarto campo</option>
-                <option>Palestra</option>
+                <option value="Campo intero">{t("pages.aiSessionBuilder.fieldCampoIntero")}</option>
+                <option value="Mezzo campo">{t("pages.aiSessionBuilder.fieldMezzoTerzo")}</option>
+                <option value="Un quarto campo">{t("pages.aiSessionBuilder.fieldQuartoTerzo")}</option>
+                <option value="Palestra">{t("pages.aiSessionBuilder.fieldPalestra")}</option>
               </select>
             </Field>
-            <Field label="Intensita">
+            <Field label={t("pages.aiSessionBuilder.fieldIntensity")}>
               <select value={prompt.intensity} onChange={(event) => updatePrompt("intensity", event.target.value)} style={styles.input}>
-                <option>Bassa</option>
-                <option>Media</option>
-                <option>Alta</option>
+                <option value="Bassa">{t("pages.aiSessionBuilder.intBassa")}</option>
+                <option value="Media">{t("pages.aiSessionBuilder.intMedia")}</option>
+                <option value="Alta">{t("pages.aiSessionBuilder.intAlta")}</option>
               </select>
             </Field>
-            <Field label="Distanza gara">
+            <Field label={t("pages.aiSessionBuilder.fieldMatchDay")}>
               <select value={prompt.matchDayDistance} onChange={(event) => updatePrompt("matchDayDistance", event.target.value)} style={styles.input}>
                 <option>MD+1</option>
                 <option>MD-4</option>
@@ -182,11 +182,11 @@ export default function AiSessionBuilder({
                 <option>MD-1</option>
               </select>
             </Field>
-            <Field label="Vincoli speciali">
+            <Field label={t("pages.aiSessionBuilder.fieldConstraints")}>
               <textarea
                 value={prompt.specialConstraints}
                 onChange={(event) => updatePrompt("specialConstraints", event.target.value)}
-                placeholder="Es. 2 rientri da infortunio, niente contrasti, campo pesante, 4 assenti..."
+                placeholder={t("pages.aiSessionBuilder.constraintsPlaceholder")}
                 style={{ ...styles.input, minHeight: 110 }}
               />
             </Field>
@@ -196,20 +196,20 @@ export default function AiSessionBuilder({
                 disabled={generating || !allExercises.length}
                 style={{ opacity: generating ? 0.6 : 1, cursor: generating ? "not-allowed" : "pointer" }}
               >
-                {generating ? "⏳ Generazione in corso…" : "Genera con AI"}
+                {generating ? t("pages.aiSessionBuilder.generating") : t("pages.aiSessionBuilder.generateBtn")}
               </Button>
               <Button variant="ghost" onClick={() => {
                 setGeneratedSession(localPreview);
                 setGenerationSource("local");
-                setGenerationMessage("Anteprima rigenerata localmente.");
+                setGenerationMessage(t("pages.aiSessionBuilder.localFallbackMsg"));
               }}>
-                Usa fallback locale
+                {t("pages.aiSessionBuilder.localFallbackBtn")}
               </Button>
             </div>
           </div>
         </AppCard>
 
-        <AppCard title="Anteprima generata" subtitle="Puoi salvarla nelle sedute e rifinirla dal planner.">
+        <AppCard title={t("pages.aiSessionBuilder.previewTitle")} subtitle={t("pages.aiSessionBuilder.previewSubtitle")}>
           {/* Pannello RPE */}
           <div style={{
             display: "flex", alignItems: "center", gap: 14, padding: "12px 16px",
@@ -241,7 +241,7 @@ export default function AiSessionBuilder({
                 {rpeTarget.label}
               </p>
               <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-                {rpeTarget.description} · Blocchi suggeriti: {getRpeBlocks(prompt.matchDayDistance)}
+                {rpeTarget.description} · {t("pages.aiSessionBuilder.rpeBlocks")} {getRpeBlocks(prompt.matchDayDistance)}
               </p>
             </div>
             {/* Barra visiva RPE */}
@@ -262,14 +262,14 @@ export default function AiSessionBuilder({
               <div style={builderStyles.badges}>
                 <Badge tone="blue">{generated.theme}</Badge>
                 <Badge tone={generationSource === "gemini" ? "green" : "orange"}>
-                  {generationSource === "gemini" ? "Gemini" : "Locale"}
+                  {generationSource === "gemini" ? t("pages.aiSessionBuilder.geminiSource") : t("pages.aiSessionBuilder.localSource")}
                 </Badge>
               </div>
               <h2 style={{ margin: "10px 0 6px" }}>{generated.title}</h2>
-              <p style={builderStyles.muted}>{formatShortDate(generated.date)} · {totalMinutes} min · {prompt.players} giocatori</p>
+              <p style={builderStyles.muted}>{formatShortDate(generated.date)} · {totalMinutes} min · {prompt.players} {t("pages.aiSessionBuilder.fieldPlayers").toLowerCase()}</p>
             </div>
             <Button onClick={saveSession} disabled={!generated.exercises.length}>
-              Salva in Sedute
+              {t("pages.aiSessionBuilder.saveSession")}
             </Button>
           </div>
 
@@ -284,15 +284,15 @@ export default function AiSessionBuilder({
                 <div key={`${item.exerciseId}-${index}`} style={builderStyles.block}>
                   <div style={builderStyles.blockNumber}>{index + 1}</div>
                   <div>
-                    <h3>{item.exercise?.title || "Esercizio"}</h3>
-                    <p>{item.exercise?.category || "Categoria"} · {item.customDuration} min · {item.customPlayers} giocatori</p>
+                    <h3>{item.exercise?.title || t("pages.aiSessionBuilder.exerciseFallback")}</h3>
+                    <p>{item.exercise?.category || t("pages.aiSessionBuilder.categoryFallback")} · {item.customDuration} min · {item.customPlayers} {t("pages.aiSessionBuilder.fieldPlayers").toLowerCase()}</p>
                     <small>{item.variantNotes}</small>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <EmptyState icon="🧩" title="Nessun esercizio disponibile" text="Aggiungi esercizi alla libreria per generare una seduta." />
+            <EmptyState icon="🧩" title={t("pages.aiSessionBuilder.emptyTitle")} text={t("pages.aiSessionBuilder.emptyText")} />
           )}
         </AppCard>
       </div>

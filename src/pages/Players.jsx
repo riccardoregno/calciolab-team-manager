@@ -17,16 +17,17 @@ import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
 import { createId } from "../utils/helpers";
 
-const GROUP_LABELS = {
-  prima:        "Prima Squadra",
-  juniores:     "Juniores",
-  allievi:      "Allievi",
-  giovanissimi: "Giovanissimi",
-  esordienti:   "Esordienti",
-};
+// GROUP_LABELS is now built dynamically inside the component via t()
 
 function Players({ players, setPlayers }) {
   const { t } = useTranslation();
+  const GROUP_LABELS = {
+    prima:        t("pages.players.groupPrima"),
+    juniores:     t("pages.players.groupJuniores"),
+    allievi:      t("pages.players.groupAllievi"),
+    giovanissimi: t("pages.players.groupGiovanissimi"),
+    esordienti:   t("pages.players.groupEsordienti"),
+  };
   const location = useLocation();
   const urlGruppo = new URLSearchParams(location.search).get("gruppo") || "tutti";
 
@@ -263,9 +264,9 @@ function Players({ players, setPlayers }) {
               onChange={(e) => setForm({ ...form, status: e.target.value })}
               style={styles.input}
             >
-              <option>Disponibile</option>
-              <option>Infortunato</option>
-              <option>Squalificato</option>
+              <option value="Disponibile">{t("pages.players.statusAvailable")}</option>
+              <option value="Infortunato">{t("pages.players.statusInjured")}</option>
+              <option value="Squalificato">{t("pages.players.statusSuspended")}</option>
             </select>
 
             <select
@@ -273,11 +274,11 @@ function Players({ players, setPlayers }) {
               onChange={(e) => setForm({ ...form, gruppo: e.target.value })}
               style={styles.input}
             >
-              <option value="prima">Prima Squadra</option>
-              <option value="juniores">Juniores</option>
-              <option value="allievi">Allievi</option>
-              <option value="giovanissimi">Giovanissimi</option>
-              <option value="esordienti">Esordienti</option>
+              <option value="prima">{t("pages.players.groupPrima")}</option>
+              <option value="juniores">{t("pages.players.groupJuniores")}</option>
+              <option value="allievi">{t("pages.players.groupAllievi")}</option>
+              <option value="giovanissimi">{t("pages.players.groupGiovanissimi")}</option>
+              <option value="esordienti">{t("pages.players.groupEsordienti")}</option>
             </select>
 
             <input

@@ -62,11 +62,11 @@ export default function PhysicalWorkouts({
   if (players.length === 0) {
     return (
       <div>
-        <PageHeader title={t("pages.physicalWorkouts.title")} subtitle="Prescrizioni operative per gruppi, metri e recuperi" />
+        <PageHeader title={t("pages.physicalWorkouts.title")} subtitle={t("pages.physicalWorkouts.subtitle")} />
         <EmptyState
           icon="🏃"
-          title="Nessun giocatore"
-          text="Aggiungi giocatori e inserisci i test fisici (Gacon / Yo-Yo) per generare le prescrizioni."
+          title={t("pages.physicalWorkouts.emptyTitle")}
+          text={t("pages.physicalWorkouts.emptyText")}
         />
       </div>
     );
@@ -77,26 +77,26 @@ export default function PhysicalWorkouts({
   return (
     <div style={{ display: "grid", gap: 22 }}>
       <PageHeader
-        title="Lavori fisici"
-        subtitle="Prescrizioni operative per gruppi, metri, ripetizioni e recuperi"
+        title={t("pages.physicalWorkouts.title")}
+        subtitle={t("pages.physicalWorkouts.subtitle")}
         action={
           <Button variant="ghost" onClick={() => navigate("/physical-tests")}>
-            Aggiorna test fisici
+            {t("pages.physicalWorkouts.updateTestsBtn")}
           </Button>
         }
       />
 
       {/* KPI */}
       <div style={pw.kpiRow} className="no-mobile-override">
-        <KpiBox label="Giocatori totali" value={rows.length} icon="👥" color="#38bdf8" />
-        <KpiBox label="Con test valido" value={tested} icon="✅" color="#22c55e" />
-        <KpiBox label="Da testare" value={untested} icon="⚠️" color="#fbbf24" />
-        {avgMas && <KpiBox label="MAS media" value={`${avgMas} km/h`} icon="⚡" color="#a78bfa" />}
+        <KpiBox label={t("pages.physicalWorkouts.kpiTotal")} value={rows.length} icon="👥" color="#38bdf8" />
+        <KpiBox label={t("pages.physicalWorkouts.kpiTested")} value={tested} icon="✅" color="#22c55e" />
+        <KpiBox label={t("pages.physicalWorkouts.kpiUntested")} value={untested} icon="⚠️" color="#fbbf24" />
+        {avgMas && <KpiBox label={t("pages.physicalWorkouts.kpiAvgMas")} value={`${avgMas} km/h`} icon="⚡" color="#a78bfa" />}
       </div>
 
       {/* Distribuzione gruppi */}
       <AppCard>
-        <p style={pw.eyebrow}>Distribuzione gruppi</p>
+        <p style={pw.eyebrow}>{t("pages.physicalWorkouts.groupDistribution")}</p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
           {["Gruppo A", "Gruppo B", "Gruppo C", "Gruppo D", "Da testare"].map((g) => (
             <div key={g} style={pw.groupChip}>
@@ -127,7 +127,7 @@ export default function PhysicalWorkouts({
         <div style={{ position: "relative", flex: 1, minWidth: 180, maxWidth: 320 }}>
           <span style={pw.searchIcon}>⌕</span>
           <input
-            placeholder="Cerca giocatore..."
+            placeholder={t("pages.physicalWorkouts.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ ...pw.searchInput, paddingLeft: 36 }}
@@ -145,7 +145,7 @@ export default function PhysicalWorkouts({
                 color: groupFilter === g ? (GROUP_COLOR[g] || "#38bdf8") : "#94a3b8",
               }}
             >
-              {g === "Tutti" ? `Tutti (${rows.length})` : g.replace("Gruppo ", "")}
+              {g === "Tutti" ? t("pages.physicalWorkouts.tabAll", { count: rows.length }) : g.replace("Gruppo ", "")}
             </button>
           ))}
         </div>
@@ -153,7 +153,7 @@ export default function PhysicalWorkouts({
 
       {/* Griglia player cards */}
       {filtered.length === 0 ? (
-        <EmptyState icon="🔍" title="Nessun risultato" text="Cambia i filtri per vedere altri giocatori." />
+        <EmptyState icon="🔍" title={t("pages.physicalWorkouts.emptyFilter")} text={t("pages.physicalWorkouts.emptyFilterText")} />
       ) : (
         <div style={pw.grid}>
           {filtered.map(({ player, latest, reference }) => {
@@ -172,7 +172,7 @@ export default function PhysicalWorkouts({
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <strong style={{ fontSize: 15, display: "block", lineHeight: 1.2 }}>{player.name}</strong>
-                      <span style={{ fontSize: 12, color: "#64748b" }}>{player.role || "Ruolo non impostato"}</span>
+                      <span style={{ fontSize: 12, color: "#64748b" }}>{player.role || t("pages.physicalWorkouts.roleFallback")}</span>
                     </div>
                   </div>
                   <Badge tone={GROUP_TONE[reference.group]}>{reference.group}</Badge>
@@ -182,13 +182,13 @@ export default function PhysicalWorkouts({
                 <div style={pw.infoRow}>
                   {hasMas ? (
                     <>
-                      <InfoChip label="MAS" value={`${reference.mas} km/h`} color="#38bdf8" />
-                      <InfoChip label="Intensità" value={reference.intensity} color={GROUP_COLOR[reference.group]} />
-                      {latest?.date && <InfoChip label="Test" value={formatDate(latest.date)} color="#64748b" />}
+                      <InfoChip label={t("pages.physicalWorkouts.masLabel")} value={`${reference.mas} km/h`} color="#38bdf8" />
+                      <InfoChip label={t("pages.physicalWorkouts.intensityLabel")} value={reference.intensity} color={GROUP_COLOR[reference.group]} />
+                      {latest?.date && <InfoChip label={t("pages.physicalWorkouts.testLabel")} value={formatDate(latest.date)} color="#64748b" />}
                     </>
                   ) : (
                     <p style={{ color: "#64748b", fontSize: 13, margin: 0, lineHeight: 1.4 }}>
-                      Inserisci un test Gacon o Yo-Yo per generare la prescrizione.
+                      {t("pages.physicalWorkouts.noTestText")}
                     </p>
                   )}
                 </div>
@@ -201,16 +201,16 @@ export default function PhysicalWorkouts({
                       onClick={() => setExpandedId(isExpanded ? null : player.id)}
                       style={pw.expandBtn}
                     >
-                      {isExpanded ? "▲ Nascondi dettagli" : "▼ Vedi prescrizione completa"}
+                      {isExpanded ? t("pages.physicalWorkouts.hideDetails") : t("pages.physicalWorkouts.showPrescription")}
                     </button>
 
                     {isExpanded && (
                       <div style={pw.repGrid}>
                         <div style={pw.repHeader}>
-                          <span>Blocco</span>
-                          <span>Metri</span>
-                          <span>Rip. × Serie</span>
-                          <span>Recupero</span>
+                          <span>{t("pages.physicalWorkouts.repHeaderBlock")}</span>
+                          <span>{t("pages.physicalWorkouts.repHeaderMeters")}</span>
+                          <span>{t("pages.physicalWorkouts.repHeaderReps")}</span>
+                          <span>{t("pages.physicalWorkouts.repHeaderRecovery")}</span>
                         </div>
                         {reference.reps.map((rep, i) => (
                           <div key={i} style={pw.repRow}>
@@ -235,13 +235,13 @@ export default function PhysicalWorkouts({
         <AppCard>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <div>
-              <strong style={{ fontSize: 15 }}>⚠️ {untested} giocator{untested === 1 ? "e" : "i"} senza test fisico</strong>
+              <strong style={{ fontSize: 15 }}>{t("pages.physicalWorkouts.untestedBanner", { count: untested })}</strong>
               <p style={{ color: "#94a3b8", margin: "4px 0 0", fontSize: 13, lineHeight: 1.4 }}>
-                Inserisci il livello Gacon o il valore Yo-Yo per generare la prescrizione personalizzata.
+                {t("pages.physicalWorkouts.untestedDesc")}
               </p>
             </div>
             <Button onClick={() => navigate("/physical-tests")}>
-              Inserisci test fisici
+              {t("pages.physicalWorkouts.untestedBtn")}
             </Button>
           </div>
         </AppCard>

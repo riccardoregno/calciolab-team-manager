@@ -11,22 +11,21 @@ import { createId } from "../utils/helpers";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useTranslation } from "../i18n";
 
-const widgetLabels = {
-  hero: "Introduzione operativa",
-  nextEvent: "Prossimo evento",
-  kpis: "KPI principali",
-  weekFocus: "Focus settimana",
-  rosterStatus: "Stato rosa",
-  coachAlerts: "Alert coach",
-  recentActivities: "Ultime attivita",
-  quickActions: "Azioni rapide",
-  rewardCenter: "Reward e piano",
-};
-
 export default function CoachSettings({
   appSettings, setAppSettings }) {
 
   const { t } = useTranslation();
+  const widgetLabels = {
+    hero: t("pages.coachSettings.widgetHero"),
+    nextEvent: t("pages.coachSettings.widgetNextEvent"),
+    kpis: t("pages.coachSettings.widgetKpis"),
+    weekFocus: t("pages.coachSettings.widgetWeekFocus"),
+    rosterStatus: t("pages.coachSettings.widgetRosterStatus"),
+    coachAlerts: t("pages.coachSettings.widgetCoachAlerts"),
+    recentActivities: t("pages.coachSettings.widgetRecentActivities"),
+    quickActions: t("pages.coachSettings.widgetQuickActions"),
+    rewardCenter: t("pages.coachSettings.widgetRewardCenter"),
+  };
   // FIX #13: useMemo tramite hook — evita riallocazioni O(n) ad ogni render
   const settings   = useAppSettings(appSettings);
   const parameters = settings.coachParameters;
@@ -47,8 +46,8 @@ export default function CoachSettings({
 
   function deleteCustomMetric(key) {
     setConfirmState({
-      message: "Eliminare questa metrica?",
-      confirmLabel: "Elimina",
+      message: t("pages.coachSettings.deleteMetricConfirm"),
+      confirmLabel: t("pages.coachSettings.deleteMetricLabel"),
       confirmTone: "red",
       onConfirm: () => updateMetrics(metrics.filter((m) => m.key !== key)),
     });
@@ -56,7 +55,7 @@ export default function CoachSettings({
 
   function addCustomMetric() {
     if (!newMetric.label.trim()) {
-      showToast("Inserisci un nome per la metrica", "warn");
+      showToast(t("pages.coachSettings.metricNameRequired"), "warn");
       return;
     }
     const key = `custom_${createId("m")}`;
@@ -90,39 +89,39 @@ export default function CoachSettings({
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
         title={t("pages.coachSettings.title")}
-        subtitle="Personalizza preparazione, soglie fisiche e dashboard iniziale"
+        subtitle={t("pages.coachSettings.subtitle")}
       />
 
       <div style={{ ...coachStyles.grid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
         <AppCard>
-          <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Parametri preparatore</h3>
+          <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>{t("pages.coachSettings.parametersTitle")}</h3>
           <div style={coachStyles.formGrid}>
             <label style={coachStyles.label}>
-              Categoria
+              {t("pages.coachSettings.fieldCategory")}
               <select value={parameters.category} onChange={(event) => updateParameters({ category: event.target.value })} style={styles.input}>
-                <option value="adulti">Prima squadra</option>
-                <option value="juniores">Juniores</option>
-                <option value="allievi">Allievi</option>
-                <option value="giovanissimi">Giovanissimi</option>
+                <option value="adulti">{t("pages.coachSettings.catAdulti")}</option>
+                <option value="juniores">{t("pages.coachSettings.catJuniores")}</option>
+                <option value="allievi">{t("pages.coachSettings.catAllievi")}</option>
+                <option value="giovanissimi">{t("pages.coachSettings.catGiovanissimi")}</option>
               </select>
             </label>
             <label style={coachStyles.label}>
-              Metodo
+              {t("pages.coachSettings.fieldMethod")}
               <select value={parameters.method} onChange={(event) => updateParameters({ method: event.target.value })} style={styles.input}>
-                <option value="prudente">Prudente</option>
-                <option value="standard">Standard</option>
-                <option value="aggressivo">Aggressivo</option>
+                <option value="prudente">{t("pages.coachSettings.methodPrudente")}</option>
+                <option value="standard">{t("pages.coachSettings.methodStandard")}</option>
+                <option value="aggressivo">{t("pages.coachSettings.methodAggressivo")}</option>
               </select>
             </label>
-            <NumberField label="Soglia gruppo A" value={parameters.groupA} onChange={(value) => updateParameters({ groupA: value })} />
-            <NumberField label="Soglia gruppo B" value={parameters.groupB} onChange={(value) => updateParameters({ groupB: value })} />
-            <NumberField label="Soglia gruppo C" value={parameters.groupC} onChange={(value) => updateParameters({ groupC: value })} />
+            <NumberField label={t("pages.coachSettings.groupAThreshold")} value={parameters.groupA} onChange={(value) => updateParameters({ groupA: value })} />
+            <NumberField label={t("pages.coachSettings.groupBThreshold")} value={parameters.groupB} onChange={(value) => updateParameters({ groupB: value })} />
+            <NumberField label={t("pages.coachSettings.groupCThreshold")} value={parameters.groupC} onChange={(value) => updateParameters({ groupC: value })} />
           </div>
-          <Badge tone="blue">Le soglie modificano Test fisici e Lavori fisici</Badge>
+          <Badge tone="blue">{t("pages.coachSettings.thresholdBadge")}</Badge>
         </AppCard>
 
         <AppCard>
-          <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Dashboard iniziale</h3>
+          <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>{t("pages.coachSettings.dashboardTitle")}</h3>
           <div style={coachStyles.widgetList}>
             {Object.entries(widgetLabels).map(([key, label]) => (
               <label key={key} style={coachStyles.widgetRow}>
@@ -140,9 +139,9 @@ export default function CoachSettings({
 
       {/* ── Metriche test fisici ── */}
       <AppCard>
-        <h3 style={{ marginTop: 0, marginBottom: 4, lineHeight: 1.2 }}>Metriche test fisici</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 4, lineHeight: 1.2 }}>{t("pages.coachSettings.metricsTitle")}</h3>
         <p style={{ color: "#64748b", fontSize: 13, marginTop: 0, marginBottom: 18, lineHeight: 1.45 }}>
-          Scegli quali metriche mostrare nelle schede giocatore. Puoi anche aggiungerne di personalizzate.
+          {t("pages.coachSettings.metricsSubtitle")}
         </p>
 
         {/* Lista metriche default */}
@@ -163,7 +162,7 @@ export default function CoachSettings({
               </div>
               {m.higherIsBetter !== null && (
                 <span style={{ fontSize: 11, color: m.higherIsBetter ? "#22c55e" : "#f87171", fontWeight: 700 }}>
-                  {m.higherIsBetter ? "↑ meglio" : "↓ meglio"}
+                  {m.higherIsBetter ? t("pages.coachSettings.trendUp") : t("pages.coachSettings.trendDown")}
                 </span>
               )}
               <div style={{ display: "flex", gap: 6 }}>
@@ -176,7 +175,7 @@ export default function CoachSettings({
                     color: m.enabled ? "#93c5fd" : "#475569",
                   }}
                 >
-                    {m.enabled ? "Attiva" : "Disattiva"}
+                    {m.enabled ? t("pages.coachSettings.metricEnabled") : t("pages.coachSettings.metricDisabled")}
                 </button>
                 {m.custom && (
                   <button
@@ -194,57 +193,57 @@ export default function CoachSettings({
         {/* Aggiungi metrica custom */}
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 18 }}>
           <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0, color: "#64748b" }}>
-            Aggiungi metrica personalizzata
+            {t("pages.coachSettings.addCustomTitle")}
           </p>
           <div style={{ overflowX: "auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr auto", gap: 10, alignItems: "end", minWidth: 480 }}>
             <div style={{ display: "grid", gap: 5 }}>
-              <label style={coachStyles.label}>Nome</label>
+              <label style={coachStyles.label}>{t("pages.coachSettings.fieldMetricName")}</label>
               <input
-                placeholder="es. Cooper, Forza squat..."
+                placeholder={t("pages.coachSettings.metricNamePlaceholder")}
                 value={newMetric.label}
                 onChange={(e) => setNewMetric({ ...newMetric, label: e.target.value })}
                 style={styles.input}
               />
             </div>
             <div style={{ display: "grid", gap: 5 }}>
-              <label style={coachStyles.label}>Unità</label>
+              <label style={coachStyles.label}>{t("pages.coachSettings.fieldUnit")}</label>
               <input
-                placeholder="es. m, kg, s"
+                placeholder={t("pages.coachSettings.unitPlaceholder")}
                 value={newMetric.unit}
                 onChange={(e) => setNewMetric({ ...newMetric, unit: e.target.value })}
                 style={styles.input}
               />
             </div>
             <div style={{ display: "grid", gap: 5 }}>
-              <label style={coachStyles.label}>Icona</label>
+              <label style={coachStyles.label}>{t("pages.coachSettings.fieldIcon")}</label>
               <input
-                placeholder="emoji"
+                placeholder={t("pages.coachSettings.iconPlaceholder")}
                 value={newMetric.icon}
                 onChange={(e) => setNewMetric({ ...newMetric, icon: e.target.value })}
                 style={styles.input}
               />
             </div>
             <div style={{ display: "grid", gap: 5 }}>
-              <label style={coachStyles.label}>Trend positivo</label>
+              <label style={coachStyles.label}>{t("pages.coachSettings.fieldTrend")}</label>
               <select
                 value={newMetric.higherIsBetter === null ? "null" : String(newMetric.higherIsBetter)}
                 onChange={(e) => setNewMetric({ ...newMetric, higherIsBetter: e.target.value === "null" ? null : e.target.value === "true" })}
                 style={styles.input}
               >
-                <option value="true">↑ Più alto = meglio</option>
-                <option value="false">↓ Più basso = meglio</option>
-                <option value="null">— Neutro</option>
+                <option value="true">{t("pages.coachSettings.trendHigher")}</option>
+                <option value="false">{t("pages.coachSettings.trendLower")}</option>
+                <option value="null">{t("pages.coachSettings.trendNeutral")}</option>
               </select>
             </div>
-            <Button onClick={addCustomMetric}>Aggiungi</Button>
+            <Button onClick={addCustomMetric}>{t("pages.coachSettings.addMetric")}</Button>
           </div>
           </div>
         </div>
       </AppCard>
 
       <AppCard>
-        <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Blocchi lavoro fisico</h3>
+        <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>{t("pages.coachSettings.workBlocksTitle")}</h3>
         <div style={coachStyles.blocks}>
           {parameters.workBlocks.map((block) => (
             <div key={block.label} style={coachStyles.block}>
@@ -254,8 +253,8 @@ export default function CoachSettings({
             </div>
           ))}
         </div>
-        <Button variant="ghost" onClick={() => showToast("Editor avanzato blocchi in arrivo", "info")}>
-          Personalizza blocchi
+        <Button variant="ghost" onClick={() => showToast(t("pages.coachSettings.advancedEditorToast"), "info")}>
+          {t("pages.coachSettings.customizeBlocks")}
         </Button>
       </AppCard>
     </div>

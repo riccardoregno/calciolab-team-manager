@@ -34,19 +34,19 @@ export default function SessionGenerator({
 
   function saveProposal() {
     if (proposal.length === 0) {
-      showToast("Aggiungi esercizi alla libreria prima di generare una seduta.", "warn");
+      showToast(t("pages.sessionGenerator.noExercisesWarn"), "warn");
       return;
     }
 
     const generated = {
       id: createId("session"),
       type: "Allenamento",
-      title: `Seduta ${goal}`,
+      title: t("pages.sessionGenerator.generatedTitle", { goal }),
       date: new Date().toISOString().slice(0, 10),
       theme: goal,
-      objective: `Lavoro ${goal.toLowerCase()} con intensita ${intensity.toLowerCase()}`,
+      objective: t("pages.sessionGenerator.generatedObjective", { goal: goal.toLowerCase(), intensity: intensity.toLowerCase() }),
       duration,
-      notes: "Generata da Coach Generator.",
+      notes: t("pages.sessionGenerator.generatedNotes"),
       exercises: proposal.map((exercise) => ({
         exerciseId: exercise.id,
         customDuration: Math.max(10, Math.round(duration / proposal.length)),
@@ -66,39 +66,39 @@ export default function SessionGenerator({
       <ToastContainer />
       <PageHeader
         title={t("pages.sessionGenerator.title")}
-        subtitle="Crea una seduta con parametri manuali: obiettivo, durata, intensità e libreria esercizi."
-        action={<Button variant="ghost" onClick={() => navigate("/ai-session-builder")}>Passa al Builder AI</Button>}
+        subtitle={t("pages.sessionGenerator.subtitle")}
+        action={<Button variant="ghost" onClick={() => navigate("/ai-session-builder")}>{t("pages.sessionGenerator.aiBuilder")}</Button>}
       />
 
       <div style={generatorStyles.grid}>
         <AppCard>
-          <h3 style={{ marginTop: 0 }}>Parametri</h3>
+          <h3 style={{ marginTop: 0 }}>{t("pages.sessionGenerator.parametersTitle")}</h3>
           <select value={goal} onChange={(event) => setGoal(event.target.value)} style={styles.input}>
-            <option>Possesso</option>
-            <option>Pressing</option>
-            <option>Finalizzazione</option>
-            <option>Transizione</option>
-            <option>Fase difensiva</option>
-            <option>Palla inattiva</option>
+            <option value="Possesso">{t("pages.sessionGenerator.goalPossesso")}</option>
+            <option value="Pressing">{t("pages.sessionGenerator.goalPressing")}</option>
+            <option value="Finalizzazione">{t("pages.sessionGenerator.goalFinalizzazione")}</option>
+            <option value="Transizione">{t("pages.sessionGenerator.goalTransizione")}</option>
+            <option value="Fase difensiva">{t("pages.sessionGenerator.goalFaseDifensiva")}</option>
+            <option value="Palla inattiva">{t("pages.sessionGenerator.goalPallaInattiva")}</option>
           </select>
           <input type="number" value={duration} onChange={(event) => setDuration(Number(event.target.value))} style={styles.input} />
           <select value={intensity} onChange={(event) => setIntensity(event.target.value)} style={styles.input}>
-            <option>Bassa</option>
-            <option>Media</option>
-            <option>Alta</option>
+            <option value="Bassa">{t("pages.sessionGenerator.intensityBassa")}</option>
+            <option value="Media">{t("pages.sessionGenerator.intensityMedia")}</option>
+            <option value="Alta">{t("pages.sessionGenerator.intensityAlta")}</option>
           </select>
-          {nextMatch && <p style={generatorStyles.muted}>Prossima partita: {nextMatch.title}</p>}
-          <Button onClick={saveProposal}>Salva seduta proposta</Button>
+          {nextMatch && <p style={generatorStyles.muted}>{t("pages.sessionGenerator.nextMatch", { title: nextMatch.title })}</p>}
+          <Button onClick={saveProposal}>{t("pages.sessionGenerator.saveProposal")}</Button>
         </AppCard>
 
         <AppCard>
-          <h3 style={{ marginTop: 0 }}>Proposta</h3>
+          <h3 style={{ marginTop: 0 }}>{t("pages.sessionGenerator.proposalTitle")}</h3>
           <div style={generatorStyles.list}>
             {proposal.map((exercise) => (
               <div key={exercise.id} style={generatorStyles.item}>
-                <Badge tone="green">{exercise.category || "Esercizio"}</Badge>
+                <Badge tone="green">{exercise.category || t("pages.sessionGenerator.categoryFallback")}</Badge>
                 <strong>{exercise.title}</strong>
-                <span>{exercise.objective || exercise.description || "Obiettivo da definire"}</span>
+                <span>{exercise.objective || exercise.description || t("pages.sessionGenerator.objectiveFallback")}</span>
               </div>
             ))}
           </div>

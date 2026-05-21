@@ -131,10 +131,10 @@ export default function PlayerPortal({
         title={isPlayerView ? t("pages.playerPortal.myArea") : t("pages.playerPortal.title")}
         subtitle={
           isPlayerView
-            ? "Convocazioni, programma personale, comunicazioni staff e rendimento."
-            : "Gestisci convocazioni, comunicazioni, programmi individuali e anteprima portale."
+            ? t("pages.playerPortal.subtitlePlayer")
+            : t("pages.playerPortal.subtitle")
         }
-        badge={portal.enabled ? "Portale attivo" : "Portale spento"}
+        badge={portal.enabled ? t("pages.playerPortal.badgeActive") : t("pages.playerPortal.badgeOff")}
       />
 
       {isPlayerView ? (
@@ -195,18 +195,19 @@ function StaffView({
   onUpdatePortal, onPlayerChange, onProgramChange, onGoalChange, onNoteChange,
   onSave, onAddComm, onDeleteComm, isMobile,
 }) {
+  const { t } = useTranslation();
   return (
     <div style={{ ...ps.staffLayout, gridTemplateColumns: isMobile ? "1fr" : "360px minmax(0,1fr)" }}>
       {/* Colonna sinistra: controlli */}
       <div style={{ display: "grid", gap: 18, alignContent: "start" }}>
         {/* Pannello controllo portale */}
         <AppCard>
-          <h3 style={ps.sectionTitle}>Controllo portale</h3>
+          <h3 style={ps.sectionTitle}>{t("pages.playerPortal.portalControlTitle")}</h3>
 
           <label style={ps.checkRow}>
             <span>
-              <strong style={{ lineHeight: 1.2 }}>Portale attivo</strong>
-              <small style={ps.small}>Visibile ai giocatori con piano Club.</small>
+              <strong style={{ lineHeight: 1.2 }}>{t("pages.playerPortal.portalEnabledLabel")}</strong>
+              <small style={ps.small}>{t("pages.playerPortal.portalEnabledDesc")}</small>
             </span>
             <input
               type="checkbox"
@@ -216,7 +217,7 @@ function StaffView({
           </label>
 
           <label style={ps.fieldLabel}>
-            Messaggio spogliatoio
+            {t("pages.playerPortal.welcomeMessageLabel")}
             <textarea
               value={portal.welcomeMessage}
               onChange={(e) => onUpdatePortal({ welcomeMessage: e.target.value })}
@@ -230,10 +231,10 @@ function StaffView({
 
         {/* Programma individuale */}
         <AppCard>
-          <h3 style={ps.sectionTitle}>Programma individuale</h3>
+          <h3 style={ps.sectionTitle}>{t("pages.playerPortal.programTitle")}</h3>
 
           <label style={ps.fieldLabel}>
-            Giocatore
+            {t("pages.playerPortal.fieldPlayer")}
             <select
               value={selectedPlayer?.id || ""}
               onChange={(e) => onPlayerChange(e.target.value)}
@@ -248,37 +249,37 @@ function StaffView({
           </label>
 
           <label style={ps.fieldLabel}>
-            Obiettivo individuale
+            {t("pages.playerPortal.fieldGoal")}
             <input
               value={activeGoal}
               onChange={(e) => onGoalChange(e.target.value)}
-              placeholder="Es. Migliorare attacco in profondità"
+              placeholder={t("pages.playerPortal.goalPlaceholder")}
               style={{ ...styles.input, marginTop: 6 }}
             />
           </label>
 
           <label style={ps.fieldLabel}>
-            Programma personalizzato
+            {t("pages.playerPortal.fieldProgram")}
             <textarea
               value={activeProgram}
               onChange={(e) => onProgramChange(e.target.value)}
-              placeholder="Es. 2 blocchi mobilità, 3 serie core, lavoro 15/15 gruppo B..."
+              placeholder={t("pages.playerPortal.programPlaceholder")}
               style={{ ...styles.input, minHeight: 100, marginTop: 6 }}
             />
           </label>
 
           <label style={ps.fieldLabel}>
-            Nota staff visibile
+            {t("pages.playerPortal.fieldNote")}
             <textarea
               value={activeNote}
               onChange={(e) => onNoteChange(e.target.value)}
-              placeholder="Es. Buona settimana, cura alimentazione e recupero."
+              placeholder={t("pages.playerPortal.notePlaceholder")}
               style={{ ...styles.input, minHeight: 72, marginTop: 6 }}
             />
           </label>
 
           <Button onClick={onSave} disabled={!selectedPlayer} style={{ width: "100%", marginTop: 10 }}>
-            Salva area atleta
+            {t("pages.playerPortal.saveArea")}
           </Button>
         </AppCard>
       </div>
@@ -288,11 +289,11 @@ function StaffView({
         {/* Convocazioni pubblicate */}
         <AppCard>
           <h3 style={ps.sectionTitle}>
-            Convocazioni pubblicate
+            {t("pages.playerPortal.convPublishedTitle")}
             <span style={ps.badge}>{allPublishedConvocations.length}</span>
           </h3>
           {allPublishedConvocations.length === 0 ? (
-            <p style={ps.muted}>Nessuna convocazione pubblicata. Vai in Partite → Convoca.</p>
+            <p style={ps.muted}>{t("pages.playerPortal.convNone")}</p>
           ) : (
             <div style={ps.list}>
               {allPublishedConvocations.map((m) => (
@@ -330,6 +331,7 @@ function PlayerView({
   players, portal, comms,
   activeProgram, activeGoal, activeNote, isMobile,
 }) {
+  const { t } = useTranslation();
   const upcoming = myConvocations.filter(
     (m) => new Date(m.date) >= todayStart()
   );
@@ -363,14 +365,14 @@ function PlayerView({
         {/* Le mie convocazioni */}
         <AppCard>
           <h3 style={ps.sectionTitle}>
-            Le mie convocazioni
+            {t("pages.playerPortal.myConvocationsTitle")}
             {upcoming.length > 0 && (
-              <Badge tone="green" style={{ marginLeft: 8 }}>{upcoming.length} prossime</Badge>
+              <Badge tone="green" style={{ marginLeft: 8 }}>{t("pages.playerPortal.upcoming", { count: upcoming.length })}</Badge>
             )}
           </h3>
 
           {upcoming.length === 0 && past.length === 0 ? (
-            <p style={ps.muted}>Nessuna convocazione pubblicata dallo staff.</p>
+            <p style={ps.muted}>{t("pages.playerPortal.convNonePublished")}</p>
           ) : (
             <div style={ps.list}>
               {upcoming.map((m) => (
@@ -385,7 +387,7 @@ function PlayerView({
               {past.length > 0 && (
                 <>
                   <p style={{ ...ps.muted, fontSize: 11, textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.05em", margin: "8px 0 4px" }}>
-                    Archivio
+                    {t("pages.playerPortal.convArchiveLabel")}
                   </p>
                   {past.slice(0, 3).map((m) => (
                     <ConvocazioneRow
@@ -404,7 +406,7 @@ function PlayerView({
         {/* Comunicazioni */}
         {comms.length > 0 && (
           <AppCard>
-            <h3 style={ps.sectionTitle}>Bacheca staff</h3>
+            <h3 style={ps.sectionTitle}>{t("pages.playerPortal.commBoardTitle")}</h3>
             <div style={ps.list}>
               {comms.slice(0, 6).map((c) => (
                 <CommCard key={c.id} comm={c} />
@@ -415,7 +417,7 @@ function PlayerView({
 
         {/* Rendimento */}
         <AppCard>
-          <h3 style={ps.sectionTitle}>Rendimento recente</h3>
+          <h3 style={ps.sectionTitle}>{t("pages.playerPortal.recentTitle")}</h3>
           {summary.recentEvents.length ? (
             <div style={ps.list}>
               {summary.recentEvents.slice(0, 5).map(({ event, data }) => (
@@ -429,7 +431,7 @@ function PlayerView({
               ))}
             </div>
           ) : (
-            <p style={ps.muted}>I tuoi dati gara e seduta compariranno qui.</p>
+            <p style={ps.muted}>{t("pages.playerPortal.recentNone")}</p>
           )}
         </AppCard>
       </div>
@@ -441,6 +443,7 @@ function PlayerView({
 // Pannello Comunicazioni (solo staff)
 // ─────────────────────────────────────────────
 function CommPanel({ comms, onAdd, onDelete }) {
+  const { t } = useTranslation();
   const [title,    setTitle]    = useState("");
   const [body,     setBody]     = useState("");
   const [priority, setPriority] = useState("info");
@@ -456,24 +459,24 @@ function CommPanel({ comms, onAdd, onDelete }) {
   return (
     <AppCard>
       <h3 style={ps.sectionTitle}>
-        Comunicazioni
+        {t("pages.playerPortal.commTitle")}
         <span style={ps.badge}>{comms.length}</span>
       </h3>
       <p style={{ ...ps.muted, marginBottom: 14 }}>
-        Annunci visibili a tutti i giocatori nel portale.
+        {t("pages.playerPortal.commDesc")}
       </p>
 
       {/* Form nuovo annuncio */}
       <div style={{ display: "grid", gap: 8, marginBottom: 16 }}>
         <input
           style={styles.input}
-          placeholder="Titolo comunicazione *"
+          placeholder={t("pages.playerPortal.commTitlePlaceholder")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
         <textarea
           style={{ ...styles.input, minHeight: 64, resize: "vertical" }}
-          placeholder="Testo (opzionale)"
+          placeholder={t("pages.playerPortal.commBodyPlaceholder")}
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />
@@ -483,18 +486,18 @@ function CommPanel({ comms, onAdd, onDelete }) {
             value={priority}
             onChange={(e) => setPriority(e.target.value)}
           >
-            <option value="info">Info</option>
-            <option value="urgent">Urgente</option>
+            <option value="info">{t("pages.playerPortal.commPriorityInfo")}</option>
+            <option value="urgent">{t("pages.playerPortal.commPriorityUrgent")}</option>
           </select>
           <Button onClick={handleAdd} disabled={!title.trim()}>
-            Pubblica
+            {t("pages.playerPortal.commPublish")}
           </Button>
         </div>
       </div>
 
       {/* Lista comunicazioni */}
       {comms.length === 0 ? (
-        <p style={ps.muted}>Nessuna comunicazione ancora pubblicata.</p>
+        <p style={ps.muted}>{t("pages.playerPortal.commNone")}</p>
       ) : (
         <div style={ps.list}>
           {comms.map((c) => (
@@ -506,7 +509,7 @@ function CommPanel({ comms, onAdd, onDelete }) {
                 <div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
                     <Badge tone={c.priority === "urgent" ? "red" : "blue"}>
-                      {c.priority === "urgent" ? "Urgente" : "Info"}
+                      {c.priority === "urgent" ? t("pages.playerPortal.commPriorityUrgent") : t("pages.playerPortal.commPriorityInfo")}
                     </Badge>
                     <span style={{ fontSize: 11, color: "#475569" }}>{formatShortDate(c.date)}</span>
                   </div>
@@ -533,6 +536,7 @@ function CommPanel({ comms, onAdd, onDelete }) {
 // Riga convocazione (riutilizzabile)
 // ─────────────────────────────────────────────
 function ConvocazioneRow({ match, players, highlightId, showFull = false }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const isFuture  = new Date(match.date) >= todayStart();
   const conv      = match.convocazione || {};
@@ -561,12 +565,12 @@ function ConvocazioneRow({ match, players, highlightId, showFull = false }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {isFuture && isIn === true && (
-              <Badge tone="green">✓ Sei convocato</Badge>
+              <Badge tone="green">{t("pages.playerPortal.convSelected")}</Badge>
             )}
             {isFuture && isIn === false && (
-              <Badge tone="red">Non convocato</Badge>
+              <Badge tone="red">{t("pages.playerPortal.convNotSelected")}</Badge>
             )}
-            {!isFuture && <Badge tone="blue">Archivio</Badge>}
+            {!isFuture && <Badge tone="blue">{t("pages.playerPortal.convArchive")}</Badge>}
           </div>
           <p style={{ margin: "6px 0 2px", fontWeight: 700, fontSize: 15 }}>
             CalcioLab <span style={{ color: "#64748b" }}>vs</span> {match.opponent}
@@ -578,16 +582,16 @@ function ConvocazioneRow({ match, players, highlightId, showFull = false }) {
           {(details.matchTime || meetingInfo || details.lockerRoom || details.kit) && (
             <div style={{ display: "grid", gap: 3, marginTop: 6 }}>
               {details.matchTime && (
-                <p style={{ ...ps.muted, fontSize: 12, margin: 0 }}>Ora gara: {details.matchTime}</p>
+                <p style={{ ...ps.muted, fontSize: 12, margin: 0 }}>{t("pages.playerPortal.matchTime")} {details.matchTime}</p>
               )}
               {meetingInfo && (
-                <p style={{ ...ps.muted, fontSize: 12, margin: 0 }}>Raduno: {meetingInfo}</p>
+                <p style={{ ...ps.muted, fontSize: 12, margin: 0 }}>{t("pages.playerPortal.meetingLabel")} {meetingInfo}</p>
               )}
               {details.lockerRoom && (
-                <p style={{ ...ps.muted, fontSize: 12, margin: 0 }}>Spogliatoio: {details.lockerRoom}</p>
+                <p style={{ ...ps.muted, fontSize: 12, margin: 0 }}>{t("pages.playerPortal.lockerRoom")} {details.lockerRoom}</p>
               )}
               {details.kit && (
-                <p style={{ ...ps.muted, fontSize: 12, margin: 0 }}>Kit: {details.kit}</p>
+                <p style={{ ...ps.muted, fontSize: 12, margin: 0 }}>{t("pages.playerPortal.kitLabel")} {details.kit}</p>
               )}
             </div>
           )}
@@ -604,7 +608,7 @@ function ConvocazioneRow({ match, players, highlightId, showFull = false }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>
-            {pids.length} convocati
+            {t("pages.playerPortal.convCount", { count: pids.length })}
           </span>
           {showFull && convocati.length > 0 && (
             <button
@@ -612,7 +616,7 @@ function ConvocazioneRow({ match, players, highlightId, showFull = false }) {
               onClick={() => setExpanded((v) => !v)}
               style={{ background: "none", border: "none", color: "#38bdf8", cursor: "pointer", fontSize: 12, fontWeight: 700, padding: 0 }}
             >
-              {expanded ? "Nascondi lista" : "Vedi lista"}
+              {expanded ? t("pages.playerPortal.convHideList") : t("pages.playerPortal.convShowList")}
             </button>
           )}
         </div>
@@ -647,6 +651,7 @@ function ConvocazioneRow({ match, players, highlightId, showFull = false }) {
 // Card comunicazione (solo vista player)
 // ─────────────────────────────────────────────
 function CommCard({ comm }) {
+  const { t } = useTranslation();
   return (
     <div style={{
       ...ps.commCard,
@@ -654,7 +659,7 @@ function CommCard({ comm }) {
     }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
         <Badge tone={comm.priority === "urgent" ? "red" : "blue"}>
-          {comm.priority === "urgent" ? "Urgente" : "Info"}
+          {comm.priority === "urgent" ? t("pages.playerPortal.commPriorityUrgent") : t("pages.playerPortal.commPriorityInfo")}
         </Badge>
         <span style={{ fontSize: 11, color: "#475569" }}>{formatShortDate(comm.date)}</span>
       </div>
@@ -674,16 +679,17 @@ function PlayerPreviewCard({
   activeProgram, activeGoal, activeNote,
   compact = true,
 }) {
+  const { t } = useTranslation();
   const upcomingConv = myConvocations.filter((m) => new Date(m.date) >= todayStart());
 
   return (
     <AppCard>
       <h3 style={{ ...ps.sectionTitle, marginBottom: 16 }}>
-        {compact ? "Preview atleta" : "Benvenuto"}
+        {compact ? t("pages.playerPortal.previewTitle") : t("pages.playerPortal.welcomeTitle")}
       </h3>
 
       {!selectedPlayer ? (
-        <p style={ps.muted}>Aggiungi giocatori alla rosa per vedere il portale.</p>
+        <p style={ps.muted}>{t("pages.playerPortal.noPlayers")}</p>
       ) : (
         <div style={{ display: "grid", gap: 16 }}>
           {/* Header giocatore */}
@@ -697,7 +703,7 @@ function PlayerPreviewCard({
                 {selectedPlayer.name}
               </h2>
               <p style={ps.muted}>
-                {selectedPlayer.role || "Ruolo"}{selectedPlayer.shirtNumber ? ` · #${selectedPlayer.shirtNumber}` : ""}
+                {selectedPlayer.role || t("pages.playerPortal.roleFallback")}{selectedPlayer.shirtNumber ? ` · #${selectedPlayer.shirtNumber}` : ""}
               </p>
             </div>
           </div>
@@ -709,16 +715,16 @@ function PlayerPreviewCard({
 
           {/* KPI */}
           <div style={ps.kpiGrid}>
-            <MiniMetric label="Minuti"   value={summary.stats.minutes} />
-            <MiniMetric label="Gol"      value={summary.stats.goals} />
-            <MiniMetric label="Assist"   value={summary.stats.assists} />
-            <MiniMetric label="Carico"   value={summary.stats.load} />
+            <MiniMetric label={t("pages.playerPortal.kpiMinutes")}   value={summary.stats.minutes} />
+            <MiniMetric label={t("pages.playerPortal.kpiGoals")}      value={summary.stats.goals} />
+            <MiniMetric label={t("pages.playerPortal.kpiAssists")}   value={summary.stats.assists} />
+            <MiniMetric label={t("pages.playerPortal.kpiLoad")}   value={summary.stats.load} />
           </div>
 
           {/* Prossima convocazione */}
           {upcomingConv.length > 0 && (
             <div style={ps.convAlert}>
-              <Badge tone="green">✓ Sei convocato</Badge>
+              <Badge tone="green">{t("pages.playerPortal.convSelected")}</Badge>
               <p style={{ margin: "6px 0 2px", fontWeight: 700, lineHeight: 1.25 }}>
                 {upcomingConv[0].opponent}
               </p>
@@ -737,55 +743,55 @@ function PlayerPreviewCard({
           {/* Obiettivo + profilo fisico */}
           <div style={ps.twoCol}>
             <div style={ps.infoBlock}>
-              <p style={ps.infoTitle}>Obiettivo</p>
-              <p style={ps.infoValue}>{activeGoal || "Da assegnare"}</p>
+              <p style={ps.infoTitle}>{t("pages.playerPortal.objectiveLabel")}</p>
+              <p style={ps.infoValue}>{activeGoal || t("pages.playerPortal.objectiveFallback")}</p>
               {activeNote && (
                 <>
-                  <p style={{ ...ps.infoTitle, marginTop: 10 }}>Nota staff</p>
+                  <p style={{ ...ps.infoTitle, marginTop: 10 }}>{t("pages.playerPortal.staffNoteLabel")}</p>
                   <p style={ps.infoValue}>{activeNote}</p>
                 </>
               )}
             </div>
             <div style={ps.infoBlock}>
-              <p style={ps.infoTitle}>Profilo fisico</p>
-              <InfoRow label="Ultimo test" value={latestTest ? formatShortDate(latestTest.date) : "Da testare"} />
-              <InfoRow label="Gruppo"      value={physicalReference.group} />
-              <InfoRow label="MAS"         value={physicalReference.mas ? `${physicalReference.mas} km/h` : "—"} />
+              <p style={ps.infoTitle}>{t("pages.playerPortal.physicalProfileTitle")}</p>
+              <InfoRow label={t("pages.playerPortal.lastTestLabel")} value={latestTest ? formatShortDate(latestTest.date) : t("pages.playerPortal.lastTestFallback")} />
+              <InfoRow label={t("pages.playerPortal.groupLabel")}      value={physicalReference.group} />
+              <InfoRow label={t("pages.playerPortal.masLabel")}         value={physicalReference.mas ? `${physicalReference.mas} km/h` : "—"} />
             </div>
           </div>
 
           {/* Programma */}
           {activeProgram && (
             <div style={ps.programBox}>
-              <p style={ps.infoTitle}>Programma assegnato</p>
+              <p style={ps.infoTitle}>{t("pages.playerPortal.assignedProgram")}</p>
               <p style={{ color: "#cbd5e1", lineHeight: 1.6, margin: 0, fontSize: 14 }}>{activeProgram}</p>
             </div>
           )}
 
           {/* Prossimi eventi */}
           <div style={ps.infoBlock}>
-            <p style={ps.infoTitle}>Prossimi impegni</p>
+            <p style={ps.infoTitle}>{t("pages.playerPortal.nextEventsTitle")}</p>
             {nextEvents.length ? (
               <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
                 {nextEvents.map((e) => (
                   <div key={e.id} style={ps.eventRow}>
                     <div>
                       <p style={{ margin: 0, fontWeight: 600, fontSize: 13, lineHeight: 1.25 }}>{e.title}</p>
-                      <p style={{ ...ps.muted, fontSize: 11 }}>{e.type || "Evento"}</p>
+                      <p style={{ ...ps.muted, fontSize: 11 }}>{e.type || t("pages.playerPortal.eventTypeFallback")}</p>
                     </div>
                     <span style={{ color: "#94a3b8", fontSize: 12 }}>{formatShortDate(e.date)}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p style={{ ...ps.muted, marginTop: 6 }}>Nessun evento programmato.</p>
+              <p style={{ ...ps.muted, marginTop: 6 }}>{t("pages.playerPortal.noEvents")}</p>
             )}
           </div>
 
           {/* Comunicazioni */}
           {comms.length > 0 && (
             <div>
-              <p style={{ ...ps.infoTitle, marginBottom: 8 }}>Bacheca staff</p>
+              <p style={{ ...ps.infoTitle, marginBottom: 8 }}>{t("pages.playerPortal.commBoardTitle")}</p>
               {comms.slice(0, 3).map((c) => <CommCard key={c.id} comm={c} />)}
             </div>
           )}

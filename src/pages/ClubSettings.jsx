@@ -73,58 +73,58 @@ export default function ClubSettings({
     <div style={clubStyles.page}>
       <PageHeader
         title={t("pages.clubSettings.title")}
-        subtitle="Ruoli, permessi, configurazione workspace e progresso commerciale del club."
-        badge={`${setup.percent}% configurato`}
+        subtitle={t("pages.clubSettings.subtitle")}
+        badge={t("pages.clubSettings.badgeConfigured", { percent: setup.percent })}
       />
 
       <div style={{ ...clubStyles.grid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
-        <AppCard title="Profilo workspace" subtitle="Identita e obiettivi della societa.">
+        <AppCard title={t("pages.clubSettings.profileTitle")} subtitle={t("pages.clubSettings.profileSubtitle")}>
           <div style={clubStyles.formGrid}>
-            <Field label="Societa">
+            <Field label={t("pages.clubSettings.fieldClub")}>
               <input value={profile.clubName} onChange={(event) => setProfile({ ...profile, clubName: event.target.value })} style={styles.input} />
             </Field>
-            <Field label="Squadra">
+            <Field label={t("pages.clubSettings.fieldTeam")}>
               <input value={profile.teamName} onChange={(event) => setProfile({ ...profile, teamName: event.target.value })} style={styles.input} />
             </Field>
-            <Field label="Campo di casa">
-              <input value={profile.homeFieldName || ""} onChange={(event) => setProfile({ ...profile, homeFieldName: event.target.value })} placeholder="Es. Centro Sportivo Comunale" style={styles.input} />
+            <Field label={t("pages.clubSettings.fieldHomeField")}>
+              <input value={profile.homeFieldName || ""} onChange={(event) => setProfile({ ...profile, homeFieldName: event.target.value })} placeholder={t("pages.clubSettings.homeFieldPlaceholder")} style={styles.input} />
             </Field>
-            <Field label="Indirizzo campo">
-              <input value={profile.homeFieldAddress || ""} onChange={(event) => setProfile({ ...profile, homeFieldAddress: event.target.value })} placeholder="Es. Via Roma 12, Milano" style={styles.input} />
+            <Field label={t("pages.clubSettings.fieldHomeFieldAddress")}>
+              <input value={profile.homeFieldAddress || ""} onChange={(event) => setProfile({ ...profile, homeFieldAddress: event.target.value })} placeholder={t("pages.clubSettings.homeFieldAddressPlaceholder")} style={styles.input} />
             </Field>
-            <Field label="Superficie campo">
+            <Field label={t("pages.clubSettings.fieldSurface")}>
               <select value={profile.homeFieldSurface || "Erba naturale"} onChange={(event) => setProfile({ ...profile, homeFieldSurface: event.target.value })} style={styles.input}>
-                <option>Erba naturale</option>
-                <option>Erba sintetica</option>
-                <option>Ibrido</option>
-                <option>Terra</option>
-                <option>Indoor</option>
+                <option value="Erba naturale">{t("pages.clubSettings.surfaceNatural")}</option>
+                <option value="Erba sintetica">{t("pages.clubSettings.surfaceSynthetic")}</option>
+                <option value="Ibrido">{t("pages.clubSettings.surfaceHybrid")}</option>
+                <option value="Terra">{t("pages.clubSettings.surfaceDirt")}</option>
+                <option value="Indoor">{t("pages.clubSettings.surfaceIndoor")}</option>
               </select>
             </Field>
-            <Field label="Categoria">
+            <Field label={t("pages.clubSettings.fieldCategory")}>
               <select value={profile.category} onChange={(event) => setProfile({ ...profile, category: event.target.value })} style={styles.input}>
-                <option>Prima squadra</option>
-                <option>Juniores</option>
-                <option>Allievi</option>
-                <option>Giovanissimi</option>
-                <option>Esordienti</option>
+                <option value="Prima squadra">{t("pages.clubSettings.catPrima")}</option>
+                <option value="Juniores">{t("pages.clubSettings.catJuniores")}</option>
+                <option value="Allievi">{t("pages.clubSettings.catAllievi")}</option>
+                <option value="Giovanissimi">{t("pages.clubSettings.catGiovanissimi")}</option>
+                <option value="Esordienti">{t("pages.clubSettings.catEsordienti")}</option>
               </select>
             </Field>
-            <Field label="Ruolo principale">
+            <Field label={t("pages.clubSettings.fieldUserRole")}>
               <select value={profile.userRole} onChange={(event) => setProfile({ ...profile, userRole: event.target.value })} style={styles.input}>
                 {Object.entries(memberRoles).map(([key, role]) => (
                   <option key={key} value={key}>{role.label}</option>
                 ))}
               </select>
             </Field>
-            <Field label="Obiettivo stagione">
+            <Field label={t("pages.clubSettings.fieldSeasonGoal")}>
               <textarea value={profile.seasonGoal} onChange={(event) => setProfile({ ...profile, seasonGoal: event.target.value })} style={{ ...styles.input, minHeight: 96 }} />
             </Field>
           </div>
-          <Button onClick={saveProfile}>Salva profilo Club</Button>
+          <Button onClick={saveProfile}>{t("pages.clubSettings.saveProfile")}</Button>
         </AppCard>
 
-        <AppCard title="Progresso configurazione" subtitle="Checklist che guida onboarding e trial.">
+        <AppCard title={t("pages.clubSettings.progressTitle")} subtitle={t("pages.clubSettings.progressSubtitle")}>
           <div style={clubStyles.progressTrack}>
             <div style={{ ...clubStyles.progressBar, width: `${setup.percent}%` }} />
           </div>
@@ -140,26 +140,26 @@ export default function ClubSettings({
       </div>
 
       <div style={{ ...clubStyles.grid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
-        <AppCard title="Invita membro" subtitle="Simulazione ruoli pronta per Supabase/RLS.">
+        <AppCard title={t("pages.clubSettings.inviteTitle")} subtitle={t("pages.clubSettings.inviteSubtitle")}>
           <form onSubmit={saveMember} style={clubStyles.formGrid}>
-            <Field label="Nome">
+            <Field label={t("pages.clubSettings.fieldName")}>
               <input required value={memberForm.name} onChange={(event) => setMemberForm({ ...memberForm, name: event.target.value })} style={styles.input} />
             </Field>
-            <Field label="Email">
+            <Field label={t("pages.clubSettings.fieldEmail")}>
               <input type="email" value={memberForm.email} onChange={(event) => setMemberForm({ ...memberForm, email: event.target.value })} style={styles.input} />
             </Field>
-            <Field label="Ruolo">
+            <Field label={t("pages.clubSettings.fieldRole")}>
               <select value={memberForm.role} onChange={(event) => setMemberForm({ ...memberForm, role: event.target.value })} style={styles.input}>
                 {Object.entries(memberRoles).map(([key, role]) => (
                   <option key={key} value={key}>{role.label}</option>
                 ))}
               </select>
             </Field>
-            <Button type="submit">Aggiungi membro</Button>
+            <Button type="submit">{t("pages.clubSettings.addMember")}</Button>
           </form>
         </AppCard>
 
-        <AppCard title="Membri e permessi" subtitle="Controlla chi puo' vedere o modificare le aree chiave.">
+        <AppCard title={t("pages.clubSettings.membersTitle")} subtitle={t("pages.clubSettings.membersSubtitle")}>
           <div style={clubStyles.memberList}>
             {settings.members.length ? (
               settings.members.map((member) => (
@@ -167,7 +167,7 @@ export default function ClubSettings({
                   <div>
                     <Badge tone={member.status === "Attivo" ? "green" : "orange"}>{member.status}</Badge>
                     <h3 style={{ lineHeight: 1.2 }}>{member.name}</h3>
-                    <p style={clubStyles.muted}>{member.email || "Email non inserita"}</p>
+                    <p style={clubStyles.muted}>{member.email || t("pages.clubSettings.emailMissing")}</p>
                   </div>
                   <select value={member.role} onChange={(event) => updateMemberRole(member.id, event.target.value)} style={styles.input}>
                     {Object.entries(memberRoles).map(([key, role]) => (
@@ -181,11 +181,11 @@ export default function ClubSettings({
                       </Badge>
                     ))}
                   </div>
-                  <Button variant="danger" onClick={() => removeMember(member.id)}>Rimuovi</Button>
+                  <Button variant="danger" onClick={() => removeMember(member.id)}>{t("pages.clubSettings.removeMember")}</Button>
                 </div>
               ))
             ) : (
-              <p style={clubStyles.muted}>Nessun membro invitato.</p>
+              <p style={clubStyles.muted}>{t("pages.clubSettings.noMembers")}</p>
             )}
           </div>
         </AppCard>

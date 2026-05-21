@@ -108,12 +108,12 @@ export default function Opponents({
   if (!opponents.length) {
     return (
       <div style={os.page}>
-        <PageHeader title={t("pages.opponents.title")} subtitle="Archivio scouting, distinte, principi e piano gara" />
+        <PageHeader title={t("pages.opponents.title")} subtitle={t("pages.opponents.subtitle")} />
         <EmptyState
           icon="🕵️"
-          title="Nessun avversario tracciato"
-          text="Crea una partita e compila lo scouting nel Match Day per costruire automaticamente l'archivio."
-          action={<Button onClick={() => navigate("/matches")}>Crea partita</Button>}
+          title={t("pages.opponents.emptyTitle")}
+          text={t("pages.opponents.emptyText")}
+          action={<Button onClick={() => navigate("/matches")}>{t("pages.opponents.emptyAction")}</Button>}
         />
       </div>
     );
@@ -122,19 +122,19 @@ export default function Opponents({
   return (
     <div style={os.page}>
       <PageHeader
-        title="Avversari"
-        subtitle="Archivio scouting, distinte, principi, punti forti/deboli e palle inattive"
-        badge={`${opponents.length} avversari`}
-        action={<Button onClick={() => navigate("/matches")}>Nuova partita</Button>}
+        title={t("pages.opponents.title")}
+        subtitle={t("pages.opponents.subtitle")}
+        badge={t("pages.opponents.badge", { count: opponents.length })}
+        action={<Button onClick={() => navigate("/matches")}>{t("pages.opponents.newMatch")}</Button>}
       />
 
       <AppCard>
         <div style={os.toolbar}>
-          <SearchBar value={search} onChange={setSearch} placeholder="Cerca avversario, modulo, giocatore..." />
+          <SearchBar value={search} onChange={setSearch} placeholder={t("pages.opponents.searchPlaceholder")} />
           <div style={os.kpiRow}>
-            <MiniKpi label="Gare analizzate" value={matches.length} />
-            <MiniKpi label="Distinte" value={matches.filter((m) => m.opponentScouting?.lineup?.length).length} />
-            <MiniKpi label="Con note ritorno" value={matches.filter((m) => m.opponentScouting?.returnLegNotes).length} />
+            <MiniKpi label={t("pages.opponents.kpiAnalyzed")} value={matches.length} />
+            <MiniKpi label={t("pages.opponents.kpiLineups")} value={matches.filter((m) => m.opponentScouting?.lineup?.length).length} />
+            <MiniKpi label={t("pages.opponents.kpiReturnNotes")} value={matches.filter((m) => m.opponentScouting?.returnLegNotes).length} />
           </div>
         </div>
       </AppCard>
@@ -157,7 +157,7 @@ export default function Opponents({
                   {opponent.scoutingScore}/6
                 </Badge>
               </div>
-              <span>{opponent.matches.length} gare · {opponent.formations.join(", ") || "Modulo -"}</span>
+              <span>{opponent.matches.length} {t("pages.opponents.matchesLabel")} · {opponent.formations.join(", ") || t("pages.opponents.formationLabel")}</span>
             </button>
           ))}
         </div>
@@ -167,44 +167,44 @@ export default function Opponents({
             <AppCard>
               <div style={os.hero}>
                 <div>
-                  <p style={os.eyebrow}>Dossier avversario</p>
+                  <p style={os.eyebrow}>{t("pages.opponents.dossierLabel")}</p>
                   <h2 style={os.title}>{selected.name}</h2>
                   <p style={os.muted}>
-                    Ultima gara: {selected.latest ? formatShortDate(selected.latest.date) : "-"} · {selected.latest?.result || "Risultato -"}
+                    {t("pages.opponents.lastMatch")} {selected.latest ? formatShortDate(selected.latest.date) : "-"} · {selected.latest?.result || t("pages.opponents.resultFallback")}
                   </p>
                 </div>
                 <div style={os.heroActions}>
                   {selected.latest && (
                     <Button onClick={() => navigate(`/match-day/${selected.latest.id}`)}>
-                      Apri Match Day
+                      {t("pages.opponents.openMatchDay")}
                     </Button>
                   )}
                   <Button variant="ghost" onClick={() => navigate("/set-plays")}>
-                    Palle inattive
+                    {t("pages.opponents.setPlaysBtn")}
                   </Button>
                 </div>
               </div>
 
               <div style={os.kpiGrid}>
-                <MiniKpi label="Gare" value={selected.matches.length} />
-                <MiniKpi label="Moduli" value={selected.formations.length || "-"} />
-                <MiniKpi label="Giocatori visti" value={selected.players.length || "-"} />
-                <MiniKpi label="Scouting" value={`${selected.scoutingScore}/6`} />
+                <MiniKpi label={t("pages.opponents.kpiMatches")} value={selected.matches.length} />
+                <MiniKpi label={t("pages.opponents.kpiFormations")} value={selected.formations.length || "-"} />
+                <MiniKpi label={t("pages.opponents.kpiPlayers")} value={selected.players.length || "-"} />
+                <MiniKpi label={t("pages.opponents.kpiScouting")} value={`${selected.scoutingScore}/6`} />
               </div>
             </AppCard>
 
             <div style={os.scoutingGrid}>
-              <ScoutingBlock title="Punti forti" tone="red" items={selected.strengths} empty="Nessun punto forte inserito." />
-              <ScoutingBlock title="Dove attaccarli" tone="green" items={selected.weaknesses} empty="Nessuna vulnerabilita inserita." />
-              <ScoutingBlock title="Palle inattive a favore" tone="orange" items={selected.setPiecesFor} empty="Nessuna nota su piazzati offensivi." />
-              <ScoutingBlock title="Palle inattive contro" tone="blue" items={selected.setPiecesAgainst} empty="Nessuna nota su piazzati difensivi." />
+              <ScoutingBlock title={t("pages.opponents.scoutingStrengths")} tone="red" items={selected.strengths} empty={t("pages.opponents.emptyStrengths")} />
+              <ScoutingBlock title={t("pages.opponents.scoutingWeaknesses")} tone="green" items={selected.weaknesses} empty={t("pages.opponents.emptyWeaknesses")} />
+              <ScoutingBlock title={t("pages.opponents.scoutingSetFor")} tone="orange" items={selected.setPiecesFor} empty={t("pages.opponents.emptySetFor")} />
+              <ScoutingBlock title={t("pages.opponents.scoutingSetAgainst")} tone="blue" items={selected.setPiecesAgainst} empty={t("pages.opponents.emptySetAgainst")} />
             </div>
 
             <AppCard>
               <div style={os.sectionHead}>
                 <div>
-                  <h3 style={os.sectionTitle}>Giocatori chiave / distinta</h3>
-                  <p style={os.muted}>Aggregati dalle distinte compilate in Match Day.</p>
+                  <h3 style={os.sectionTitle}>{t("pages.opponents.keyPlayersTitle")}</h3>
+                  <p style={os.muted}>{t("pages.opponents.keyPlayersSubtitle")}</p>
                 </div>
                 <Badge tone="blue">{selected.players.length}</Badge>
               </div>
@@ -213,21 +213,21 @@ export default function Opponents({
                   {selected.players.slice(0, 16).map((player) => (
                     <div key={`${player.name}-${player.birthYear || ""}`} style={os.playerCard}>
                       <strong>{player.name}</strong>
-                      <span>{player.role || "Ruolo -"} {player.birthYear ? `· ${player.birthYear}` : ""}</span>
+                      <span>{player.role || t("pages.opponents.roleFallback")} {player.birthYear ? `· ${player.birthYear}` : ""}</span>
                       {player.notes && <small>{player.notes}</small>}
                     </div>
                   ))}
                 </div>
               ) : (
-                <p style={os.muted}>Nessun giocatore avversario inserito.</p>
+                <p style={os.muted}>{t("pages.opponents.noPlayers")}</p>
               )}
             </AppCard>
 
             <AppCard>
               <div style={os.sectionHead}>
                 <div>
-                  <h3 style={os.sectionTitle}>Storico gare</h3>
-                  <p style={os.muted}>Risultati, note ritorno e apprendimento accumulato.</p>
+                  <h3 style={os.sectionTitle}>{t("pages.opponents.historyTitle")}</h3>
+                  <p style={os.muted}>{t("pages.opponents.historySubtitle")}</p>
                 </div>
               </div>
               <div style={os.matchList}>
@@ -238,15 +238,15 @@ export default function Opponents({
                     onClick={() => navigate(`/match-day/${match.id}`)}
                     style={os.matchItem}
                   >
-                    <strong>{formatShortDate(match.date)} · {match.result || "Risultato -"}</strong>
-                    <span>{match.opponentScouting?.returnLegNotes || match.opponentNotes || "Nessuna nota ritorno"}</span>
+                    <strong>{formatShortDate(match.date)} · {match.result || t("pages.opponents.historyResultFallback")}</strong>
+                    <span>{match.opponentScouting?.returnLegNotes || match.opponentNotes || t("pages.opponents.historyNoReturn")}</span>
                   </button>
                 ))}
               </div>
             </AppCard>
           </div>
         ) : (
-          <AppCard><p style={os.muted}>Nessun avversario trovato con questi filtri.</p></AppCard>
+          <AppCard><p style={os.muted}>{t("pages.opponents.noFilterResults")}</p></AppCard>
         )}
       </div>
     </div>

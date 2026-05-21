@@ -34,10 +34,10 @@ function calcBMI(weight, height) {
 
 function getBMICategory(bmi) {
   if (bmi === null || bmi === undefined) return null;
-  if (bmi < 18.5) return { label: "Sottopeso", color: "#60a5fa" };
-  if (bmi < 25)   return { label: "Normale",   color: "#22c55e" };
-  if (bmi < 30)   return { label: "Sovrappeso",color: "#f59e0b" };
-  return            { label: "Obeso",           color: "#f87171" };
+  if (bmi < 18.5) return { labelKey: "pages.physicalTests.bmiUnderweight", color: "#60a5fa" };
+  if (bmi < 25)   return { labelKey: "pages.physicalTests.bmiNormal",      color: "#22c55e" };
+  if (bmi < 30)   return { labelKey: "pages.physicalTests.bmiOverweight",  color: "#f59e0b" };
+  return            { labelKey: "pages.physicalTests.bmiObese",             color: "#f87171" };
 }
 
 // ─── Trend ────────────────────────────────────
@@ -67,6 +67,7 @@ const TREND_STYLE = {
 
 // ─── Grafico SVG per singolo giocatore ────────
 function PlayerLineChart({ tests, metrics }) {
+  const { t } = useTranslation();
   const chartMetrics = metrics.filter((m) => {
     // solo metriche con almeno 1 valore numerico
     return tests.some((t) => t[m.key] !== "" && !isNaN(parseFloat(t[m.key])));
@@ -81,7 +82,7 @@ function PlayerLineChart({ tests, metrics }) {
     .filter((p) => !isNaN(p.val));
 
   if (chartMetrics.length === 0) {
-    return <p style={{ color: "#64748b", textAlign: "center", padding: "24px 0" }}>Nessun dato disponibile per il grafico.</p>;
+    return <p style={{ color: "#64748b", textAlign: "center", padding: "24px 0" }}>{t("pages.physicalTests.chartNoData")}</p>;
   }
 
   return (
@@ -106,7 +107,7 @@ function PlayerLineChart({ tests, metrics }) {
 
       {points.length < 2 ? (
         <p style={{ color: "#64748b", textAlign: "center", padding: "20px 0" }}>
-          Servono almeno 2 rilevazioni per visualizzare il grafico.
+          {t("pages.physicalTests.chartNeedTwo")}
         </p>
       ) : (
         <ChartSVG points={points} metric={metric} />
@@ -254,7 +255,7 @@ export default function PhysicalTests({
   function saveTest() {
     const f = modal.form;
     if (!f.playerId) {
-      showToast("Seleziona un giocatore", "warn");
+      showToast(t("pages.physicalTests.noPlayerToast"), "warn");
       return;
     }
     if (modal.mode === "edit") {
@@ -267,8 +268,8 @@ export default function PhysicalTests({
 
   function deleteTest(id) {
     setConfirmState({
-      message: "Eliminare questo test?",
-      confirmLabel: "Elimina",
+      message: t("pages.physicalTests.deleteConfirm"),
+      confirmLabel: t("pages.physicalTests.deleteLabel"),
       confirmTone: "red",
       onConfirm: () => setPhysicalTests((prevTests) => prevTests.filter((t) => t.id !== id)),
     });
@@ -310,25 +311,25 @@ export default function PhysicalTests({
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
         title={t("pages.physicalTests.title")}
-        subtitle="Monitora la condizione atletica di ogni giocatore nel tempo"
+        subtitle={t("pages.physicalTests.subtitle")}
       />
 
       {/* Stats bar */}
       <div style={pt.statsBar}>
-        <StatChip label="Test totali"        value={totalTests}     color="#60a5fa" />
-        <StatChip label="Giocatori testati"  value={`${playersTested}/${players.length}`} color="#34d399" />
-        {lastTestDate && <StatChip label="Ultimo test" value={formatShortDate(lastTestDate)} color="#a78bfa" />}
+        <StatChip label={t("pages.physicalTests.statTotal")}        value={totalTests}     color="#60a5fa" />
+        <StatChip label={t("pages.physicalTests.statTested")}  value={`${playersTested}/${players.length}`} color="#34d399" />
+        {lastTestDate && <StatChip label={t("pages.physicalTests.statLastTest")} value={formatShortDate(lastTestDate)} color="#a78bfa" />}
         <div style={{ flex: 1 }} />
 
         {/* Ranking toggle */}
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>Ranking</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>{t("pages.physicalTests.rankingLabel")}</span>
           <button
             type="button"
             onClick={() => setRankMetric(null)}
             style={{ ...pt.rankBtn, ...(rankMetric === null ? pt.rankBtnActive : {}) }}
           >
-            Squadra
+            {t("pages.physicalTests.rankingSquad")}
           </button>
           {METRICS.filter((m) => m.higherIsBetter !== null).map((m) => (
             <button
@@ -347,10 +348,10 @@ export default function PhysicalTests({
       {rankMetric && (
         <AppCard>
           <h3 style={{ margin: "0 0 16px", lineHeight: 1.2 }}>
-            Ranking — {METRICS.find((m) => m.key === rankMetric)?.label}
+            {t("pages.physicalTests.rankingTitle", { metric: METRICS.find((m) => m.key === rankMetric)?.label })}
           </h3>
           {rankingRows.length === 0 ? (
-            <p style={{ color: "#64748b" }}>Nessun dato disponibile per questa metrica.</p>
+            <p style={{ color: "#64748b" }}>{t("pages.physicalTests.rankingNoData")}</p>
           ) : (
             <div style={{ display: "grid", gap: 8 }}>
               {rankingRows.map((row, i) => {
@@ -378,7 +379,7 @@ export default function PhysicalTests({
       {!rankMetric && (
         <>
           {players.length === 0 ? (
-            <EmptyState icon="⏱️" title="Nessun giocatore in rosa" text="Aggiungi giocatori dalla sezione Rosa." />
+            <EmptyState icon="⏱️" title={t("pages.physicalTests.emptyTitle")} text={t("pages.physicalTests.emptyText")} />
           ) : (
             <div style={pt.grid}>
               {players.map((player) => {
@@ -424,7 +425,7 @@ export default function PhysicalTests({
                             <span style={{ color: "#334155", margin: "0 4px" }}>·</span>
                             <span style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>BMI</span>
                             <strong style={{ color: bmiCat.color }}>{bmi}</strong>
-                            <span style={{ fontSize: 11, color: bmiCat.color, fontWeight: 700 }}>({bmiCat.label})</span>
+                            <span style={{ fontSize: 11, color: bmiCat.color, fontWeight: 700 }}>({t(bmiCat.labelKey)})</span>
                           </>
                         )}
                       </div>
@@ -435,7 +436,7 @@ export default function PhysicalTests({
                       <div style={{ ...pt.masRow, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
                         <span style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>BMI</span>
                         <strong style={{ color: bmiCat.color, fontSize: 16 }}>{bmi}</strong>
-                        <span style={{ fontSize: 12, color: bmiCat.color, fontWeight: 700 }}>— {bmiCat.label}</span>
+                        <span style={{ fontSize: 12, color: bmiCat.color, fontWeight: 700 }}>— {t(bmiCat.labelKey)}</span>
                       </div>
                     )}
 
@@ -482,7 +483,7 @@ export default function PhysicalTests({
                           onClick={() => setOpenHistory(isOpen ? null : pid)}
                           style={pt.ghostBtn}
                         >
-                          Storico ({tests.length})
+                          {t("pages.physicalTests.historyBtn", { count: tests.length })}
                         </button>
                       )}
                       {tests.length >= 2 && (
@@ -491,17 +492,17 @@ export default function PhysicalTests({
                           onClick={() => setChartPlayerId(pid)}
                           style={{ ...pt.ghostBtn, color: "#93c5fd", borderColor: "rgba(96,165,250,0.25)" }}
                         >
-                          Grafico
+                          {t("pages.physicalTests.chartBtn")}
                         </button>
                       )}
                       <div style={{ flex: 1 }} />
-                      <Button onClick={() => openAdd(pid)}>+ Test</Button>
+                      <Button onClick={() => openAdd(pid)}>{t("pages.physicalTests.addTestBtn")}</Button>
                     </div>
 
                     {/* Storico espandibile con delta */}
                     {isOpen && (
                       <div style={pt.historyBox}>
-                        <p style={pt.historyTitle}>Storico test</p>
+                        <p style={pt.historyTitle}>{t("pages.physicalTests.historyTitle")}</p>
                         <div style={{ display: "grid", gap: 8 }}>
                           {tests.map((test, idx) => {
                             const nextTest = tests[idx + 1]; // più vecchio
@@ -509,7 +510,7 @@ export default function PhysicalTests({
                               <div key={test.id} style={pt.historyRow}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                                   <Badge tone="blue">{formatShortDate(test.date)}</Badge>
-                                  {idx === 0 && <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 700 }}>● Ultimo</span>}
+                                  {idx === 0 && <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 700 }}>● {t("pages.physicalTests.latestBadge")}</span>}
                                   <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
                                     <button onClick={() => openEdit(test)} style={pt.iconBtn} title="Modifica">✏️</button>
                                     <button onClick={() => deleteTest(test.id)} style={{ ...pt.iconBtn, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }} title="Elimina">🗑️</button>
@@ -557,8 +558,8 @@ export default function PhysicalTests({
           <div style={{ ...pt.modalBox, maxWidth: 600 }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2 }}>Progressione — {chartName}</h3>
-                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>{chartTests.length} rilevazioni registrate</p>
+                <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2 }}>{t("pages.physicalTests.chartTitle", { name: chartName })}</h3>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>{t("pages.physicalTests.chartSubtitle", { count: chartTests.length })}</p>
               </div>
               <button onClick={() => setChartPlayerId(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 22, cursor: "pointer" }}>×</button>
             </div>
@@ -573,7 +574,7 @@ export default function PhysicalTests({
           <div style={pt.modalBox} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2 }}>
-                {modal.mode === "edit" ? "Modifica test" : "Nuovo test fisico"}
+                {modal.mode === "edit" ? t("pages.physicalTests.modalEditTitle") : t("pages.physicalTests.modalAddTitle")}
               </h3>
               <button onClick={closeModal} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 22, cursor: "pointer" }}>×</button>
             </div>
@@ -582,14 +583,14 @@ export default function PhysicalTests({
               {/* Giocatore + data */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div style={{ display: "grid", gap: 6 }}>
-                  <label style={pt.fieldLabel}>Giocatore</label>
+                  <label style={pt.fieldLabel}>{t("pages.physicalTests.fieldPlayer")}</label>
                   <select
                     value={modal.form.playerId}
                     onChange={(e) => setModal({ ...modal, form: { ...modal.form, playerId: e.target.value } })}
                     style={styles.input}
                     disabled={modal.mode === "edit"}
                   >
-                    <option value="">Seleziona...</option>
+                    <option value="">{t("pages.physicalTests.playerPlaceholder")}</option>
                     {players.map((p) => {
                       const n = [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
                       return <option key={p.id} value={String(p.id)}>{n}</option>;
@@ -597,7 +598,7 @@ export default function PhysicalTests({
                   </select>
                 </div>
                 <div style={{ display: "grid", gap: 6 }}>
-                  <label style={pt.fieldLabel}>Data</label>
+                  <label style={pt.fieldLabel}>{t("pages.physicalTests.fieldDate")}</label>
                   <input
                     type="date"
                     value={modal.form.date}
@@ -642,27 +643,27 @@ export default function PhysicalTests({
                 if (!bmi || !cat) return null;
                 return (
                   <div style={{ padding: "10px 14px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 10, alignItems: "center" }}>
-                    <span style={{ fontSize: 13, color: "#64748b" }}>BMI calcolato:</span>
+                    <span style={{ fontSize: 13, color: "#64748b" }}>{t("pages.physicalTests.bmiCalculated")}</span>
                     <strong style={{ fontSize: 18, color: cat.color }}>{bmi}</strong>
-                    <span style={{ fontSize: 12, color: cat.color, fontWeight: 700 }}>— {cat.label}</span>
+                    <span style={{ fontSize: 12, color: cat.color, fontWeight: 700 }}>— {t(cat.labelKey)}</span>
                   </div>
                 );
               })()}
 
               <div style={{ display: "grid", gap: 6 }}>
-                <label style={pt.fieldLabel}>Note</label>
+                <label style={pt.fieldLabel}>{t("pages.physicalTests.fieldNotes")}</label>
                 <textarea
                   value={modal.form.notes}
                   onChange={(e) => setModal({ ...modal, form: { ...modal.form, notes: e.target.value } })}
-                  placeholder="Note atletiche, condizioni, contesto..."
+                  placeholder={t("pages.physicalTests.notesPlaceholder")}
                   style={{ ...styles.input, minHeight: 68, resize: "vertical" }}
                 />
               </div>
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-              <Button variant="ghost" onClick={closeModal}>Annulla</Button>
-              <Button onClick={saveTest}>{modal.mode === "edit" ? "Aggiorna" : "Salva test"}</Button>
+              <Button variant="ghost" onClick={closeModal}>{t("pages.physicalTests.cancel")}</Button>
+              <Button onClick={saveTest}>{modal.mode === "edit" ? t("pages.physicalTests.updateTest") : t("pages.physicalTests.saveTest")}</Button>
             </div>
           </div>
         </div>

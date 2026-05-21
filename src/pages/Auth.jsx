@@ -303,7 +303,7 @@ function Auth() {
               <input
                 style={s.input}
                 type="email"
-                placeholder="Email"
+                placeholder={t("pages.auth.email")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
@@ -315,7 +315,7 @@ function Auth() {
                   <input
                     style={{ ...s.input, paddingRight: 46 }}
                     type={showPassword ? "text" : "password"}
-                    placeholder="Password"
+                    placeholder={t("pages.auth.password")}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete={mode === "login" ? "current-password" : "new-password"}

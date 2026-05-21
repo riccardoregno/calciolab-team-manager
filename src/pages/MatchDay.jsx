@@ -60,15 +60,15 @@ function MatchDay({
       <div style={styles.page}>
         <PageHeader
           title={t("pages.matchDay.title")}
-          subtitle="Prepara convocati, distinta, titolari e note gara"
+          subtitle={t("pages.matchDay.subtitleEmpty")}
         />
         <EmptyState
           icon="⚽"
-          title="Nessuna partita disponibile"
-          text="Crea una partita dal Match Center per preparare la scheda gara."
+          title={t("pages.matchDay.noMatchTitle")}
+          text={t("pages.matchDay.noMatchText")}
           action={
             <Link to="/matches" style={{ textDecoration: "none" }}>
-              <Button>Vai alle partite</Button>
+              <Button>{t("pages.matchDay.goToMatches")}</Button>
             </Link>
           }
         />
@@ -101,7 +101,7 @@ function MatchDay({
   const convocationDetails = selectedMatch.convocazione?.details || {};
   const convocationCount = selectedMatch.convocazione?.playerIds?.length || 0;
   const preMatchChecklist = getPreMatchChecklist(selectedMatch);
-  const checklistItems = getChecklistItems({ match: selectedMatch, venue: matchVenue });
+  const checklistItems = getChecklistItems({ match: selectedMatch, venue: matchVenue, t });
   const completedChecklist = checklistItems.filter((item) => preMatchChecklist.items[item.key]).length;
   const matchMeta = [
     formatDate(selectedMatch.date),
@@ -132,54 +132,54 @@ function MatchDay({
   const commandSteps = [
     {
       key: "convocazione",
-      title: "Convocazione",
+      title: t("pages.matchDay.commandConvocazione"),
       detail: selectedMatch.convocazione?.published
-        ? `${selectedMatch.convocazione.playerIds?.length || 0} convocati pubblicati`
+        ? t("pages.matchDay.commandConvocazionePublished", { count: selectedMatch.convocazione.playerIds?.length || 0 })
         : selectedMatch.convocazione?.playerIds?.length
-          ? `${selectedMatch.convocazione.playerIds.length} convocati in bozza`
-          : "Da compilare",
+          ? t("pages.matchDay.commandConvocazioneDraft", { count: selectedMatch.convocazione.playerIds.length })
+          : t("pages.matchDay.commandConvocazioneTodo"),
       done: Boolean(selectedMatch.convocazione?.published),
-      action: "Apri",
+      action: t("pages.matchDay.commandOpenAction"),
       onClick: () => navigate(`/match-convocation/${selectedMatch.id}`),
     },
     {
       key: "distinta",
-      title: "Distinta",
-      detail: `${starterPlayers.length}/11 titolari · ${benchPlayers.length} panchina`,
+      title: t("pages.matchDay.commandDistinta"),
+      detail: t("pages.matchDay.commandDistintaDetail", { starters: starterPlayers.length, bench: benchPlayers.length }),
       done: lineup.ready,
-      action: lineup.ready ? "Rivedi" : "Completa",
+      action: lineup.ready ? t("pages.matchDay.commandDistintaReview") : t("pages.matchDay.commandDistintaComplete"),
       onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }),
     },
     {
       key: "scouting",
-      title: "Avversario",
-      detail: scoutingCount ? `${scoutingCount}/6 blocchi scouting` : "Scouting da compilare",
+      title: t("pages.matchDay.commandAvversario"),
+      detail: scoutingCount ? t("pages.matchDay.commandScoutingDetail", { count: scoutingCount }) : t("pages.matchDay.commandScoutingTodo"),
       done: scoutingCount >= 3,
-      action: "Scouting",
+      action: t("pages.matchDay.commandScoutingAction"),
       onClick: () => document.getElementById("match-opponent-scouting")?.scrollIntoView({ behavior: "smooth", block: "start" }),
     },
     {
       key: "logistica",
-      title: "Logistica",
-      detail: `${completedChecklist}/${checklistItems.length} controlli pre-gara`,
+      title: t("pages.matchDay.commandLogistica"),
+      detail: t("pages.matchDay.commandLogisticaDetail", { done: completedChecklist, total: checklistItems.length }),
       done: completedChecklist === checklistItems.length,
-      action: "Checklist",
+      action: t("pages.matchDay.commandLogisticaAction"),
       onClick: () => document.getElementById("match-pre-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" }),
     },
     {
       key: "stats",
-      title: "Statistiche",
-      detail: "Inserimento dati gara e player_stats",
+      title: t("pages.matchDay.commandStatistiche"),
+      detail: t("pages.matchDay.commandStatisticheDetail"),
       done: false,
-      action: "Apri",
+      action: t("pages.matchDay.commandOpenAction"),
       onClick: () => navigate(`/match-stats/${selectedMatch.id}`),
     },
     {
       key: "post",
-      title: "Post gara",
-      detail: postMatchFilled ? "Report iniziato" : "Report da compilare",
+      title: t("pages.matchDay.commandPost"),
+      detail: postMatchFilled ? t("pages.matchDay.commandPostDone") : t("pages.matchDay.commandPostTodo"),
       done: postMatchFilled,
-      action: "Report",
+      action: t("pages.matchDay.commandPostAction"),
       onClick: () => navigate(`/post-match/${selectedMatch.id}`),
     },
   ];
@@ -310,7 +310,7 @@ function MatchDay({
         attachment,
       });
     } catch (error) {
-      showToast(error?.message || "Upload allegato non riuscito", "error");
+      showToast(error?.message || t("pages.matchDay.uploadFailed"), "error");
     }
     event.target.value = "";
   }
@@ -375,6 +375,7 @@ function MatchDay({
         match: selectedMatch,
         venue: matchVenue,
         convocationCount: convIds.length,
+        t,
       });
     }
 
@@ -383,6 +384,7 @@ function MatchDay({
         match: selectedMatch,
         venue: matchVenue,
         details: convocationDetails,
+        t,
       });
     }
 
@@ -395,12 +397,12 @@ function MatchDay({
     }
 
     if (Object.keys(patch).length === 0) {
-      showToast("Scheda gia precompilata", "info");
+      showToast(t("pages.matchDay.alreadyFilled"), "info");
       return;
     }
 
     updateSelectedMatch(patch);
-    showToast("Scheda match day precompilata", "success");
+    showToast(t("pages.matchDay.prefillDone"), "success");
   }
 
   function copyPreviousLineup() {
@@ -416,7 +418,7 @@ function MatchDay({
       .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
     if (!previous) {
-      showToast("Nessuna distinta precedente da copiare", "info");
+      showToast(t("pages.matchDay.noPreviousLineup"), "info");
       return;
     }
 
@@ -427,8 +429,8 @@ function MatchDay({
     <div style={styles.page}>
       <ToastContainer />
       <PageHeader
-        title="Match Day"
-        subtitle="Convocazioni, distinta, piano gara ed export stampabile"
+        title={t("pages.matchDay.title")}
+        subtitle={t("pages.matchDay.subtitle")}
       />
 
       <MatchTabBar
@@ -452,11 +454,11 @@ function MatchDay({
         <div style={matchDayStyles.convoBanner}>
           <span style={matchDayStyles.convoBannerText}>
             {selectedMatch.convocazione?.playerIds?.length > 0
-              ? `📋 Convocazione in bozza — ${selectedMatch.convocazione.playerIds.length} giocatori selezionati, non ancora pubblicata`
-              : "📋 Convocazione non ancora compilata per questa partita"}
+              ? t("pages.matchDay.convoDraft", { count: selectedMatch.convocazione.playerIds.length })
+              : t("pages.matchDay.convoEmpty")}
           </span>
           <Button variant="ghost" onClick={() => navigate(`/match-convocation/${selectedMatch.id}`)}>
-            Vai alla convocazione →
+            {t("pages.matchDay.goToConvocation")}
           </Button>
         </div>
       )}
@@ -476,18 +478,18 @@ function MatchDay({
 
         <div style={matchDayStyles.actions}>
           <Link to={`/matches`} style={{ textDecoration: "none" }}>
-            <Button variant="ghost">Match Center</Button>
+            <Button variant="ghost">{t("pages.matchDay.matchCenter")}</Button>
           </Link>
           <Button variant="ghost" onClick={copyPreviousLineup}>
-            Copia precedente
+            {t("pages.matchDay.copyPrevious")}
           </Button>
           <Button
             variant={lineup.ready ? "primary" : "ghost"}
             onClick={() => updateLineup({ ready: !lineup.ready })}
           >
-            {lineup.ready ? "Distinta pronta" : "Segna pronta"}
+            {lineup.ready ? t("pages.matchDay.lineupReady") : t("pages.matchDay.markReady")}
           </Button>
-          <Button onClick={() => window.print()}>Esporta PDF</Button>
+          <Button onClick={() => window.print()}>{t("pages.matchDay.exportPdf")}</Button>
         </div>
       </div>
 
@@ -509,7 +511,7 @@ function MatchDay({
                 {matchMeta.join(" · ")}
               </p>
               <div style={matchDayStyles.resultRow}>
-                <span style={matchDayStyles.resultLabel}>Risultato</span>
+                <span style={matchDayStyles.resultLabel}>{t("pages.matchDay.resultLabel")}</span>
                 <input
                   value={selectedMatch.result || ""}
                   onChange={(e) => updateNote("result", e.target.value)}
@@ -526,39 +528,39 @@ function MatchDay({
           </div>
 
           <div style={matchDayStyles.kpiGrid}>
-            <MiniStat label="Convocati" value={calledPlayers.length} />
-            <MiniStat label="Titolari" value={`${starterPlayers.length}/11`} />
-            <MiniStat label="Panchina" value={benchPlayers.length} />
-            <MiniStat label="Ora" value={selectedMatch.time || "-"} />
-            <MiniStat label="Modulo" value={selectedMatch.formation || "-"} />
-            <MiniStat label="Stato" value={lineup.ready ? "Pronta" : "Bozza"} />
+            <MiniStat label={t("pages.matchDay.statCalled")} value={calledPlayers.length} />
+            <MiniStat label={t("pages.matchDay.statStarters")} value={`${starterPlayers.length}/11`} />
+            <MiniStat label={t("pages.matchDay.statBench")} value={benchPlayers.length} />
+            <MiniStat label={t("pages.matchDay.statTime")} value={selectedMatch.time || "-"} />
+            <MiniStat label={t("pages.matchDay.statFormation")} value={selectedMatch.formation || "-"} />
+            <MiniStat label={t("pages.matchDay.statStatus")} value={lineup.ready ? t("pages.matchDay.statusReady") : t("pages.matchDay.statusDraft")} />
           </div>
         </AppCard>
 
         <div style={matchDayStyles.prefillBanner}>
           <div>
-            <strong style={{ color: "#bfdbfe", fontSize: 14 }}>Scheda da calendario</strong>
+            <strong style={{ color: "#bfdbfe", fontSize: 14 }}>{t("pages.matchDay.scheduleTitle")}</strong>
             <div style={matchDayStyles.prefillMeta}>
-              <span>{selectedMatch.opponent ? `vs ${selectedMatch.opponent}` : "Avversario da definire"}</span>
-              <span>{selectedMatch.time ? `Ore ${selectedMatch.time}` : "Ora non inserita"}</span>
-              <span>{matchVenue || "Campo da definire"}</span>
-              <span>{convocationCount ? `${convocationCount} convocati` : "Convocazione vuota"}</span>
+              <span>{selectedMatch.opponent ? `vs ${selectedMatch.opponent}` : t("pages.matchDay.opponentUndefined")}</span>
+              <span>{selectedMatch.time ? t("pages.matchDay.timePrefix", { time: selectedMatch.time }) : t("pages.matchDay.timeUndefined")}</span>
+              <span>{matchVenue || t("pages.matchDay.fieldUndefined")}</span>
+              <span>{convocationCount ? t("pages.matchDay.convocatiCount", { count: convocationCount }) : t("pages.matchDay.convoEmpty2")}</span>
             </div>
           </div>
           <Button onClick={prefillMatchDayFromSchedule} disabled={!canPrefillMatchDay}>
-            Precompila da calendario
+            {t("pages.matchDay.prefillFromCalendar")}
           </Button>
         </div>
 
         <AppCard>
           <SectionHeader
-            title="Checklist pre-gara"
+            title={t("pages.matchDay.checklistTitle")}
             badge={`${completedChecklist}/${checklistItems.length}`}
           />
           <div id="match-pre-checklist" />
           <div style={matchDayStyles.checklistMetaGrid}>
             <label style={matchDayStyles.smallField}>
-              Arrivo staff
+              {t("pages.matchDay.checklistStaffArrival")}
               <input
                 type="time"
                 value={preMatchChecklist.staffArrivalTime}
@@ -567,20 +569,20 @@ function MatchDay({
               />
             </label>
             <label style={matchDayStyles.smallField}>
-              Responsabile
+              {t("pages.matchDay.checklistResponsible")}
               <input
                 value={preMatchChecklist.staffResponsible}
                 onChange={(event) => updatePreMatchChecklist({ staffResponsible: event.target.value })}
-                placeholder="Es. Team manager"
+                placeholder={t("pages.matchDay.checklistStaffPlaceholder")}
                 style={matchDayStyles.smallInput}
               />
             </label>
             <label style={matchDayStyles.smallField}>
-              Arbitro / contatto gara
+              {t("pages.matchDay.checklistReferee")}
               <input
                 value={preMatchChecklist.refereeInfo}
                 onChange={(event) => updatePreMatchChecklist({ refereeInfo: event.target.value })}
-                placeholder="Da confermare"
+                placeholder={t("pages.matchDay.checklistRefereePlaceholder")}
                 style={matchDayStyles.smallInput}
               />
             </label>
@@ -612,18 +614,18 @@ function MatchDay({
           <textarea
             value={preMatchChecklist.logisticsNotes}
             onChange={(event) => updatePreMatchChecklist({ logisticsNotes: event.target.value })}
-            placeholder="Note operative: documenti, multe, maglie, acqua, materiale, indicazioni per staff e dirigenti..."
+            placeholder={t("pages.matchDay.checklistNotesPlaceholder")}
             style={{ ...styles.input, marginTop: 12, minHeight: 80, resize: "vertical" }}
           />
           <div style={matchDayStyles.printChecklistSummary}>
             <div style={matchDayStyles.printChecklistHeader}>
-              <strong>Riepilogo operativo per stampa</strong>
-              <span>{completedChecklist}/{checklistItems.length} completati</span>
+              <strong>{t("pages.matchDay.checklistSummaryTitle")}</strong>
+              <span>{t("pages.matchDay.checklistCompleted", { done: completedChecklist, total: checklistItems.length })}</span>
             </div>
             <div style={matchDayStyles.printChecklistInfo}>
-              <span>Arrivo staff: {preMatchChecklist.staffArrivalTime || "Da definire"}</span>
-              <span>Responsabile: {preMatchChecklist.staffResponsible || "Da definire"}</span>
-              <span>Arbitro/contatto: {preMatchChecklist.refereeInfo || "Da definire"}</span>
+              <span>{t("pages.matchDay.checklistStaffArrivalLabel", { value: preMatchChecklist.staffArrivalTime || t("pages.matchDay.checklistToBeDefined") })}</span>
+              <span>{t("pages.matchDay.checklistResponsibleLabel", { value: preMatchChecklist.staffResponsible || t("pages.matchDay.checklistToBeDefined") })}</span>
+              <span>{t("pages.matchDay.checklistRefereeLabel", { value: preMatchChecklist.refereeInfo || t("pages.matchDay.checklistToBeDefined") })}</span>
             </div>
             <div style={matchDayStyles.printChecklistRows}>
               {checklistItems.map((item) => {
@@ -631,7 +633,7 @@ function MatchDay({
                 return (
                   <div key={`print-${item.key}`} style={matchDayStyles.printChecklistRow}>
                     <span style={checked ? matchDayStyles.printStatusDone : matchDayStyles.printStatusTodo}>
-                      {checked ? "OK" : "Da fare"}
+                      {checked ? t("pages.matchDay.checklistOk") : t("pages.matchDay.checklistTodo")}
                     </span>
                     <strong>{item.label}</strong>
                     <small>{item.detail}</small>
@@ -649,23 +651,22 @@ function MatchDay({
         {lineup.calledUpIds.length === 0 && (selectedMatch.convocazione?.playerIds?.length > 0) && (
           <div style={matchDayStyles.importBanner}>
             <div>
-              <strong style={{ color: "#93c5fd", fontSize: 14 }}>📋 Convocazione disponibile</strong>
+              <strong style={{ color: "#93c5fd", fontSize: 14 }}>{t("pages.matchDay.importConvocazioneTitle")}</strong>
               <p style={{ ...matchDayStyles.muted, marginTop: 4 }}>
-                Hai {selectedMatch.convocazione.playerIds.length} giocatori nella convocazione —
-                importali come punto di partenza per la distinta.
+                {t("pages.matchDay.importConvocazioneText", { count: selectedMatch.convocazione.playerIds.length })}
               </p>
             </div>
-            <Button onClick={importConvocazione}>Importa convocati →</Button>
+            <Button onClick={importConvocazione}>{t("pages.matchDay.importConvocazioneAction")}</Button>
           </div>
         )}
 
         <div style={{ ...matchDayStyles.mainGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
           <AppCard>
-            <SectionHeader title="Titolari" badge={`${starterPlayers.length}/11`} />
+            <SectionHeader title={t("pages.matchDay.startersTitle")} badge={`${starterPlayers.length}/11`} />
             <PlayerList
               players={starterPlayers}
-              empty="Nessun titolare selezionato"
-              actionLabel="Panchina"
+              empty={t("pages.matchDay.noStarters")}
+              actionLabel={t("pages.matchDay.benchAction")}
               onAction={moveToBench}
               lineup={lineup}
               listKey="starterIds"
@@ -677,11 +678,11 @@ function MatchDay({
           </AppCard>
 
           <AppCard>
-            <SectionHeader title="Panchina" badge={benchPlayers.length} />
+            <SectionHeader title={t("pages.matchDay.benchTitle")} badge={benchPlayers.length} />
             <PlayerList
               players={benchPlayers}
-              empty="Nessun giocatore in panchina"
-              actionLabel="Titolare"
+              empty={t("pages.matchDay.noBench")}
+              actionLabel={t("pages.matchDay.starterAction")}
               onAction={moveToStarter}
               disableAction={lineup.starterIds.length >= 11}
               lineup={lineup}
@@ -696,11 +697,11 @@ function MatchDay({
 
         <div style={{ ...matchDayStyles.mainGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
           <AppCard>
-            <SectionHeader title="Convocabili" badge={availablePlayers.length} />
+            <SectionHeader title={t("pages.matchDay.callableTitle")} badge={availablePlayers.length} />
             <PlayerList
               players={availablePlayers}
-              empty="Tutti i giocatori sono gia convocati"
-              actionLabel="Convoca"
+              empty={t("pages.matchDay.allCalled")}
+              actionLabel={t("pages.matchDay.callAction")}
               onAction={toggleCalled}
               lineup={lineup}
               isMobile={isMobile}
@@ -708,30 +709,30 @@ function MatchDay({
           </AppCard>
 
           <AppCard>
-            <SectionHeader title="Piano di gara" badge={lineup.ready ? "✓ Pronta" : "Staff"} />
+            <SectionHeader title={t("pages.matchDay.gamePlanTitle")} badge={lineup.ready ? t("pages.matchDay.gamePlanReady") : t("pages.matchDay.gamePlanDraft")} />
             <div style={{ display: "grid", gap: 14 }}>
               <div>
-                <h4 style={matchDayStyles.planLabel}>🕵️ Scouting rapido avversario</h4>
+                <h4 style={matchDayStyles.planLabel}>{t("pages.matchDay.scoutingQuick")}</h4>
                 <textarea
-                  placeholder="Modulo, punti forti, pericoli principali, stile di gioco..."
+                  placeholder={t("pages.matchDay.scoutingQuickPlaceholder")}
                   value={selectedMatch.opponentNotes || ""}
                   onChange={(event) => updateNote("opponentNotes", event.target.value)}
                   style={{ ...styles.input, minHeight: 90, resize: "vertical" }}
                 />
               </div>
               <div>
-                <h4 style={matchDayStyles.planLabel}>🎯 Piano e principi di gara</h4>
+                <h4 style={matchDayStyles.planLabel}>{t("pages.matchDay.gamePlanLabel")}</h4>
                 <textarea
-                  placeholder="Principi offensivi e difensivi, palle inattive, istruzioni per reparto, gestione cambi..."
+                  placeholder={t("pages.matchDay.gamePlanPlaceholder")}
                   value={selectedMatch.matchPlan || ""}
                   onChange={(event) => updateNote("matchPlan", event.target.value)}
                   style={{ ...styles.input, minHeight: 130, resize: "vertical" }}
                 />
               </div>
               <div>
-                <h4 style={matchDayStyles.planLabel}>📋 Note staff / Briefing</h4>
+                <h4 style={matchDayStyles.planLabel}>{t("pages.matchDay.staffNotesLabel")}</h4>
                 <textarea
-                  placeholder="Comunicazioni allo staff, logistica, assenze dell'ultimo minuto..."
+                  placeholder={t("pages.matchDay.staffNotesPlaceholder")}
                   value={selectedMatch.staffNotes || ""}
                   onChange={(event) => updateNote("staffNotes", event.target.value)}
                   style={{ ...styles.input, minHeight: 90, resize: "vertical" }}
@@ -743,14 +744,14 @@ function MatchDay({
 
         <AppCard>
           <SectionHeader
-            title="Scouting avversario"
-            badge={`${opponentScouting.lineup.length} in distinta`}
+            title={t("pages.matchDay.scoutingTitle")}
+            badge={t("pages.matchDay.scoutingInDistinta", { count: opponentScouting.lineup.length })}
           />
           <div id="match-opponent-scouting" />
 
           <div style={matchDayStyles.scoutingGrid}>
             <input
-              placeholder="Modulo avversario es. 4-3-3"
+              placeholder={t("pages.matchDay.scoutingFormationPlaceholder")}
               value={opponentScouting.formation}
               onChange={(event) =>
                 updateOpponentScouting({ formation: event.target.value })
@@ -758,7 +759,7 @@ function MatchDay({
               style={styles.input}
             />
             <input
-              placeholder="Giocatori chiave"
+              placeholder={t("pages.matchDay.scoutingKeyPlayersPlaceholder")}
               value={opponentScouting.keyPlayers}
               onChange={(event) =>
                 updateOpponentScouting({ keyPlayers: event.target.value })
@@ -766,7 +767,7 @@ function MatchDay({
               style={styles.input}
             />
             <textarea
-              placeholder="Punti forti"
+              placeholder={t("pages.matchDay.scoutingStrengthsPlaceholder")}
               value={opponentScouting.strengths}
               onChange={(event) =>
                 updateOpponentScouting({ strengths: event.target.value })
@@ -774,7 +775,7 @@ function MatchDay({
               style={{ ...styles.input, minHeight: 90 }}
             />
             <textarea
-              placeholder="Punti deboli / dove attaccarli"
+              placeholder={t("pages.matchDay.scoutingWeaknessesPlaceholder")}
               value={opponentScouting.weaknesses}
               onChange={(event) =>
                 updateOpponentScouting({ weaknesses: event.target.value })
@@ -782,7 +783,7 @@ function MatchDay({
               style={{ ...styles.input, minHeight: 90 }}
             />
             <textarea
-              placeholder="Palle inattive a favore"
+              placeholder={t("pages.matchDay.scoutingSetPiecesForPlaceholder")}
               value={opponentScouting.setPiecesFor}
               onChange={(event) =>
                 updateOpponentScouting({ setPiecesFor: event.target.value })
@@ -790,7 +791,7 @@ function MatchDay({
               style={{ ...styles.input, minHeight: 90 }}
             />
             <textarea
-              placeholder="Palle inattive contro"
+              placeholder={t("pages.matchDay.scoutingSetPiecesAgainstPlaceholder")}
               value={opponentScouting.setPiecesAgainst}
               onChange={(event) =>
                 updateOpponentScouting({ setPiecesAgainst: event.target.value })
@@ -798,7 +799,7 @@ function MatchDay({
               style={{ ...styles.input, minHeight: 90 }}
             />
             <textarea
-              placeholder="Note per la partita di ritorno"
+              placeholder={t("pages.matchDay.scoutingReturnLegPlaceholder")}
               value={opponentScouting.returnLegNotes}
               onChange={(event) =>
                 updateOpponentScouting({ returnLegNotes: event.target.value })
@@ -809,8 +810,8 @@ function MatchDay({
 
           <div style={matchDayStyles.attachmentBox}>
             <div>
-              <h4 style={{ margin: 0, lineHeight: 1.2 }}>Allegato distinta</h4>
-              <p style={matchDayStyles.muted}>Carica PDF o foto della distinta avversaria ricevuta sul campo.</p>
+              <h4 style={{ margin: 0, lineHeight: 1.2 }}>{t("pages.matchDay.attachmentTitle")}</h4>
+              <p style={matchDayStyles.muted}>{t("pages.matchDay.attachmentSubtitle")}</p>
             </div>
             <div style={matchDayStyles.attachmentActions}>
               {opponentScouting.attachment ? (
@@ -821,13 +822,13 @@ function MatchDay({
                     rel="noreferrer"
                     style={matchDayStyles.attachmentLink}
                   >
-                    {opponentScouting.attachment.name || "Apri allegato"}
+                    {opponentScouting.attachment.name || t("pages.matchDay.openAttachment")}
                   </a>
-                  <Button variant="ghost" onClick={removeOpponentAttachment}>Rimuovi</Button>
+                  <Button variant="ghost" onClick={removeOpponentAttachment}>{t("pages.matchDay.removeAttachment")}</Button>
                 </>
               ) : (
                 <label style={matchDayStyles.uploadButton}>
-                  Carica file
+                  {t("pages.matchDay.uploadFile")}
                   <input
                     type="file"
                     accept="image/*,.pdf,application/pdf"
@@ -840,9 +841,9 @@ function MatchDay({
           </div>
 
           <div style={matchDayStyles.opponentHeader}>
-            <h4 style={{ margin: 0, lineHeight: 1.2 }}>Distinta avversaria</h4>
+            <h4 style={{ margin: 0, lineHeight: 1.2 }}>{t("pages.matchDay.opponentLineupTitle")}</h4>
             <Button variant="ghost" onClick={addOpponentPlayer}>
-              + Giocatore
+              {t("pages.matchDay.addPlayer")}
             </Button>
           </div>
 
@@ -851,7 +852,7 @@ function MatchDay({
           <div style={{ ...matchDayStyles.opponentList, minWidth: 560 }}>
             {opponentScouting.lineup.length === 0 ? (
               <p style={matchDayStyles.muted}>
-                Inserisci la distinta avversaria per ritrovarla al ritorno.
+                {t("pages.matchDay.opponentEmptyText")}
               </p>
             ) : (
               opponentScouting.lineup.map((player) => (
@@ -865,7 +866,7 @@ function MatchDay({
                     style={matchDayStyles.compactInput}
                   />
                   <input
-                    placeholder="Nome"
+                    placeholder={t("pages.matchDay.namePlaceholder")}
                     value={player.name}
                     onChange={(event) =>
                       updateOpponentPlayer(player.id, "name", event.target.value)
@@ -873,7 +874,7 @@ function MatchDay({
                     style={matchDayStyles.compactInput}
                   />
                   <input
-                    placeholder="Anno"
+                    placeholder={t("pages.matchDay.birthYearPlaceholder")}
                     inputMode="numeric"
                     maxLength={4}
                     value={player.birthYear || ""}
@@ -883,7 +884,7 @@ function MatchDay({
                     style={matchDayStyles.compactInput}
                   />
                   <input
-                    placeholder="Ruolo"
+                    placeholder={t("pages.matchDay.rolePlaceholder")}
                     value={player.role}
                     onChange={(event) =>
                       updateOpponentPlayer(player.id, "role", event.target.value)
@@ -897,12 +898,12 @@ function MatchDay({
                     }
                     style={matchDayStyles.compactInput}
                   >
-                    <option>Titolare</option>
-                    <option>Panchina</option>
-                    <option>Chiave</option>
+                    <option value="Titolare">{t("pages.matchDay.opponentStatusStarter")}</option>
+                    <option value="Panchina">{t("pages.matchDay.opponentStatusBench")}</option>
+                    <option value="Chiave">{t("pages.matchDay.opponentStatusKey")}</option>
                   </select>
                   <input
-                    placeholder="Note"
+                    placeholder={t("pages.matchDay.notesPlaceholder")}
                     value={player.notes}
                     onChange={(event) =>
                       updateOpponentPlayer(player.id, "notes", event.target.value)
@@ -923,12 +924,12 @@ function MatchDay({
 
           {previousOpponentMatches.length > 0 && (
             <div style={matchDayStyles.previousBox}>
-              <h4 style={{ margin: 0 }}>Storico contro {selectedMatch.opponent}</h4>
+              <h4 style={{ margin: 0 }}>{t("pages.matchDay.matchHistoryTitle", { opponent: selectedMatch.opponent })}</h4>
               {previousOpponentMatches.map((match) => (
                 <div key={match.id} style={matchDayStyles.previousItem}>
                   <strong>{formatDate(match.date)}</strong>
-                  <span>{match.result || "Risultato non inserito"}</span>
-                  <span>{match.opponentScouting?.returnLegNotes || match.opponentNotes || "Nessuna nota ritorno"}</span>
+                  <span>{match.result || t("pages.matchDay.noResult")}</span>
+                  <span>{match.opponentScouting?.returnLegNotes || match.opponentNotes || t("pages.matchDay.noReturnNotes")}</span>
                 </div>
               ))}
             </div>
@@ -952,6 +953,7 @@ function PlayerList({
   onRoleChange,
   isMobile = false,
 }) {
+  const { t } = useTranslation();
   if (players.length === 0) {
     return <p style={matchDayStyles.muted}>{empty}</p>;
   }
@@ -974,12 +976,12 @@ function PlayerList({
           <div style={matchDayStyles.playerInfo}>
             <strong style={{ lineHeight: 1.2 }}>{player.name}</strong>
             <span>
-              #{player.shirtNumber || "-"} · {lineup?.roles?.[player.id] || player.role || "Ruolo"}
+              #{player.shirtNumber || "-"} · {lineup?.roles?.[player.id] || player.role || "—"}
               {lineup?.captainId === player.id ? " · C" : ""}
             </span>
             {isMobile && onRoleChange && (
               <input
-                placeholder="Ruolo gara"
+                placeholder={t("pages.matchDay.rolePlaceholderInput")}
                 value={lineup?.roles?.[player.id] || ""}
                 onChange={(event) => onRoleChange(player.id, event.target.value)}
                 style={{ ...matchDayStyles.roleInput, marginTop: 4, fontSize: 12, padding: "5px 8px" }}
@@ -988,7 +990,7 @@ function PlayerList({
           </div>
           {!isMobile && onRoleChange && (
             <input
-              placeholder="Ruolo gara"
+              placeholder={t("pages.matchDay.rolePlaceholderInput")}
               value={lineup?.roles?.[player.id] || ""}
               onChange={(event) => onRoleChange(player.id, event.target.value)}
               style={matchDayStyles.roleInput}
@@ -1060,6 +1062,7 @@ function SectionHeader({ title, badge }) {
 }
 
 function MatchCommandCenter({ steps, completed, total, onMicrocycle, onSetPlays, onOpponents }) {
+  const { t } = useTranslation();
   const pct = total ? Math.round((completed / total) * 100) : 0;
   const criticalOpen = steps.filter((step) => !step.done).slice(0, 2);
 
@@ -1067,15 +1070,15 @@ function MatchCommandCenter({ steps, completed, total, onMicrocycle, onSetPlays,
     <AppCard>
       <div style={matchDayStyles.commandHead}>
         <div>
-          <p style={matchDayStyles.commandEyebrow}>Cabina gara</p>
-          <h3 style={matchDayStyles.commandTitle}>Preparazione match</h3>
+          <p style={matchDayStyles.commandEyebrow}>{t("pages.matchDay.commandCabina")}</p>
+          <h3 style={matchDayStyles.commandTitle}>{t("pages.matchDay.commandTitle")}</h3>
           <p style={matchDayStyles.muted}>
-            Stato operativo unico: pre-gara, distinta, scouting, statistiche e report.
+            {t("pages.matchDay.commandSubtitle")}
           </p>
         </div>
         <div style={matchDayStyles.readinessBox}>
           <strong>{pct}%</strong>
-          <span>{completed}/{total} completati</span>
+          <span>{t("pages.matchDay.commandCompleted", { done: completed, total })}</span>
         </div>
       </div>
 
@@ -1110,16 +1113,16 @@ function MatchCommandCenter({ steps, completed, total, onMicrocycle, onSetPlays,
         <div style={matchDayStyles.openAlerts}>
           {criticalOpen.length ? (
             criticalOpen.map((step) => (
-              <span key={step.key}>Da chiudere: {step.title}</span>
+              <span key={step.key}>{t("pages.matchDay.commandToClose", { title: step.title })}</span>
             ))
           ) : (
-            <span>Match room pronta per lo staff.</span>
+            <span>{t("pages.matchDay.commandReady")}</span>
           )}
         </div>
         <div style={matchDayStyles.commandLinks}>
-          <Button variant="ghost" onClick={onMicrocycle}>Microciclo</Button>
-          <Button variant="ghost" onClick={onSetPlays}>Palle inattive</Button>
-          <Button variant="ghost" onClick={onOpponents}>Avversari</Button>
+          <Button variant="ghost" onClick={onMicrocycle}>{t("pages.matchDay.commandMicrocycle")}</Button>
+          <Button variant="ghost" onClick={onSetPlays}>{t("pages.matchDay.commandSetPlays")}</Button>
+          <Button variant="ghost" onClick={onOpponents}>{t("pages.matchDay.commandOpponents")}</Button>
         </div>
       </div>
     </AppCard>
@@ -1154,48 +1157,48 @@ function getPreMatchChecklist(match) {
   };
 }
 
-function getChecklistItems({ match, venue }) {
+function getChecklistItems({ match, venue, t }) {
   const details = match?.convocazione?.details || {};
   return [
     {
       key: "documents",
-      label: "Documenti e tessere",
-      detail: "Controllo lista gara, documenti giocatori e autorizzazioni",
+      label: t("pages.matchDay.checklistDocumentsLabel"),
+      detail: t("pages.matchDay.checklistDocumentsDetail"),
     },
     {
       key: "kits",
-      label: "Divise e materiale gara",
-      detail: details.kit || "Completi gara, portieri, pettorine e cambio colore",
+      label: t("pages.matchDay.checklistKitsLabel"),
+      detail: details.kit || t("pages.matchDay.checklistKitsDefault"),
     },
     {
       key: "water",
-      label: "Acqua e supporto panchina",
-      detail: "Acqua, ghiaccio, borse, asciugamani e materiale staff",
+      label: t("pages.matchDay.checklistWaterLabel"),
+      detail: t("pages.matchDay.checklistWaterDetail"),
     },
     {
       key: "medical",
-      label: "Borsa medica",
-      detail: "Primo soccorso, tape, ghiaccio istantaneo e farmaci consentiti",
+      label: t("pages.matchDay.checklistMedicalLabel"),
+      detail: t("pages.matchDay.checklistMedicalDetail"),
     },
     {
       key: "field",
-      label: "Campo e spogliatoio",
-      detail: venue || details.meetingPlace || "Verifica campo, accessi e spogliatoio",
+      label: t("pages.matchDay.checklistFieldLabel"),
+      detail: venue || details.meetingPlace || t("pages.matchDay.checklistFieldDefault"),
     },
     {
       key: "referee",
-      label: "Arbitro e distinta",
-      detail: "Consegna distinta, riconoscimento e comunicazioni ufficiali",
+      label: t("pages.matchDay.checklistRefereeLabel2"),
+      detail: t("pages.matchDay.checklistRefereeDetail"),
     },
     {
       key: "opponentLineup",
-      label: "Distinta avversaria",
-      detail: match?.opponentScouting?.attachment ? "Allegato gia caricato" : "Caricare PDF/foto appena disponibile",
+      label: t("pages.matchDay.checklistOpponentLabel"),
+      detail: match?.opponentScouting?.attachment ? t("pages.matchDay.checklistOpponentDone") : t("pages.matchDay.checklistOpponentTodo"),
     },
     {
       key: "warmup",
-      label: "Warm-up e palloni",
-      detail: "Palloni, cinesini, elastici e spazio riscaldamento",
+      label: t("pages.matchDay.checklistWarmupLabel"),
+      detail: t("pages.matchDay.checklistWarmupDetail"),
     },
   ];
 }
@@ -1222,36 +1225,36 @@ function getMatchVenue(match = {}, profile = {}) {
   return match.location || "";
 }
 
-function buildMatchPlanPrefill({ match, venue, convocationCount }) {
+function buildMatchPlanPrefill({ match, venue, convocationCount, t }) {
   return [
-    `Avversario: ${match.opponent || "Da definire"}`,
-    match.competition ? `Competizione: ${match.competition}` : "",
-    match.matchday ? `Giornata/turno: ${match.matchday}` : "",
-    venue ? `Campo: ${venue}` : "",
-    match.time ? `Ora gara: ${match.time}` : "",
-    convocationCount ? `Convocati: ${convocationCount}` : "",
+    t("pages.matchDay.prefillOpponent", { value: match.opponent || t("pages.matchDay.checklistToBeDefined") }),
+    match.competition ? t("pages.matchDay.prefillCompetition", { value: match.competition }) : "",
+    match.matchday ? t("pages.matchDay.prefillMatchday", { value: match.matchday }) : "",
+    venue ? t("pages.matchDay.prefillField", { value: venue }) : "",
+    match.time ? t("pages.matchDay.prefillTime", { value: match.time }) : "",
+    convocationCount ? t("pages.matchDay.prefillCalled", { value: convocationCount }) : "",
     "",
-    "Principi gara:",
-    "- Fase di possesso:",
-    "- Fase di non possesso:",
-    "- Transizioni:",
-    "- Palle inattive:",
+    t("pages.matchDay.prefillGamePlanHeader"),
+    t("pages.matchDay.prefillPossesso"),
+    t("pages.matchDay.prefillNonPossesso"),
+    t("pages.matchDay.prefillTransizioni"),
+    t("pages.matchDay.prefillPalleInattive"),
   ]
     .filter((line) => line !== "")
     .join("\n");
 }
 
-function buildStaffNotesPrefill({ match, venue, details }) {
+function buildStaffNotesPrefill({ match, venue, details, t }) {
   return [
     details.meetingTime || details.meetingPlace
-      ? `Raduno: ${[details.meetingTime, details.meetingPlace].filter(Boolean).join(" - ")}`
+      ? t("pages.matchDay.prefillRaduno", { value: [details.meetingTime, details.meetingPlace].filter(Boolean).join(" - ") })
       : "",
-    details.lockerRoom ? `Spogliatoio: ${details.lockerRoom}` : "",
-    details.kit ? `Kit: ${details.kit}` : "",
-    details.staffContact ? `Contatto staff: ${details.staffContact}` : "",
-    details.message ? `Messaggio convocati: ${details.message}` : "",
-    match.convocazione?.notes ? `Note convocazione: ${match.convocazione.notes}` : "",
-    venue ? `Verifica logistica campo: ${venue}` : "",
+    details.lockerRoom ? t("pages.matchDay.prefillSpogliatoio", { value: details.lockerRoom }) : "",
+    details.kit ? t("pages.matchDay.prefillKit", { value: details.kit }) : "",
+    details.staffContact ? t("pages.matchDay.prefillStaffContact", { value: details.staffContact }) : "",
+    details.message ? t("pages.matchDay.prefillMessage", { value: details.message }) : "",
+    match.convocazione?.notes ? t("pages.matchDay.prefillConvoNotes", { value: match.convocazione.notes }) : "",
+    venue ? t("pages.matchDay.prefillVerifica", { value: venue }) : "",
   ]
     .filter(Boolean)
     .join("\n");
