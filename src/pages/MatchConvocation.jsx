@@ -40,6 +40,15 @@ function getHomeVenue(profile = {}) {
     .join(" — ");
 }
 
+function getVenueParts(match = {}, profile = {}) {
+  const isHomeMatch = match?.location === "Casa";
+  return {
+    name: String(match?.venueName || (isHomeMatch ? profile.homeFieldName : "") || "").trim(),
+    address: String(match?.venueAddress || (isHomeMatch ? profile.homeFieldAddress : "") || "").trim(),
+    surface: String(isHomeMatch ? profile.homeFieldSurface || "" : "").trim(),
+  };
+}
+
 function getMatchVenue(match = {}, fallbackVenue = "") {
   const importedVenue = [match.venueName, match.venueAddress]
     .map((part) => String(part || "").trim())
@@ -89,9 +98,12 @@ function getPlayerDisplayName(player = {}) {
 }
 
 function buildConvocationText({ clubName, match, details, meetingInfo, sheetVenue, notes, convocati }) {
+  const matchContext = [match.competition, match.matchday].filter(Boolean).join(" · ");
   const lines = [
     `Convocazione: ${clubName} vs ${match.opponent || "Avversario"}`,
+    matchContext ? `Competizione: ${matchContext}` : "",
     `Data: ${formatDate(match.date)}`,
+    match.location ? `Gara: ${match.location}` : "",
     details.matchTime ? `Ora gara: ${details.matchTime}` : "",
     meetingInfo ? `Raduno: ${meetingInfo}` : "",
     sheetVenue ? `Campo: ${sheetVenue}` : "",
@@ -150,6 +162,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
   const clubLogo = workspaceProfile.logo || "";
   const clubLogoSize = Number(workspaceProfile.logoSize || 100);
   const isHomeMatch = match?.location === "Casa";
+  const venueParts = getVenueParts(match, workspaceProfile);
   const defaultNotes = matchVenue
     ? `Raduno presso ${matchVenue}`
     : "";
@@ -288,6 +301,8 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
     .filter(Boolean);
   const sheetVenue = matchVenue || match.location;
   const meetingInfo = formatMeeting(details);
+  const matchContext = [match.competition, match.matchday].filter(Boolean).join(" · ");
+  const matchType = isHomeMatch ? "Casa" : match.location === "Trasferta" ? "Trasferta" : match.location || "Da definire";
   const fullMessage = buildConvocationText({
     clubName,
     match,
@@ -364,6 +379,13 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
         <p style={s.muted}>
           Visibili ai giocatori nel portale. Per le gare in casa compiliamo già campo e indirizzo dal profilo società.
         </p>
+        <div style={s.matchInfoGrid}>
+          <InfoTile label="Gara" value={matchType} />
+          <InfoTile label="Competizione" value={matchContext || "Da definire"} />
+          <InfoTile label="Campo" value={venueParts.name || sheetVenue || "Da definire"} />
+          <InfoTile label="Indirizzo" value={venueParts.address || "Da definire"} />
+          <InfoTile label="Superficie" value={venueParts.surface || "Da definire"} />
+        </div>
         <div style={s.formGrid}>
           <label style={s.label}>
             Ora gara
@@ -581,8 +603,10 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
                   </div>
                 </div>
                 <div className="print-meta">
+                  {matchContext && <span>{matchContext}</span>}
                   <span>{formatDate(match.date)}</span>
                   {details.matchTime && <span>Gara {details.matchTime}</span>}
+                  <span>{matchType}</span>
                   <span>{published ? "Pubblicata" : "Bozza"}</span>
                   <span>{count} convocati</span>
                 </div>
@@ -596,6 +620,14 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
                 <div className="print-box">
                   <span>Campo</span>
                   <p>{sheetVenue || "Da definire"}</p>
+                </div>
+                <div className="print-box">
+                  <span>Indirizzo campo</span>
+                  <p>{venueParts.address || "Da definire"}</p>
+                </div>
+                <div className="print-box">
+                  <span>Superficie</span>
+                  <p>{venueParts.surface || "Da definire"}</p>
                 </div>
                 <div className="print-box">
                   <span>Spogliatoio</span>
@@ -705,6 +737,15 @@ function TeamLogo({ logo, logoSize = 100, name }) {
   );
 }
 
+function InfoTile({ label, value }) {
+  return (
+    <div style={s.infoTile}>
+      <span style={s.infoTileLabel}>{label}</span>
+      <strong style={s.infoTileValue}>{value}</strong>
+    </div>
+  );
+}
+
 const s = {
   page:    { display: "grid", gap: 18 },
   muted:   { color: "#94a3b8", margin: 0 },
@@ -766,6 +807,30 @@ const s = {
     gap: 12,
     marginTop: 16,
   },
+  matchInfoGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+    gap: 10,
+    marginTop: 16,
+    marginBottom: 6,
+  },
+  infoTile: {
+    display: "grid",
+    gap: 5,
+    padding: "11px 13px",
+    borderRadius: 12,
+    background: "rgba(59,130,246,0.08)",
+    border: "1px solid rgba(59,130,246,0.18)",
+    color: "#e2e8f0",
+  },
+  infoTileLabel: {
+    color: "#93c5fd",
+    fontSize: 10,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+  },
+  infoTileValue: { fontSize: 13, lineHeight: 1.25 },
   label: {
     display: "grid",
     gap: 6,
