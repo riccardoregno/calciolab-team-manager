@@ -163,6 +163,11 @@ function Trainings({
       notes: session.notes || "",
       exercises: session.exercises || [],
       attendance: session.attendance || {},
+      sourceType: session.sourceType || "",
+      sourceMatchId: session.sourceMatchId || "",
+      sourceMatchLabel: session.sourceMatchLabel || "",
+      sourceMatchDate: session.sourceMatchDate || "",
+      sourceSummary: session.sourceSummary || "",
     });
 
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -235,6 +240,15 @@ function Trainings({
         <div style={trainingStyles.summaryNotes}>
           <strong>Note staff</strong>
           <span>{form.notes}</span>
+        </div>
+      )}
+
+      {form.sourceType === "postMatch" && (
+        <div style={trainingStyles.summaryNotes}>
+          <strong>Origine</strong>
+          <span>
+            Post-gara {form.sourceMatchLabel ? `vs ${form.sourceMatchLabel}` : ""} · {formatDate(form.sourceMatchDate)}
+          </span>
         </div>
       )}
     </div>
@@ -587,6 +601,16 @@ function Trainings({
               {form.objective && (
                 <p style={trainingStyles.previewObjective}>{form.objective}</p>
               )}
+
+              {form.sourceType === "postMatch" && (
+                <div style={trainingStyles.sourceBox}>
+                  <Badge tone="purple">Da post-gara</Badge>
+                  <span>
+                    {form.sourceMatchLabel ? `vs ${form.sourceMatchLabel}` : "Report collegato"}
+                    {form.sourceSummary ? ` · ${form.sourceSummary}` : ""}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
@@ -675,6 +699,16 @@ function Trainings({
                           {sessionTotal} min
                         </p>
 
+                        {session.sourceType === "postMatch" && (
+                          <div style={trainingStyles.sourceInline}>
+                            <Badge tone="purple">Da post-gara</Badge>
+                            <span>
+                              {session.sourceMatchLabel ? `vs ${session.sourceMatchLabel}` : "Report collegato"}
+                              {session.sourceSummary ? ` · ${session.sourceSummary}` : ""}
+                            </span>
+                          </div>
+                        )}
+
                         <div
                           style={{
                             display: "flex",
@@ -742,6 +776,11 @@ function emptyTraining() {
     notes: "",
     exercises: [],
     attendance: {},
+    sourceType: "",
+    sourceMatchId: "",
+    sourceMatchLabel: "",
+    sourceMatchDate: "",
+    sourceSummary: "",
   };
 }
 
@@ -1000,6 +1039,27 @@ const trainingStyles = {
     lineHeight: 1.45,
     paddingTop: 12,
     borderTop: "1px solid rgba(255,255,255,0.08)",
+  },
+  sourceBox: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: "10px 12px",
+    borderRadius: 14,
+    background: "rgba(168,85,247,0.10)",
+    border: "1px solid rgba(168,85,247,0.24)",
+    color: "#e9d5ff",
+    lineHeight: 1.4,
+  },
+  sourceInline: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+    margin: "0 0 10px",
+    color: "#c4b5fd",
+    fontSize: 12,
+    lineHeight: 1.35,
   },
   sessionSummary: {
     marginBottom: 26,

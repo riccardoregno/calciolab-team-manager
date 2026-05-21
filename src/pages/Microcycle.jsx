@@ -124,6 +124,11 @@ function buildTrainingDraft(day, focus, match) {
     notes: sourceRows ? `Da report post-gara:\n${sourceRows}` : "",
     exercises: [],
     attendance: {},
+    sourceType: focus ? "postMatch" : "",
+    sourceMatchId: focus?.match?.id ? String(focus.match.id) : "",
+    sourceMatchLabel: match?.opponent || match?.title || "",
+    sourceMatchDate: match?.date || "",
+    sourceSummary: suggestion || focus?.nextWeekFocus || "",
   };
 }
 

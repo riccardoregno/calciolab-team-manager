@@ -14,7 +14,7 @@ const clipPhases = ["Possesso", "Non possesso", "Transizione +", "Transizione -"
 const clipAudiences = ["Staff", "Squadra", "Individuale", "Reparto"];
 
 export default function PostMatch({
-  matches = [], setMatches, players = [], setStaffTasks }) {
+  matches = [], setMatches, players = [], sessions = [], setStaffTasks }) {
 
   const { t } = useTranslation();
   const { id } = useParams();
@@ -119,6 +119,41 @@ export default function PostMatch({
     setLastSaved("staff-tasks");
   }
 
+  function createTrainingFromReport() {
+    if (!match) return;
+    const report = match.postMatch || {};
+    const objective = report.trainingActions || report.nextWeekFocus || report.tacticalCorrections || "";
+    const notes = [
+      report.nextWeekFocus && `Focus prossima settimana: ${report.nextWeekFocus}`,
+      report.trainingActions && `Azioni in allenamento: ${report.trainingActions}`,
+      report.tacticalCorrections && `Correzioni tattiche: ${report.tacticalCorrections}`,
+      report.recoveryPlan && `Piano recupero: ${report.recoveryPlan}`,
+      report.physicalAlerts && `Alert fisici: ${report.physicalAlerts}`,
+      report.setPiecesReview && `Palle inattive: ${report.setPiecesReview}`,
+    ].filter(Boolean).join("\n");
+
+    navigate("/trainings", {
+      state: {
+        draftTraining: {
+          title: `Seduta post-gara${match.opponent ? ` vs ${match.opponent}` : ""}`,
+          date: getRelativeDate(1),
+          type: "Allenamento",
+          theme: report.setPiecesReview ? "Palla inattiva" : "Transizione",
+          matchDayDistance: "MD+1",
+          objective,
+          notes: notes ? `Da report post-gara:\n${notes}` : "",
+          exercises: [],
+          attendance: {},
+          sourceType: "postMatch",
+          sourceMatchId: String(match.id),
+          sourceMatchLabel: match.opponent || match.title || "",
+          sourceMatchDate: match.date || "",
+          sourceSummary: objective,
+        },
+      },
+    });
+  }
+
   if (!match) {
     return (
       <div style={{ display: "grid", gap: 18 }}>
@@ -168,6 +203,9 @@ export default function PostMatch({
     section.key === "videoAnalysis"
       ? videoAnalysis.length === 0
       : !String(report[section.key] || "").trim()
+  );
+  const linkedSessions = sessions.filter((session) =>
+    session.sourceType === "postMatch" && String(session.sourceMatchId) === String(match.id)
   );
 
   return (
@@ -252,7 +290,7 @@ export default function PostMatch({
           <Button variant="ghost" onClick={() => navigate("/microcycle")}>Microciclo</Button>
           <Button variant="ghost" onClick={() => window.print()}>Stampa report</Button>
           <Button variant="ghost" onClick={createStaffTasksFromReport}>Crea azioni staff</Button>
-          <Button onClick={() => navigate("/trainings")}>Crea seduta</Button>
+          <Button onClick={createTrainingFromReport}>Crea seduta</Button>
         </div>
 
         {openSections.length > 0 && (
@@ -260,6 +298,45 @@ export default function PostMatch({
             {openSections.slice(0, 4).map((section) => (
               <span key={section.key}>Da completare: {section.label}</span>
             ))}
+          </div>
+        )}
+      </AppCard>
+
+      <AppCard>
+        <div style={s.reportHead}>
+          <div>
+            <p style={s.eyebrow}>Sedute collegate</p>
+            <h3 style={s.reportTitle}>Allenamenti nati da questo report</h3>
+            <p style={s.muted}>
+              Qui ritrovi le sedute create dal post-gara, così ogni correzione resta tracciata.
+            </p>
+          </div>
+          <Badge tone={linkedSessions.length ? "green" : "blue"}>
+            {linkedSessions.length}
+          </Badge>
+        </div>
+
+        {linkedSessions.length ? (
+          <div style={s.linkedSessionList}>
+            {linkedSessions.map((session) => (
+              <button
+                key={session.id}
+                type="button"
+                style={s.linkedSessionRow}
+                onClick={() => navigate(`/session-attendance/${session.id}`)}
+              >
+                <span>
+                  <strong>{session.title || "Seduta"}</strong>
+                  <small>{formatDate(session.date)} · {session.theme || "Allenamento"}</small>
+                </span>
+                <Badge tone="purple">Da post-gara</Badge>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div style={s.emptyLinkedSessions}>
+            <span>Nessuna seduta collegata a questo report.</span>
+            <Button variant="ghost" onClick={createTrainingFromReport}>Crea seduta</Button>
           </div>
         )}
       </AppCard>
@@ -877,6 +954,38 @@ const s = {
     display: "flex",
     gap: 10,
     flexWrap: "wrap",
+  },
+  linkedSessionList: {
+    display: "grid",
+    gap: 10,
+    marginTop: 16,
+  },
+  linkedSessionRow: {
+    width: "100%",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 14,
+    padding: "12px 14px",
+    background: "rgba(255,255,255,0.04)",
+    color: "#e2e8f0",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    cursor: "pointer",
+    textAlign: "left",
+  },
+  emptyLinkedSessions: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap",
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    background: "rgba(15,23,42,0.58)",
+    border: "1px dashed rgba(148,163,184,0.26)",
+    color: "#94a3b8",
   },
   todoStrip: {
     display: "flex",

@@ -428,7 +428,13 @@ function App() {
                 path="/post-match"
                 element={
                   gate(technicalRoles, <FeatureGate featureKey="postMatch" appSettings={previewAppSettings}>
-                    <PostMatch matches={matches} setMatches={setMatches} players={players} setStaffTasks={setStaffTasks} />
+                    <PostMatch
+                      matches={matches}
+                      setMatches={setMatches}
+                      players={players}
+                      sessions={sessions}
+                      setStaffTasks={setStaffTasks}
+                    />
                   </FeatureGate>)
                 }
               />
@@ -437,7 +443,13 @@ function App() {
                 path="/post-match/:id"
                 element={
                   gate(technicalRoles, <FeatureGate featureKey="postMatch" appSettings={previewAppSettings}>
-                    <PostMatch matches={matches} setMatches={setMatches} players={players} setStaffTasks={setStaffTasks} />
+                    <PostMatch
+                      matches={matches}
+                      setMatches={setMatches}
+                      players={players}
+                      sessions={sessions}
+                      setStaffTasks={setStaffTasks}
+                    />
                   </FeatureGate>)
                 }
               />
