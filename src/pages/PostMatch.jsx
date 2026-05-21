@@ -12,6 +12,15 @@ import { useTranslation } from "../i18n";
 const clipCategories = ["Tattica", "Tecnica", "Fisico", "Palla inattiva", "Errore", "Occasione", "Transizione"];
 const clipPhases = ["Possesso", "Non possesso", "Transizione +", "Transizione -", "Corner", "Punizione", "Rimessa", "Rigore"];
 const clipAudiences = ["Staff", "Squadra", "Individuale", "Reparto"];
+const OBJECTIVE_STATUS = {
+  todo: { label: "Da lavorare", tone: "orange" },
+  worked: { label: "Lavorato", tone: "blue" },
+  solved: { label: "Risolto", tone: "green" },
+};
+
+function getObjectiveStatusMeta(status) {
+  return OBJECTIVE_STATUS[status] || OBJECTIVE_STATUS.todo;
+}
 
 export default function PostMatch({
   matches = [], setMatches, players = [], sessions = [], setStaffTasks }) {
@@ -149,6 +158,8 @@ export default function PostMatch({
           sourceMatchLabel: match.opponent || match.title || "",
           sourceMatchDate: match.date || "",
           sourceSummary: objective,
+          objectiveStatus: "todo",
+          objectiveReview: "",
         },
       },
     });
@@ -206,6 +217,14 @@ export default function PostMatch({
   );
   const linkedSessions = sessions.filter((session) =>
     session.sourceType === "postMatch" && String(session.sourceMatchId) === String(match.id)
+  );
+  const objectiveStats = linkedSessions.reduce(
+    (acc, session) => {
+      const status = session.objectiveStatus || "todo";
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    },
+    { todo: 0, worked: 0, solved: 0 }
   );
 
   return (
@@ -316,6 +335,14 @@ export default function PostMatch({
           </Badge>
         </div>
 
+        {linkedSessions.length > 0 && (
+          <div style={s.objectiveStatsRow}>
+            <Badge tone="orange">Da lavorare {objectiveStats.todo || 0}</Badge>
+            <Badge tone="blue">Lavorate {objectiveStats.worked || 0}</Badge>
+            <Badge tone="green">Risolte {objectiveStats.solved || 0}</Badge>
+          </div>
+        )}
+
         {linkedSessions.length ? (
           <div style={s.linkedSessionList}>
             {linkedSessions.map((session) => (
@@ -328,8 +355,14 @@ export default function PostMatch({
                 <span>
                   <strong>{session.title || "Seduta"}</strong>
                   <small>{formatDate(session.date)} · {session.theme || "Allenamento"}</small>
+                  {session.objectiveReview && <em>{session.objectiveReview}</em>}
                 </span>
-                <Badge tone="purple">Da post-gara</Badge>
+                <div style={s.sessionBadges}>
+                  <Badge tone="purple">Da post-gara</Badge>
+                  <Badge tone={getObjectiveStatusMeta(session.objectiveStatus).tone}>
+                    {getObjectiveStatusMeta(session.objectiveStatus).label}
+                  </Badge>
+                </div>
               </button>
             ))}
           </div>
@@ -960,6 +993,14 @@ const s = {
     gap: 10,
     marginTop: 16,
   },
+  objectiveStatsRow: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 14,
+    paddingTop: 14,
+    borderTop: "1px solid rgba(255,255,255,0.07)",
+  },
   linkedSessionRow: {
     width: "100%",
     border: "1px solid rgba(255,255,255,0.08)",
@@ -973,6 +1014,12 @@ const s = {
     gap: 12,
     cursor: "pointer",
     textAlign: "left",
+  },
+  sessionBadges: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
   },
   emptyLinkedSessions: {
     display: "flex",

@@ -15,6 +15,16 @@ import { styles } from "../styles/index.js";
 import { createId, formatDate, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
+const OBJECTIVE_STATUS = {
+  todo: { label: "Da lavorare", tone: "orange" },
+  worked: { label: "Lavorato", tone: "blue" },
+  solved: { label: "Risolto", tone: "green" },
+};
+
+function getObjectiveStatusMeta(status) {
+  return OBJECTIVE_STATUS[status] || OBJECTIVE_STATUS.todo;
+}
+
 function Trainings({
   exercises, sessions, setSessions, players = [] }) {
 
@@ -48,9 +58,9 @@ function Trainings({
     const draftTraining = location.state?.draftTraining;
     if (!draftTraining) return;
 
-    showToast("Bozza seduta caricata dal microciclo", "info");
+    showToast(t("pages.trainings.draftLoaded"), "info");
     navigate(location.pathname, { replace: true, state: null });
-  }, [location.pathname, location.state, navigate, showToast]);
+  }, [location.pathname, location.state, navigate, showToast, t]);
 
   // RPE calcolato dalla distanza dalla gara
   const rpeTarget = RPE_BY_MATCH_DAY[form.matchDayDistance] || RPE_BY_MATCH_DAY["MD-3"];
@@ -71,13 +81,13 @@ function Trainings({
       return {
         ...exercise,
         ...item,
-        title: exercise?.title || "Esercizio",
+        title: exercise?.title || t("pages.trainings.exerciseFallback"),
         category: exercise?.category || "",
         objective: exercise?.objective || "",
         duration: exercise?.duration || item.customDuration || 0,
       };
     });
-  }, [form.exercises, allExercises]);
+  }, [form.exercises, allExercises, t]);
 
   const totalMinutes = selectedExercises.reduce(
     (sum, item) => sum + Number(item.customDuration || item.duration || 0),
@@ -125,7 +135,7 @@ function Trainings({
 
   function saveTraining() {
     if (!form.title.trim()) {
-      showToast("Inserisci il titolo della seduta", "warn");
+      showToast(t("pages.trainings.titleRequired"), "warn");
       return;
     }
 
@@ -147,7 +157,7 @@ function Trainings({
 
     setEditingId(null);
     setForm(emptyTraining());
-    showToast(editingId ? "Seduta aggiornata" : "Seduta salvata", "ok");
+    showToast(editingId ? t("pages.trainings.sessionUpdated") : t("pages.trainings.sessionSaved"), "ok");
   }
 
   function editTraining(session) {
@@ -168,6 +178,8 @@ function Trainings({
       sourceMatchLabel: session.sourceMatchLabel || "",
       sourceMatchDate: session.sourceMatchDate || "",
       sourceSummary: session.sourceSummary || "",
+      objectiveStatus: session.objectiveStatus || "todo",
+      objectiveReview: session.objectiveReview || "",
     });
 
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -175,8 +187,8 @@ function Trainings({
 
   function deleteTraining(id) {
     setConfirmState({
-      message: "Vuoi eliminare questa seduta?",
-      confirmLabel: "Elimina",
+      message: t("pages.trainings.deleteConfirm"),
+      confirmLabel: t("pages.trainings.delete"),
       confirmTone: "red",
       onConfirm: () => {
         setSessions((prevSessions) => prevSessions.filter((session) => session.id !== id));
@@ -184,7 +196,7 @@ function Trainings({
           setEditingId(null);
           setForm(emptyTraining());
         }
-        showToast("Seduta eliminata", "info");
+        showToast(t("pages.trainings.sessionDeleted"), "info");
       },
     });
   }
@@ -200,11 +212,11 @@ function Trainings({
       <ToastContainer />
       <PageHeader
         title={t("pages.trainings.title")}
-        subtitle="Costruisci allenamenti, ordina esercizi e gestisci il carico della squadra"
+        subtitle={t("pages.trainings.subtitle")}
         action={
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <Button variant="ghost" onClick={() => navigate("/exports")}>PDF seduta</Button>
-            <Button onClick={() => navigate("/ai-session-builder")}>Genera con AI</Button>
+            <Button variant="ghost" onClick={() => navigate("/exports")}>{t("pages.trainings.exportPdf")}</Button>
+            <Button onClick={() => navigate("/ai-session-builder")}>{t("pages.trainings.generateAi")}</Button>
           </div>
         }
       />
@@ -225,27 +237,27 @@ function Trainings({
     {/* 👇 SOLO PER PDF */}
     <div className="print-only" style={trainingStyles.sessionSummary}>
       <div>
-        <span style={trainingStyles.summaryEyebrow}>Seduta</span>
-        <h1 style={trainingStyles.summaryTitle}>{form.title || "Seduta da costruire"}</h1>
+        <span style={trainingStyles.summaryEyebrow}>{t("pages.trainings.printSectionEyebrow")}</span>
+        <h1 style={trainingStyles.summaryTitle}>{form.title || t("pages.trainings.printTitlePlaceholder")}</h1>
       </div>
 
       <div style={trainingStyles.summaryGrid}>
-        <SessionMeta label="Data" value={formatDate(form.date)} />
-        <SessionMeta label="Tema" value={form.theme} />
-        <SessionMeta label="Obiettivo" value={form.objective || "Da definire"} />
-        <SessionMeta label="Durata" value={`${totalMinutes} min`} />
+        <SessionMeta label={t("pages.trainings.printMetaDate")} value={formatDate(form.date)} />
+        <SessionMeta label={t("pages.trainings.printMetaTheme")} value={form.theme} />
+        <SessionMeta label={t("pages.trainings.printMetaObjective")} value={form.objective || t("pages.trainings.printMetaObjectiveFallback")} />
+        <SessionMeta label={t("pages.trainings.printMetaDuration")} value={`${totalMinutes} min`} />
       </div>
 
       {form.notes && (
         <div style={trainingStyles.summaryNotes}>
-          <strong>Note staff</strong>
+          <strong>{t("pages.trainings.printNotesStaff")}</strong>
           <span>{form.notes}</span>
         </div>
       )}
 
       {form.sourceType === "postMatch" && (
         <div style={trainingStyles.summaryNotes}>
-          <strong>Origine</strong>
+          <strong>{t("pages.trainings.printOrigin")}</strong>
           <span>
             Post-gara {form.sourceMatchLabel ? `vs ${form.sourceMatchLabel}` : ""} · {formatDate(form.sourceMatchDate)}
           </span>
@@ -257,27 +269,27 @@ function Trainings({
       <div style={{ minWidth: 0 }}>
         <div style={trainingStyles.stepHeader}>
           <span style={trainingStyles.stepBadge}>1</span>
-          <span>Dati seduta</span>
+          <span>{t("pages.trainings.step1")}</span>
         </div>
         <h3 style={trainingStyles.formTitle}>
-          {editingId ? "Modifica seduta" : "Crea seduta"}
+          {editingId ? t("pages.trainings.formTitleEdit") : t("pages.trainings.formTitleCreate")}
         </h3>
         <p style={trainingStyles.formSubtitle}>
-          Inserisci dati base e scegli gli esercizi
+          {t("pages.trainings.formSubtitle")}
         </p>
       </div>
 
       <div style={trainingStyles.durationBadge}>
-        <span>Durata</span>
+        <span>{t("pages.trainings.durationLabel")}</span>
         <strong>{totalMinutes} min</strong>
       </div>
     </div>
 
     <div style={trainingStyles.sessionPreviewStrip}>
-      <SessionMeta label="Data" value={formatDate(form.date)} />
-      <SessionMeta label="Tema" value={form.theme} />
-      <SessionMeta label="Obiettivo" value={form.objective || "Da definire"} />
-      <SessionMeta label="Carico" value={form.matchDayDistance} />
+      <SessionMeta label={t("pages.trainings.fieldDate")} value={formatDate(form.date)} />
+      <SessionMeta label={t("pages.trainings.fieldTheme")} value={form.theme} />
+      <SessionMeta label={t("pages.trainings.fieldObjective")} value={form.objective || t("pages.trainings.printMetaObjectiveFallback")} />
+      <SessionMeta label={t("pages.trainings.fieldLoad")} value={form.matchDayDistance} />
     </div>
 
     <div
@@ -288,9 +300,9 @@ function Trainings({
       }}
     >
       <label style={trainingStyles.field}>
-        <span>Titolo</span>
+        <span>{t("pages.trainings.fieldTitle")}</span>
         <input
-          placeholder="Es. Attivazione + possesso"
+          placeholder={t("pages.trainings.titlePlaceholder")}
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           style={styles.input}
@@ -298,7 +310,7 @@ function Trainings({
       </label>
 
       <label style={trainingStyles.field}>
-        <span>Data</span>
+        <span>{t("pages.trainings.fieldDate")}</span>
         <input
           type="date"
           value={form.date}
@@ -308,42 +320,42 @@ function Trainings({
       </label>
 
       <label style={trainingStyles.field}>
-        <span>Tema</span>
+        <span>{t("pages.trainings.fieldTheme")}</span>
         <select
           value={form.theme}
           onChange={(e) => setForm({ ...form, theme: e.target.value })}
           style={styles.input}
         >
-          <option>Costruzione</option>
-          <option>Possesso</option>
-          <option>Pressing</option>
-          <option>Transizione</option>
-          <option>Finalizzazione</option>
-          <option>Fase difensiva</option>
-          <option>Palla inattiva</option>
+          <option value="Costruzione">{t("pages.trainings.themeCostruzione")}</option>
+          <option value="Possesso">{t("pages.trainings.themePossesso")}</option>
+          <option value="Pressing">{t("pages.trainings.themePressing")}</option>
+          <option value="Transizione">{t("pages.trainings.themeTransizione")}</option>
+          <option value="Finalizzazione">{t("pages.trainings.themeFinalizzazione")}</option>
+          <option value="Fase difensiva">{t("pages.trainings.themeFaseDifensiva")}</option>
+          <option value="Palla inattiva">{t("pages.trainings.themePallaInattiva")}</option>
         </select>
       </label>
 
       <label style={trainingStyles.field}>
-        <span>Carico</span>
+        <span>{t("pages.trainings.fieldLoad")}</span>
         <select
           value={form.matchDayDistance}
           onChange={(e) => setForm({ ...form, matchDayDistance: e.target.value })}
           style={styles.input}
-          title="Distanza dalla prossima partita"
+          title={t("pages.trainings.loadTooltip")}
         >
-          <option value="MD+1">MD+1 — Post-gara</option>
-          <option value="MD-4">MD-4 — Carico moderato</option>
-          <option value="MD-3">MD-3 — Picco di carico</option>
-          <option value="MD-2">MD-2 — Carico medio</option>
-          <option value="MD-1">MD-1 — Pre-gara</option>
+          <option value="MD+1">{t("pages.trainings.loadMDp1")}</option>
+          <option value="MD-4">{t("pages.trainings.loadMDm4")}</option>
+          <option value="MD-3">{t("pages.trainings.loadMDm3")}</option>
+          <option value="MD-2">{t("pages.trainings.loadMDm2")}</option>
+          <option value="MD-1">{t("pages.trainings.loadMDm1")}</option>
         </select>
       </label>
 
       <label style={trainingStyles.field}>
-        <span>Obiettivo</span>
+        <span>{t("pages.trainings.fieldObjective")}</span>
         <input
-          placeholder="Es. uscita pulita sotto pressione"
+          placeholder={t("pages.trainings.objectivePlaceholder")}
           value={form.objective}
           onChange={(e) => setForm({ ...form, objective: e.target.value })}
           style={styles.input}
@@ -351,9 +363,9 @@ function Trainings({
       </label>
 
       <label style={trainingStyles.field}>
-        <span>Note staff</span>
+        <span>{t("pages.trainings.fieldNotes")}</span>
         <textarea
-          placeholder="Indicazioni, vincoli, focus individuali..."
+          placeholder={t("pages.trainings.notesPlaceholder")}
           value={form.notes}
           onChange={(e) => setForm({ ...form, notes: e.target.value })}
           style={{
@@ -389,25 +401,25 @@ function Trainings({
               <div>
                 <div style={trainingStyles.stepHeader}>
                   <span style={trainingStyles.stepBadge}>2</span>
-                  <span>Esercizi</span>
+                  <span>{t("pages.trainings.step2")}</span>
                 </div>
-                <h3 style={{ margin: 0, lineHeight: 1.2 }}>Libreria esercizi</h3>
+                <h3 style={{ margin: 0, lineHeight: 1.2 }}>{t("pages.trainings.libraryTitle")}</h3>
                 <p style={{ color: "#94a3b8", margin: "6px 0 0", lineHeight: 1.45 }}>
-                  Clicca per aggiungere o rimuovere esercizi dalla seduta
+                  {t("pages.trainings.librarySubtitle")}
                 </p>
               </div>
 
               <SearchBar
                 value={search}
                 onChange={setSearch}
-                placeholder="Cerca esercizio..."
+                placeholder={t("pages.trainings.searchPlaceholder")}
               />
             </div>
 
             {/* Filtro per Training Block */}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
               <BlockBtn active={pickerBlock === "Tutti"} onClick={() => setPickerBlock("Tutti")} color="default">
-                Tutti
+                {t("pages.trainings.filterAll")}
               </BlockBtn>
               {TRAINING_BLOCKS.map((b) => (
                 <BlockBtn key={b.id} active={pickerBlock === b.id} onClick={() => setPickerBlock(b.id)} color={b.color}>
@@ -419,8 +431,8 @@ function Trainings({
             {filteredExercises.length === 0 ? (
               <EmptyState
                 icon="🎯"
-                title="Nessun esercizio trovato"
-                text="Crea esercizi nella libreria prima di costruire la seduta."
+                title={t("pages.trainings.noExercisesFound")}
+                text={t("pages.trainings.noExercisesFoundText")}
               />
             ) : (
               <div
@@ -474,11 +486,11 @@ function Trainings({
                       </strong>
 
                       <p style={{ color: "#94a3b8", margin: "6px 0", fontSize: 12, lineHeight: 1.3 }}>
-                        {exercise.category || "Categoria"}
+                        {exercise.category || t("pages.trainings.categoryFallback")}
                       </p>
 
                       <Badge tone={selected ? "green" : "purple"}>
-                        {selected ? "✓ Selezionato" : "+ Aggiungi"}
+                        {selected ? t("pages.trainings.badgeSelected") : t("pages.trainings.badgeAdd")}
                       </Badge>
                     </button>
                   );
@@ -489,7 +501,7 @@ function Trainings({
 
           {selectedExercises.length > 0 && (
             <AppCard>
-              <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Varianti esercizi</h3>
+              <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>{t("pages.trainings.variantsTitle")}</h3>
 
               <div style={{ display: "grid", gap: 12 }}>
                 {selectedExercises.map((item) => (
@@ -538,7 +550,7 @@ function Trainings({
                     />
 
                     <input
-                      placeholder="Note variante"
+                      placeholder={t("pages.trainings.variantNotesPlaceholder")}
                       value={item.variantNotes}
                       onChange={(e) =>
                         updateVariant(
@@ -560,7 +572,7 @@ function Trainings({
   <AppCard>
     <div style={trainingStyles.stepHeader}>
       <span style={trainingStyles.stepBadge}>3</span>
-      <span>Timeline</span>
+      <span>{t("pages.trainings.step3")}</span>
     </div>
     <SortableTrainingTimeline
     exercises={selectedExercises}
@@ -581,21 +593,21 @@ function Trainings({
           <AppCard>
             <div style={trainingStyles.stepHeader}>
               <span style={trainingStyles.stepBadge}>4</span>
-              <span>Anteprima</span>
+              <span>{t("pages.trainings.step4")}</span>
             </div>
             <div style={trainingStyles.previewCard}>
               <div>
-                <p style={trainingStyles.previewEyebrow}>Scheda seduta</p>
+                <p style={trainingStyles.previewEyebrow}>{t("pages.trainings.previewEyebrow")}</p>
                 <h2 style={trainingStyles.previewTitle}>
-                  {form.title || "Titolo non inserito"}
+                  {form.title || t("pages.trainings.previewTitleFallback")}
                 </h2>
               </div>
 
               <div style={trainingStyles.previewMetaGrid}>
-                <SessionMeta label="Data" value={formatDate(form.date)} />
-                <SessionMeta label="Tema" value={form.theme} />
-                <SessionMeta label="Durata" value={`${totalMinutes} min`} />
-                <SessionMeta label="Esercizi" value={selectedExercises.length} />
+                <SessionMeta label={t("pages.trainings.previewMetaDate")} value={formatDate(form.date)} />
+                <SessionMeta label={t("pages.trainings.previewMetaTheme")} value={form.theme} />
+                <SessionMeta label={t("pages.trainings.previewMetaDuration")} value={`${totalMinutes} min`} />
+                <SessionMeta label={t("pages.trainings.previewMetaExercises")} value={selectedExercises.length} />
               </div>
 
               {form.objective && (
@@ -604,11 +616,38 @@ function Trainings({
 
               {form.sourceType === "postMatch" && (
                 <div style={trainingStyles.sourceBox}>
-                  <Badge tone="purple">Da post-gara</Badge>
+                  <Badge tone="purple">{t("pages.trainings.sourcePostMatch")}</Badge>
                   <span>
-                    {form.sourceMatchLabel ? `vs ${form.sourceMatchLabel}` : "Report collegato"}
+                    {form.sourceMatchLabel ? `vs ${form.sourceMatchLabel}` : t("pages.trainings.sourceLinked")}
                     {form.sourceSummary ? ` · ${form.sourceSummary}` : ""}
                   </span>
+                </div>
+              )}
+
+              {form.sourceType === "postMatch" && (
+                <div style={trainingStyles.objectiveReviewBox}>
+                  <label style={trainingStyles.field}>
+                    <span>Stato obiettivo</span>
+                    <select
+                      value={form.objectiveStatus || "todo"}
+                      onChange={(event) => setForm({ ...form, objectiveStatus: event.target.value })}
+                      style={styles.input}
+                    >
+                      {Object.entries(OBJECTIVE_STATUS).map(([value, meta]) => (
+                        <option key={value} value={value}>{meta.label}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={trainingStyles.field}>
+                    <span>Verifica staff</span>
+                    <textarea
+                      placeholder="Cosa abbiamo corretto? Cosa resta da rivedere?"
+                      value={form.objectiveReview || ""}
+                      onChange={(event) => setForm({ ...form, objectiveReview: event.target.value })}
+                      style={{ ...styles.input, minHeight: 72, resize: "vertical" }}
+                    />
+                  </label>
                 </div>
               )}
             </div>
@@ -616,15 +655,15 @@ function Trainings({
             <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
               {editingId && (
                 <Button variant="ghost" onClick={cancelEdit}>
-                  Annulla
+                  {t("pages.trainings.cancel")}
                 </Button>
               )}
 
               <Button onClick={saveTraining}>
-                {editingId ? "Aggiorna seduta" : "Salva seduta"}
+                {editingId ? t("pages.trainings.updateSession") : t("pages.trainings.saveSession")}
               </Button>
               <Button variant="ghost" onClick={() => navigate("/exports")}>
-                Esporta PDF
+                {t("pages.trainings.exportPdfAction")}
               </Button>
             </div>
           </AppCard>
@@ -643,20 +682,20 @@ function Trainings({
             }}
           >
             <div>
-              <h3 style={{ margin: 0, lineHeight: 1.2 }}>Sedute salvate</h3>
+              <h3 style={{ margin: 0, lineHeight: 1.2 }}>{t("pages.trainings.savedTitle")}</h3>
               <p style={{ color: "#94a3b8", margin: "6px 0 0", lineHeight: 1.45 }}>
-                Archivio allenamenti creati
+                {t("pages.trainings.savedSubtitle")}
               </p>
             </div>
 
-            <Badge tone="blue">{sessions.length} sedute</Badge>
+            <Badge tone="blue">{t("pages.trainings.savedCount", { count: sessions.length })}</Badge>
           </div>
 
           {sessions.length === 0 ? (
             <EmptyState
               icon="📋"
-              title="Nessuna seduta salvata"
-              text="Crea la prima seduta per iniziare la pianificazione."
+              title={t("pages.trainings.noSavedTitle")}
+              text={t("pages.trainings.noSavedText")}
             />
           ) : (
             <div style={{ display: "grid", gap: 14 }}>
@@ -701,9 +740,12 @@ function Trainings({
 
                         {session.sourceType === "postMatch" && (
                           <div style={trainingStyles.sourceInline}>
-                            <Badge tone="purple">Da post-gara</Badge>
+                            <Badge tone="purple">{t("pages.trainings.sourcePostMatch")}</Badge>
+                            <Badge tone={getObjectiveStatusMeta(session.objectiveStatus).tone}>
+                              {getObjectiveStatusMeta(session.objectiveStatus).label}
+                            </Badge>
                             <span>
-                              {session.sourceMatchLabel ? `vs ${session.sourceMatchLabel}` : "Report collegato"}
+                              {session.sourceMatchLabel ? `vs ${session.sourceMatchLabel}` : t("pages.trainings.sourceLinked")}
                               {session.sourceSummary ? ` · ${session.sourceSummary}` : ""}
                             </span>
                           </div>
@@ -723,7 +765,7 @@ function Trainings({
 
                             return (
                               <Badge key={`${item.exerciseId}-${index}`} tone="purple">
-                                {exercise?.title || "Esercizio"} ·{" "}
+                                {exercise?.title || t("pages.trainings.exerciseFallback")} ·{" "}
                                 {item.customDuration} min
                               </Badge>
                             );
@@ -736,21 +778,21 @@ function Trainings({
                           variant="ghost"
                           onClick={() => navigate(`/session-attendance/${session.id}`)}
                         >
-                          Presenze
+                          {t("pages.trainings.attendance")}
                         </Button>
 
                         <Button
                           variant="ghost"
                           onClick={() => editTraining(session)}
                         >
-                          Modifica
+                          {t("pages.trainings.edit")}
                         </Button>
 
                         <Button
                           variant="danger"
                           onClick={() => deleteTraining(session.id)}
                         >
-                          Elimina
+                          {t("pages.trainings.delete")}
                         </Button>
                       </div>
                     </div>
@@ -781,6 +823,8 @@ function emptyTraining() {
     sourceMatchLabel: "",
     sourceMatchDate: "",
     sourceSummary: "",
+    objectiveStatus: "todo",
+    objectiveReview: "",
   };
 }
 
@@ -809,6 +853,7 @@ function SessionMeta({ label, value }) {
 const UNAVAILABLE_STATUSES = ["Infortunato", "Squalificato"];
 
 function AvailablePlayers({ players }) {
+  const { t } = useTranslation();
   const available = players.filter(
     (p) => !UNAVAILABLE_STATUSES.includes(p.status || "Disponibile")
   );
@@ -824,7 +869,7 @@ function AvailablePlayers({ players }) {
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
         <h4 style={{ margin: 0, fontSize: 13, color: "#94a3b8", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4 }}>
-          Giocatori disponibili
+          {t("pages.trainings.availablePlayers")}
         </h4>
         <span style={{
           fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999,
@@ -837,7 +882,7 @@ function AvailablePlayers({ players }) {
             fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999,
             background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.25)", color: "#f87171",
           }}>
-            {unavailable.length} non disponibili
+            {t("pages.trainings.unavailablePlayers", { count: unavailable.length })}
           </span>
         )}
       </div>
@@ -1060,6 +1105,12 @@ const trainingStyles = {
     color: "#c4b5fd",
     fontSize: 12,
     lineHeight: 1.35,
+  },
+  objectiveReviewBox: {
+    display: "grid",
+    gap: 12,
+    paddingTop: 12,
+    borderTop: "1px solid rgba(255,255,255,0.08)",
   },
   sessionSummary: {
     marginBottom: 26,
