@@ -615,6 +615,34 @@ function MatchDay({
             placeholder="Note operative: documenti, multe, maglie, acqua, materiale, indicazioni per staff e dirigenti..."
             style={{ ...styles.input, marginTop: 12, minHeight: 80, resize: "vertical" }}
           />
+          <div style={matchDayStyles.printChecklistSummary}>
+            <div style={matchDayStyles.printChecklistHeader}>
+              <strong>Riepilogo operativo per stampa</strong>
+              <span>{completedChecklist}/{checklistItems.length} completati</span>
+            </div>
+            <div style={matchDayStyles.printChecklistInfo}>
+              <span>Arrivo staff: {preMatchChecklist.staffArrivalTime || "Da definire"}</span>
+              <span>Responsabile: {preMatchChecklist.staffResponsible || "Da definire"}</span>
+              <span>Arbitro/contatto: {preMatchChecklist.refereeInfo || "Da definire"}</span>
+            </div>
+            <div style={matchDayStyles.printChecklistRows}>
+              {checklistItems.map((item) => {
+                const checked = Boolean(preMatchChecklist.items[item.key]);
+                return (
+                  <div key={`print-${item.key}`} style={matchDayStyles.printChecklistRow}>
+                    <span style={checked ? matchDayStyles.printStatusDone : matchDayStyles.printStatusTodo}>
+                      {checked ? "OK" : "Da fare"}
+                    </span>
+                    <strong>{item.label}</strong>
+                    <small>{item.detail}</small>
+                  </div>
+                );
+              })}
+            </div>
+            {preMatchChecklist.logisticsNotes && (
+              <p style={matchDayStyles.printChecklistNotes}>{preMatchChecklist.logisticsNotes}</p>
+            )}
+          </div>
         </AppCard>
 
         {/* ── Banner import dalla Convocazione ── */}
@@ -1501,6 +1529,63 @@ const matchDayStyles = {
     background: "rgba(34,197,94,0.22)",
     color: "#86efac",
     fontWeight: 900,
+  },
+  printChecklistSummary: {
+    display: "grid",
+    gap: 10,
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 12,
+    background: "rgba(15,23,42,0.55)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+  printChecklistHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    flexWrap: "wrap",
+    color: "#e2e8f0",
+  },
+  printChecklistInfo: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+    color: "#94a3b8",
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  printChecklistRows: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+    gap: 8,
+  },
+  printChecklistRow: {
+    display: "grid",
+    gridTemplateColumns: "64px 1fr",
+    gap: 6,
+    alignItems: "start",
+    padding: 10,
+    borderRadius: 10,
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.07)",
+  },
+  printStatusDone: {
+    color: "#86efac",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+  },
+  printStatusTodo: {
+    color: "#fbbf24",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+  },
+  printChecklistNotes: {
+    margin: 0,
+    color: "#cbd5e1",
+    whiteSpace: "pre-wrap",
+    lineHeight: 1.5,
   },
   sectionHeader: {
     display: "flex",
