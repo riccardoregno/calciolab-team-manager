@@ -23,22 +23,22 @@ import { useTranslation } from "../i18n";
 
 /* ─── tab list ─────────────────────────────────────────────── */
 const TABS = [
-  { key: "account",       label: "Account" },
-  { key: "coach",         label: "Parametri Coach" },
-  { key: "club",          label: "Profilo società" },
-  { key: "notifications", label: "🔔 Notifiche" },
+  { key: "account",       labelKey: "pages.settings.account" },
+  { key: "coach",         labelKey: "pages.settings.coachParams" },
+  { key: "club",          labelKey: "pages.settings.clubProfile" },
+  { key: "notifications", labelKey: "pages.settings.notifications" },
 ];
 
-const widgetLabels = {
-  hero:             "Introduzione operativa",
-  nextEvent:        "Prossimo evento",
-  kpis:             "KPI principali",
-  weekFocus:        "Focus settimana",
-  rosterStatus:     "Stato rosa",
-  coachAlerts:      "Alert coach",
-  recentActivities: "Ultime attività",
-  quickActions:     "Azioni rapide",
-  rewardCenter:     "Reward e piano",
+const widgetLabelKeys = {
+  hero:             "pages.settings.introOperational",
+  nextEvent:        "pages.settings.nextEvent",
+  kpis:             "pages.settings.mainKpis",
+  weekFocus:        "pages.settings.weekFocus",
+  rosterStatus:     "pages.settings.rosterStatus",
+  coachAlerts:      "pages.settings.coachAlerts",
+  recentActivities: "pages.settings.recentActivities",
+  quickActions:     "pages.settings.quickActions",
+  rewardCenter:     "pages.settings.rewardPlan",
 };
 
 /* ─── main component ────────────────────────────────────────── */
@@ -87,7 +87,7 @@ export default function Settings({
               onClick={() => setActiveTab(tab.key)}
               style={{ ...s.tab, ...(active ? s.tabActive : s.tabInactive) }}
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           );
         })}
@@ -142,6 +142,7 @@ export default function Settings({
    TAB 1 — Account
 ═══════════════════════════════════════════════════════════════ */
 function AccountTab({ authConfigured, authLoading, user, team, authError, storageSource }) {
+  const { t } = useTranslation();
   /* ── Profile form ── */
   const [profileForm,    setProfileForm]    = useState({ first_name: "", last_name: "" });
   const [profileLoading, setProfileLoading] = useState(false);
@@ -170,7 +171,7 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
     e.preventDefault();
     setProfileFeedback(null);
     if (!profileForm.first_name.trim() || !profileForm.last_name.trim()) {
-      setProfileFeedback({ ok: false, text: "Nome e cognome sono obbligatori." });
+      setProfileFeedback({ ok: false, text: t("pages.settings.acctFieldsRequired") });
       return;
     }
     setProfileLoading(true);
@@ -180,7 +181,7 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
         .update({ first_name: profileForm.first_name.trim(), last_name: profileForm.last_name.trim() })
         .eq("id", user.id);
       if (error) setProfileFeedback({ ok: false, text: error.message });
-      else setProfileFeedback({ ok: true, text: "Profilo aggiornato con successo!" });
+      else setProfileFeedback({ ok: true, text: t("pages.settings.acctProfileSaved") });
     } finally { setProfileLoading(false); }
   }
 
@@ -188,11 +189,11 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
     e.preventDefault();
     setPwdFeedback(null);
     if (!pwdForm.next || pwdForm.next.length < 8) {
-      setPwdFeedback({ ok: false, text: "La nuova password deve essere di almeno 8 caratteri." });
+      setPwdFeedback({ ok: false, text: t("pages.settings.acctPwdTooShort") });
       return;
     }
     if (pwdForm.next !== pwdForm.confirm) {
-      setPwdFeedback({ ok: false, text: "Le due password non coincidono." });
+      setPwdFeedback({ ok: false, text: t("pages.settings.acctPwdNoMatch") });
       return;
     }
     setPwdLoading(true);
@@ -203,13 +204,13 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
         password: pwdForm.current,
       });
       if (signInError) {
-        setPwdFeedback({ ok: false, text: "Password attuale non corretta." });
+        setPwdFeedback({ ok: false, text: t("pages.settings.acctPwdWrong") });
         return;
       }
       const { error } = await supabase.auth.updateUser({ password: pwdForm.next });
       if (error) setPwdFeedback({ ok: false, text: error.message });
       else {
-        setPwdFeedback({ ok: true, text: "Password aggiornata con successo!" });
+        setPwdFeedback({ ok: true, text: t("pages.settings.acctPwdUpdated") });
         setPwdForm({ current: "", next: "", confirm: "" });
       }
     } finally { setPwdLoading(false); }
@@ -234,7 +235,7 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
 
         {/* Profile editing card */}
         <AppCard>
-          <h3 style={{ ...styles.cardTitle, lineHeight: 1.2 }}>Profilo Coach</h3>
+          <h3 style={{ ...styles.cardTitle, lineHeight: 1.2 }}>{t("pages.settings.acctProfileTitle")}</h3>
 
           <div style={s.profileBox}>
             <div style={s.avatar}>{avatarInitial}</div>
@@ -247,21 +248,21 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
           <form onSubmit={saveProfile} style={{ display: "grid", gap: 10, marginTop: 16 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
-                <label style={acctStyles.fieldLabel}>Nome</label>
+                <label style={acctStyles.fieldLabel}>{t("pages.settings.acctFirstName")}</label>
                 <input
                   style={acctStyles.input}
                   type="text"
-                  placeholder="Nome"
+                  placeholder={t("pages.settings.acctFirstName")}
                   value={profileForm.first_name}
                   onChange={(e) => setProfileForm((f) => ({ ...f, first_name: e.target.value }))}
                 />
               </div>
               <div>
-                <label style={acctStyles.fieldLabel}>Cognome</label>
+                <label style={acctStyles.fieldLabel}>{t("pages.settings.acctLastName")}</label>
                 <input
                   style={acctStyles.input}
                   type="text"
-                  placeholder="Cognome"
+                  placeholder={t("pages.settings.acctLastName")}
                   value={profileForm.last_name}
                   onChange={(e) => setProfileForm((f) => ({ ...f, last_name: e.target.value }))}
                 />
@@ -279,20 +280,20 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
               style={{ ...acctStyles.btn, ...(profileLoading ? acctStyles.btnDisabled : {}) }}
               disabled={profileLoading}
             >
-              {profileLoading ? "Salvataggio…" : "Salva profilo"}
+              {profileLoading ? t("pages.settings.acctSaving") : t("pages.settings.acctSaveProfile")}
             </button>
           </form>
         </AppCard>
 
         {/* Squadra */}
         <AppCard>
-          <h3 style={{ ...styles.cardTitle, lineHeight: 1.2 }}>Squadra</h3>
+          <h3 style={{ ...styles.cardTitle, lineHeight: 1.2 }}>{t("pages.settings.acctTeamTitle")}</h3>
 
           <div style={s.infoGrid}>
-            <InfoItem label="Nome squadra" value={team?.name     || "CalcioLab Team"} />
-            <InfoItem label="Categoria"    value={team?.category || "Prima squadra"} />
-            <InfoItem label="Stagione"     value={team?.season   || "2025/2026"} />
-            <InfoItem label="Modalità"     value={storageSource === "supabase" ? "Cloud workspace" : "Locale"} />
+            <InfoItem label={t("pages.settings.acctTeamName")}     value={team?.name     || "CalcioLab Team"} />
+            <InfoItem label={t("pages.settings.acctTeamCategory")} value={team?.category || "Prima squadra"} />
+            <InfoItem label={t("pages.settings.acctTeamSeason")}   value={team?.season   || "2025/2026"} />
+            <InfoItem label={t("pages.settings.acctTeamMode")}     value={storageSource === "supabase" ? t("pages.settings.acctModeCloud") : t("pages.settings.acctModeLocal")} />
           </div>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 18 }}>
@@ -305,7 +306,7 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
 
       {/* Password change card */}
       <AppCard>
-        <h3 style={{ ...styles.cardTitle, lineHeight: 1.2 }}>Cambia password</h3>
+        <h3 style={{ ...styles.cardTitle, lineHeight: 1.2 }}>{t("pages.settings.acctPasswordTitle")}</h3>
         <p style={{ color: "#64748b", fontSize: 13, margin: "0 0 18px" }}>
           Usa una password sicura di almeno 8 caratteri. Non riutilizzare la stessa di altri servizi.
         </p>
@@ -313,12 +314,12 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
         <form onSubmit={savePassword} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
           {/* Current password */}
           <div>
-            <label style={acctStyles.fieldLabel}>Password attuale</label>
+            <label style={acctStyles.fieldLabel}>{t("pages.settings.acctCurrentPwd")}</label>
             <div style={acctStyles.pwdWrap}>
               <input
                 style={acctStyles.input}
                 type={showPwd.current ? "text" : "password"}
-                placeholder="Password attuale"
+                placeholder={t("pages.settings.acctCurrentPwd")}
                 value={pwdForm.current}
                 onChange={(e) => setPwdForm((f) => ({ ...f, current: e.target.value }))}
                 autoComplete="current-password"
@@ -332,12 +333,12 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
 
           {/* New password */}
           <div>
-            <label style={acctStyles.fieldLabel}>Nuova password</label>
+            <label style={acctStyles.fieldLabel}>{t("pages.settings.acctNewPwd")}</label>
             <div style={acctStyles.pwdWrap}>
               <input
                 style={acctStyles.input}
                 type={showPwd.next ? "text" : "password"}
-                placeholder="Almeno 8 caratteri"
+                placeholder={t("pages.settings.acctNewPwdPlaceholder")}
                 value={pwdForm.next}
                 onChange={(e) => setPwdForm((f) => ({ ...f, next: e.target.value }))}
                 autoComplete="new-password"
@@ -351,7 +352,7 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
 
           {/* Confirm password */}
           <div>
-            <label style={acctStyles.fieldLabel}>Conferma nuova password</label>
+            <label style={acctStyles.fieldLabel}>{t("pages.settings.acctConfirmPwd")}</label>
             <div style={acctStyles.pwdWrap}>
               <input
                 style={{
@@ -360,7 +361,7 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
                     ? "rgba(239,68,68,0.5)" : undefined,
                 }}
                 type={showPwd.confirm ? "text" : "password"}
-                placeholder="Ripeti la password"
+                placeholder={t("pages.settings.acctConfirmPwdPlaceholder")}
                 value={pwdForm.confirm}
                 onChange={(e) => setPwdForm((f) => ({ ...f, confirm: e.target.value }))}
                 autoComplete="new-password"
@@ -384,14 +385,14 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
               style={{ ...acctStyles.btn, ...(pwdLoading ? acctStyles.btnDisabled : {}) }}
               disabled={pwdLoading}
             >
-              {pwdLoading ? "Aggiornamento…" : "Aggiorna password"}
+              {pwdLoading ? t("pages.settings.acctUpdating") : t("pages.settings.acctUpdatePwd")}
             </button>
           </div>
         </form>
       </AppCard>
 
       <AppCard>
-        <h3 style={{ ...styles.cardTitle, lineHeight: 1.2 }}>Roadmap piattaforma</h3>
+        <h3 style={{ ...styles.cardTitle, lineHeight: 1.2 }}>{t("pages.settings.acctRoadmapTitle")}</h3>
         <div style={s.roadmap}>
           <RoadmapItem title="Cloud sync"  text="Attivo con Supabase e fallback locale automatico." />
           <RoadmapItem title="Multi team"  text="Base dati pronta con teams e team_members." />
@@ -433,6 +434,7 @@ const acctStyles = {
    TAB 2 — Coach parameters
 ═══════════════════════════════════════════════════════════════ */
 function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
+  const { t } = useTranslation();
   const settings   = useAppSettings(appSettings);
   const parameters = settings.coachParameters   || {};
   const metrics    = settings.physicalMetrics    || [];
@@ -451,8 +453,8 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
 
   function deleteCustomMetric(key) {
     setConfirmState({
-      message: "Eliminare questa metrica?",
-      confirmLabel: "Elimina",
+      message: t("pages.settings.coachDeleteMetricMsg"),
+      confirmLabel: t("pages.settings.coachDeleteMetricConfirm"),
       confirmTone: "red",
       onConfirm: () => updateMetrics(metrics.filter((m) => m.key !== key)),
     });
@@ -460,7 +462,7 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
 
   function addCustomMetric() {
     if (!newMetric.label.trim()) {
-      showToast("Inserisci un nome per la metrica", "warn");
+      showToast(t("pages.settings.coachMetricNameRequired"), "warn");
       return;
     }
     const key = `custom_${createId("m")}`;
@@ -480,46 +482,46 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
     <div style={s.panel}>
       <div style={s.grid2}>
         <AppCard>
-          <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Parametri preparatore</h3>
+          <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>{t("pages.settings.coachParamsTitle")}</h3>
           <div style={s.formGrid}>
             <label style={s.label}>
-              Categoria
+              {t("pages.settings.coachCategoryLabel")}
               <select
                 value={parameters.category}
                 onChange={(e) => updateParameters({ category: e.target.value })}
                 style={styles.input}
               >
-                <option value="adulti">Prima squadra</option>
-                <option value="juniores">Juniores</option>
-                <option value="allievi">Allievi</option>
-                <option value="giovanissimi">Giovanissimi</option>
+                <option value="adulti">{t("pages.settings.clubCategoryPrima")}</option>
+                <option value="juniores">{t("pages.settings.clubCategoryJuniores")}</option>
+                <option value="allievi">{t("pages.settings.clubCategoryAllievi")}</option>
+                <option value="giovanissimi">{t("pages.settings.clubCategoryGiovanissimi")}</option>
               </select>
             </label>
             <label style={s.label}>
-              Metodo
+              {t("pages.settings.coachMethodLabel")}
               <select
                 value={parameters.method}
                 onChange={(e) => updateParameters({ method: e.target.value })}
                 style={styles.input}
               >
-                <option value="prudente">Prudente</option>
-                <option value="standard">Standard</option>
-                <option value="aggressivo">Aggressivo</option>
+                <option value="prudente">{t("pages.settings.coachMethodPrudent")}</option>
+                <option value="standard">{t("pages.settings.coachMethodStandard")}</option>
+                <option value="aggressivo">{t("pages.settings.coachMethodAggressive")}</option>
               </select>
             </label>
-            <NumberField label="Soglia gruppo A" value={parameters.groupA} onChange={(v) => updateParameters({ groupA: v })} />
-            <NumberField label="Soglia gruppo B" value={parameters.groupB} onChange={(v) => updateParameters({ groupB: v })} />
-            <NumberField label="Soglia gruppo C" value={parameters.groupC} onChange={(v) => updateParameters({ groupC: v })} />
+            <NumberField label={t("pages.settings.coachGroupA")} value={parameters.groupA} onChange={(v) => updateParameters({ groupA: v })} />
+            <NumberField label={t("pages.settings.coachGroupB")} value={parameters.groupB} onChange={(v) => updateParameters({ groupB: v })} />
+            <NumberField label={t("pages.settings.coachGroupC")} value={parameters.groupC} onChange={(v) => updateParameters({ groupC: v })} />
           </div>
-          <Badge tone="blue">Le soglie modificano Test fisici e Lavori fisici</Badge>
+          <Badge tone="blue">{t("pages.settings.coachThresholdsHint")}</Badge>
         </AppCard>
 
         <AppCard>
-          <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Widget dashboard</h3>
+          <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>{t("pages.settings.coachWidgetsTitle")}</h3>
           <div style={s.widgetList}>
-            {Object.entries(widgetLabels).map(([key, label]) => (
+            {Object.entries(widgetLabelKeys).map(([key, labelKey]) => (
               <label key={key} style={s.widgetRow}>
-                <span>{label}</span>
+                <span>{t(labelKey)}</span>
                 <input
                   type="checkbox"
                   checked={settings.dashboardWidgets[key]}
@@ -532,7 +534,7 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
       </div>
 
       <AppCard>
-        <h3 style={{ marginTop: 0, marginBottom: 4, lineHeight: 1.2 }}>Metriche test fisici</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 4, lineHeight: 1.2 }}>{t("pages.settings.coachMetricsTitle")}</h3>
         <p style={{ color: "#64748b", fontSize: 13, marginTop: 0, marginBottom: 18, lineHeight: 1.45 }}>
           Scegli quali metriche mostrare nelle schede giocatore. Puoi anche aggiungerne di personalizzate.
         </p>
@@ -554,7 +556,7 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
               </div>
               {m.higherIsBetter !== null && (
                 <span style={{ fontSize: 11, color: m.higherIsBetter ? "#22c55e" : "#f87171", fontWeight: 700 }}>
-                  {m.higherIsBetter ? "↑ meglio" : "↓ meglio"}
+                  {m.higherIsBetter ? t("pages.settings.coachMetricHigherBetter") : t("pages.settings.coachMetricLowerBetter")}
                 </span>
               )}
               <div style={{ display: "flex", gap: 6 }}>
@@ -568,7 +570,7 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
                     color: m.enabled ? "#93c5fd" : "#475569",
                   }}
                 >
-                  {m.enabled ? "Attiva" : "Disattiva"}
+                  {m.enabled ? t("pages.settings.coachMetricActive") : t("pages.settings.coachMetricInactive")}
                 </button>
                 {m.custom && (
                   <button
@@ -586,11 +588,11 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
 
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 18 }}>
           <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0, color: "#64748b" }}>
-            Aggiungi metrica personalizzata
+            {t("pages.settings.coachCustomMetricTitle")}
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
             <label style={s.label}>
-              Nome
+              {t("pages.settings.coachMetricName")}
               <input
                 placeholder="es. Cooper, Forza squat..."
                 value={newMetric.label}
@@ -599,7 +601,7 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
               />
             </label>
             <label style={s.label}>
-              Unità
+              {t("pages.settings.coachMetricUnit")}
               <input
                 placeholder="es. m, kg, s"
                 value={newMetric.unit}
@@ -608,7 +610,7 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
               />
             </label>
             <label style={s.label}>
-              Icona
+              {t("pages.settings.coachMetricIcon")}
               <input
                 placeholder="emoji"
                 value={newMetric.icon}
@@ -617,7 +619,7 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
               />
             </label>
             <label style={s.label}>
-              Trend positivo
+              {t("pages.settings.coachMetricTrend")}
               <select
                 value={newMetric.higherIsBetter === null ? "null" : String(newMetric.higherIsBetter)}
                 onChange={(e) => setNewMetric({
@@ -626,18 +628,18 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
                 })}
                 style={styles.input}
               >
-                <option value="true">↑ Più alto = meglio</option>
-                <option value="false">↓ Più basso = meglio</option>
-                <option value="null">— Neutro</option>
+                <option value="true">{t("pages.settings.coachMetricTrendUp")}</option>
+                <option value="false">{t("pages.settings.coachMetricTrendDown")}</option>
+                <option value="null">{t("pages.settings.coachMetricTrendNeutral")}</option>
               </select>
             </label>
-            <Button onClick={addCustomMetric}>Aggiungi</Button>
+            <Button onClick={addCustomMetric}>{t("pages.settings.coachBtnAdd")}</Button>
           </div>
         </div>
       </AppCard>
 
       <AppCard>
-        <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Blocchi lavoro fisico</h3>
+        <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>{t("pages.settings.coachWorkBlocksTitle")}</h3>
         <div style={s.blocksGrid}>
           {parameters.workBlocks.map((block) => (
             <div key={block.label} style={s.block}>
@@ -647,8 +649,8 @@ function CoachTab({ appSettings, setAppSettings, setConfirmState, showToast }) {
             </div>
           ))}
         </div>
-        <Button variant="ghost" onClick={() => showToast("Editor avanzato blocchi in arrivo", "info")}>
-          Personalizza blocchi
+        <Button variant="ghost" onClick={() => showToast(t("pages.settings.coachBlocksComingSoon"), "info")}>
+          {t("pages.settings.coachBtnCustomize")}
         </Button>
       </AppCard>
     </div>
@@ -665,6 +667,7 @@ const DEFAULT_WORKSPACE_PROFILE = {
 };
 
 function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], sessions = [], matches = [] }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const settings = normalizeAppSettings(appSettings) || {};
   const rawProfile = settings.workspaceProfile || {};
@@ -769,7 +772,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
           <div>
             <Badge tone="blue">Profilo società</Badge>
             <h2 style={{ margin: "12px 0 6px", lineHeight: 1.15 }}>
-              Identità, accessi e setup operativo del club
+              {t("pages.settings.clubIntroTitle")}
             </h2>
             <p style={{ color: "#94a3b8", margin: 0, lineHeight: 1.5 }}>
               Qui configuri i dati che rendono CalcioLab riconoscibile per staff, giocatori,
@@ -777,9 +780,9 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
             </p>
           </div>
           <div style={s.clubIntroStats}>
-            <InfoMini label="Setup" value={`${setup.percent}%`} />
-            <InfoMini label="Membri" value={(settings.members || []).length} />
-            <InfoMini label="Inviti" value={(settings.pendingInvites || []).length} />
+            <InfoMini label={t("pages.settings.clubLabelSetup")}   value={`${setup.percent}%`} />
+            <InfoMini label={t("pages.settings.clubLabelMembers")} value={(settings.members || []).length} />
+            <InfoMini label={t("pages.settings.clubLabelInvites")} value={(settings.pendingInvites || []).length} />
           </div>
         </div>
       </AppCard>
@@ -804,9 +807,9 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                 <div style={s.clubLogoFallback}>{(profile.clubName || "CL").slice(0, 2).toUpperCase()}</div>
               )}
               <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
-                <strong style={{ lineHeight: 1.2 }}>Logo società</strong>
+                <strong style={{ lineHeight: 1.2 }}>{t("pages.settings.clubLogoLabel")}</strong>
                 <span style={{ color: "#94a3b8", fontSize: 13, lineHeight: 1.4 }}>
-                  Verrà usato automaticamente come logo della tua squadra nelle partite.
+                  {t("pages.settings.clubLogoDesc")}
                 </span>
                 <input
                   type="file"
@@ -816,7 +819,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                 />
                 {profile.logo && (
                   <label style={s.logoSizeControl}>
-                    Dimensione logo: {Number(profile.logoSize || 100)}%
+                    {t("pages.settings.clubLogoSize", { percent: Number(profile.logoSize || 100) })}
                     <input
                       type="range"
                       min="60"
@@ -829,21 +832,21 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                 )}
               </div>
             </div>
-            <ClubField label="Società">
+            <ClubField label={t("pages.settings.clubFieldClub")}>
               <input
                 value={profile.clubName}
                 onChange={(e) => setProfile({ ...profile, clubName: e.target.value })}
                 style={styles.input}
               />
             </ClubField>
-            <ClubField label="Squadra">
+            <ClubField label={t("pages.settings.clubFieldTeam")}>
               <input
                 value={profile.teamName}
                 onChange={(e) => setProfile({ ...profile, teamName: e.target.value })}
                 style={styles.input}
               />
             </ClubField>
-            <ClubField label="Campo di casa">
+            <ClubField label={t("pages.settings.clubFieldHomeField")}>
               <input
                 value={profile.homeFieldName || ""}
                 onChange={(e) => setProfile({ ...profile, homeFieldName: e.target.value })}
@@ -851,7 +854,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                 style={styles.input}
               />
             </ClubField>
-            <ClubField label="Indirizzo campo">
+            <ClubField label={t("pages.settings.clubFieldAddress")}>
               <input
                 value={profile.homeFieldAddress || ""}
                 onChange={(e) => setProfile({ ...profile, homeFieldAddress: e.target.value })}
@@ -859,33 +862,33 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                 style={styles.input}
               />
             </ClubField>
-            <ClubField label="Superficie campo">
+            <ClubField label={t("pages.settings.clubFieldSurface")}>
               <select
                 value={profile.homeFieldSurface || "Erba naturale"}
                 onChange={(e) => setProfile({ ...profile, homeFieldSurface: e.target.value })}
                 style={styles.input}
               >
-                <option>Erba naturale</option>
-                <option>Erba sintetica</option>
-                <option>Ibrido</option>
-                <option>Terra</option>
-                <option>Indoor</option>
+                <option>{t("pages.settings.clubSurfaceGrass")}</option>
+                <option>{t("pages.settings.clubSurfaceSynthetic")}</option>
+                <option>{t("pages.settings.clubSurfaceHybrid")}</option>
+                <option>{t("pages.settings.clubSurfaceDirt")}</option>
+                <option>{t("pages.settings.clubSurfaceIndoor")}</option>
               </select>
             </ClubField>
-            <ClubField label="Categoria">
+            <ClubField label={t("pages.settings.clubFieldCategory")}>
               <select
                 value={profile.category}
                 onChange={(e) => setProfile({ ...profile, category: e.target.value })}
                 style={styles.input}
               >
-                <option>Prima squadra</option>
-                <option>Juniores</option>
-                <option>Allievi</option>
-                <option>Giovanissimi</option>
-                <option>Esordienti</option>
+                <option>{t("pages.settings.clubCategoryPrima")}</option>
+                <option>{t("pages.settings.clubCategoryJuniores")}</option>
+                <option>{t("pages.settings.clubCategoryAllievi")}</option>
+                <option>{t("pages.settings.clubCategoryGiovanissimi")}</option>
+                <option>{t("pages.settings.clubCategoryEsordienti")}</option>
               </select>
             </ClubField>
-            <ClubField label="Ruolo principale">
+            <ClubField label={t("pages.settings.clubFieldRole")}>
               <select
                 value={profile.userRole}
                 onChange={(e) => setProfile({ ...profile, userRole: e.target.value })}
@@ -896,7 +899,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                 ))}
               </select>
             </ClubField>
-            <ClubField label="Obiettivo stagione">
+            <ClubField label={t("pages.settings.clubFieldGoal")}>
               <textarea
                 value={profile.seasonGoal}
                 onChange={(e) => setProfile({ ...profile, seasonGoal: e.target.value })}
@@ -904,7 +907,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
               />
             </ClubField>
           </div>
-          <Button onClick={saveProfile} style={{ marginTop: 14 }}>Salva profilo società</Button>
+          <Button onClick={saveProfile} style={{ marginTop: 14 }}>{t("pages.settings.clubBtnSave")}</Button>
         </AppCard>
 
         <AppCard title="Progresso configurazione" subtitle="Checklist di onboarding e trial.">
@@ -912,7 +915,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
             <div style={{ ...s.progressBar, width: `${setup.percent}%` }} />
           </div>
           <p style={{ color: "#94a3b8", fontSize: 13, margin: "0 0 12px" }}>
-            {setup.percent}% configurato
+            {t("pages.settings.clubProgressLabel", { percent: setup.percent })}
           </p>
           <div style={s.checkList}>
             {setup.checks.map((check) => (
@@ -936,7 +939,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
       <AppCard>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 18 }}>
           <div>
-            <h3 style={{ margin: 0, lineHeight: 1.2 }}>Invita Staff e Giocatori</h3>
+            <h3 style={{ margin: 0, lineHeight: 1.2 }}>{t("pages.settings.clubInviteTitle")}</h3>
             <p style={{ color: "#94a3b8", margin: "6px 0 0", fontSize: 13, lineHeight: 1.5 }}>
               Condividi dati, sedute e report con il tuo team. Ogni membro accede solo alle aree del suo ruolo.
             </p>
@@ -947,10 +950,10 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
               onClick={copyInviteLink}
               style={inviteStyles.copyLinkBtn}
             >
-              {inviteCopied ? "✓ Link copiato!" : "🔗 Copia link invito"}
+              {inviteCopied ? t("pages.settings.clubLinkCopied") : t("pages.settings.clubCopyLink")}
             </button>
             <Button onClick={() => setInviteModal(true)}>
-              + Invita membro
+              {t("pages.settings.clubBtnInvite")}
             </Button>
           </div>
         </div>
@@ -958,7 +961,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
         {/* Link invito visibile */}
         {inviteToken && (
           <div style={inviteStyles.linkBox}>
-            <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700, marginRight: 8 }}>LINK INVITO</span>
+            <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700, marginRight: 8 }}>{t("pages.settings.clubLinkLabel")}</span>
             <span style={{ fontSize: 12, color: "#93c5fd", wordBreak: "break-all" }}>
               {getInviteLink(inviteToken)}
             </span>
@@ -969,7 +972,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
         {(settings.pendingInvites || []).length > 0 && (
           <div style={{ marginTop: 16 }}>
             <p style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#64748b", margin: "0 0 10px", letterSpacing: 0.5 }}>
-              Inviti in attesa ({(settings.pendingInvites || []).length})
+              {t("pages.settings.clubPendingInvites", { count: (settings.pendingInvites || []).length })}
             </p>
             <div style={{ display: "grid", gap: 8 }}>
               {(settings.pendingInvites || []).map((inv) => (
@@ -987,7 +990,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                     onClick={() => cancelInvite(inv.id)}
                     style={inviteStyles.cancelBtn}
                   >
-                    Annulla
+                    {t("pages.settings.clubBtnCancel")}
                   </button>
                 </div>
               ))}
@@ -999,7 +1002,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
         {(settings.members || []).length > 0 && (
           <div style={{ marginTop: 16 }}>
             <p style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#64748b", margin: "0 0 10px", letterSpacing: 0.5 }}>
-              Membri attivi ({(settings.members || []).length})
+              {t("pages.settings.clubActiveMembers", { count: (settings.members || []).length })}
             </p>
             <div style={s.memberList}>
               {(settings.members || []).map((member) => (
@@ -1029,7 +1032,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                     onClick={() => removeMember(member.id)}
                     style={inviteStyles.cancelBtn}
                   >
-                    Rimuovi
+                    {t("pages.settings.clubBtnRemove")}
                   </button>
                 </div>
               ))}
@@ -1039,7 +1042,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
 
         {!(settings.members || []).length && !(settings.pendingInvites || []).length && (
           <p style={{ color: "#475569", fontSize: 13, margin: "16px 0 0" }}>
-            Nessun membro ancora. Usa il link invito o il pulsante "Invita membro" per aggiungere staff e giocatori.
+            {t("pages.settings.clubNoMembers")}
           </p>
         )}
       </AppCard>
@@ -1048,13 +1051,13 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
       {inviteModal && (
         <div style={inviteStyles.overlay} onClick={() => setInviteModal(false)}>
           <div style={inviteStyles.modal} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ margin: "0 0 6px", fontSize: 18 }}>Invita un membro</h3>
+            <h3 style={{ margin: "0 0 6px", fontSize: 18 }}>{t("pages.settings.clubModalTitle")}</h3>
             <p style={{ color: "#94a3b8", margin: "0 0 20px", fontSize: 13, lineHeight: 1.5 }}>
               Inserisci i dati del membro. Riceverà un link per accedere al workspace con il suo ruolo.
             </p>
             <form onSubmit={sendInvite} style={{ display: "grid", gap: 12 }}>
               <input
-                placeholder="Nome (opzionale)"
+                placeholder={t("pages.settings.clubInviteNamePlaceholder")}
                 value={inviteForm.name}
                 onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
                 style={styles.input}
@@ -1086,9 +1089,9 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
                 <button type="button" onClick={() => setInviteModal(false)} style={inviteStyles.cancelBtn}>
-                  Annulla
+                  {t("pages.settings.clubBtnCancel")}
                 </button>
-                <Button type="submit">Invia invito</Button>
+                <Button type="submit">{t("pages.settings.clubBtnSendInvite")}</Button>
               </div>
             </form>
           </div>
@@ -1328,6 +1331,7 @@ const s = {
 
 /* ─── Notifications Tab ─────────────────────────────────────── */
 function NotificationsTab({ appSettings, setAppSettings, sessions = [], matches = [], players = [] }) {
+  const { t } = useTranslation();
   const settings = normalizeAppSettings(appSettings);
   const notifSettings = settings.notifications || { enabled: false, remindersEnabled: false };
 
@@ -1341,7 +1345,7 @@ function NotificationsTab({ appSettings, setAppSettings, sessions = [], matches 
     const result = await requestPermission();
     if (result === "granted") {
       updateNotif({ enabled: true });
-      notify({ title: "✅ Notifiche attivate", body: "Riceverai avvisi per partite, sedute e infortuni." });
+      notify({ title: t("pages.settings.notifGranted"), body: t("pages.settings.notifEnabledLabel") });
     }
   }
 
@@ -1358,28 +1362,28 @@ function NotificationsTab({ appSettings, setAppSettings, sessions = [], matches 
   return (
     <div style={{ display: "grid", gap: 20 }}>
       <AppCard>
-        <h3 style={{ margin: "0 0 6px", fontSize: 17 }}>Notifiche browser</h3>
+        <h3 style={{ margin: "0 0 6px", fontSize: 17 }}>{t("pages.settings.notifTitle")}</h3>
         <p style={{ color: "#94a3b8", margin: "0 0 18px", fontSize: 14, lineHeight: 1.5 }}>
           Ricevi avvisi per partite imminenti, sedute programmate e stato infortuni — direttamente nel browser o come notifica sul telefono (se aggiungi l&apos;app alla schermata Home).
         </p>
 
         {!supported ? (
           <div style={{ padding: "14px 16px", borderRadius: 12, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#fca5a5", fontSize: 14 }}>
-            ⚠️ Il tuo browser non supporta le notifiche push.
+            {t("pages.settings.notifUnsupported")}
           </div>
         ) : permission === "denied" ? (
           <div style={{ padding: "14px 16px", borderRadius: 12, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#fca5a5", fontSize: 14 }}>
-            🚫 Notifiche bloccate dal browser. Vai nelle impostazioni del browser e riabilita le notifiche per questo sito.
+            {t("pages.settings.notifDenied")}
           </div>
         ) : permission === "granted" ? (
           <div style={{ display: "grid", gap: 12 }}>
             <div style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", color: "#86efac", fontSize: 14, display: "flex", gap: 10, alignItems: "center" }}>
-              ✅ Notifiche autorizzate
+              {t("pages.settings.notifGranted")}
             </div>
 
             <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
               <div>
-                <strong style={{ fontSize: 14 }}>Notifiche attive</strong>
+                <strong style={{ fontSize: 14 }}>{t("pages.settings.notifEnabledLabel")}</strong>
                 <p style={{ margin: "2px 0 0", color: "#94a3b8", fontSize: 13 }}>Ricevi avvisi per partite, sedute e infortuni il giorno prima</p>
               </div>
               <input
@@ -1395,42 +1399,42 @@ function NotificationsTab({ appSettings, setAppSettings, sessions = [], matches 
                 variant="ghost"
                 onClick={() => {
                   if (tomorrowMatches.length > 0) {
-                    notify({ title: "⚽ Partita domani", body: `${tomorrowMatches[0].opponent}`, tag: "test-match" });
+                    notify({ title: `⚽ ${t("pages.settings.notifMatchTomorrow")}`, body: `${tomorrowMatches[0].opponent}`, tag: "test-match" });
                   } else if (tomorrowSessions.length > 0) {
-                    notify({ title: "📋 Allenamento domani", body: tomorrowSessions[0].title || "Seduta programmata", tag: "test-session" });
+                    notify({ title: `📋 ${t("pages.settings.notifSessionTomorrow")}`, body: tomorrowSessions[0].title || "Seduta programmata", tag: "test-session" });
                   } else if (injuredPlayers.length > 0) {
-                    notify({ title: "🚑 Giocatore infortunato", body: injuredPlayers[0].name, tag: "test-injury" });
+                    notify({ title: `🚑 ${t("pages.settings.notifInjuredPlayer")}`, body: injuredPlayers[0].name, tag: "test-injury" });
                   } else {
                     notify({ title: "🔔 CalcioLab", body: "Notifiche funzionanti correttamente!", tag: "test" });
                   }
                 }}
               >
-                Invia notifica di test
+                {t("pages.settings.notifBtnTest")}
               </Button>
             )}
           </div>
         ) : (
           <Button onClick={handleEnable}>
-            Attiva notifiche browser
+            {t("pages.settings.notifBtnEnable")}
           </Button>
         )}
       </AppCard>
 
       {/* Preview eventi prossimi */}
       <AppCard>
-        <h3 style={{ margin: "0 0 14px", fontSize: 16 }}>Prossimi avvisi</h3>
+        <h3 style={{ margin: "0 0 14px", fontSize: 16 }}>{t("pages.settings.notifUpcomingTitle")}</h3>
         <div style={{ display: "grid", gap: 10 }}>
           {tomorrowMatches.map((m) => (
-            <NotifPreviewRow key={m.id} icon="⚽" title="Partita domani" desc={m.opponent || "Avversario"} tone="blue" />
+            <NotifPreviewRow key={m.id} icon="⚽" title={t("pages.settings.notifMatchTomorrow")} desc={m.opponent || "Avversario"} tone="blue" />
           ))}
           {tomorrowSessions.map((s) => (
-            <NotifPreviewRow key={s.id} icon="📋" title="Allenamento domani" desc={s.title || "Seduta"} tone="purple" />
+            <NotifPreviewRow key={s.id} icon="📋" title={t("pages.settings.notifSessionTomorrow")} desc={s.title || "Seduta"} tone="purple" />
           ))}
           {injuredPlayers.map((p) => (
-            <NotifPreviewRow key={p.id} icon="🚑" title="Giocatore infortunato" desc={p.name} tone="red" />
+            <NotifPreviewRow key={p.id} icon="🚑" title={t("pages.settings.notifInjuredPlayer")} desc={p.name} tone="red" />
           ))}
           {tomorrowMatches.length === 0 && tomorrowSessions.length === 0 && injuredPlayers.length === 0 && (
-            <p style={{ color: "#475569", fontSize: 14 }}>Nessun avviso imminente — tutto tranquillo 👌</p>
+            <p style={{ color: "#475569", fontSize: 14 }}>{t("pages.settings.notifNone")}</p>
           )}
         </div>
       </AppCard>

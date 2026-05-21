@@ -10,16 +10,16 @@ import { createId, formatDate } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { useTranslation } from "../i18n";
 
-const STATUS_LABEL = {
-  todo: "Da fare",
-  doing: "In corso",
-  done: "Fatto",
+const STATUS_KEY = {
+  todo:  "pages.staffTasks.statusTodo",
+  doing: "pages.staffTasks.statusDoing",
+  done:  "pages.staffTasks.statusDone",
 };
 
-const PRIORITY_LABEL = {
-  high: "Alta",
-  medium: "Media",
-  low: "Bassa",
+const PRIORITY_KEY = {
+  high:   "pages.staffTasks.priorityHigh",
+  medium: "pages.staffTasks.priorityMedium",
+  low:    "pages.staffTasks.priorityLow",
 };
 
 const PRIORITY_TONE = {
@@ -28,12 +28,12 @@ const PRIORITY_TONE = {
   low: "blue",
 };
 
-const ROLE_LABEL = {
-  owner: "Owner",
-  headCoach: "Allenatore",
-  assistantCoach: "Assistente",
-  athleticTrainer: "Preparatore",
-  director: "Direttore",
+const ROLE_KEY = {
+  owner:           "pages.staffTasks.roleOwner",
+  headCoach:       "pages.staffTasks.roleHeadCoach",
+  assistantCoach:  "pages.staffTasks.roleAssistantCoach",
+  athleticTrainer: "pages.staffTasks.roleAthleticTrainer",
+  director:        "pages.staffTasks.roleDirector",
 };
 
 const emptyForm = {
@@ -45,7 +45,15 @@ const emptyForm = {
   playerId: "",
 };
 
-const DAY_LABELS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+const DAY_KEYS = [
+  "pages.staffTasks.dayMon",
+  "pages.staffTasks.dayTue",
+  "pages.staffTasks.dayWed",
+  "pages.staffTasks.dayThu",
+  "pages.staffTasks.dayFri",
+  "pages.staffTasks.daySat",
+  "pages.staffTasks.daySun",
+];
 
 export default function StaffTasks({
   staffTasks = [], setStaffTasks, players = [], matches = [] }) {
@@ -111,7 +119,7 @@ export default function StaffTasks({
   }, [staffTasks, weekDays]);
 
   const workloadByRole = useMemo(() => {
-    return Object.fromEntries(Object.keys(ROLE_LABEL).map((role) => [
+    return Object.fromEntries(Object.keys(ROLE_KEY).map((role) => [
       role,
       staffTasks.filter((task) => task.status !== "done" && task.ownerRole === role).length,
     ]));
@@ -124,7 +132,7 @@ export default function StaffTasks({
   function saveTask() {
     const title = form.title.trim();
     if (!title) {
-      showToast("Inserisci un titolo per l'azione", "warn");
+      showToast(t("pages.staffTasks.toastTitleRequired"), "warn");
       return;
     }
 
@@ -145,7 +153,7 @@ export default function StaffTasks({
 
     setStaffTasks((prev) => [task, ...prev]);
     setForm(emptyForm);
-    showToast("Azione staff creata", "ok");
+    showToast(t("pages.staffTasks.toastCreated"), "ok");
   }
 
   function updateTask(id, patch) {
@@ -162,7 +170,7 @@ export default function StaffTasks({
 
   function deleteTask(id) {
     setStaffTasks((prev) => prev.filter((task) => task.id !== id));
-    showToast("Azione eliminata", "ok");
+    showToast(t("pages.staffTasks.toastDeleted"), "ok");
   }
 
   function moveWeek(offset) {
@@ -174,32 +182,32 @@ export default function StaffTasks({
       <ToastContainer />
       <PageHeader
         title={t("pages.staffTasks.title")}
-        subtitle="Trasforma analisi, post-gara e sviluppo individuale in attività operative assegnate."
-        badge={`${staffTasks.length} azioni`}
+        subtitle={t("pages.staffTasks.subtitle")}
+        badge={t("pages.staffTasks.badge", { count: staffTasks.length })}
       />
 
       <div style={st.statsGrid}>
-        <StatCard label="Da fare" value={boardStats.todo} />
-        <StatCard label="In corso" value={boardStats.doing} />
-        <StatCard label="Alta priorità" value={boardStats.high} tone="red" />
-        <StatCard label="Completate" value={boardStats.done} tone="green" />
+        <StatCard label={t("pages.staffTasks.statTodo")}         value={boardStats.todo} />
+        <StatCard label={t("pages.staffTasks.statDoing")}        value={boardStats.doing} />
+        <StatCard label={t("pages.staffTasks.statHighPriority")} value={boardStats.high} tone="red" />
+        <StatCard label={t("pages.staffTasks.statCompleted")}    value={boardStats.done} tone="green" />
       </div>
 
       <div style={{ ...st.layout, gridTemplateColumns: isMobile ? "1fr" : st.layout.gridTemplateColumns }}>
-        <AppCard title="Nuova azione" subtitle="Crea un task chiaro, assegnato e verificabile.">
+        <AppCard title={t("pages.staffTasks.cardNewTitle")} subtitle={t("pages.staffTasks.cardNewSubtitle")}>
           <div style={{ ...st.formGrid, gridTemplateColumns: isMobile ? "1fr" : st.formGrid.gridTemplateColumns }}>
             <label style={st.label}>
-              Titolo
+              {t("pages.staffTasks.fieldTitle")}
               <input
                 style={st.input}
                 value={form.title}
                 onChange={(e) => updateForm("title", e.target.value)}
-                placeholder="Es. Preparare clip uscite pressione"
+                placeholder={t("pages.staffTasks.fieldTitlePlaceholder")}
               />
             </label>
 
             <label style={st.label}>
-              Scadenza
+              {t("pages.staffTasks.fieldDueDate")}
               <input
                 type="date"
                 style={st.input}
@@ -209,39 +217,39 @@ export default function StaffTasks({
             </label>
 
             <label style={st.label}>
-              Responsabile
+              {t("pages.staffTasks.fieldOwner")}
               <select
                 style={st.input}
                 value={form.ownerRole}
                 onChange={(e) => updateForm("ownerRole", e.target.value)}
               >
-                {Object.entries(ROLE_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
+                {Object.entries(ROLE_KEY).map(([value, key]) => (
+                  <option key={value} value={value}>{t(key)}</option>
                 ))}
               </select>
             </label>
 
             <label style={st.label}>
-              Priorità
+              {t("pages.staffTasks.fieldPriority")}
               <select
                 style={st.input}
                 value={form.priority}
                 onChange={(e) => updateForm("priority", e.target.value)}
               >
-                <option value="high">Alta</option>
-                <option value="medium">Media</option>
-                <option value="low">Bassa</option>
+                <option value="high">{t("pages.staffTasks.priorityHigh")}</option>
+                <option value="medium">{t("pages.staffTasks.priorityMedium")}</option>
+                <option value="low">{t("pages.staffTasks.priorityLow")}</option>
               </select>
             </label>
 
             <label style={st.label}>
-              Giocatore collegato
+              {t("pages.staffTasks.fieldPlayer")}
               <select
                 style={st.input}
                 value={form.playerId}
                 onChange={(e) => updateForm("playerId", e.target.value)}
               >
-                <option value="">Nessuno</option>
+                <option value="">{t("pages.staffTasks.fieldPlayerNone")}</option>
                 {players.map((player) => (
                   <option key={player.id} value={player.id}>{player.name}</option>
                 ))}
@@ -249,44 +257,44 @@ export default function StaffTasks({
             </label>
 
             <label style={{ ...st.label, gridColumn: "1 / -1" }}>
-              Dettaglio operativo
+              {t("pages.staffTasks.fieldDetail")}
               <textarea
                 style={{ ...st.input, minHeight: 88, resize: "vertical" }}
                 value={form.description}
                 onChange={(e) => updateForm("description", e.target.value)}
-                placeholder="Cosa va fatto, da chi, con quale output atteso."
+                placeholder={t("pages.staffTasks.fieldDetailPlaceholder")}
               />
             </label>
           </div>
 
           <div style={st.actions}>
-            <Button onClick={saveTask}>Crea azione</Button>
-            <Button variant="ghost" onClick={() => setForm(emptyForm)}>Pulisci</Button>
+            <Button onClick={saveTask}>{t("pages.staffTasks.btnCreate")}</Button>
+            <Button variant="ghost" onClick={() => setForm(emptyForm)}>{t("pages.staffTasks.btnClear")}</Button>
           </div>
         </AppCard>
 
         <AppCard
-          title="Board operativo"
-          subtitle="Vista rapida delle attività aperte, in corso e completate."
+          title={t("pages.staffTasks.cardBoardTitle")}
+          subtitle={t("pages.staffTasks.cardBoardSubtitle")}
           rightContent={
             <div style={{ ...st.filters, width: isMobile ? "100%" : "auto" }}>
               <select style={{ ...st.compactSelect, width: isMobile ? "100%" : st.compactSelect.width }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="all">Tutti gli stati</option>
-                <option value="todo">Da fare</option>
-                <option value="doing">In corso</option>
-                <option value="done">Fatto</option>
+                <option value="all">{t("pages.staffTasks.filterAllStatuses")}</option>
+                <option value="todo">{t("pages.staffTasks.statusTodo")}</option>
+                <option value="doing">{t("pages.staffTasks.statusDoing")}</option>
+                <option value="done">{t("pages.staffTasks.statusDone")}</option>
               </select>
               <select style={{ ...st.compactSelect, width: isMobile ? "100%" : st.compactSelect.width }} value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
-                <option value="all">Tutti i ruoli</option>
-                {Object.entries(ROLE_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
+                <option value="all">{t("pages.staffTasks.filterAllRoles")}</option>
+                {Object.entries(ROLE_KEY).map(([value, key]) => (
+                  <option key={value} value={value}>{t(key)}</option>
                 ))}
               </select>
             </div>
           }
         >
           {filteredTasks.length === 0 ? (
-            <EmptyState title="Nessuna azione" description="Crea la prima attività staff o cambia i filtri." />
+            <EmptyState title={t("pages.staffTasks.emptyTitle")} description={t("pages.staffTasks.emptyDesc")} />
           ) : (
             <div style={st.taskList}>
               {filteredTasks.map((task) => {
@@ -295,9 +303,9 @@ export default function StaffTasks({
                   ? matches.find((match) => String(match.id) === String(task.sourceId))
                   : null;
                 const sourceLabel = task.sourceType === "playerDevelopment"
-                  ? "Da sviluppo giocatore"
+                  ? t("pages.staffTasks.sourcePlayerDev")
                   : task.sourceType === "postMatch"
-                    ? "Da post-gara"
+                    ? t("pages.staffTasks.sourcePostMatch")
                     : "";
 
                 return (
@@ -307,10 +315,10 @@ export default function StaffTasks({
                         <h3 style={st.taskTitle}>{task.title}</h3>
                         <div style={st.metaRow}>
                           <Badge tone={PRIORITY_TONE[task.priority] || "blue"}>
-                            {PRIORITY_LABEL[task.priority] || "Media"}
+                            {t(PRIORITY_KEY[task.priority] || "pages.staffTasks.priorityMedium")}
                           </Badge>
-                          <span>{ROLE_LABEL[task.ownerRole] || task.ownerRole}</span>
-                          {task.dueDate && <span>Scadenza {formatDate(task.dueDate)}</span>}
+                          <span>{t(ROLE_KEY[task.ownerRole] || "pages.staffTasks.roleHeadCoach")}</span>
+                          {task.dueDate && <span>{t("pages.staffTasks.dueDateLabel", { date: formatDate(task.dueDate) })}</span>}
                         </div>
                       </div>
                       <select
@@ -318,9 +326,9 @@ export default function StaffTasks({
                         value={task.status}
                         onChange={(e) => updateTask(task.id, { status: e.target.value })}
                       >
-                        <option value="todo">Da fare</option>
-                        <option value="doing">In corso</option>
-                        <option value="done">Fatto</option>
+                        <option value="todo">{t("pages.staffTasks.statusTodo")}</option>
+                        <option value="doing">{t("pages.staffTasks.statusDoing")}</option>
+                        <option value="done">{t("pages.staffTasks.statusDone")}</option>
                       </select>
                     </div>
 
@@ -328,13 +336,13 @@ export default function StaffTasks({
 
                     <div style={{ ...st.footerRow, flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center" }}>
                       <div style={st.metaRow}>
-                        {player && <span>Giocatore: {player.name}</span>}
+                        {player && <span>{t("pages.staffTasks.playerLabel", { name: player.name })}</span>}
                         {relatedMatch && <span>{sourceLabel}: {relatedMatch.opponent || "partita"}</span>}
                         {!relatedMatch && sourceLabel && <span>{sourceLabel}</span>}
-                        <span>{STATUS_LABEL[task.status]}</span>
+                        <span>{t(STATUS_KEY[task.status] || "pages.staffTasks.statusTodo")}</span>
                       </div>
                       <button type="button" style={{ ...st.deleteBtn, width: isMobile ? "100%" : "auto" }} onClick={() => deleteTask(task.id)}>
-                        Elimina
+                        {t("pages.staffTasks.btnDelete")}
                       </button>
                     </div>
                   </div>
@@ -346,26 +354,26 @@ export default function StaffTasks({
       </div>
 
       <AppCard
-        title="Agenda staff settimanale"
-        subtitle="Distribuzione operativa delle azioni aperte per scadenza e responsabilità."
+        title={t("pages.staffTasks.cardAgendaTitle")}
+        subtitle={t("pages.staffTasks.cardAgendaSubtitle")}
         rightContent={
           <div style={st.weekControls}>
-            <Button variant="ghost" onClick={() => moveWeek(-1)}>← Settimana</Button>
+            <Button variant="ghost" onClick={() => moveWeek(-1)}>{t("pages.staffTasks.weekPrev")}</Button>
             <input
               type="date"
               style={{ ...st.compactSelect, width: isMobile ? "100%" : 150 }}
               value={weekAnchor}
               onChange={(e) => setWeekAnchor(e.target.value)}
             />
-            <Button variant="ghost" onClick={() => moveWeek(1)}>Settimana →</Button>
+            <Button variant="ghost" onClick={() => moveWeek(1)}>{t("pages.staffTasks.weekNext")}</Button>
           </div>
         }
         style={{ marginTop: 18 }}
       >
         <div style={st.workloadRow}>
-          {Object.entries(ROLE_LABEL).map(([role, label]) => (
+          {Object.entries(ROLE_KEY).map(([role, key]) => (
             <div key={role} style={st.workloadPill}>
-              <span>{label}</span>
+              <span>{t(key)}</span>
               <strong>{workloadByRole[role] || 0}</strong>
             </div>
           ))}
@@ -378,14 +386,14 @@ export default function StaffTasks({
               <div key={day.key} style={st.dayColumn}>
                 <div style={st.dayHeader}>
                   <div>
-                    <strong>{DAY_LABELS[index]}</strong>
+                    <strong>{t(DAY_KEYS[index])}</strong>
                     <span>{formatDate(day.key)}</span>
                   </div>
                   <Badge tone={tasks.length ? "blue" : "green"}>{tasks.length}</Badge>
                 </div>
 
                 {tasks.length === 0 ? (
-                  <p style={st.emptyDay}>Nessuna azione</p>
+                  <p style={st.emptyDay}>{t("pages.staffTasks.emptyDayTasks")}</p>
                 ) : (
                   <div style={st.agendaList}>
                     {tasks.map((task) => (
@@ -407,8 +415,8 @@ export default function StaffTasks({
           <div style={st.unscheduledBox}>
             <div style={st.dayHeader}>
               <div>
-                <strong>Da pianificare</strong>
-                <span>Azioni senza scadenza</span>
+                <strong>{t("pages.staffTasks.unscheduledTitle")}</strong>
+                <span>{t("pages.staffTasks.unscheduledSubtitle")}</span>
               </div>
               <Badge tone="orange">{agendaTasks.unscheduled.length}</Badge>
             </div>
@@ -430,16 +438,17 @@ export default function StaffTasks({
 }
 
 function AgendaTask({ task, player, onStatusChange }) {
+  const { t } = useTranslation();
   return (
     <div style={st.agendaTask}>
       <div style={st.agendaTaskTop}>
         <strong>{task.title}</strong>
         <Badge tone={PRIORITY_TONE[task.priority] || "blue"}>
-          {PRIORITY_LABEL[task.priority] || "Media"}
+          {t(PRIORITY_KEY[task.priority] || "pages.staffTasks.priorityMedium")}
         </Badge>
       </div>
       <div style={st.metaRow}>
-        <span>{ROLE_LABEL[task.ownerRole] || task.ownerRole}</span>
+        <span>{t(ROLE_KEY[task.ownerRole] || "pages.staffTasks.roleHeadCoach")}</span>
         {player && <span>{player.name}</span>}
       </div>
       <select
@@ -447,9 +456,9 @@ function AgendaTask({ task, player, onStatusChange }) {
         value={task.status}
         onChange={(e) => onStatusChange(e.target.value)}
       >
-        <option value="todo">Da fare</option>
-        <option value="doing">In corso</option>
-        <option value="done">Fatto</option>
+        <option value="todo">{t("pages.staffTasks.statusTodo")}</option>
+        <option value="doing">{t("pages.staffTasks.statusDoing")}</option>
+        <option value="done">{t("pages.staffTasks.statusDone")}</option>
       </select>
     </div>
   );
