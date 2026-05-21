@@ -57,7 +57,6 @@ function recommendPlan(modules) {
 // Componente principale
 // ─────────────────────────────────────────────
 export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
-  const { t } = useTranslation();
   const navigate  = useNavigate();
   const settings  = normalizeAppSettings(appSettings) || {};
 
@@ -218,6 +217,7 @@ function MobileProgress({ step, total, labels }) {
 // Step 1 — Chi sei
 // ─────────────────────────────────────────────
 function Step1({ form, setForm, onNext, isMobile }) {
+  const { t } = useTranslation();
   const canProceed = form.userRole && form.teamLevel;
 
   return (

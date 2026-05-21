@@ -25,6 +25,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyMatch());
+  const [importSummary, setImportSummary] = useState(null);
 
   function handleLogoUpload(field, file) {
     if (!file) return;
@@ -73,10 +74,15 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
     setForm({
       opponent: match.opponent || "",
       date: match.date || new Date().toISOString().slice(0, 10),
+      time: match.time || "",
       location: match.location || "Casa",
       result: match.result || "",
       formation: match.formation || "4-2-3-1",
       notes: match.notes || "",
+      competition: match.competition || "",
+      matchday: match.matchday || "",
+      venueName: match.venueName || "",
+      venueAddress: match.venueAddress || "",
       attendance: match.attendance || {},
       homeLogo: match.homeLogo || "",
       awayLogo: match.awayLogo || "",
@@ -108,8 +114,21 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
         return;
       }
 
-      setMatches((prevMatches) => [...prevMatches, ...imported]);
-      showToast(t("pages.matches.matchesImported", { count: imported.length }), "ok");
+      setMatches((prevMatches) => {
+        const existingKeys = new Set(prevMatches.map(getMatchIdentity));
+        const uniqueImported = imported.filter((match) => !existingKeys.has(getMatchIdentity(match)));
+        const nextMatches = [...prevMatches, ...uniqueImported].sort(sortMatchesByDate);
+
+        setImportSummary({
+          total: imported.length,
+          added: uniqueImported.length,
+          skipped: imported.length - uniqueImported.length,
+          fileName: file.name,
+        });
+
+        showToast(t("pages.matches.matchesImported", { count: uniqueImported.length }), uniqueImported.length ? "ok" : "info");
+        return nextMatches;
+      });
     };
     reader.readAsText(file);
   }
@@ -171,6 +190,21 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
           {t("pages.matches.archiveSubtitle")}
         </p>
       </div>
+
+      {importSummary && (
+        <AppCard>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <div>
+              <h3 style={{ margin: "0 0 6px", lineHeight: 1.2 }}>Import calendario completato</h3>
+              <p style={{ color: "#94a3b8", margin: 0 }}>
+                {importSummary.fileName} · {importSummary.added} gare aggiunte
+                {importSummary.skipped > 0 ? ` · ${importSummary.skipped} duplicate ignorate` : ""}
+              </p>
+            </div>
+            <Button variant="ghost" onClick={() => setImportSummary(null)}>Nascondi</Button>
+          </div>
+        </AppCard>
+      )}
 
       {matches.length === 0 ? (
         <EmptyState
@@ -238,9 +272,9 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
                   marginBottom: 18,
                 }}
               >
-                <MiniInfo label={t("pages.matches.field")} value={match.location || "-"} />
-                <MiniInfo label={t("pages.matches.formation")} value={match.formation || "-"} />
-                <MiniInfo
+                  <MiniInfo label={t("pages.matches.field")} value={formatMatchVenue(match)} />
+                  <MiniInfo label={t("pages.matches.formation")} value={match.formation || "-"} />
+                  <MiniInfo
                   label={t("pages.matches.calledUp")}
                   value={`${match.lineup?.calledUpIds?.length || 0}/${players.length}`}
                 />
@@ -371,6 +405,13 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
               style={styles.input}
             />
 
+            <input
+              type="time"
+              value={form.time}
+              onChange={(e) => setForm({ ...form, time: e.target.value })}
+              style={styles.input}
+            />
+
             <select
               value={form.location}
               onChange={(e) => setForm({ ...form, location: e.target.value })}
@@ -385,6 +426,34 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
               placeholder={t("pages.matches.resultPlaceholder")}
               value={form.result}
               onChange={(e) => setForm({ ...form, result: e.target.value })}
+              style={styles.input}
+            />
+
+            <input
+              placeholder="Competizione / girone"
+              value={form.competition}
+              onChange={(e) => setForm({ ...form, competition: e.target.value })}
+              style={styles.input}
+            />
+
+            <input
+              placeholder="Giornata"
+              value={form.matchday}
+              onChange={(e) => setForm({ ...form, matchday: e.target.value })}
+              style={styles.input}
+            />
+
+            <input
+              placeholder="Nome campo"
+              value={form.venueName}
+              onChange={(e) => setForm({ ...form, venueName: e.target.value })}
+              style={styles.input}
+            />
+
+            <input
+              placeholder="Indirizzo campo"
+              value={form.venueAddress}
+              onChange={(e) => setForm({ ...form, venueAddress: e.target.value })}
               style={styles.input}
             />
 
@@ -595,10 +664,15 @@ function emptyMatch(homeLogo = "") {
   return {
     opponent: "",
     date: new Date().toISOString().slice(0, 10),
+    time: "",
     location: "Casa",
     result: "",
     formation: "4-2-3-1",
     notes: "",
+    competition: "",
+    matchday: "",
+    venueName: "",
+    venueAddress: "",
     attendance: {},
     lineup: emptyLineup(),
     matchPlan: "",
@@ -682,6 +756,9 @@ function calendarRowToMatch(row, clubLogo, clubName) {
       ? "Neutro"
       : "Casa";
   const competition = pick(row, ["competizione", "competition", "campionato", "torneo"]);
+  const time = normalizeTime(pick(row, ["ora", "orario", "time", "kickoff", "inizio"]));
+  const venueName = pick(row, ["nome_campo", "campo_nome", "impianto", "stadio", "venue", "field"]);
+  const venueAddress = pick(row, ["indirizzo", "indirizzo_campo", "address", "via"]);
 
   return {
     ...emptyMatch(clubLogo),
@@ -689,8 +766,12 @@ function calendarRowToMatch(row, clubLogo, clubName) {
     type: "Partita",
     opponent,
     date,
+    time,
     location,
     competition,
+    matchday: pick(row, ["giornata", "turno", "round", "matchday"]),
+    venueName,
+    venueAddress,
     result: pick(row, ["risultato", "result"]),
     formation: pick(row, ["modulo", "formation"]) || "4-2-3-1",
     notes: pick(row, ["note", "notes"]),
@@ -710,6 +791,37 @@ function normalizeDate(value) {
   const month = match[2].padStart(2, "0");
   const year = match[3].length === 2 ? `20${match[3]}` : match[3];
   return `${year}-${month}-${day}`;
+}
+
+function normalizeTime(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const match = raw.match(/^(\d{1,2})(?::|\.)(\d{2})$/);
+  if (!match) return "";
+  return `${match[1].padStart(2, "0")}:${match[2]}`;
+}
+
+function getMatchIdentity(match) {
+  return [
+    String(match.date || "").trim(),
+    String(match.time || "").trim(),
+    String(match.opponent || "").trim().toLowerCase(),
+    String(match.location || "").trim().toLowerCase(),
+  ].join("|");
+}
+
+function sortMatchesByDate(a, b) {
+  const aKey = `${a.date || ""}T${a.time || "00:00"}`;
+  const bKey = `${b.date || ""}T${b.time || "00:00"}`;
+  return new Date(aKey) - new Date(bKey);
+}
+
+function formatMatchVenue(match) {
+  return [
+    match.location,
+    match.venueName,
+    match.venueAddress,
+  ].filter(Boolean).join(" · ") || "-";
 }
 
 export default Matches;
