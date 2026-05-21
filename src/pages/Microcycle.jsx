@@ -11,12 +11,12 @@ import { formatDate, RPE_BY_MATCH_DAY } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
 const MICRO_DAYS = [
-  { key: "MD+1", offset: -6, focus: "Recupero, rigenerazione e richiamo tecnico leggero" },
-  { key: "MD-4", offset: -4, focus: "Principi collettivi, volume e lavoro tattico a reparti" },
-  { key: "MD-3", offset: -3, focus: "Intensita, possessi, transizioni e duelli" },
-  { key: "MD-2", offset: -2, focus: "Piano gara, sviluppo manovra e palle inattive" },
-  { key: "MD-1", offset: -1, focus: "Rifinitura, attivazione e dettagli strategici" },
-  { key: "MD",   offset: 0,  focus: "Gara, convocati, distinta e match plan" },
+  { key: "MD+1", offset: -6, focusKey: "pages.microcycle.focusMDp1" },
+  { key: "MD-4", offset: -4, focusKey: "pages.microcycle.focusMDm4" },
+  { key: "MD-3", offset: -3, focusKey: "pages.microcycle.focusMDm3" },
+  { key: "MD-2", offset: -2, focusKey: "pages.microcycle.focusMDm2" },
+  { key: "MD-1", offset: -1, focusKey: "pages.microcycle.focusMDm1" },
+  { key: "MD",   offset: 0,  focusKey: "pages.microcycle.focusMD" },
 ];
 
 function toDateOnly(value) {
@@ -55,8 +55,8 @@ function getGpsDayLoad(gpsSessions = [], dayKey) {
   };
 }
 
-function getPlayerName(player) {
-  return [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "Giocatore";
+function getPlayerName(player, fallback = "—") {
+  return [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || fallback;
 }
 
 function hasText(value) {
@@ -66,11 +66,11 @@ function hasText(value) {
 function getPostMatchMicrocycleFocus(match) {
   const report = match?.postMatch || {};
   const rows = [
-    { label: "Focus prossima settimana", value: report.nextWeekFocus },
-    { label: "Azioni in allenamento", value: report.trainingActions },
-    { label: "Recupero", value: report.recoveryPlan || report.physicalAlerts },
-    { label: "Correzioni tattiche", value: report.tacticalCorrections || report.notWorked },
-    { label: "Palle inattive", value: report.setPiecesReview },
+    { labelKey: "pages.microcycle.focusRowNextWeek",       value: report.nextWeekFocus },
+    { labelKey: "pages.microcycle.focusRowTrainingActions", value: report.trainingActions },
+    { labelKey: "pages.microcycle.focusRowRecovery",        value: report.recoveryPlan || report.physicalAlerts },
+    { labelKey: "pages.microcycle.focusRowTactical",        value: report.tacticalCorrections || report.notWorked },
+    { labelKey: "pages.microcycle.focusRowSetPieces",       value: report.setPiecesReview },
   ].filter((row) => hasText(row.value));
 
   if (!rows.length) return null;
@@ -107,21 +107,22 @@ function getTrainingThemeFromDay(dayKey) {
   return "Costruzione";
 }
 
-function buildTrainingDraft(day, focus, match) {
+function buildTrainingDraft(day, focus, match, t) {
   const suggestion = getPostMatchDaySuggestion(day.key, focus);
   const focusRows = focus?.rows || [];
   const sourceRows = focusRows
-    .map((row) => `${row.label}: ${row.value}`)
+    .map((row) => `${t ? t(row.labelKey) : row.labelKey}: ${row.value}`)
     .join("\n");
+  const sessionLabel = day.planned?.label || (t ? t("pages.microcycle.sessionFallback") : "Seduta");
 
   return {
-    title: `${day.key} · ${day.planned?.label || "Seduta"}${match?.opponent ? ` vs ${match.opponent}` : ""}`,
+    title: `${day.key} · ${sessionLabel}${match?.opponent ? ` vs ${match.opponent}` : ""}`,
     date: day.dateKey,
     type: "Allenamento",
     theme: getTrainingThemeFromDay(day.key),
     matchDayDistance: day.key,
     objective: suggestion || focus?.nextWeekFocus || "",
-    notes: sourceRows ? `Da report post-gara:\n${sourceRows}` : "",
+    notes: sourceRows ? `${t ? t("pages.microcycle.noteFromReport") : "Da report post-gara:"}\n${sourceRows}` : "",
     exercises: [],
     attendance: {},
     sourceType: focus ? "postMatch" : "",
@@ -190,7 +191,7 @@ export default function Microcycle({
   const gpsDistance = microDays.reduce((sum, day) => sum + day.gps.distance, 0);
 
   function createTrainingFromDay(day) {
-    const draftTraining = buildTrainingDraft(day, postMatchFocus, anchorMatch);
+    const draftTraining = buildTrainingDraft(day, postMatchFocus, anchorMatch, t);
     sessionStorage.setItem("trainings_draft", JSON.stringify(draftTraining));
     navigate("/trainings", { state: { draftTraining } });
   }
@@ -200,14 +201,14 @@ export default function Microcycle({
       <div style={styles.page}>
         <PageHeader
           title={t("pages.microcycle.title")}
-          subtitle="Pianifica la settimana intorno alla prossima gara"
-          badge="Staff room"
+          subtitle={t("pages.microcycle.subtitle")}
+          badge={t("pages.microcycle.badge")}
         />
         <EmptyState
           icon="📆"
-          title="Nessuna partita di riferimento"
-          text="Crea una partita per generare automaticamente il microciclo settimanale."
-          action={<Button onClick={() => navigate("/matches")}>Crea partita</Button>}
+          title={t("pages.microcycle.emptyTitle")}
+          text={t("pages.microcycle.emptyText")}
+          action={<Button onClick={() => navigate("/matches")}>{t("pages.microcycle.emptyAction")}</Button>}
         />
       </div>
     );
@@ -216,22 +217,25 @@ export default function Microcycle({
   return (
     <div style={mc.page}>
       <PageHeader
-        title="Microciclo"
-        subtitle={`Settimana gara vs ${anchorMatch.opponent || "avversario"} · ${formatDate(anchorMatch.date)}`}
-        badge={nextMatch ? "Prossima gara" : "Ultima gara"}
+        title={t("pages.microcycle.title")}
+        subtitle={t("pages.microcycle.pageSubtitle", {
+          opponent: anchorMatch.opponent || t("pages.microcycle.defaultOpponent"),
+          date: formatDate(anchorMatch.date),
+        })}
+        badge={nextMatch ? t("pages.microcycle.nextMatchBadge") : t("pages.microcycle.lastMatchBadge")}
         action={
           <div style={mc.headerActions}>
-            <Button variant="ghost" onClick={() => navigate("/calendar")}>Calendario</Button>
-            <Button onClick={() => navigate("/trainings")}>Crea seduta</Button>
+            <Button variant="ghost" onClick={() => navigate("/calendar")}>{t("pages.microcycle.btnCalendar")}</Button>
+            <Button onClick={() => navigate("/trainings")}>{t("pages.microcycle.btnCreateSession")}</Button>
           </div>
         }
       />
 
       <div style={mc.kpiGrid}>
-        <Kpi title="Minuti sedute" value={`${weeklyMinutes}′`} hint="nel microciclo" tone="blue" />
-        <Kpi title="Carico RPE" value={weeklyLoad || "—"} hint="durata x RPE registrato" tone="orange" />
-        <Kpi title="GPS totale" value={gpsDistance ? `${Math.round(gpsDistance / 1000)} km` : "—"} hint="da GPS & Load" tone="green" />
-        <Kpi title="Non disponibili" value={unavailablePlayers.length} hint="infortuni, recuperi, squalifiche" tone="red" />
+        <Kpi title={t("pages.microcycle.kpiMinutes")} value={`${weeklyMinutes}′`} hint={t("pages.microcycle.kpiMinutesHint")} tone="blue" />
+        <Kpi title={t("pages.microcycle.kpiLoad")} value={weeklyLoad || "—"} hint={t("pages.microcycle.kpiLoadHint")} tone="orange" />
+        <Kpi title={t("pages.microcycle.kpiGps")} value={gpsDistance ? `${Math.round(gpsDistance / 1000)} km` : "—"} hint={t("pages.microcycle.kpiGpsHint")} tone="green" />
+        <Kpi title={t("pages.microcycle.kpiUnavailable")} value={unavailablePlayers.length} hint={t("pages.microcycle.kpiUnavailableHint")} tone="red" />
       </div>
 
       <div style={mc.mainGrid}>
@@ -253,16 +257,16 @@ export default function Microcycle({
             <AppCard>
               <div style={mc.cardHead}>
                 <div>
-                  <p style={mc.eyebrow}>Dal post-gara</p>
-                  <h3 style={mc.sideTitle}>Obiettivi microciclo</h3>
+                  <p style={mc.eyebrow}>{t("pages.microcycle.postMatchEyebrow")}</p>
+                  <h3 style={mc.sideTitle}>{t("pages.microcycle.microcycleGoals")}</h3>
                 </div>
-                <Badge tone="purple">Report</Badge>
+                <Badge tone="purple">{t("pages.microcycle.reportBadge")}</Badge>
               </div>
 
               <div style={mc.focusList}>
                 {postMatchFocus.rows.map((row) => (
-                  <div key={row.label} style={mc.focusRow}>
-                    <span>{row.label}</span>
+                  <div key={row.labelKey} style={mc.focusRow}>
+                    <span>{t(row.labelKey)}</span>
                     <p>{row.value}</p>
                   </div>
                 ))}
@@ -270,10 +274,10 @@ export default function Microcycle({
 
               <div style={mc.sideActions}>
                 <Button variant="ghost" onClick={() => navigate(`/post-match/${postMatchFocus.match.id}`)}>
-                  Apri post-gara
+                  {t("pages.microcycle.btnOpenPostMatch")}
                 </Button>
                 <Button onClick={() => createTrainingFromDay(microDays[1] || microDays[0])}>
-                  Crea seduta
+                  {t("pages.microcycle.btnCreateSession")}
                 </Button>
               </div>
             </AppCard>
@@ -282,11 +286,11 @@ export default function Microcycle({
           <AppCard>
             <div style={mc.cardHead}>
               <div>
-                <p style={mc.eyebrow}>Focus staff</p>
-                <h3 style={mc.sideTitle}>Alert settimana</h3>
+                <p style={mc.eyebrow}>{t("pages.microcycle.staffEyebrow")}</p>
+                <h3 style={mc.sideTitle}>{t("pages.microcycle.weekAlerts")}</h3>
               </div>
               <Badge tone={unavailablePlayers.length ? "orange" : "green"}>
-                {unavailablePlayers.length ? "Da gestire" : "Rosa ok"}
+                {unavailablePlayers.length ? t("pages.microcycle.toManageBadge") : t("pages.microcycle.rosterOkBadge")}
               </Badge>
             </div>
 
@@ -299,7 +303,7 @@ export default function Microcycle({
                     onClick={() => navigate(`/players/${player.id}`)}
                     style={mc.playerRow}
                   >
-                    <span style={mc.playerName}>{getPlayerName(player)}</span>
+                    <span style={mc.playerName}>{getPlayerName(player, t("pages.microcycle.playerFallback"))}</span>
                     <Badge tone={player.status === "Infortunato" ? "red" : "orange"}>
                       {player.status}
                     </Badge>
@@ -307,24 +311,24 @@ export default function Microcycle({
                 ))}
               </div>
             ) : (
-              <p style={mc.muted}>Nessun giocatore non disponibile registrato.</p>
+              <p style={mc.muted}>{t("pages.microcycle.noUnavailable")}</p>
             )}
 
             <div style={mc.sideActions}>
-              <Button variant="ghost" onClick={() => navigate("/availability")}>Disponibilita</Button>
-              <Button variant="ghost" onClick={() => navigate("/gps-load")}>GPS & Load</Button>
+              <Button variant="ghost" onClick={() => navigate("/availability")}>{t("pages.microcycle.btnAvailability")}</Button>
+              <Button variant="ghost" onClick={() => navigate("/gps-load")}>{t("pages.microcycle.btnGpsLoad")}</Button>
             </div>
           </AppCard>
 
           <AppCard>
-            <p style={mc.eyebrow}>Match plan</p>
-            <h3 style={mc.sideTitle}>{anchorMatch.opponent || "Avversario"}</h3>
+            <p style={mc.eyebrow}>{t("pages.microcycle.matchPlanEyebrow")}</p>
+            <h3 style={mc.sideTitle}>{anchorMatch.opponent || t("pages.microcycle.defaultOpponent")}</h3>
             <p style={mc.muted}>
-              {anchorMatch.location || "Campo"} · {anchorMatch.formation || "Modulo non impostato"}
+              {anchorMatch.location || t("pages.microcycle.defaultLocation")} · {anchorMatch.formation || t("pages.microcycle.defaultFormation")}
             </p>
             <div style={mc.sideActions}>
-              <Button onClick={() => navigate(`/match-day/${anchorMatch.id}`)}>Apri Match Day</Button>
-              <Button variant="ghost" onClick={() => navigate("/set-plays")}>Palle inattive</Button>
+              <Button onClick={() => navigate(`/match-day/${anchorMatch.id}`)}>{t("pages.microcycle.btnOpenMatchDay")}</Button>
+              <Button variant="ghost" onClick={() => navigate("/set-plays")}>{t("pages.microcycle.btnSetPieces")}</Button>
             </div>
           </AppCard>
         </aside>
@@ -334,6 +338,7 @@ export default function Microcycle({
 }
 
 function MicroDayCard({ day, postMatchSuggestion, onOpenSession, onOpenMatch, onCreateSession }) {
+  const { t } = useTranslation();
   const hasWork = day.sessions.length || day.matches.length;
   return (
     <AppCard>
@@ -346,8 +351,8 @@ function MicroDayCard({ day, postMatchSuggestion, onOpenSession, onOpenMatch, on
         <div style={mc.dayBody}>
           <div style={mc.dayTop}>
             <div>
-              <h3 style={mc.dayTitle}>{day.planned?.label || "Giornata staff"}</h3>
-              <p style={mc.muted}>{day.focus}</p>
+              <h3 style={mc.dayTitle}>{day.planned?.label || t("pages.microcycle.staffDay")}</h3>
+              <p style={mc.muted}>{t(day.focusKey)}</p>
             </div>
             <Badge tone={day.planned?.color || "blue"}>
               RPE {day.planned ? `${day.planned.min}-${day.planned.max}` : "—"}
@@ -355,15 +360,15 @@ function MicroDayCard({ day, postMatchSuggestion, onOpenSession, onOpenMatch, on
           </div>
 
           <div style={mc.metricsRow}>
-            <MiniMetric label="Sedute" value={day.sessions.length} />
-            <MiniMetric label="Minuti" value={day.totalMinutes ? `${day.totalMinutes}′` : "—"} />
-            <MiniMetric label="Load" value={day.realLoad || "—"} />
-            <MiniMetric label="GPS" value={day.gps.distance ? `${Math.round(day.gps.distance / 1000)} km` : "—"} />
+            <MiniMetric label={t("pages.microcycle.metricSessions")} value={day.sessions.length} />
+            <MiniMetric label={t("pages.microcycle.metricMinutes")} value={day.totalMinutes ? `${day.totalMinutes}′` : "—"} />
+            <MiniMetric label={t("pages.microcycle.metricLoad")} value={day.realLoad || "—"} />
+            <MiniMetric label={t("pages.microcycle.metricGps")} value={day.gps.distance ? `${Math.round(day.gps.distance / 1000)} km` : "—"} />
           </div>
 
           {postMatchSuggestion && (
             <div style={mc.suggestionBox}>
-              <Badge tone="purple">Post-gara</Badge>
+              <Badge tone="purple">{t("pages.microcycle.postMatchBadge")}</Badge>
               <span>{postMatchSuggestion}</span>
             </div>
           )}
@@ -372,21 +377,21 @@ function MicroDayCard({ day, postMatchSuggestion, onOpenSession, onOpenMatch, on
             <div style={mc.eventList}>
               {day.sessions.map((session) => (
                 <button key={session.id} type="button" style={mc.eventRow} onClick={() => onOpenSession(session.id)}>
-                  <span>📋 {session.title || "Seduta"}</span>
-                  <small>{session.theme || "Allenamento"} · {session.duration || 0}′</small>
+                  <span>📋 {session.title || t("pages.microcycle.sessionFallback")}</span>
+                  <small>{session.theme || t("pages.microcycle.trainingFallback")} · {session.duration || 0}′</small>
                 </button>
               ))}
               {day.matches.map((match) => (
                 <button key={match.id} type="button" style={mc.eventRow} onClick={() => onOpenMatch(match.id)}>
-                  <span>⚽ {match.opponent || "Partita"}</span>
-                  <small>{match.location || "Campo"} · Match Day</small>
+                  <span>⚽ {match.opponent || t("pages.microcycle.matchFallback")}</span>
+                  <small>{match.location || t("pages.microcycle.locationFallback")} · Match Day</small>
                 </button>
               ))}
             </div>
           ) : (
             <div style={mc.emptyDay}>
-              <span>Nessuna attivita pianificata</span>
-              <Button variant="ghost" onClick={onCreateSession}>+ Seduta</Button>
+              <span>{t("pages.microcycle.noActivity")}</span>
+              <Button variant="ghost" onClick={onCreateSession}>{t("pages.microcycle.btnAddSession")}</Button>
             </div>
           )}
         </div>

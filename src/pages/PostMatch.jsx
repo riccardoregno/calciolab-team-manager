@@ -62,32 +62,32 @@ export default function PostMatch({
     const report = match.postMatch || {};
     const candidates = [
       {
-        title: "Preparare seduta post-gara",
+        title: t("pages.postMatch.taskPrepareSession"),
         description: report.trainingActions || report.nextWeekFocus,
         ownerRole: "headCoach",
         priority: "high",
       },
       {
-        title: "Correzione tattica da condividere",
+        title: t("pages.postMatch.taskTacticalCorrection"),
         description: report.tacticalCorrections || report.notWorked,
         ownerRole: "assistantCoach",
         priority: "high",
       },
       {
-        title: "Verificare alert fisici",
+        title: t("pages.postMatch.taskCheckPhysical"),
         description: report.physicalAlerts,
         ownerRole: "athleticTrainer",
         priority: "high",
       },
       {
-        title: "Rivedere palle inattive",
+        title: t("pages.postMatch.taskSetPieces"),
         description: report.setPiecesReview,
         ownerRole: "assistantCoach",
         priority: "medium",
       },
       {
-        title: "Preparare clip video",
-        description: buildVideoTaskDescription(match.videoAnalysis || []),
+        title: t("pages.postMatch.taskPrepareClips"),
+        description: buildVideoTaskDescription(match.videoAnalysis || [], t),
         ownerRole: "assistantCoach",
         priority: "medium",
       },
@@ -103,7 +103,7 @@ export default function PostMatch({
         .map((task) => ({
           id: createId("task"),
           title: task.title,
-          description: `${task.description}\n\nOrigine: ${match.title || match.opponent || "Post gara"}`,
+          description: `${task.description}\n\n${t("pages.postMatch.taskOrigin", { label: match.title || match.opponent || t("pages.postMatch.taskOriginFallback") })}`,
           status: "todo",
           priority: task.priority,
           ownerRole: task.ownerRole,
@@ -125,22 +125,24 @@ export default function PostMatch({
     const report = match.postMatch || {};
     const objective = report.trainingActions || report.nextWeekFocus || report.tacticalCorrections || "";
     const notes = [
-      report.nextWeekFocus && `Focus prossima settimana: ${report.nextWeekFocus}`,
-      report.trainingActions && `Azioni in allenamento: ${report.trainingActions}`,
-      report.tacticalCorrections && `Correzioni tattiche: ${report.tacticalCorrections}`,
-      report.recoveryPlan && `Piano recupero: ${report.recoveryPlan}`,
-      report.physicalAlerts && `Alert fisici: ${report.physicalAlerts}`,
-      report.setPiecesReview && `Palle inattive: ${report.setPiecesReview}`,
+      report.nextWeekFocus && t("pages.postMatch.noteNextWeekFocus", { value: report.nextWeekFocus }),
+      report.trainingActions && t("pages.postMatch.noteTrainingActions", { value: report.trainingActions }),
+      report.tacticalCorrections && t("pages.postMatch.noteTacticalCorrections", { value: report.tacticalCorrections }),
+      report.recoveryPlan && t("pages.postMatch.noteRecoveryPlan", { value: report.recoveryPlan }),
+      report.physicalAlerts && t("pages.postMatch.notePhysicalAlerts", { value: report.physicalAlerts }),
+      report.setPiecesReview && t("pages.postMatch.noteSetPiecesReview", { value: report.setPiecesReview }),
     ].filter(Boolean).join("\n");
 
     const draftTraining = {
-      title: `Seduta post-gara${match.opponent ? ` vs ${match.opponent}` : ""}`,
+      title: match.opponent
+        ? t("pages.postMatch.trainingTitleVs", { opponent: match.opponent })
+        : t("pages.postMatch.trainingTitle"),
       date: getRelativeDate(1),
       type: "Allenamento",
       theme: report.setPiecesReview ? "Palla inattiva" : "Transizione",
       matchDayDistance: "MD+1",
       objective,
-      notes: notes ? `Da report post-gara:\n${notes}` : "",
+      notes: notes ? `${t("pages.postMatch.noteFromReport")}\n${notes}` : "",
       exercises: [],
       attendance: {},
       sourceType: "postMatch",
@@ -159,13 +161,13 @@ export default function PostMatch({
     return (
       <div style={{ display: "grid", gap: 18 }}>
         <PageHeader
-          title={t("pages.postMatch.title")}
-          subtitle="Analisi gara e focus settimana successiva"
+          title={t("pages.postMatch.titleFallback")}
+          subtitle={t("pages.postMatch.subtitle")}
         />
         <AppCard>
-          <p style={s.muted}>Partita non trovata.</p>
+          <p style={s.muted}>{t("pages.postMatch.notFound")}</p>
           <Button variant="ghost" onClick={() => navigate("/matches")} style={{ marginTop: 12 }}>
-            Torna alle partite
+            {t("pages.postMatch.backToMatches")}
           </Button>
         </AppCard>
       </div>
@@ -178,21 +180,21 @@ export default function PostMatch({
     .filter(Boolean)
     .join(" · ");
   const reportSections = [
-    { key: "worked", label: "Cosa ha funzionato" },
-    { key: "notWorked", label: "Cosa non ha funzionato" },
-    { key: "keyMoments", label: "Episodi chiave" },
-    { key: "performanceScore", label: "Valutazione prestazione" },
-    { key: "gameModelScore", label: "Aderenza modello gara" },
-    { key: "intensityScore", label: "Intensita" },
-    { key: "tacticalCorrections", label: "Correzioni tattiche" },
-    { key: "nextWeekFocus", label: "Focus prossima settimana" },
-    { key: "trainingActions", label: "Azioni in allenamento" },
-    { key: "recoveryPlan", label: "Piano recupero" },
-    { key: "positivePlayers", label: "Giocatori positivi" },
-    { key: "physicalAlerts", label: "Alert fisici" },
-    { key: "setPiecesReview", label: "Palle inattive" },
-    { key: "opponentLessons", label: "Lezioni sull'avversario" },
-    { key: "videoAnalysis", label: "Clip video" },
+    { key: "worked",              label: t("pages.postMatch.sectionWorked") },
+    { key: "notWorked",           label: t("pages.postMatch.sectionNotWorked") },
+    { key: "keyMoments",          label: t("pages.postMatch.sectionKeyMoments") },
+    { key: "performanceScore",    label: t("pages.postMatch.sectionPerformanceScore") },
+    { key: "gameModelScore",      label: t("pages.postMatch.sectionGameModelScore") },
+    { key: "intensityScore",      label: t("pages.postMatch.sectionIntensityScore") },
+    { key: "tacticalCorrections", label: t("pages.postMatch.sectionTacticalCorrections") },
+    { key: "nextWeekFocus",       label: t("pages.postMatch.sectionNextWeekFocus") },
+    { key: "trainingActions",     label: t("pages.postMatch.sectionTrainingActions") },
+    { key: "recoveryPlan",        label: t("pages.postMatch.sectionRecoveryPlan") },
+    { key: "positivePlayers",     label: t("pages.postMatch.sectionPositivePlayers") },
+    { key: "physicalAlerts",      label: t("pages.postMatch.sectionPhysicalAlerts") },
+    { key: "setPiecesReview",     label: t("pages.postMatch.sectionSetPiecesReview") },
+    { key: "opponentLessons",     label: t("pages.postMatch.sectionOpponentLessons") },
+    { key: "videoAnalysis",       label: t("pages.postMatch.sectionVideoAnalysis") },
   ];
   const completedSections = reportSections.filter((section) =>
     section.key === "videoAnalysis"
@@ -220,7 +222,9 @@ export default function PostMatch({
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <PageHeader
-        title={`Post Gara — ${match.opponent || "Partita"}`}
+        title={match.opponent
+          ? t("pages.postMatch.title", { opponent: match.opponent })
+          : t("pages.postMatch.titleFallback")}
         subtitle={subtitle}
       />
 
@@ -233,7 +237,7 @@ export default function PostMatch({
 
       {lastSaved && (
         <div style={s.savedBanner}>
-          ✓ Modifiche salvate automaticamente
+          {t("pages.postMatch.savedBanner")}
         </div>
       )}
 
@@ -241,7 +245,7 @@ export default function PostMatch({
       <AppCard>
         <div style={s.matchHead}>
           <div>
-            <Badge tone="orange">Report post partita</Badge>
+            <Badge tone="orange">{t("pages.postMatch.reportBadge")}</Badge>
             <h2 style={{ margin: "10px 0 4px", lineHeight: 1.15 }}>
               {match.title || `CalcioLab vs ${match.opponent}`}
             </h2>
@@ -249,7 +253,7 @@ export default function PostMatch({
           </div>
 
           <div style={s.resultBox}>
-            <span style={s.resultLabel}>Risultato</span>
+            <span style={s.resultLabel}>{t("pages.postMatch.resultLabel")}</span>
             <strong style={s.resultValue}>{match.result || "—"}</strong>
           </div>
         </div>
@@ -258,15 +262,13 @@ export default function PostMatch({
       <AppCard>
         <div style={s.reportHead}>
           <div>
-            <p style={s.eyebrow}>Report staff</p>
-            <h3 style={s.reportTitle}>Analisi operativa post gara</h3>
-            <p style={s.muted}>
-              Trasforma la partita in correzioni, sedute e focus individuali per il microciclo successivo.
-            </p>
+            <p style={s.eyebrow}>{t("pages.postMatch.reportEyebrow")}</p>
+            <h3 style={s.reportTitle}>{t("pages.postMatch.reportTitle")}</h3>
+            <p style={s.muted}>{t("pages.postMatch.reportSubtitle")}</p>
           </div>
           <div style={s.completionBox}>
             <strong>{completion}%</strong>
-            <span>{completedSections.length}/{reportSections.length} sezioni</span>
+            <span>{t("pages.postMatch.sections", { completed: completedSections.length, total: reportSections.length })}</span>
           </div>
         </div>
 
@@ -276,36 +278,38 @@ export default function PostMatch({
 
         <div style={s.summaryGrid}>
           <SummaryCard
-            title="Priorita staff"
-            value={report.nextWeekFocus || report.notWorked || "Da definire"}
+            title={t("pages.postMatch.priorityStaff")}
+            value={report.nextWeekFocus || report.notWorked || t("pages.postMatch.priorityStaffFallback")}
           />
           <SummaryCard
-            title="Correzione principale"
-            value={report.tacticalCorrections || report.trainingActions || "Da collegare alle sedute"}
+            title={t("pages.postMatch.mainCorrection")}
+            value={report.tacticalCorrections || report.trainingActions || t("pages.postMatch.correctionFallback")}
           />
           <SummaryCard
-            title="Alert immediati"
-            value={report.physicalAlerts || "Nessun alert fisico inserito"}
+            title={t("pages.postMatch.immediateAlerts")}
+            value={report.physicalAlerts || t("pages.postMatch.alertFallback")}
           />
           <SummaryCard
-            title="Clip taggate"
-            value={videoAnalysis.length ? `${videoAnalysis.length} clip collegate` : "Nessuna clip taggata"}
+            title={t("pages.postMatch.taggedClips")}
+            value={videoAnalysis.length
+              ? t("pages.postMatch.clipsCount", { count: videoAnalysis.length })
+              : t("pages.postMatch.noClips")}
           />
         </div>
 
         <div style={s.actionRow}>
-          <Button variant="ghost" onClick={() => navigate(`/match-stats/${match.id}`)}>Statistiche</Button>
-          <Button variant="ghost" onClick={() => navigate(`/match-day/${match.id}`)}>Match Day</Button>
-          <Button variant="ghost" onClick={() => navigate("/microcycle")}>Microciclo</Button>
-          <Button variant="ghost" onClick={() => window.print()}>Stampa report</Button>
-          <Button variant="ghost" onClick={createStaffTasksFromReport}>Crea azioni staff</Button>
-          <Button onClick={createTrainingFromReport}>Crea seduta</Button>
+          <Button variant="ghost" onClick={() => navigate(`/match-stats/${match.id}`)}>{t("pages.postMatch.btnStats")}</Button>
+          <Button variant="ghost" onClick={() => navigate(`/match-day/${match.id}`)}>{t("pages.postMatch.btnMatchDay")}</Button>
+          <Button variant="ghost" onClick={() => navigate("/microcycle")}>{t("pages.postMatch.btnMicrocycle")}</Button>
+          <Button variant="ghost" onClick={() => window.print()}>{t("pages.postMatch.btnPrint")}</Button>
+          <Button variant="ghost" onClick={createStaffTasksFromReport}>{t("pages.postMatch.btnCreateTasks")}</Button>
+          <Button onClick={createTrainingFromReport}>{t("pages.postMatch.btnCreateSession")}</Button>
         </div>
 
         {openSections.length > 0 && (
           <div style={s.todoStrip}>
             {openSections.slice(0, 4).map((section) => (
-              <span key={section.key}>Da completare: {section.label}</span>
+              <span key={section.key}>{t("pages.postMatch.todoComplete", { label: section.label })}</span>
             ))}
           </div>
         )}
@@ -314,11 +318,9 @@ export default function PostMatch({
       <AppCard>
         <div style={s.reportHead}>
           <div>
-            <p style={s.eyebrow}>Sedute collegate</p>
-            <h3 style={s.reportTitle}>Allenamenti nati da questo report</h3>
-            <p style={s.muted}>
-              Qui ritrovi le sedute create dal post-gara, così ogni correzione resta tracciata.
-            </p>
+            <p style={s.eyebrow}>{t("pages.postMatch.linkedSessionsEyebrow")}</p>
+            <h3 style={s.reportTitle}>{t("pages.postMatch.linkedSessionsTitle")}</h3>
+            <p style={s.muted}>{t("pages.postMatch.linkedSessionsSubtitle")}</p>
           </div>
           <Badge tone={linkedSessions.length ? "green" : "blue"}>
             {linkedSessions.length}
@@ -327,9 +329,9 @@ export default function PostMatch({
 
         {linkedSessions.length > 0 && (
           <div style={s.objectiveStatsRow}>
-            <Badge tone="orange">Da lavorare {objectiveStats.todo || 0}</Badge>
-            <Badge tone="blue">Lavorate {objectiveStats.worked || 0}</Badge>
-            <Badge tone="green">Risolte {objectiveStats.solved || 0}</Badge>
+            <Badge tone="orange">{t("pages.postMatch.objectiveTodoBadge", { count: objectiveStats.todo || 0 })}</Badge>
+            <Badge tone="blue">{t("pages.postMatch.objectiveWorkedBadge", { count: objectiveStats.worked || 0 })}</Badge>
+            <Badge tone="green">{t("pages.postMatch.objectiveSolvedBadge", { count: objectiveStats.solved || 0 })}</Badge>
           </div>
         )}
 
@@ -344,13 +346,13 @@ export default function PostMatch({
               >
                 <span>
                   <strong>{session.title || "Seduta"}</strong>
-                  <small>{formatDate(session.date)} · {session.theme || "Allenamento"}</small>
+                  <small>{formatDate(session.date)} · {session.theme || t("pages.postMatch.sessionThemeFallback")}</small>
                   {session.objectiveReview && <em>{session.objectiveReview}</em>}
                 </span>
                 <div style={s.sessionBadges}>
-                  <Badge tone="purple">Da post-gara</Badge>
+                  <Badge tone="purple">{t("pages.postMatch.fromPostMatchBadge")}</Badge>
                   <Badge tone={getObjectiveStatusMeta(session.objectiveStatus).tone}>
-                    {getObjectiveStatusMeta(session.objectiveStatus).label}
+                    {t(getObjectiveStatusMeta(session.objectiveStatus).labelKey)}
                   </Badge>
                 </div>
               </button>
@@ -358,8 +360,8 @@ export default function PostMatch({
           </div>
         ) : (
           <div style={s.emptyLinkedSessions}>
-            <span>Nessuna seduta collegata a questo report.</span>
-            <Button variant="ghost" onClick={createTrainingFromReport}>Crea seduta</Button>
+            <span>{t("pages.postMatch.noLinkedSessions")}</span>
+            <Button variant="ghost" onClick={createTrainingFromReport}>{t("pages.postMatch.btnCreateSession")}</Button>
           </div>
         )}
       </AppCard>
@@ -368,29 +370,29 @@ export default function PostMatch({
         <AppCard>
           <div style={s.printHeader}>
             <div>
-              <p style={s.eyebrow}>Report tecnico</p>
-              <h2 style={s.printTitle}>{match.title || `CalcioLab vs ${match.opponent || "Avversario"}`}</h2>
-              <p style={s.muted}>{subtitle || "Partita"}</p>
+              <p style={s.eyebrow}>{t("pages.postMatch.printEyebrow")}</p>
+              <h2 style={s.printTitle}>{match.title || `CalcioLab vs ${match.opponent || t("pages.postMatch.defaultOpponent")}`}</h2>
+              <p style={s.muted}>{subtitle || t("pages.postMatch.defaultSubtitle")}</p>
             </div>
             <div style={s.printScore}>{match.result || "-"}</div>
           </div>
 
           <div style={s.printKpiGrid}>
-            <SummaryCard title="Prestazione" value={report.performanceScore || "Da valutare"} />
-            <SummaryCard title="Modello gara" value={report.gameModelScore || "Da valutare"} />
-            <SummaryCard title="Intensita" value={report.intensityScore || "Da valutare"} />
-            <SummaryCard title="Clip" value={videoAnalysis.length} />
+            <SummaryCard title={t("pages.postMatch.kpiPerformance")} value={report.performanceScore || t("pages.postMatch.kpiFallback")} />
+            <SummaryCard title={t("pages.postMatch.kpiGameModel")} value={report.gameModelScore || t("pages.postMatch.kpiFallback")} />
+            <SummaryCard title={t("pages.postMatch.kpiIntensity")} value={report.intensityScore || t("pages.postMatch.kpiFallback")} />
+            <SummaryCard title={t("pages.postMatch.kpiClips")} value={videoAnalysis.length} />
           </div>
 
           <div style={s.printReportGrid}>
-            <PrintBox title="Cosa ha funzionato" value={report.worked} />
-            <PrintBox title="Cosa non ha funzionato" value={report.notWorked} />
-            <PrintBox title="Episodi chiave" value={report.keyMoments} />
-            <PrintBox title="Correzioni tattiche" value={report.tacticalCorrections} />
-            <PrintBox title="Focus prossima settimana" value={report.nextWeekFocus} />
-            <PrintBox title="Azioni in allenamento" value={report.trainingActions} />
-            <PrintBox title="Alert fisici" value={report.physicalAlerts} />
-            <PrintBox title="Piano recupero" value={report.recoveryPlan} />
+            <PrintBox title={t("pages.postMatch.sectionWorked")} value={report.worked} fallback={t("pages.postMatch.printComplete")} />
+            <PrintBox title={t("pages.postMatch.sectionNotWorked")} value={report.notWorked} fallback={t("pages.postMatch.printComplete")} />
+            <PrintBox title={t("pages.postMatch.sectionKeyMoments")} value={report.keyMoments} fallback={t("pages.postMatch.printComplete")} />
+            <PrintBox title={t("pages.postMatch.sectionTacticalCorrections")} value={report.tacticalCorrections} fallback={t("pages.postMatch.printComplete")} />
+            <PrintBox title={t("pages.postMatch.sectionNextWeekFocus")} value={report.nextWeekFocus} fallback={t("pages.postMatch.printComplete")} />
+            <PrintBox title={t("pages.postMatch.sectionTrainingActions")} value={report.trainingActions} fallback={t("pages.postMatch.printComplete")} />
+            <PrintBox title={t("pages.postMatch.sectionPhysicalAlerts")} value={report.physicalAlerts} fallback={t("pages.postMatch.printComplete")} />
+            <PrintBox title={t("pages.postMatch.sectionRecoveryPlan")} value={report.recoveryPlan} fallback={t("pages.postMatch.printComplete")} />
           </div>
         </AppCard>
       </div>
@@ -398,90 +400,90 @@ export default function PostMatch({
       <AppCard>
         <div style={s.reportHead}>
           <div>
-            <p style={s.eyebrow}>Valutazione staff</p>
-            <h3 style={s.reportTitle}>Scorecard post gara</h3>
-            <p style={s.muted}>Numeri sintetici per leggere subito prestazione, modello gara e intensita.</p>
+            <p style={s.eyebrow}>{t("pages.postMatch.scorecardEyebrow")}</p>
+            <h3 style={s.reportTitle}>{t("pages.postMatch.scorecardTitle")}</h3>
+            <p style={s.muted}>{t("pages.postMatch.scorecardSubtitle")}</p>
           </div>
         </div>
         <div style={s.scoreGrid}>
-          <ScoreField label="Prestazione" value={report.performanceScore} onChange={(v) => updateReport("performanceScore", v)} />
-          <ScoreField label="Modello gara" value={report.gameModelScore} onChange={(v) => updateReport("gameModelScore", v)} />
-          <ScoreField label="Intensita" value={report.intensityScore} onChange={(v) => updateReport("intensityScore", v)} />
-          <ScoreField label="Gestione staff" value={report.staffRating} onChange={(v) => updateReport("staffRating", v)} />
+          <ScoreField label={t("pages.postMatch.kpiPerformance")} placeholder={t("pages.postMatch.kpiFallback")} value={report.performanceScore} onChange={(v) => updateReport("performanceScore", v)} />
+          <ScoreField label={t("pages.postMatch.kpiGameModel")} placeholder={t("pages.postMatch.kpiFallback")} value={report.gameModelScore} onChange={(v) => updateReport("gameModelScore", v)} />
+          <ScoreField label={t("pages.postMatch.kpiIntensity")} placeholder={t("pages.postMatch.kpiFallback")} value={report.intensityScore} onChange={(v) => updateReport("intensityScore", v)} />
+          <ScoreField label={t("pages.postMatch.scoreStaff")} placeholder={t("pages.postMatch.kpiFallback")} value={report.staffRating} onChange={(v) => updateReport("staffRating", v)} />
         </div>
       </AppCard>
 
       {/* Griglia analisi */}
       <div style={s.grid}>
         <TextBlock
-          title="✅ Cosa ha funzionato"
-          placeholder="Principi rispettati, prestazioni positive, schemi riusciti..."
+          title={t("pages.postMatch.blockWorkedTitle")}
+          placeholder={t("pages.postMatch.blockWorkedPlaceholder")}
           value={report.worked}
           onChange={(v) => updateReport("worked", v)}
         />
         <TextBlock
-          title="❌ Cosa non ha funzionato"
-          placeholder="Errori strutturali, fasi difficili, pressing subito..."
+          title={t("pages.postMatch.blockNotWorkedTitle")}
+          placeholder={t("pages.postMatch.blockNotWorkedPlaceholder")}
           value={report.notWorked}
           onChange={(v) => updateReport("notWorked", v)}
         />
         <TextBlock
-          title="⚡ Episodi chiave"
-          placeholder="Gol, espulsioni, cambi decisivi, svolta tattica..."
+          title={t("pages.postMatch.blockKeyMomentsTitle")}
+          placeholder={t("pages.postMatch.blockKeyMomentsPlaceholder")}
           value={report.keyMoments}
           onChange={(v) => updateReport("keyMoments", v)}
         />
         <TextBlock
-          title="🧠 Correzioni tattiche"
-          placeholder="Cosa correggere: pressioni, distanze, uscite, preventive, reparto..."
+          title={t("pages.postMatch.blockTacticalTitle")}
+          placeholder={t("pages.postMatch.blockTacticalPlaceholder")}
           value={report.tacticalCorrections}
           onChange={(v) => updateReport("tacticalCorrections", v)}
         />
         <TextBlock
-          title="🎯 Focus prossima settimana"
-          placeholder="Cosa lavorare nelle prossime sedute sulla base di questa partita..."
+          title={t("pages.postMatch.blockNextWeekTitle")}
+          placeholder={t("pages.postMatch.blockNextWeekPlaceholder")}
           value={report.nextWeekFocus}
           onChange={(v) => updateReport("nextWeekFocus", v)}
         />
         <TextBlock
-          title="📋 Azioni in allenamento"
-          placeholder="Esercitazioni da preparare, reparti coinvolti, priorita del microciclo..."
+          title={t("pages.postMatch.blockTrainingActionsTitle")}
+          placeholder={t("pages.postMatch.blockTrainingActionsPlaceholder")}
           value={report.trainingActions}
           onChange={(v) => updateReport("trainingActions", v)}
         />
         <TextBlock
-          title="🩺 Piano recupero"
-          placeholder="Scarico, recupero, rientri, minutaggi da gestire e indicazioni per preparatore/fisioterapista..."
+          title={t("pages.postMatch.blockRecoveryTitle")}
+          placeholder={t("pages.postMatch.blockRecoveryPlaceholder")}
           value={report.recoveryPlan}
           onChange={(v) => updateReport("recoveryPlan", v)}
         />
         <TextBlock
-          title="⭐ Giocatori positivi"
-          placeholder="Chi ha fatto bene e perché — da valorizzare o comunicare..."
+          title={t("pages.postMatch.blockPositivePlayersTitle")}
+          placeholder={t("pages.postMatch.blockPositivePlayersPlaceholder")}
           value={report.positivePlayers}
           onChange={(v) => updateReport("positivePlayers", v)}
         />
         <TextBlock
-          title="🏃 Alert fisici"
-          placeholder="Affaticamenti, minutaggi critici, giocatori a rischio stop..."
+          title={t("pages.postMatch.blockPhysicalAlertsTitle")}
+          placeholder={t("pages.postMatch.blockPhysicalAlertsPlaceholder")}
           value={report.physicalAlerts}
           onChange={(v) => updateReport("physicalAlerts", v)}
         />
         <TextBlock
-          title="📐 Palle inattive"
-          placeholder="Schemi riusciti, marcature da correggere, corner/punizioni da rivedere..."
+          title={t("pages.postMatch.blockSetPiecesTitle")}
+          placeholder={t("pages.postMatch.blockSetPiecesPlaceholder")}
           value={report.setPiecesReview}
           onChange={(v) => updateReport("setPiecesReview", v)}
         />
         <TextBlock
-          title="🕵️ Lezioni sull'avversario"
-          placeholder="Informazioni utili per ritorno, playoff o prossima sfida simile..."
+          title={t("pages.postMatch.blockOpponentTitle")}
+          placeholder={t("pages.postMatch.blockOpponentPlaceholder")}
           value={report.opponentLessons}
           onChange={(v) => updateReport("opponentLessons", v)}
         />
         <TextBlock
-          title="✅ Decisioni staff"
-          placeholder="Decisioni finali: comunicazioni, gestione rosa, recuperi, contenuti sedute..."
+          title={t("pages.postMatch.blockStaffDecisionsTitle")}
+          placeholder={t("pages.postMatch.blockStaffDecisionsPlaceholder")}
           value={report.staffDecisions}
           onChange={(v) => updateReport("staffDecisions", v)}
         />
@@ -498,7 +500,7 @@ export default function PostMatch({
       {/* Selezione partita (se accedono da /post-match senza ID) */}
       {!id && matches.length > 1 && (
         <AppCard>
-          <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Cambia partita</h3>
+          <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>{t("pages.postMatch.changeMatch")}</h3>
           <div style={s.matchList}>
             {[...matches]
               .sort((a, b) => new Date(b.date) - new Date(a.date))
@@ -524,6 +526,7 @@ export default function PostMatch({
 }
 
 function VideoAnalysisPanel({ clips, players, onChange, onAppendReport, reportNotes }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(getEmptyClip());
 
   function updateDraft(field, value) {
@@ -571,11 +574,9 @@ function VideoAnalysisPanel({ clips, players, onChange, onAppendReport, reportNo
     <AppCard>
       <div style={s.videoHead}>
         <div>
-          <p style={s.eyebrow}>Video analysis</p>
-          <h3 style={s.reportTitle}>Clip taggate e collegate al report</h3>
-          <p style={s.muted}>
-            Registra minuto, fase, giocatore e link video. Le clip restano dentro la partita e finiscono nel PDF post gara.
-          </p>
+          <p style={s.eyebrow}>{t("pages.postMatch.videoEyebrow")}</p>
+          <h3 style={s.reportTitle}>{t("pages.postMatch.videoTitle")}</h3>
+          <p style={s.muted}>{t("pages.postMatch.videoSubtitle")}</p>
         </div>
         <div style={s.clipCounter}>
           <strong>{clips.length}</strong>
@@ -585,7 +586,7 @@ function VideoAnalysisPanel({ clips, players, onChange, onAppendReport, reportNo
 
       <div style={s.clipForm}>
         <input
-          placeholder="Min."
+          placeholder={t("pages.postMatch.clipMinutePlaceholder")}
           value={draft.minute}
           onChange={(event) => updateDraft("minute", event.target.value.replace(/[^\d+:.-]/g, ""))}
           style={s.smallInput}
@@ -597,31 +598,31 @@ function VideoAnalysisPanel({ clips, players, onChange, onAppendReport, reportNo
           {clipPhases.map((item) => <option key={item}>{item}</option>)}
         </select>
         <select value={draft.playerId} onChange={(event) => updateDraft("playerId", event.target.value)} style={styles.input}>
-          <option value="">Giocatore</option>
+          <option value="">{t("pages.postMatch.clipPlayerPlaceholder")}</option>
           {players.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
         </select>
         <select value={draft.audience} onChange={(event) => updateDraft("audience", event.target.value)} style={styles.input}>
           {clipAudiences.map((item) => <option key={item}>{item}</option>)}
         </select>
         <input
-          placeholder="Link video"
+          placeholder={t("pages.postMatch.clipLinkPlaceholder")}
           value={draft.url}
           onChange={(event) => updateDraft("url", event.target.value)}
           style={styles.input}
         />
         <input
-          placeholder="Tag: pressing, uscita, transizione..."
+          placeholder={t("pages.postMatch.clipTagsPlaceholder")}
           value={draft.tags}
           onChange={(event) => updateDraft("tags", event.target.value)}
           style={styles.input}
         />
         <input
-          placeholder="Nota tecnica"
+          placeholder={t("pages.postMatch.clipNotePlaceholder")}
           value={draft.note}
           onChange={(event) => updateDraft("note", event.target.value)}
           style={styles.input}
         />
-        <Button onClick={addClip}>Aggiungi clip</Button>
+        <Button onClick={addClip}>{t("pages.postMatch.btnAddClip")}</Button>
       </div>
 
       {clips.length ? (
@@ -643,35 +644,35 @@ function VideoAnalysisPanel({ clips, players, onChange, onAppendReport, reportNo
                   {clipPhases.map((item) => <option key={item}>{item}</option>)}
                 </select>
                 <div style={s.clipText}>
-                  <strong>{player?.name || "Nessun giocatore"}</strong>
-                  <span>{clip.tags || clip.note || "Clip senza tag"}</span>
+                  <strong>{player?.name || t("pages.postMatch.noPlayer")}</strong>
+                  <span>{clip.tags || clip.note || t("pages.postMatch.noTag")}</span>
                   {clip.url && (
                     <a href={clip.url} target="_blank" rel="noreferrer" style={s.clipLink}>
-                      Apri video
+                      {t("pages.postMatch.openVideo")}
                     </a>
                   )}
                 </div>
                 <select value={clip.playerId} onChange={(event) => updateClip(clip.id, "playerId", event.target.value)} style={styles.input}>
-                  <option value="">Giocatore</option>
+                  <option value="">{t("pages.postMatch.clipPlayerPlaceholder")}</option>
                   {players.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
                 <select value={clip.audience} onChange={(event) => updateClip(clip.id, "audience", event.target.value)} style={styles.input}>
                   {clipAudiences.map((item) => <option key={item}>{item}</option>)}
                 </select>
-                <Button variant="danger" onClick={() => deleteClip(clip.id)}>Elimina</Button>
+                <Button variant="danger" onClick={() => deleteClip(clip.id)}>{t("pages.postMatch.btnDeleteClip")}</Button>
               </div>
             );
           })}
         </div>
       ) : (
         <div style={s.emptyClipBox}>
-          Nessuna clip taggata. Aggiungi le azioni da mostrare allo staff, alla squadra o al singolo giocatore.
+          {t("pages.postMatch.emptyClips")}
         </div>
       )}
 
       {clips.length > 0 && (
         <div style={s.actionRow}>
-          <Button variant="ghost" onClick={syncReportNotes}>Copia sintesi nelle note video</Button>
+          <Button variant="ghost" onClick={syncReportNotes}>{t("pages.postMatch.btnSyncNotes")}</Button>
         </div>
       )}
     </AppCard>
@@ -691,14 +692,15 @@ function getEmptyClip() {
   };
 }
 
-function buildVideoTaskDescription(clips) {
+function buildVideoTaskDescription(clips, t) {
   if (!clips.length) return "";
   const individualCount = clips.filter((clip) => clip.audience === "Individuale" || clip.playerId).length;
   const staffCount = clips.length - individualCount;
+  // Keep these as data strings — they land in staff task descriptions, not UI labels
   return [
-    `${clips.length} clip da organizzare per restituzione video.`,
-    individualCount ? `${individualCount} clip individuali da inviare o discutere.` : "",
-    staffCount ? `${staffCount} clip staff/reparto da sintetizzare.` : "",
+    `${clips.length} clip to organise for video review.`,
+    individualCount ? `${individualCount} individual clips to send or discuss.` : "",
+    staffCount ? `${staffCount} staff/unit clips to summarise.` : "",
   ].filter(Boolean).join(" ");
 }
 
@@ -732,12 +734,12 @@ function SummaryCard({ title, value }) {
   );
 }
 
-function ScoreField({ label, value = "", onChange }) {
+function ScoreField({ label, placeholder = "—", value = "", onChange }) {
   return (
     <label style={s.scoreField}>
       <span>{label}</span>
       <select value={value} onChange={(event) => onChange(event.target.value)} style={styles.input}>
-        <option value="">Da valutare</option>
+        <option value="">{placeholder}</option>
         {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((score) => (
           <option key={score} value={String(score)}>{score}/10</option>
         ))}
@@ -746,11 +748,11 @@ function ScoreField({ label, value = "", onChange }) {
   );
 }
 
-function PrintBox({ title, value }) {
+function PrintBox({ title, value, fallback = "—" }) {
   return (
     <div style={s.printBox}>
       <span>{title}</span>
-      <p>{value || "Da completare"}</p>
+      <p>{value || fallback}</p>
     </div>
   );
 }
