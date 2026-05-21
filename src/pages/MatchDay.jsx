@@ -97,6 +97,22 @@ function MatchDay({
         match.opponent.toLowerCase() === selectedMatch.opponent.toLowerCase()
     )
     .sort((a, b) => new Date(b.date) - new Date(a.date));
+  const matchVenue = getMatchVenue(selectedMatch, workspaceProfile);
+  const convocationDetails = selectedMatch.convocazione?.details || {};
+  const convocationCount = selectedMatch.convocazione?.playerIds?.length || 0;
+  const matchMeta = [
+    formatDate(selectedMatch.date),
+    selectedMatch.time ? `Ore ${selectedMatch.time}` : "",
+    selectedMatch.competition,
+    selectedMatch.matchday,
+    matchVenue || selectedMatch.location,
+    selectedMatch.formation,
+  ].filter(Boolean);
+  const canPrefillMatchDay =
+    Boolean(selectedMatch) &&
+    (!hasText(selectedMatch.matchPlan) ||
+      !hasText(selectedMatch.staffNotes) ||
+      (!lineup.calledUpIds.length && convocationCount > 0));
 
   const postMatchFilled = Object.values(selectedMatch.postMatch || {}).some(
     (value) => typeof value === "string" && value.trim().length > 0
@@ -318,6 +334,43 @@ function MatchDay({
     showToast(`${convIds.length} convocati importati dalla convocazione`, "success");
   }
 
+  function prefillMatchDayFromSchedule() {
+    const convIds = (selectedMatch.convocazione?.playerIds || []).map(String);
+    const patch = {};
+
+    if (!hasText(selectedMatch.matchPlan)) {
+      patch.matchPlan = buildMatchPlanPrefill({
+        match: selectedMatch,
+        venue: matchVenue,
+        convocationCount: convIds.length,
+      });
+    }
+
+    if (!hasText(selectedMatch.staffNotes)) {
+      patch.staffNotes = buildStaffNotesPrefill({
+        match: selectedMatch,
+        venue: matchVenue,
+        details: convocationDetails,
+      });
+    }
+
+    if (!lineup.calledUpIds.length && convIds.length) {
+      patch.lineup = {
+        calledUpIds: convIds,
+        benchIds: convIds,
+        starterIds: [],
+      };
+    }
+
+    if (Object.keys(patch).length === 0) {
+      showToast("Scheda gia precompilata", "info");
+      return;
+    }
+
+    updateSelectedMatch(patch);
+    showToast("Scheda match day precompilata", "success");
+  }
+
   function copyPreviousLineup() {
     const previous = [...matches]
       .filter(
@@ -421,8 +474,7 @@ function MatchDay({
                 {selectedMatch.title || `CalcioLab - ${selectedMatch.opponent}`}
               </h2>
               <p style={{ ...matchDayStyles.muted, marginTop: 6 }}>
-                {formatDate(selectedMatch.date)} · {selectedMatch.location} ·{" "}
-                {selectedMatch.formation}
+                {matchMeta.join(" · ")}
               </p>
               <div style={matchDayStyles.resultRow}>
                 <span style={matchDayStyles.resultLabel}>Risultato</span>
@@ -445,10 +497,26 @@ function MatchDay({
             <MiniStat label="Convocati" value={calledPlayers.length} />
             <MiniStat label="Titolari" value={`${starterPlayers.length}/11`} />
             <MiniStat label="Panchina" value={benchPlayers.length} />
+            <MiniStat label="Ora" value={selectedMatch.time || "-"} />
             <MiniStat label="Modulo" value={selectedMatch.formation || "-"} />
             <MiniStat label="Stato" value={lineup.ready ? "Pronta" : "Bozza"} />
           </div>
         </AppCard>
+
+        <div style={matchDayStyles.prefillBanner}>
+          <div>
+            <strong style={{ color: "#bfdbfe", fontSize: 14 }}>Scheda da calendario</strong>
+            <div style={matchDayStyles.prefillMeta}>
+              <span>{selectedMatch.opponent ? `vs ${selectedMatch.opponent}` : "Avversario da definire"}</span>
+              <span>{selectedMatch.time ? `Ore ${selectedMatch.time}` : "Ora non inserita"}</span>
+              <span>{matchVenue || "Campo da definire"}</span>
+              <span>{convocationCount ? `${convocationCount} convocati` : "Convocazione vuota"}</span>
+            </div>
+          </div>
+          <Button onClick={prefillMatchDayFromSchedule} disabled={!canPrefillMatchDay}>
+            Precompila da calendario
+          </Button>
+        </div>
 
         {/* ── Banner import dalla Convocazione ── */}
         {lineup.calledUpIds.length === 0 && (selectedMatch.convocazione?.playerIds?.length > 0) && (
@@ -948,6 +1016,63 @@ function getOpponentScouting(match) {
   };
 }
 
+function hasText(value) {
+  return String(value || "").trim().length > 0;
+}
+
+function getHomeVenue(profile = {}) {
+  return [profile.homeFieldName, profile.homeFieldAddress, profile.homeFieldSurface]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(" - ");
+}
+
+function getMatchVenue(match = {}, profile = {}) {
+  const importedVenue = [match.venueName, match.venueAddress]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(" - ");
+
+  if (importedVenue) return importedVenue;
+  if (match.location === "Casa") return getHomeVenue(profile);
+  return match.location || "";
+}
+
+function buildMatchPlanPrefill({ match, venue, convocationCount }) {
+  return [
+    `Avversario: ${match.opponent || "Da definire"}`,
+    match.competition ? `Competizione: ${match.competition}` : "",
+    match.matchday ? `Giornata/turno: ${match.matchday}` : "",
+    venue ? `Campo: ${venue}` : "",
+    match.time ? `Ora gara: ${match.time}` : "",
+    convocationCount ? `Convocati: ${convocationCount}` : "",
+    "",
+    "Principi gara:",
+    "- Fase di possesso:",
+    "- Fase di non possesso:",
+    "- Transizioni:",
+    "- Palle inattive:",
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
+}
+
+function buildStaffNotesPrefill({ match, venue, details }) {
+  return [
+    details.meetingTime || details.meetingPlace
+      ? `Raduno: ${[details.meetingTime, details.meetingPlace].filter(Boolean).join(" - ")}`
+      : "",
+    details.lockerRoom ? `Spogliatoio: ${details.lockerRoom}` : "",
+    details.kit ? `Kit: ${details.kit}` : "",
+    details.staffContact ? `Contatto staff: ${details.staffContact}` : "",
+    details.message ? `Messaggio convocati: ${details.message}` : "",
+    match.convocazione?.notes ? `Note convocazione: ${match.convocazione.notes}` : "",
+    venue ? `Verifica logistica campo: ${venue}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 const matchDayStyles = {
   selectorRow: {
     display: "flex",
@@ -1341,6 +1466,26 @@ const matchDayStyles = {
     borderRadius: 14,
     background: "rgba(59,130,246,0.1)",
     border: "1px solid rgba(59,130,246,0.3)",
+  },
+  prefillBanner: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 14,
+    flexWrap: "wrap",
+    padding: "14px 18px",
+    borderRadius: 14,
+    background: "rgba(14,165,233,0.08)",
+    border: "1px solid rgba(14,165,233,0.24)",
+  },
+  prefillMeta: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 8,
+    color: "#94a3b8",
+    fontSize: 12,
+    fontWeight: 700,
   },
 
   // Banner convocazione
