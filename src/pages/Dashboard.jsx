@@ -160,7 +160,9 @@ function Dashboard({
 
   const nextEvent = events.find((event) => new Date(event.date) >= today);
   const nextTraining = sessions.find((s) => new Date(s.date) >= today);
-  const nextMatch = matches.find((m) => new Date(m.date) >= today);
+  const nextMatch = [...matches]
+    .filter((m) => new Date(m.date) >= today)
+    .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
   const todayEvents = events.filter((event) => {
     const date = new Date(event.date);
     return date >= today && date < new Date(today.getTime() + 24 * 60 * 60 * 1000);
@@ -182,13 +184,17 @@ function Dashboard({
 
   const seasonRecord = getSeasonRecord(matches);
 
-  const coachAlerts = getCoachAlerts({
+  const baseCoachAlerts = getCoachAlerts({
     players,
     matches,
     physicalTests,
     sessions,
     playerStatsMap,
   });
+  const coachAlerts = [
+    ...getMatchOperationalAlerts(nextMatch),
+    ...baseCoachAlerts,
+  ];
 
   const sectionOrder = settings.dashboardSectionOrder ?? DEFAULT_SECTION_ORDER;
 
@@ -1688,6 +1694,7 @@ function NextMatchCard({ match, navigate }) {
   const starterCount = (match.lineup?.starterIds || []).length;
   const benchCount   = (match.lineup?.benchIds   || []).length;
   const lineupReady  = match.lineup?.ready;
+  const checklistProgress = getMatchChecklistProgress(match);
 
   return (
     <div>
@@ -1713,6 +1720,7 @@ function NextMatchCard({ match, navigate }) {
           { label: "Titolari", value: `${starterCount}/11` },
           { label: "Panchina", value: benchCount },
           { label: "Modulo",   value: match.formation || "—" },
+          { label: "Logistica", value: `${checklistProgress.done}/${checklistProgress.total}` },
         ].map(({ label, value }) => (
           <div key={label} style={{ borderRadius: 10, padding: "10px 8px", background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", textAlign: "center" }}>
             <p style={{ color: "#64748b", margin: "0 0 4px", fontSize: 11, fontWeight: 800, textTransform: "uppercase" }}>{label}</p>
@@ -1760,6 +1768,41 @@ const nmcBtn = {
   textAlign: "center",
   lineHeight: 1.2,
 };
+
+const MATCH_CHECKLIST_KEYS = [
+  "documents",
+  "kits",
+  "water",
+  "medical",
+  "field",
+  "referee",
+  "opponentLineup",
+  "warmup",
+];
+
+function getMatchChecklistProgress(match = {}) {
+  const items = match.preMatchChecklist?.items || {};
+  const done = MATCH_CHECKLIST_KEYS.filter((key) => items[key]).length;
+  return {
+    done,
+    total: MATCH_CHECKLIST_KEYS.length,
+    complete: done === MATCH_CHECKLIST_KEYS.length,
+  };
+}
+
+function getMatchOperationalAlerts(match) {
+  if (!match) return [];
+
+  const progress = getMatchChecklistProgress(match);
+  if (progress.complete) return [];
+
+  return [
+    {
+      tone: "orange",
+      text: `${match.opponent || "Prossima partita"}: checklist pre-gara ${progress.done}/${progress.total}`,
+    },
+  ];
+}
 
 function todayStart() {
   const today = new Date();
