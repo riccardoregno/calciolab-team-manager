@@ -10,6 +10,7 @@ import FeatureGate from "./components/premium/FeatureGate";
 import RoleGate from "./components/auth/RoleGate";
 import Badge from "./components/ui/Badge";
 import AppCard from "./components/ui/AppCard";
+import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 
 import { useTeamData } from "./hooks/useTeamData";
 import { useAuth } from "./hooks/useAuth";
@@ -348,6 +349,7 @@ function App() {
             )}
           </div>
 
+          <ErrorBoundary>
           <Suspense
             fallback={
               <AppCard>
@@ -759,6 +761,7 @@ function App() {
               />
             </Routes>
           </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
 
