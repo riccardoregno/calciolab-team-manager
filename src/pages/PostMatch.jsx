@@ -145,9 +145,13 @@ export default function PostMatch({
     { key: "worked", label: "Cosa ha funzionato" },
     { key: "notWorked", label: "Cosa non ha funzionato" },
     { key: "keyMoments", label: "Episodi chiave" },
+    { key: "performanceScore", label: "Valutazione prestazione" },
+    { key: "gameModelScore", label: "Aderenza modello gara" },
+    { key: "intensityScore", label: "Intensita" },
     { key: "tacticalCorrections", label: "Correzioni tattiche" },
     { key: "nextWeekFocus", label: "Focus prossima settimana" },
     { key: "trainingActions", label: "Azioni in allenamento" },
+    { key: "recoveryPlan", label: "Piano recupero" },
     { key: "positivePlayers", label: "Giocatori positivi" },
     { key: "physicalAlerts", label: "Alert fisici" },
     { key: "setPiecesReview", label: "Palle inattive" },
@@ -246,6 +250,7 @@ export default function PostMatch({
           <Button variant="ghost" onClick={() => navigate(`/match-stats/${match.id}`)}>Statistiche</Button>
           <Button variant="ghost" onClick={() => navigate(`/match-day/${match.id}`)}>Match Day</Button>
           <Button variant="ghost" onClick={() => navigate("/microcycle")}>Microciclo</Button>
+          <Button variant="ghost" onClick={() => window.print()}>Stampa report</Button>
           <Button variant="ghost" onClick={createStaffTasksFromReport}>Crea azioni staff</Button>
           <Button onClick={() => navigate("/trainings")}>Crea seduta</Button>
         </div>
@@ -257,6 +262,53 @@ export default function PostMatch({
             ))}
           </div>
         )}
+      </AppCard>
+
+      <div className="print-area">
+        <AppCard>
+          <div style={s.printHeader}>
+            <div>
+              <p style={s.eyebrow}>Report tecnico</p>
+              <h2 style={s.printTitle}>{match.title || `CalcioLab vs ${match.opponent || "Avversario"}`}</h2>
+              <p style={s.muted}>{subtitle || "Partita"}</p>
+            </div>
+            <div style={s.printScore}>{match.result || "-"}</div>
+          </div>
+
+          <div style={s.printKpiGrid}>
+            <SummaryCard title="Prestazione" value={report.performanceScore || "Da valutare"} />
+            <SummaryCard title="Modello gara" value={report.gameModelScore || "Da valutare"} />
+            <SummaryCard title="Intensita" value={report.intensityScore || "Da valutare"} />
+            <SummaryCard title="Clip" value={videoAnalysis.length} />
+          </div>
+
+          <div style={s.printReportGrid}>
+            <PrintBox title="Cosa ha funzionato" value={report.worked} />
+            <PrintBox title="Cosa non ha funzionato" value={report.notWorked} />
+            <PrintBox title="Episodi chiave" value={report.keyMoments} />
+            <PrintBox title="Correzioni tattiche" value={report.tacticalCorrections} />
+            <PrintBox title="Focus prossima settimana" value={report.nextWeekFocus} />
+            <PrintBox title="Azioni in allenamento" value={report.trainingActions} />
+            <PrintBox title="Alert fisici" value={report.physicalAlerts} />
+            <PrintBox title="Piano recupero" value={report.recoveryPlan} />
+          </div>
+        </AppCard>
+      </div>
+
+      <AppCard>
+        <div style={s.reportHead}>
+          <div>
+            <p style={s.eyebrow}>Valutazione staff</p>
+            <h3 style={s.reportTitle}>Scorecard post gara</h3>
+            <p style={s.muted}>Numeri sintetici per leggere subito prestazione, modello gara e intensita.</p>
+          </div>
+        </div>
+        <div style={s.scoreGrid}>
+          <ScoreField label="Prestazione" value={report.performanceScore} onChange={(v) => updateReport("performanceScore", v)} />
+          <ScoreField label="Modello gara" value={report.gameModelScore} onChange={(v) => updateReport("gameModelScore", v)} />
+          <ScoreField label="Intensita" value={report.intensityScore} onChange={(v) => updateReport("intensityScore", v)} />
+          <ScoreField label="Gestione staff" value={report.staffRating} onChange={(v) => updateReport("staffRating", v)} />
+        </div>
       </AppCard>
 
       {/* Griglia analisi */}
@@ -296,6 +348,12 @@ export default function PostMatch({
           placeholder="Esercitazioni da preparare, reparti coinvolti, priorita del microciclo..."
           value={report.trainingActions}
           onChange={(v) => updateReport("trainingActions", v)}
+        />
+        <TextBlock
+          title="🩺 Piano recupero"
+          placeholder="Scarico, recupero, rientri, minutaggi da gestire e indicazioni per preparatore/fisioterapista..."
+          value={report.recoveryPlan}
+          onChange={(v) => updateReport("recoveryPlan", v)}
         />
         <TextBlock
           title="⭐ Giocatori positivi"
@@ -574,6 +632,29 @@ function SummaryCard({ title, value }) {
   );
 }
 
+function ScoreField({ label, value = "", onChange }) {
+  return (
+    <label style={s.scoreField}>
+      <span>{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} style={styles.input}>
+        <option value="">Da valutare</option>
+        {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((score) => (
+          <option key={score} value={String(score)}>{score}/10</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function PrintBox({ title, value }) {
+  return (
+    <div style={s.printBox}>
+      <span>{title}</span>
+      <p>{value || "Da completare"}</p>
+    </div>
+  );
+}
+
 /* ─── styles ─────────────────────────────────────────────────── */
 const s = {
   muted: { color: "#94a3b8", margin: 0, lineHeight: 1.45 },
@@ -659,6 +740,21 @@ const s = {
     gap: 10,
     marginBottom: 14,
   },
+  scoreGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+    gap: 12,
+    marginTop: 16,
+  },
+  scoreField: {
+    display: "grid",
+    gap: 7,
+    color: "#94a3b8",
+    fontSize: 12,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+  },
   summaryCard: {
     borderRadius: 14,
     padding: 14,
@@ -667,6 +763,47 @@ const s = {
     background: "rgba(15,23,42,0.72)",
     border: "1px solid rgba(255,255,255,0.08)",
     color: "#94a3b8",
+  },
+  printHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 16,
+    alignItems: "flex-start",
+    flexWrap: "wrap",
+  },
+  printTitle: {
+    margin: "6px 0 4px",
+    lineHeight: 1.1,
+  },
+  printScore: {
+    minWidth: 88,
+    borderRadius: 14,
+    padding: "14px 18px",
+    textAlign: "center",
+    background: "rgba(56,189,248,0.12)",
+    border: "1px solid rgba(56,189,248,0.24)",
+    fontSize: 28,
+    fontWeight: 900,
+  },
+  printKpiGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))",
+    gap: 10,
+    marginTop: 18,
+  },
+  printReportGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
+    gap: 12,
+    marginTop: 18,
+  },
+  printBox: {
+    display: "grid",
+    gap: 6,
+    padding: 14,
+    borderRadius: 12,
+    background: "rgba(255,255,255,0.045)",
+    border: "1px solid rgba(255,255,255,0.08)",
   },
   videoHead: {
     display: "flex",
