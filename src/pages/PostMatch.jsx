@@ -389,34 +389,115 @@ export default function PostMatch({
       </AppCard>
 
       <div className="print-area">
-        <AppCard>
-          <div style={s.printHeader}>
-            <div>
-              <p style={s.eyebrow}>{t("pages.postMatch.printEyebrow")}</p>
-              <h2 style={s.printTitle}>{match.title || `CalcioLab vs ${match.opponent || t("pages.postMatch.defaultOpponent")}`}</h2>
-              <p style={s.muted}>{subtitle || t("pages.postMatch.defaultSubtitle")}</p>
-            </div>
-            <div style={s.printScore}>{match.result || "-"}</div>
-          </div>
+        <section className="print-template">
+          <article>
+            <header className="print-header">
+              <div>
+                <p>{t("pages.postMatch.printEyebrow")}</p>
+                <h1>{match.title || `CalcioLab vs ${match.opponent || t("pages.postMatch.defaultOpponent")}`}</h1>
+              </div>
+              <div className="print-meta">
+                <span>{formatDate(match.date)}</span>
+                {match.location && <span>{match.location}</span>}
+                {match.result && <span>{match.result}</span>}
+                <span>CalcioLab</span>
+              </div>
+            </header>
 
-          <div style={s.printKpiGrid}>
-            <SummaryCard title={t("pages.postMatch.kpiPerformance")} value={report.performanceScore || t("pages.postMatch.kpiFallback")} />
-            <SummaryCard title={t("pages.postMatch.kpiGameModel")} value={report.gameModelScore || t("pages.postMatch.kpiFallback")} />
-            <SummaryCard title={t("pages.postMatch.kpiIntensity")} value={report.intensityScore || t("pages.postMatch.kpiFallback")} />
-            <SummaryCard title={t("pages.postMatch.kpiClips")} value={videoAnalysis.length} />
-          </div>
+            <section className="print-kpis">
+              <PrintKpi title={t("pages.postMatch.kpiPerformance")} value={report.performanceScore || t("pages.postMatch.kpiFallback")} />
+              <PrintKpi title={t("pages.postMatch.kpiGameModel")} value={report.gameModelScore || t("pages.postMatch.kpiFallback")} />
+              <PrintKpi title={t("pages.postMatch.kpiIntensity")} value={report.intensityScore || t("pages.postMatch.kpiFallback")} />
+              <PrintKpi title={t("pages.postMatch.kpiClips")} value={videoAnalysis.length} />
+            </section>
 
-          <div style={s.printReportGrid}>
-            <PrintBox title={t("pages.postMatch.sectionWorked")} value={report.worked} fallback={t("pages.postMatch.printComplete")} />
-            <PrintBox title={t("pages.postMatch.sectionNotWorked")} value={report.notWorked} fallback={t("pages.postMatch.printComplete")} />
-            <PrintBox title={t("pages.postMatch.sectionKeyMoments")} value={report.keyMoments} fallback={t("pages.postMatch.printComplete")} />
-            <PrintBox title={t("pages.postMatch.sectionTacticalCorrections")} value={report.tacticalCorrections} fallback={t("pages.postMatch.printComplete")} />
-            <PrintBox title={t("pages.postMatch.sectionNextWeekFocus")} value={report.nextWeekFocus} fallback={t("pages.postMatch.printComplete")} />
-            <PrintBox title={t("pages.postMatch.sectionTrainingActions")} value={report.trainingActions} fallback={t("pages.postMatch.printComplete")} />
-            <PrintBox title={t("pages.postMatch.sectionPhysicalAlerts")} value={report.physicalAlerts} fallback={t("pages.postMatch.printComplete")} />
-            <PrintBox title={t("pages.postMatch.sectionRecoveryPlan")} value={report.recoveryPlan} fallback={t("pages.postMatch.printComplete")} />
-          </div>
-        </AppCard>
+            <section className="print-section">
+              <h2>{t("pages.postMatch.reportTitle")}</h2>
+              <div className="print-grid two">
+                <PrintBox title={t("pages.postMatch.sectionWorked")} value={report.worked} fallback={t("pages.postMatch.printComplete")} />
+                <PrintBox title={t("pages.postMatch.sectionNotWorked")} value={report.notWorked} fallback={t("pages.postMatch.printComplete")} />
+                <PrintBox title={t("pages.postMatch.sectionKeyMoments")} value={report.keyMoments} fallback={t("pages.postMatch.printComplete")} />
+                <PrintBox title={t("pages.postMatch.sectionTacticalCorrections")} value={report.tacticalCorrections} fallback={t("pages.postMatch.printComplete")} />
+                <PrintBox title={t("pages.postMatch.sectionNextWeekFocus")} value={report.nextWeekFocus} fallback={t("pages.postMatch.printComplete")} />
+                <PrintBox title={t("pages.postMatch.sectionTrainingActions")} value={report.trainingActions} fallback={t("pages.postMatch.printComplete")} />
+                <PrintBox title={t("pages.postMatch.sectionPhysicalAlerts")} value={report.physicalAlerts} fallback={t("pages.postMatch.printComplete")} />
+                <PrintBox title={t("pages.postMatch.sectionRecoveryPlan")} value={report.recoveryPlan} fallback={t("pages.postMatch.printComplete")} />
+              </div>
+            </section>
+
+            <section className="print-section">
+              <h2>{t("pages.postMatch.printLinkedSessions")}</h2>
+              {linkedSessions.length ? (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{t("common.session")}</th>
+                      <th>{t("pages.trainings.printMetaDate")}</th>
+                      <th>{t("pages.postMatch.printSessionStatus")}</th>
+                      <th>{t("pages.postMatch.printSessionReview")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {linkedSessions.map((session) => (
+                      <tr key={session.id}>
+                        <td>
+                          {session.title || t("common.session")}
+                          <small>{session.theme || t("pages.postMatch.sessionThemeFallback")}</small>
+                        </td>
+                        <td>{formatDate(session.date)}</td>
+                        <td>{t(getObjectiveStatusMeta(session.objectiveStatus).labelKey)}</td>
+                        <td>{session.objectiveReview || session.sourceSummary || t("pages.postMatch.printComplete")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <PrintBox title={t("pages.postMatch.printLinkedSessions")} value={t("pages.postMatch.printNoLinkedSessions")} />
+              )}
+            </section>
+
+            <section className="print-section">
+              <h2>{t("pages.postMatch.printVideoClips")}</h2>
+              {videoAnalysis.length ? (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{t("pages.postMatch.printClipMinute")}</th>
+                      <th>{t("pages.postMatch.printClipCategory")}</th>
+                      <th>{t("pages.postMatch.printClipPhase")}</th>
+                      <th>{t("pages.postMatch.printClipAudience")}</th>
+                      <th>{t("pages.postMatch.printClipNote")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {videoAnalysis.map((clip) => {
+                      const player = players.find((item) => String(item.id) === String(clip.playerId));
+                      return (
+                        <tr key={clip.id}>
+                          <td>{clip.minute || "-"}</td>
+                          <td>{clip.category || "-"}</td>
+                          <td>{clip.phase || "-"}</td>
+                          <td>
+                            {clip.audience || "-"}
+                            {player && <small>{player.name}</small>}
+                          </td>
+                          <td>{clip.note || clip.tags || clip.url || t("pages.postMatch.printComplete")}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <PrintBox title={t("pages.postMatch.printVideoClips")} value={t("pages.postMatch.printNoClips")} />
+              )}
+            </section>
+
+            <footer style={s.printFooter}>
+              <span>{t("pages.postMatch.printFooter")}</span>
+              <strong>CalcioLab</strong>
+            </footer>
+          </article>
+        </section>
       </div>
 
       <AppCard>
@@ -756,6 +837,15 @@ function SummaryCard({ title, value }) {
   );
 }
 
+function PrintKpi({ title, value }) {
+  return (
+    <div className="print-kpi">
+      <span>{title}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
 function ScoreField({ label, placeholder = "—", value = "", onChange }) {
   return (
     <label style={s.scoreField}>
@@ -928,6 +1018,16 @@ const s = {
     borderRadius: 12,
     background: "rgba(255,255,255,0.045)",
     border: "1px solid rgba(255,255,255,0.08)",
+  },
+  printFooter: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "center",
+    paddingTop: 14,
+    borderTop: "1px solid #dbe3ef",
+    color: "#475569",
+    fontSize: 11,
   },
   videoHead: {
     display: "flex",
