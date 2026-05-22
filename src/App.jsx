@@ -96,6 +96,7 @@ function App() {
   const [developmentPlanPreview, setDevelopmentPlanPreview] = useState(getInitialDevelopmentPlanPreview);
   const [developmentRolePreview, setDevelopmentRolePreview] = useState(getInitialDevelopmentRolePreview);
   const [remoteSubscription, setRemoteSubscription] = useState(null);
+  const [renderStartedAt] = useState(() => Date.now());
 
   useEffect(() => {
     if (!auth.team) return;
@@ -144,9 +145,23 @@ function App() {
       subscriptionId: remoteSubscription.stripe_subscription_id,
     } : {};
 
+    // Promo codes are stored locally and Supabase doesn't know about them.
+    // A valid redeemed promo must win over the Supabase subscription values
+    // (Supabase is the source of truth only for Stripe billing, not for promo grants).
+    const redeemedPromo = current.redeemedPromo;
+    const promoIsValid = redeemedPromo && (
+      redeemedPromo.permanent === true ||
+      (redeemedPromo.expiresAt && new Date(redeemedPromo.expiresAt).getTime() > renderStartedAt)
+    );
+    const promoOverride = promoIsValid ? {
+      plan:          redeemedPromo.plan || "premium",
+      billingStatus: "active",
+    } : {};
+
     const merged = {
       ...current,
-      subscription: { ...current.subscription, ...subscriptionOverride },
+      // Order: local defaults → Supabase (Stripe truth) → promo (local truth for promo grants)
+      subscription: { ...current.subscription, ...subscriptionOverride, ...promoOverride },
     };
 
     if (!import.meta.env.DEV || !developmentPreviewPlans.includes(developmentPlanPreview)) {
@@ -158,7 +173,7 @@ function App() {
       developmentPreviewPlan: developmentPlanPreview,
       developmentPreviewRole: developmentRolePreview,
     };
-  }, [state.appSettings, remoteSubscription, developmentPlanPreview, developmentRolePreview]);
+  }, [state.appSettings, remoteSubscription, developmentPlanPreview, developmentRolePreview, renderStartedAt]);
 
   // FIX #9: active flag previene setState su componente smontato (memory leak)
   useEffect(() => {

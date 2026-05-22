@@ -1,0 +1,175 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const teamSelect = "id, name, season, category, subscription_plan, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used, stripe_customer_id, stripe_subscription_id";
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const { token } = await req.json();
+    const inviteToken = String(token || "").trim();
+
+    if (!inviteToken) {
+      return json({ error: "Token invito mancante" }, 400);
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !anonKey || !serviceKey) {
+      return json({ error: "Supabase secrets non configurati" }, 500);
+    }
+
+    const authHeader = req.headers.get("Authorization") || "";
+    const authClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: authData, error: authError } = await authClient.auth.getUser();
+
+    if (authError || !authData.user) {
+      return json({ error: "Utente non autenticato" }, 401);
+    }
+
+    const serviceClient = createClient(supabaseUrl, serviceKey);
+
+    const { data: teams, error: teamError } = await serviceClient
+      .from("teams")
+      .select(`${teamSelect}, settings`)
+      .eq("settings->>inviteToken", inviteToken)
+      .limit(1);
+
+    if (teamError) {
+      return json({ error: teamError.message }, 500);
+    }
+
+    const team = teams?.[0];
+    if (!team) {
+      return json({ error: "Invito non trovato o non valido" }, 404);
+    }
+
+    const user = authData.user;
+    const userEmail = String(user.email || "").trim().toLowerCase();
+    const settings = team.settings || {};
+    const pendingInvites = Array.isArray(settings.pendingInvites) ? settings.pendingInvites : [];
+    const pendingInvite = pendingInvites.find((invite) =>
+      String(invite.email || "").trim().toLowerCase() === userEmail
+    );
+    const role = pendingInvite?.role || "assistantCoach";
+
+    const { data: existingMembership, error: existingError } = await serviceClient
+      .from("team_members")
+      .select("team_id, user_id, role")
+      .eq("team_id", team.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingError) {
+      return json({ error: existingError.message }, 500);
+    }
+
+    if (existingMembership) {
+      if (pendingInvite?.role && existingMembership.role !== pendingInvite.role) {
+        const { error: updateRoleError } = await serviceClient
+          .from("team_members")
+          .update({ role: pendingInvite.role })
+          .eq("team_id", team.id)
+          .eq("user_id", user.id);
+
+        if (updateRoleError) {
+          return json({ error: updateRoleError.message }, 500);
+        }
+      }
+    } else {
+      const { error: insertError } = await serviceClient
+        .from("team_members")
+        .insert({
+          team_id: team.id,
+          user_id: user.id,
+          role,
+        });
+
+      if (insertError) {
+        return json({ error: insertError.message }, 500);
+      }
+    }
+
+    const nextPendingInvites = pendingInvite
+      ? pendingInvites.filter((invite) =>
+        String(invite.email || "").trim().toLowerCase() !== userEmail
+      )
+      : pendingInvites;
+    const memberName = pendingInvite?.name ||
+      [user.user_metadata?.first_name, user.user_metadata?.last_name].filter(Boolean).join(" ") ||
+      userEmail;
+    const currentMembers = Array.isArray(settings.members) ? settings.members : [];
+    const memberExists = currentMembers.some((member) =>
+      String(member.email || "").trim().toLowerCase() === userEmail
+    );
+    const nextMembers = memberExists
+      ? currentMembers
+      : [
+        ...currentMembers,
+        {
+          id: `member-${user.id}`,
+          name: memberName,
+          email: userEmail,
+          role,
+          status: "Attivo",
+          customAreas: pendingInvite?.customAreas || {},
+        },
+      ];
+
+    const { error: settingsError } = await serviceClient
+      .from("teams")
+      .update({
+        settings: {
+          ...settings,
+          pendingInvites: nextPendingInvites,
+          members: nextMembers,
+        },
+      })
+      .eq("id", team.id);
+
+    if (settingsError) {
+      return json({ error: settingsError.message }, 500);
+    }
+
+    const { data: membership } = await serviceClient
+      .from("team_members")
+      .select(`team_id, role, teams(${teamSelect})`)
+      .eq("team_id", team.id)
+      .eq("user_id", user.id)
+      .single();
+
+    return json({
+      success: true,
+      alreadyMember: Boolean(existingMembership),
+      role: membership?.role || role,
+      team: membership?.teams
+        ? { ...membership.teams, role: membership.role || role }
+        : { ...team, settings: undefined, role },
+    });
+  } catch (error) {
+    return json({ error: error.message || "Errore invito" }, 500);
+  }
+});
+
+function json(payload: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+    },
+  });
+}

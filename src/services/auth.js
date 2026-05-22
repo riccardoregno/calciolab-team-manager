@@ -1,5 +1,8 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
+const acceptTeamInviteUrl = import.meta.env.VITE_ACCEPT_TEAM_INVITE_URL ||
+  "https://sglevvqhlzpllrjrgbod.functions.supabase.co/accept-team-invite";
+
 export async function getAuthSession() {
   if (!isSupabaseConfigured) {
     return { session: null, user: null };
@@ -48,9 +51,57 @@ export async function signOut() {
   return supabase.auth.signOut();
 }
 
+export async function acceptTeamInvite(token) {
+  if (!isSupabaseConfigured || !token) {
+    return { team: null, error: null };
+  }
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+
+  if (sessionError || !accessToken) {
+    return { team: null, error: sessionError || new Error("Sessione non disponibile") };
+  }
+
+  const response = await fetch(acceptTeamInviteUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ token }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok || payload?.error) {
+    return { team: null, error: new Error(payload?.error || "Invito non valido") };
+  }
+
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem("calciolab_invite_token");
+  }
+
+  return { team: payload.team || null, error: null };
+}
+
 export async function ensureDefaultTeam(user) {
   if (!isSupabaseConfigured || !user) {
     return { team: null };
+  }
+
+  const inviteToken = typeof window !== "undefined"
+    ? sessionStorage.getItem("calciolab_invite_token") || ""
+    : "";
+
+  if (inviteToken) {
+    const { team: invitedTeam, error: inviteError } = await acceptTeamInvite(inviteToken);
+    if (invitedTeam) {
+      return { team: invitedTeam };
+    }
+    if (import.meta.env.DEV && inviteError) {
+      console.warn("[auth] Invito non applicato:", inviteError.message);
+    }
   }
 
   const teamSelect = "id, name, season, category, subscription_plan, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used";

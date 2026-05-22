@@ -1303,6 +1303,7 @@ function RedeemPromoCard({ appSettings = {}, setAppSettings }) {
         code:       found.code,
         plan:       found.plan,
         permanent:  found.permanent,
+        expiresAt:  found.permanent ? null : (found.expiresAt || null),
         redeemedAt: new Date().toISOString(),
       },
       subscription: {
@@ -1426,6 +1427,7 @@ function PromoCodesCard({ appSettings, setAppSettings }) {
       code:       found.code,
       plan:       found.plan,
       permanent:  found.permanent,
+      expiresAt:  found.permanent ? null : (found.expiresAt || null),
       redeemedAt: new Date().toISOString(),
     };
     setAppSettings({

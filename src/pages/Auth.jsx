@@ -177,10 +177,8 @@ function Auth() {
             }
           });
 
-          // Pulisce il token di invito dopo la registrazione
-          if (inviteToken && typeof window !== "undefined") {
-            sessionStorage.removeItem("calciolab_invite_token");
-          }
+          // Il token viene pulito solo dopo l'accettazione backend dell'invito.
+          // Con conferma email attiva, l'utente potrebbe completare il join al login successivo.
         }
 
         setFeedback({ type: "ok", text: t("pages.auth.registrationComplete") });
