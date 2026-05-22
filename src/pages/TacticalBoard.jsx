@@ -13,6 +13,8 @@ import { useTranslation } from "../i18n";
 // ─── Persistenza localStorage ─────────────────────────────────────────────────
 const STORAGE_KEY = "calciolab_tactical_board_v1";
 const SCHEMAS_KEY  = "calciolab_tactical_schemas_v1";
+const EXERCISE_MODAL = "export-exercise";
+const EXERCISE_DRAFT_KEY = "calciolab_tactical_exercise_draft_v1";
 
 const defaultNotes = {
   costruzione: "Uscita pulita, superiorità posizionale e linee interne leggibili.",
@@ -35,6 +37,22 @@ function saveToStorage(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch {
     // storage piena o private mode — ignoriamo silenziosamente
+  }
+}
+
+function loadExerciseDraftName(fallback = "") {
+  try {
+    return localStorage.getItem(EXERCISE_DRAFT_KEY) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function clearExerciseDraftName() {
+  try {
+    localStorage.removeItem(EXERCISE_DRAFT_KEY);
+  } catch {
+    // storage unavailable — silently ignore
   }
 }
 
@@ -527,6 +545,8 @@ export default function TacticalBoard({
   const navigate   = useNavigate();
   const location   = useLocation();
   const { showToast, ToastContainer } = useToast();
+  const searchParams = new URLSearchParams(location.search);
+  const isExerciseModalRoute = searchParams.get("modal") === EXERCISE_MODAL;
 
   // Quando si arriva da Exercises con ?edit=<exerciseId>
   const editingExerciseId   = location.state?.exerciseId   ?? null;
@@ -559,7 +579,7 @@ export default function TacticalBoard({
 
   // ── Esercizio da lavagna ──────────────────────────────────────────────────────
   const [exModalOpen, setExModalOpen] = useState(!!editingExerciseId);
-  const [exName,      setExName]      = useState(editingExerciseName ?? "");
+  const [exName,      setExName]      = useState(() => loadExerciseDraftName(editingExerciseName ?? ""));
   const [exFeedback,  setExFeedback]  = useState(null); // { ok: bool, text: string }
 
   const availablePlayers = players.length ? players : fallbackPlayers;
@@ -567,6 +587,21 @@ export default function TacticalBoard({
   const [boardPlayers, setBoardPlayers] = useState(() =>
     _saved?.boardPlayers ?? buildBoard("4-2-3-1", "Nessuno")
   );
+
+  useEffect(() => {
+    if (!isExerciseModalRoute) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setExModalOpen(true);
+  }, [isExerciseModalRoute]);
+
+  useEffect(() => {
+    if (!exModalOpen || editingExerciseId) return;
+    try {
+      localStorage.setItem(EXERCISE_DRAFT_KEY, exName);
+    } catch {
+      // storage unavailable — silently ignore
+    }
+  }, [editingExerciseId, exModalOpen, exName]);
 
   // Auto-salvataggio: persiste formazione, posizioni, linee, note e titolari
   useEffect(() => {
@@ -1108,6 +1143,29 @@ export default function TacticalBoard({
     persistSchemas(updated);
   }
 
+  function openExerciseModal() {
+    const params = new URLSearchParams(location.search);
+    params.set("modal", EXERCISE_MODAL);
+    setExName(loadExerciseDraftName(""));
+    setExFeedback(null);
+    setExModalOpen(true);
+    navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
+  }
+
+  function closeExerciseModal({ resetDraft = false } = {}) {
+    if (resetDraft && !editingExerciseId) {
+      clearExerciseDraftName();
+      setExName("");
+    }
+    setExFeedback(null);
+    setExModalOpen(false);
+    if (!isExerciseModalRoute) return;
+    const params = new URLSearchParams(location.search);
+    params.delete("modal");
+    const search = params.toString();
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : "" }, { replace: true });
+  }
+
   // ── Esporta la lavagna corrente come esercizio ────────────────────────────────
   function exportToExercise() {
     // Quando si modifica un esercizio esistente il nome viene dall'esercizio stesso
@@ -1146,6 +1204,7 @@ export default function TacticalBoard({
         tacticalBoard: boardSnapshot,
       };
       setExercises((prevExercises) => [...prevExercises, newExercise]);
+      clearExerciseDraftName();
       setExFeedback({ ok: true, text: `Esercizio "${name}" creato! Vai all'Eserciziario per aggiungere descrizione e dettagli.` });
     }
   }
@@ -1295,7 +1354,7 @@ export default function TacticalBoard({
 
       {/* ── Modal "Inserisci come esercizio" ── */}
       {exModalOpen && (
-        <div style={exStyles.modalOverlay} onClick={() => { setExModalOpen(false); setExFeedback(null); }}>
+        <div style={exStyles.modalOverlay} onClick={() => closeExerciseModal()}>
           <div style={exStyles.modal} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: "0 0 6px", fontSize: 18 }}>
               {editingExerciseId ? t("pages.tacticalBoard.modalSaveDrawTitle") : t("pages.tacticalBoard.modalInsertTitle")}
@@ -1321,7 +1380,7 @@ export default function TacticalBoard({
               </div>
             )}
             <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "flex-end" }}>
-              <button type="button" onClick={() => { setExModalOpen(false); setExFeedback(null); }} style={exStyles.btnGhost}>
+              <button type="button" onClick={() => closeExerciseModal({ resetDraft: true })} style={exStyles.btnGhost}>
                 {t("pages.tacticalBoard.undo")}
               </button>
               {exFeedback?.ok ? (
@@ -1957,7 +2016,7 @@ export default function TacticalBoard({
             {/* Esporta in esercizi */}
             <button
               type="button"
-              onClick={() => { setExName(""); setExFeedback(null); setExModalOpen(true); }}
+              onClick={openExerciseModal}
               style={boardStyles.exportExerciseBtn}
             >
               {t("pages.tacticalBoard.btnInsertExercise")}
@@ -2094,6 +2153,43 @@ function FieldObjectIcon({ type }) {
     </svg>
   );
   return null;
+}
+
+function TacticalPlayerIcon({ player, isOpponent, isRealPlayer }) {
+  const palette = isOpponent
+    ? { shirt: "#ef4444", shorts: "#7f1d1d", text: "#fff1f2", skin: "#f7c59f" }
+    : isRealPlayer
+      ? { shirt: "#0ea5e9", shorts: "#075985", text: "#f0f9ff", skin: "#f7c59f" }
+      : { shirt: "#2563eb", shorts: "#1e3a8a", text: "#eff6ff", skin: "#f7c59f" };
+
+  return (
+    <svg viewBox="0 0 42 50" width="42" height="50" aria-hidden="true" style={{ display: "block" }}>
+      <ellipse cx="21" cy="45" rx="12" ry="3" fill="rgba(0,0,0,0.32)" />
+      <circle cx="21" cy="9" r="4.6" fill={palette.skin} stroke="rgba(15,23,42,0.38)" strokeWidth="1" />
+      <path
+        d="M12 18 Q21 11 30 18 L28 32 Q21 36 14 32Z"
+        fill={palette.shirt}
+        stroke="rgba(15,23,42,0.5)"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path d="M12 20 L5 27 M30 20 L37 27" stroke={palette.shirt} strokeWidth="4" strokeLinecap="round" />
+      <path d="M17 32 L13 43 M25 32 L29 43" stroke={palette.shorts} strokeWidth="4.2" strokeLinecap="round" />
+      <path d="M14 43 H10 M28 43 H32" stroke="#e5e7eb" strokeWidth="2.4" strokeLinecap="round" />
+      <text
+        x="21"
+        y="27"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="11"
+        fontWeight="950"
+        fontFamily="system-ui,sans-serif"
+        fill={palette.text}
+      >
+        {player.number}
+      </text>
+    </svg>
+  );
 }
 
 function LineHandle({ x, y, onStart, fill = "#0f172a" }) {
@@ -2278,15 +2374,13 @@ function DraggablePlayer({
       onDoubleClick={() => isRealPlayer && onRemove(player)}
       title={isRealPlayer ? "Doppio click per rimuovere" : "Trascina"}
     >
-    <div style={boardStyles.playerNumber}>
-  {player.number}
-</div>
-{selectedSlotId === player.id && (
-  <div style={boardStyles.playerTooltip}>
-    <strong>{isRealPlayer ? getLastName(player.name) : player.slotRole}</strong>
-    <span>{isRealPlayer ? player.role : "Slot"}</span>
-  </div>
-)}
+      <TacticalPlayerIcon player={player} isOpponent={isOpponent} isRealPlayer={isRealPlayer} />
+      {selectedSlotId === player.id && (
+        <div style={boardStyles.playerTooltip}>
+          <strong>{isRealPlayer ? getLastName(player.name) : player.slotRole}</strong>
+          <span>{isRealPlayer ? player.role : "Slot"}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -2944,9 +3038,9 @@ const boardStyles = {
 
  player: {
   position: "absolute",
-  width: 34,
-  height: 34,
-  borderRadius: "50%",
+  width: 42,
+  height: 50,
+  borderRadius: 12,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -2957,18 +3051,15 @@ const boardStyles = {
   fontSize: 12,
   zIndex: 30,
   transition: "0.15s ease",
+  filter: "drop-shadow(0 8px 12px rgba(0,0,0,0.38))",
 },
 
  ownPlayer: {
-  background: "#2563eb",
-  border: "2px solid rgba(255,255,255,0.9)",
-  boxShadow: "0 0 18px rgba(37,99,235,0.45)",
+  background: "transparent",
 },
 
 opponentPlayer: {
-  background: "#ef4444",
-  border: "2px solid rgba(255,255,255,0.9)",
-  boxShadow: "0 0 18px rgba(239,68,68,0.35)",
+  background: "transparent",
   zIndex: 25,
 },
 

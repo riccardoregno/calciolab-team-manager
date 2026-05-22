@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "../i18n";
 
 import PageHeader from "../components/ui/PageHeader";
@@ -14,19 +14,59 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { styles } from "../styles/index.js";
 import { createId, formatDate, normalizeAppSettings } from "../utils/helpers";
 
+const MATCH_MODAL_QUERY = "match";
+const MATCH_DRAFT_KEY = "calciolab_match_draft_v1";
+
 function Matches({ matches, setMatches, players = [], appSettings = {} }) {
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
   const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
   const clubLogo = workspaceProfile.logo || "";
   const clubLogoSize = Number(workspaceProfile.logoSize || 100);
   const [confirmState, setConfirmState] = useState(null);
-  const [openModal, setOpenModal] = useState(false);
+  const searchParams = new URLSearchParams(location.search);
+  const openModal = searchParams.get("modal") === MATCH_MODAL_QUERY;
+  const modalEditId = searchParams.get("edit") || "";
+  const modalKeyRef = useRef("");
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyMatch());
+  const [form, setForm] = useState(() => loadMatchDraft(`${MATCH_DRAFT_KEY}:new`, emptyMatch(clubLogo)));
   const [importSummary, setImportSummary] = useState(null);
   const [importPreview, setImportPreview] = useState(null);
+
+  useEffect(() => {
+    if (!openModal) {
+      modalKeyRef.current = "";
+      return;
+    }
+
+    const draftKey = `${MATCH_DRAFT_KEY}:${modalEditId || "new"}`;
+    if (modalKeyRef.current === draftKey) return;
+
+    modalKeyRef.current = draftKey;
+
+    if (modalEditId) {
+      const match = matches.find((item) => String(item.id) === String(modalEditId));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEditingId(modalEditId);
+      setForm(loadMatchDraft(draftKey, match ? matchToForm(match) : emptyMatch(clubLogo)));
+      return;
+    }
+
+    setEditingId(null);
+    setForm(loadMatchDraft(draftKey, emptyMatch(clubLogo)));
+  }, [clubLogo, matches, modalEditId, openModal]);
+
+  useEffect(() => {
+    if (!openModal || !modalKeyRef.current) return;
+    try {
+      localStorage.setItem(modalKeyRef.current, JSON.stringify(form));
+    } catch {
+      /* localStorage can be unavailable in restricted browsers */
+    }
+  }, [form, openModal]);
 
   function handleLogoUpload(field, file) {
     if (!file) return;
@@ -63,42 +103,40 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
       setMatches((prevMatches) => [...prevMatches, payload]);
     }
 
+    clearMatchDraft(editingId || "new");
     setForm(emptyMatch(clubLogo));
-    setEditingId(null);
-    setOpenModal(false);
+    closeMatchModal();
     showToast(editingId ? t("pages.matches.matchUpdated") : t("pages.matches.matchSaved"), "ok");
   }
 
   function editMatch(match) {
-    setEditingId(match.id);
-
-    setForm({
-      opponent: match.opponent || "",
-      date: match.date || new Date().toISOString().slice(0, 10),
-      time: match.time || "",
-      location: match.location || "Casa",
-      result: match.result || "",
-      formation: match.formation || "4-2-3-1",
-      notes: match.notes || "",
-      competition: match.competition || "",
-      matchday: match.matchday || "",
-      venueName: match.venueName || "",
-      venueAddress: match.venueAddress || "",
-      attendance: match.attendance || {},
-      homeLogo: match.homeLogo || "",
-      awayLogo: match.awayLogo || "",
-      lineup: match.lineup || emptyLineup(),
-      matchPlan: match.matchPlan || "",
-      staffNotes: match.staffNotes || "",
-    });
-
-    setOpenModal(true);
+    openMatchModal(match.id);
   }
 
   function openNewMatch() {
+    openMatchModal();
+  }
+
+  function openMatchModal(editId = "") {
+    const params = new URLSearchParams(location.search);
+    params.set("modal", MATCH_MODAL_QUERY);
+    if (editId) params.set("edit", String(editId));
+    else params.delete("edit");
+    navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
+  }
+
+  function closeMatchModal({ resetDraft = false } = {}) {
+    if (resetDraft) clearMatchDraft(editingId || modalEditId || "new");
+    const params = new URLSearchParams(location.search);
+    params.delete("modal");
+    params.delete("edit");
+    const nextSearch = params.toString();
     setEditingId(null);
     setForm(emptyMatch(clubLogo));
-    setOpenModal(true);
+    navigate(
+      { pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : "" },
+      { replace: true }
+    );
   }
 
   function importCalendar(file) {
@@ -390,11 +428,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
       {openModal && (
         <Modal
           title={editingId ? t("pages.matches.editMatch") : t("pages.matches.newMatchTitle")}
-          onClose={() => {
-            setOpenModal(false);
-            setEditingId(null);
-            setForm(emptyMatch(clubLogo));
-          }}
+          onClose={() => closeMatchModal()}
         >
           <div
             style={{
@@ -516,11 +550,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
           >
             <Button
               variant="ghost"
-              onClick={() => {
-                setOpenModal(false);
-                setEditingId(null);
-                setForm(emptyMatch(clubLogo));
-              }}
+              onClick={() => closeMatchModal({ resetDraft: true })}
             >
               {t("common.cancel")}
             </Button>
@@ -754,6 +784,45 @@ function MiniInfo({ label, value }) {
       <strong style={{ lineHeight: 1.2 }}>{value}</strong>
     </div>
   );
+}
+
+function loadMatchDraft(key, fallback) {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? { ...fallback, ...JSON.parse(stored) } : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function clearMatchDraft(id = "new") {
+  try {
+    localStorage.removeItem(`${MATCH_DRAFT_KEY}:${id}`);
+  } catch {
+    /* localStorage can be unavailable in restricted browsers */
+  }
+}
+
+function matchToForm(match) {
+  return {
+    opponent: match.opponent || "",
+    date: match.date || new Date().toISOString().slice(0, 10),
+    time: match.time || "",
+    location: match.location || "Casa",
+    result: match.result || "",
+    formation: match.formation || "4-2-3-1",
+    notes: match.notes || "",
+    competition: match.competition || "",
+    matchday: match.matchday || "",
+    venueName: match.venueName || "",
+    venueAddress: match.venueAddress || "",
+    attendance: match.attendance || {},
+    homeLogo: match.homeLogo || "",
+    awayLogo: match.awayLogo || "",
+    lineup: match.lineup || emptyLineup(),
+    matchPlan: match.matchPlan || "",
+    staffNotes: match.staffNotes || "",
+  };
 }
 
 function emptyMatch(homeLogo = "") {

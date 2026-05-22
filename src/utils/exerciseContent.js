@@ -20,9 +20,14 @@ function svgWrap(inner, label = "") {
 
 function fieldBase() {
   return `<defs>
+  <linearGradient id="fpFieldShade" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#123d25"/>
+    <stop offset="55%" stop-color="#0f3320"/>
+    <stop offset="100%" stop-color="#092416"/>
+  </linearGradient>
   <pattern id="fps" width="30" height="30" patternUnits="userSpaceOnUse">
-    <rect width="30" height="15" fill="#1a3d26"/>
-    <rect y="15" width="30" height="15" fill="#1e4a2d"/>
+    <rect width="30" height="15" fill="rgba(255,255,255,0.035)"/>
+    <rect y="15" width="30" height="15" fill="rgba(0,0,0,0.08)"/>
   </pattern>
   <marker id="fpmP" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
     <path d="M0,0L6,3L0,6Z" fill="#fbbf24"/>
@@ -31,36 +36,52 @@ function fieldBase() {
     <path d="M0,0L6,3L0,6Z" fill="rgba(255,255,255,0.7)"/>
   </marker>
 </defs>
-<rect width="${W}" height="${H}" fill="#0d2818"/>
-<rect width="${W}" height="${H}" fill="url(#fps)" opacity="0.6"/>
-<rect x="16" y="16" width="368" height="248" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" rx="2"/>`;
+<rect width="${W}" height="${H}" fill="url(#fpFieldShade)"/>
+<rect width="${W}" height="${H}" fill="url(#fps)" opacity="0.9"/>
+<rect x="16" y="16" width="368" height="248" fill="none" stroke="rgba(255,255,255,0.24)" stroke-width="1.5" rx="3"/>
+<line x1="200" y1="16" x2="200" y2="264" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+<circle cx="200" cy="140" r="34" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+<circle cx="200" cy="140" r="2.5" fill="rgba(255,255,255,0.32)"/>`;
 }
 
-// Player circle (r=12)
+function playerPalette(team) {
+  return team === "own" ? ["#38bdf8", "#082f49", "#e0f2fe"] :
+    team === "opp" ? ["#fb923c", "#7c2d12", "#fff7ed"] :
+    ["#a3e635", "#365314", "#f7fee7"];
+}
+
+function playerFigure(x, y, lbl, team = "own", scale = 1) {
+  const [shirt, shorts, text] = playerPalette(team);
+  const head = 3.8 * scale;
+  const bodyW = 14 * scale;
+  const leg = 8 * scale;
+  const font = Math.max(6.2, 8.5 * scale);
+  return `<g transform="translate(${x} ${y})">
+    <ellipse cx="0" cy="${6.5 * scale}" rx="${8.5 * scale}" ry="${2.2 * scale}" fill="rgba(0,0,0,0.28)"/>
+    <circle cx="0" cy="${-10 * scale}" r="${head}" fill="#f8d0a8" stroke="rgba(0,0,0,0.25)" stroke-width="${0.8 * scale}"/>
+    <path d="M${-bodyW / 2},${-5 * scale} Q0,${-10 * scale} ${bodyW / 2},${-5 * scale} L${bodyW / 2 - 2 * scale},${7 * scale} Q0,${10 * scale} ${-bodyW / 2 + 2 * scale},${7 * scale}Z" fill="${shirt}" stroke="rgba(0,0,0,0.38)" stroke-width="${0.9 * scale}"/>
+    <path d="M${-bodyW / 2},${-2 * scale} L${-bodyW / 2 - 5 * scale},${4 * scale}" stroke="${shirt}" stroke-width="${2.4 * scale}" stroke-linecap="round"/>
+    <path d="M${bodyW / 2},${-2 * scale} L${bodyW / 2 + 5 * scale},${4 * scale}" stroke="${shirt}" stroke-width="${2.4 * scale}" stroke-linecap="round"/>
+    <path d="M${-3.8 * scale},${7 * scale} L${-6.5 * scale},${leg + 7 * scale}" stroke="${shorts}" stroke-width="${2.8 * scale}" stroke-linecap="round"/>
+    <path d="M${3.8 * scale},${7 * scale} L${6.5 * scale},${leg + 7 * scale}" stroke="${shorts}" stroke-width="${2.8 * scale}" stroke-linecap="round"/>
+    <text x="0" y="${3.8 * scale}" text-anchor="middle" font-size="${font}" font-weight="900" font-family="system-ui,sans-serif" fill="${text}">${lbl}</text>
+  </g>`;
+}
+
 function pl(x, y, lbl, team = "own") {
-  const [fill, tc] =
-    team === "own"  ? ["#38bdf8", "#07192e"] :
-    team === "opp"  ? ["#fb923c", "#3b1400"] :
-                     ["#a3e635", "#1a3008"];
-  return `<circle cx="${x}" cy="${y}" r="12" fill="${fill}" stroke="rgba(0,0,0,0.35)" stroke-width="1"/>` +
-    `<text x="${x}" y="${y+4}" text-anchor="middle" font-size="8.5" font-weight="800" ` +
-    `font-family="system-ui,sans-serif" fill="${tc}">${lbl}</text>`;
+  return playerFigure(x, y, lbl, team, 1);
 }
 
-// Small player (r=9, for crowded drawings)
 function ps(x, y, lbl, team = "own") {
-  const [fill, tc] =
-    team === "own"  ? ["#38bdf8", "#07192e"] :
-    team === "opp"  ? ["#fb923c", "#3b1400"] :
-                     ["#a3e635", "#1a3008"];
-  return `<circle cx="${x}" cy="${y}" r="9" fill="${fill}" stroke="rgba(0,0,0,0.35)" stroke-width="1"/>` +
-    `<text x="${x}" y="${y+3}" text-anchor="middle" font-size="7" font-weight="800" ` +
-    `font-family="system-ui,sans-serif" fill="${tc}">${lbl}</text>`;
+  return playerFigure(x, y, lbl, team, 0.78);
 }
 
 function ball(x, y) {
-  return `<circle cx="${x}" cy="${y}" r="7" fill="#fbbf24" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>` +
-    `<circle cx="${x-2}" cy="${y-2}" r="2" fill="rgba(255,255,255,0.35)"/>`;
+  return `<g transform="translate(${x} ${y})">
+    <circle cx="0" cy="0" r="7.2" fill="#f8fafc" stroke="rgba(0,0,0,0.45)" stroke-width="1"/>
+    <path d="M0,-3.5 L3.2,-1.1 L2,2.8 L-2,2.8 L-3.2,-1.1Z" fill="#111827"/>
+    <path d="M-6,-1.5 L-3.2,-1.1 M6,-1.5 L3.2,-1.1 M-3.8,5 L-2,2.8 M3.8,5 L2,2.8 M0,-7 L0,-3.5" stroke="#111827" stroke-width="0.8" stroke-linecap="round"/>
+  </g>`;
 }
 
 function pass(x1, y1, x2, y2) {
@@ -86,7 +107,11 @@ function zone(x, y, w, h, col = "rgba(255,255,255,0.06)", stroke = "rgba(255,255
 }
 
 function cone(x, y) {
-  return `<polygon points="${x},${y - 8} ${x - 5},${y + 4} ${x + 5},${y + 4}" fill="#f97316" opacity="0.85"/>`;
+  return `<g transform="translate(${x} ${y})">
+    <path d="M0,-9 L-6,5 H6Z" fill="#f97316" stroke="rgba(0,0,0,0.28)" stroke-width="1"/>
+    <path d="M-3,0 H3" stroke="#fed7aa" stroke-width="1.4"/>
+    <rect x="-7" y="5" width="14" height="3" rx="1.5" fill="#c2410c"/>
+  </g>`;
 }
 
 function badge(text) {
@@ -553,7 +578,71 @@ const NAMED_EXERCISES = {
 };
 
 function buildDesc(setup, svolgimento, obiettivo) {
-  return `Setup: ${setup}\nSvolgimento: ${svolgimento}\nObiettivo: ${obiettivo}`;
+  const rules = inferRules(setup, svolgimento, obiettivo);
+  const coaching = inferCoachingPoints(setup, svolgimento, obiettivo);
+  return [
+    `Obiettivo: ${obiettivo}`,
+    `Organizzazione: ${setup}`,
+    `Svolgimento: ${svolgimento}`,
+    `Regole: ${rules}`,
+    `Coaching points: ${coaching}`,
+  ].join("\n");
+}
+
+function textHaystack(...parts) {
+  return parts.filter(Boolean).join(" ").toLowerCase();
+}
+
+function inferRules(setup, svolgimento, obiettivo) {
+  const hay = textHaystack(setup, svolgimento, obiettivo);
+  if (/rondo|torello|possesso|mantenimento/.test(hay)) {
+    return "Sequenze da 3-4 minuti con recupero breve. Limitare i tocchi se il ritmo cala; punto valido solo quando la squadra crea almeno una nuova linea di passaggio dopo la riconquista.";
+  }
+  if (/pressing|riaggressione|recupero entro/.test(hay)) {
+    return "Partire sempre da una situazione realistica. La pressione scatta su trigger codificato; se la squadra recupera palla gioca immediatamente verso una porta o una zona bersaglio.";
+  }
+  if (/finalizzazione|tiro|conclusione|cross/.test(hay)) {
+    return "Rotazioni rapide dopo ogni azione. Conclusione obbligatoria entro pochi secondi dall'ingresso nella zona di rifinitura; correggere la scelta prima ancora dell'esecuzione tecnica.";
+  }
+  if (/fase difensiva|blocco|scaglionamento|compat/.test(hay)) {
+    return "L'azione parte dal mister o da una sponda. Fermare il gioco solo per correzioni collettive: distanze, coperture, orientamento del corpo e comunicazione tra reparti.";
+  }
+  if (/tecnica|conduzione|passaggio|ricezione|slalom/.test(hay)) {
+    return "Qualità prima della velocità nelle prime ripetizioni, poi aumento progressivo del ritmo. Alternare piede forte e piede debole, inserendo vincoli di tocco e direzione.";
+  }
+  if (/resistenza|alta intensità|lattato|fatica/.test(hay)) {
+    return "Blocchi cronometrati con recupero controllato. Mantenere palla e decisione dentro lo sforzo: l'esercizio non deve diventare una corsa senza contenuto calcistico.";
+  }
+  return "Serie brevi e intense, con rotazioni chiare. Il mister può aumentare o ridurre spazio, tocchi e tempi di recupero in base al livello tecnico e all'obiettivo della seduta.";
+}
+
+function inferCoachingPoints(setup, svolgimento, obiettivo) {
+  const hay = textHaystack(setup, svolgimento, obiettivo);
+  if (/rondo|torello|possesso|mantenimento/.test(hay)) {
+    return "orientamento del corpo prima della ricezione; sostegno vicino e appoggio lontano; passaggio sul piede corretto; reazione immediata alla perdita.";
+  }
+  if (/pressing|riaggressione|recupero entro/.test(hay)) {
+    return "trigger condiviso; corsa curva per schermare la linea interna; squadra corta dietro la pressione; primo passaggio verticale dopo il recupero.";
+  }
+  if (/finalizzazione|tiro|conclusione/.test(hay)) {
+    return "smarcamento prima dell'ultimo passaggio; attacco dell'area con tempi diversi; scelta della superficie di tiro; presenza su ribattuta e seconda palla.";
+  }
+  if (/cross|fascia|ampiezza/.test(hay)) {
+    return "qualità del primo controllo dell'esterno; tempi di attacco primo palo, dischetto e secondo palo; scelta tra cross teso, arretrato o sul secondo palo.";
+  }
+  if (/fase difensiva|blocco|scaglionamento|compat/.test(hay)) {
+    return "distanze tra linee; copertura del compagno che esce; postura laterale; comunicazione continua; protezione zona centrale.";
+  }
+  if (/tecnica|conduzione|passaggio|ricezione|slalom/.test(hay)) {
+    return "testa alta tra un tocco e l'altro; primo controllo orientato; ritmo del piede d'appoggio; cambio velocità dopo il gesto tecnico.";
+  }
+  if (/resistenza|alta intensità|lattato|fatica/.test(hay)) {
+    return "intensità realmente misurabile; qualità tecnica sotto fatica; tempi di recupero rispettati; comunicazione anche negli ultimi secondi del blocco.";
+  }
+  if (/palla inattiva|corner|punizione/.test(hay)) {
+    return "codice di chiamata chiaro; tempi di blocco e attacco spazio; coperture preventive; responsabilità individuali su seconda palla.";
+  }
+  return "spaziature corrette; orientamento del corpo; velocità decisionale; comunicazione; transizione immediata al cambio di possesso.";
 }
 
 function generateByPattern(ex) {
@@ -752,6 +841,150 @@ export function generateExerciseObjective(ex) {
   const lines = desc.split("\n");
   const objLine = lines.find(l => l.startsWith("Obiettivo:"));
   return objLine ? objLine.replace("Obiettivo:", "").trim() : ex.objective || "";
+}
+
+export function getExerciseProgressions(ex) {
+  const type = classify(ex);
+  const category = (ex.category || "").toLowerCase();
+  const focus = textHaystack(ex.title, ex.category, ex.objective, ex.goal, ...(ex.tags || []));
+
+  if (["rondo", "possession"].includes(type) || /possesso|torello|rondo/.test(focus)) {
+    return [
+      {
+        level: "Base",
+        title: "Rendere leggibile il possesso",
+        text: "Aumenta leggermente lo spazio, lascia tocchi liberi nelle prime serie e inserisci un solo difendente attivo. L'obiettivo è far emergere angoli di sostegno, postura aperta e passaggio semplice.",
+      },
+      {
+        level: "Intermedio",
+        title: "Vincolare la scelta",
+        text: "Riduci lo spazio, limita a due tocchi e assegna punto solo dopo cambio lato o ricezione del terzo uomo. La squadra deve riconoscere quando mantenere e quando verticalizzare.",
+      },
+      {
+        level: "Avanzato",
+        title: "Stress da gara",
+        text: "Aggiungi transizione immediata: dopo la perdita, cinque secondi per riconquistare; dopo il recupero, uscita obbligatoria su zona o porta bersaglio. Intensità e comunicazione diventano criteri di riuscita.",
+      },
+    ];
+  }
+
+  if (type === "pressing" || /pressing|riaggressione/.test(focus)) {
+    return [
+      {
+        level: "Base",
+        title: "Pressione guidata",
+        text: "Definisci un solo trigger di uscita e lavora senza obbligo di recupero immediato. Cura orientamento della corsa, distanza dal portatore e copertura del compagno dietro.",
+      },
+      {
+        level: "Intermedio",
+        title: "Pressione coordinata",
+        text: "Aggiungi secondo e terzo uomo in pressione, con obiettivo di chiudere una linea interna. La squadra recupera palla e deve giocare subito in avanti.",
+      },
+      {
+        level: "Avanzato",
+        title: "Pressing con transizione reale",
+        text: "Inserisci vincolo temporale di recupero e punteggio doppio se la riconquista porta a conclusione. La linea dietro deve accorciare in modo aggressivo e preventivo.",
+      },
+    ];
+  }
+
+  if (["shooting", "cross", "aerial"].includes(type) || /finalizzazione|tiro|cross|colpo/.test(focus)) {
+    return [
+      {
+        level: "Base",
+        title: "Automatizzare gesto e tempi",
+        text: "Esegui senza opposizione o con difendente passivo. Dai priorità a smarcamento, qualità dell'ultimo passaggio e scelta della superficie di conclusione.",
+      },
+      {
+        level: "Intermedio",
+        title: "Aggiungere lettura",
+        text: "Inserisci un difendente attivo e una seconda opzione di giocata. Il giocatore deve scegliere tra tiro, passaggio, cross arretrato o attacco dello spazio.",
+      },
+      {
+        level: "Avanzato",
+        title: "Finalizzare sotto pressione",
+        text: "Riduci il tempo decisionale, aggiungi transizione difensiva su errore e premia ribattuta o seconda palla. La qualità tecnica deve restare alta anche con fatica.",
+      },
+    ];
+  }
+
+  if (["defensive"].includes(type) || /difensiva|scaglionamento|blocco/.test(focus)) {
+    return [
+      {
+        level: "Base",
+        title: "Distanze e riferimenti",
+        text: "Lavora a velocità controllata, con avversari semi-attivi. Ferma spesso per correggere postura, diagonali, coperture e comunicazione tra linee.",
+      },
+      {
+        level: "Intermedio",
+        title: "Uscite e coperture",
+        text: "Rendi attivo il portatore e chiedi uscite coordinate. Il reparto deve scivolare, coprire la zona centrale e riconoscere quando accorciare o temporeggiare.",
+      },
+      {
+        level: "Avanzato",
+        title: "Difesa in scenario partita",
+        text: "Inserisci cambio lato, attacco profondità e transizione dopo recupero. Valuta non solo il recupero palla, ma anche la qualità della prima scelta successiva.",
+      },
+    ];
+  }
+
+  if (["technical", "combination"].includes(type) || /tecnica|passaggio|combinazione|conduzione/.test(focus)) {
+    return [
+      {
+        level: "Base",
+        title: "Qualità del gesto",
+        text: "Spazio ampio, ritmo controllato e pochi vincoli. Correggi primo controllo, piede d'appoggio, orientamento del corpo e precisione del gesto.",
+      },
+      {
+        level: "Intermedio",
+        title: "Gesto con scelta",
+        text: "Inserisci vincoli di tocco, cambio direzione e segnale visivo. Il giocatore deve eseguire guardando prima dell'azione, non solo seguendo il percorso.",
+      },
+      {
+        level: "Avanzato",
+        title: "Tecnica sotto pressione",
+        text: "Aggiungi avversario attivo o tempo limite. Ogni errore genera transizione o ripartenza avversaria: il gesto tecnico entra dentro un problema di gioco.",
+      },
+    ];
+  }
+
+  if (type === "setpiece" || category === "palle inattive") {
+    return [
+      {
+        level: "Base",
+        title: "Codici e posizioni",
+        text: "Esegui a velocità controllata con ruoli fissi. Ogni giocatore deve conoscere punto di partenza, segnale, corsa e zona di responsabilità.",
+      },
+      {
+        level: "Intermedio",
+        title: "Tempi e opposizione",
+        text: "Inserisci difesa attiva e secondo battitore. Lavora su blocchi, contromovimenti, attacco della seconda palla e coperture preventive.",
+      },
+      {
+        level: "Avanzato",
+        title: "Scenario gara",
+        text: "Alterna chiamate diverse senza preavviso. La squadra deve riconoscere codice, adattarsi alla marcatura e mantenere equilibrio su eventuale ripartenza.",
+      },
+    ];
+  }
+
+  return [
+    {
+      level: "Base",
+      title: "Semplificare spazio e compito",
+      text: "Aumenta lo spazio utile, riduci opposizione e lascia più tempo di scelta. L'obiettivo è far capire il principio prima di alzare velocità e pressione.",
+    },
+    {
+      level: "Intermedio",
+      title: "Avvicinare al modello gara",
+      text: "Aggiungi vincoli di tocchi, direzione o punteggio. Le decisioni devono rispettare il principio della seduta e non solo completare l'esercizio.",
+    },
+    {
+      level: "Avanzato",
+      title: "Portare complessità reale",
+      text: "Inserisci transizioni, punteggio competitivo e tempi di recupero ridotti. Valuta qualità tecnica, comunicazione e capacità di adattamento.",
+    },
+  ];
 }
 
 /**

@@ -11,7 +11,7 @@ import SearchBar from "../components/ui/SearchBar";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { styles } from "../styles/index.js";
 import { TRAINING_BLOCKS, getBlockFromCategory, createId, getCurrentUserRole, isFeatureUnlocked } from "../utils/helpers";
-import { generateExerciseSvg, getExerciseDescription } from "../utils/exerciseContent";
+import { generateExerciseSvg, getExerciseDescription, getExerciseProgressions } from "../utils/exerciseContent";
 import { emptyExercise } from "../data/initialData";
 import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
 import { useTranslation } from "../i18n";
@@ -62,6 +62,7 @@ export default function ExerciseLibrary({
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
+  const detailExerciseId = new URLSearchParams(location.search).get("exerciseId");
 
   // Tab attivo
   const initialTab = new URLSearchParams(location.search).get("tab");
@@ -97,6 +98,7 @@ export default function ExerciseLibrary({
 
   // Lightbox anteprima disegno
   const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [detailExercise, setDetailExercise] = useState(null);
 
   // Ruolo corrente
   const currentRole     = getCurrentUserRole(appSettings);
@@ -156,6 +158,19 @@ export default function ExerciseLibrary({
         .includes(mySearch.toLowerCase())
     ),
   [myExercises, mySearch]);
+
+  useEffect(() => {
+    if (!detailExerciseId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDetailExercise(null);
+      return;
+    }
+
+    const foundExercise = [...catalog, ...myExercises].find((exercise) => String(exercise.id) === String(detailExerciseId));
+    if (foundExercise) {
+      setDetailExercise(foundExercise);
+    }
+  }, [catalog, detailExerciseId, myExercises]);
 
   // ── Reset pagina a 1 quando cambiano filtri ─────────────────────────────────
   useEffect(() => {
@@ -224,6 +239,42 @@ export default function ExerciseLibrary({
     setEditModal(false);
     navigate("/tactical-board", {
       state: { exerciseId: editForm.id, exerciseName: editForm.title },
+    });
+  }
+
+  function openExerciseDetail(exercise) {
+    const params = new URLSearchParams(location.search);
+    params.set("exerciseId", exercise.id);
+    navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
+  }
+
+  function closeExerciseDetail() {
+    const params = new URLSearchParams(location.search);
+    params.delete("exerciseId");
+    const searchString = params.toString();
+    navigate(
+      { pathname: location.pathname, search: searchString ? `?${searchString}` : "" },
+      { replace: true }
+    );
+    setDetailExercise(null);
+  }
+
+  function openExerciseInTraining(exercise) {
+    const block = exercise.trainingBlock || getBlockFromCategory(exercise.category);
+    navigate("/trainings", {
+      state: {
+        draftTraining: {
+          title: exercise.title ? `Seduta - ${exercise.title}` : "Nuova seduta",
+          theme: block || exercise.category || "Tecnica",
+          objective: exercise.objective || exercise.goal || "",
+          exercises: [{
+            exerciseId: exercise.id,
+            customDuration: exercise.duration || 15,
+            customPlayers: exercise.players || "",
+            variantNotes: exercise.variants || "",
+          }],
+        },
+      },
     });
   }
 
@@ -426,19 +477,32 @@ export default function ExerciseLibrary({
                         {(() => {
                           const desc = exDesc(ex);
                           if (!desc) return null;
-                          // Format multi-line description (Setup / Svolgimento / Obiettivo)
+                          // Format multi-line methodology (Obiettivo / Organizzazione / Svolgimento / Regole / Coaching points)
                           const lines = desc.split("\n").filter(Boolean);
                           const isMultiline = lines.length > 1;
                           const renderDesc = isMultiline
-                            ? lines.map((line, i) => {
-                                const [label, ...rest] = line.split(":");
-                                const body = rest.join(":").trim();
-                                return (
-                                  <p key={i} style={{ margin: "0 0 5px", fontSize: 13, color: "#cbd5e1", lineHeight: 1.55 }}>
-                                    <strong style={{ color: "#94a3b8" }}>{label}:</strong> {body}
-                                  </p>
-                                );
-                              })
+                            ? (
+                              <div style={libStyles.methodGrid}>
+                                {lines.map((line, i) => {
+                                  const splitIndex = line.indexOf(":");
+                                  const label = splitIndex >= 0 ? line.slice(0, splitIndex).trim() : "Nota";
+                                  const body = splitIndex >= 0 ? line.slice(splitIndex + 1).trim() : line;
+                                  const isObjective = label.toLowerCase() === "obiettivo";
+                                  return (
+                                    <div
+                                      key={i}
+                                      style={{
+                                        ...libStyles.methodItem,
+                                        ...(isObjective ? libStyles.methodItemPrimary : null),
+                                      }}
+                                    >
+                                      <span style={libStyles.methodLabel}>{label}</span>
+                                      <p style={libStyles.methodText}>{body}</p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )
                             : <p style={{ margin: 0, fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
                                 {isExpanded || desc.length <= 160 ? desc : `${desc.slice(0, 160)}…`}
                               </p>;
@@ -471,6 +535,15 @@ export default function ExerciseLibrary({
                             </p>
                           </div>
                         )}
+
+                        <div style={libStyles.cardActions}>
+                          <Button variant="ghost" onClick={() => openExerciseDetail(ex)}>
+                            Apri scheda
+                          </Button>
+                          <Button variant="ghost" onClick={() => openExerciseInTraining(ex)}>
+                            Usa in seduta
+                          </Button>
+                        </div>
                       </>
                     )}
 
@@ -609,6 +682,15 @@ export default function ExerciseLibrary({
             Clicca per chiudere
           </p>
         </div>
+      )}
+
+      {detailExercise && (
+        <ExerciseDetailModal
+          exercise={detailExercise}
+          onClose={closeExerciseDetail}
+          onUseInTraining={openExerciseInTraining}
+          onOpenLightbox={(src) => setLightboxSrc(src)}
+        />
       )}
 
       {/* ══════════════════ MODAL MODIFICA (owner) ══════════════════ */}
@@ -810,6 +892,142 @@ function InfoChip({ label, value }) {
   );
 }
 
+function parseMethodology(desc = "") {
+  return desc
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const splitIndex = line.indexOf(":");
+      if (splitIndex < 0) return { label: "Nota", body: line };
+      return {
+        label: line.slice(0, splitIndex).trim(),
+        body: line.slice(splitIndex + 1).trim(),
+      };
+    });
+}
+
+function ExerciseDetailModal({ exercise, onClose, onUseInTraining, onOpenLightbox }) {
+  const desc = exDesc(exercise);
+  const sections = parseMethodology(desc);
+  const progressions = getExerciseProgressions(exercise);
+  const svgMarkup = exercise.source === "fp5" ? exImage(exercise) : null;
+  const block = exercise.trainingBlock || getBlockFromCategory(exercise.category);
+  const blockDef = TRAINING_BLOCKS.find((item) => item.id === block);
+  const lightboxSrc = svgMarkup
+    ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`
+    : exercise.image || null;
+
+  return (
+    <Modal title={exercise.title || "Scheda esercizio"} onClose={onClose}>
+      <div style={libStyles.detailShell}>
+        <div style={libStyles.detailHero}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+            {blockDef && <Badge tone={blockDef.color}>{blockDef.icon} {block}</Badge>}
+            {exercise.category && <Badge tone="blue">{exercise.category}</Badge>}
+            {exercise.intensity && (
+              <Badge tone={exercise.intensity === "Alta" ? "red" : exercise.intensity === "Bassa" ? "blue" : "default"}>
+                {exercise.intensity}
+              </Badge>
+            )}
+            {exercise.phase && <Badge tone="default">{exercise.phase}</Badge>}
+          </div>
+          <h2 style={libStyles.detailTitle}>{exercise.title}</h2>
+          <p style={libStyles.detailSubtitle}>
+            {exercise.objective || exercise.goal || "Scheda metodologica pronta per la seduta."}
+          </p>
+          <div style={libStyles.detailActions}>
+            <Button onClick={() => onUseInTraining(exercise)}>Usa in seduta</Button>
+            {lightboxSrc && (
+              <Button variant="ghost" onClick={() => onOpenLightbox(lightboxSrc)}>
+                Ingrandisci diagramma
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div style={libStyles.detailGrid}>
+          <div style={libStyles.detailDiagramCard}>
+            <p style={libStyles.detailSectionKicker}>Diagramma tattico</p>
+            <div style={libStyles.detailDiagram} onClick={() => lightboxSrc && onOpenLightbox(lightboxSrc)}>
+              {exercise.tacticalBoard ? (
+                <TacticalMiniPreview board={exercise.tacticalBoard} height={320} />
+              ) : svgMarkup ? (
+                <div dangerouslySetInnerHTML={{ __html: svgMarkup }} style={{ width: "100%", lineHeight: 0 }} />
+              ) : exercise.image ? (
+                <TacticalMiniPreview imageSrc={exercise.image} height={320} />
+              ) : (
+                <div style={libStyles.detailEmptyDiagram}>Nessun diagramma disponibile</div>
+              )}
+            </div>
+          </div>
+
+          <div style={libStyles.detailSide}>
+            <p style={libStyles.detailSectionKicker}>Dati operativi</p>
+            <div style={libStyles.detailInfoGrid}>
+              {exercise.duration && <InfoChip label="Durata" value={`${exercise.duration} min`} />}
+              {exercise.players && <InfoChip label="Giocatori" value={exercise.players} />}
+              {exercise.fieldSize && <InfoChip label="Campo" value={exercise.fieldSize} />}
+              {exercise.material && <InfoChip label="Materiale" value={exercise.material} />}
+              {exercise.ageGroup && <InfoChip label="Età" value={exercise.ageGroup} />}
+              {exercise.rpe && <InfoChip label="RPE" value={exercise.rpe} />}
+            </div>
+            {(exercise.tags || []).length > 0 && (
+              <div style={libStyles.detailTags}>
+                {(exercise.tags || []).map((tag) => <span key={tag} style={libStyles.tag}>{tag}</span>)}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={libStyles.detailMethodology}>
+          <p style={libStyles.detailSectionKicker}>Scheda tecnica</p>
+          <div style={libStyles.detailMethodGrid}>
+            {sections.map((section, index) => {
+              const isObjective = section.label.toLowerCase() === "obiettivo";
+              return (
+                <div
+                  key={`${section.label}-${index}`}
+                  style={{
+                    ...libStyles.methodItem,
+                    ...(isObjective ? libStyles.methodItemPrimary : null),
+                  }}
+                >
+                  <span style={libStyles.methodLabel}>{section.label}</span>
+                  <p style={libStyles.methodText}>{section.body}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={libStyles.detailProgression}>
+          <p style={libStyles.detailSectionKicker}>Progressione didattica</p>
+          <div style={libStyles.progressionGrid}>
+            {progressions.map((item, index) => (
+              <div key={item.level} style={libStyles.progressionCard}>
+                <div style={libStyles.progressionTop}>
+                  <span style={libStyles.progressionIndex}>{index + 1}</span>
+                  <span style={libStyles.progressionLevel}>{item.level}</span>
+                </div>
+                <h3 style={libStyles.progressionTitle}>{item.title}</h3>
+                <p style={libStyles.progressionText}>{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {exercise.variants && (
+          <div style={libStyles.detailVariant}>
+            <p style={libStyles.detailSectionKicker}>Varianti e progressioni</p>
+            <p style={{ margin: 0, color: "#cbd5e1", lineHeight: 1.6, fontSize: 14 }}>{exercise.variants}</p>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function Field({ label, children }) {
   return (
     <label style={{ display: "grid", gap: 5 }}>
@@ -987,6 +1205,44 @@ const libStyles = {
     gap: 8,
     marginTop: 12,
   },
+  cardActions: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 14,
+    paddingTop: 12,
+    borderTop: "1px solid rgba(255,255,255,0.07)",
+  },
+  methodGrid: {
+    display: "grid",
+    gap: 8,
+  },
+  methodItem: {
+    padding: "9px 11px",
+    borderRadius: 10,
+    background: "rgba(15,23,42,0.62)",
+    border: "1px solid rgba(148,163,184,0.12)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+  },
+  methodItemPrimary: {
+    background: "linear-gradient(135deg, rgba(56,189,248,0.14), rgba(15,23,42,0.72))",
+    border: "1px solid rgba(56,189,248,0.22)",
+  },
+  methodLabel: {
+    display: "block",
+    marginBottom: 4,
+    fontSize: 10,
+    fontWeight: 900,
+    letterSpacing: 0,
+    color: "#7dd3fc",
+    textTransform: "uppercase",
+  },
+  methodText: {
+    margin: 0,
+    fontSize: 13,
+    color: "#cbd5e1",
+    lineHeight: 1.55,
+  },
   variantBox: {
     marginTop: 10,
     padding: "10px 14px",
@@ -1009,5 +1265,158 @@ const libStyles = {
     fontSize: 12,
     cursor: "pointer",
     padding: 0,
+  },
+  detailShell: {
+    display: "grid",
+    gap: 18,
+    maxWidth: 1100,
+  },
+  detailHero: {
+    padding: "18px 18px 16px",
+    borderRadius: 16,
+    background: "linear-gradient(135deg, rgba(14,165,233,0.16), rgba(15,23,42,0.88))",
+    border: "1px solid rgba(56,189,248,0.22)",
+  },
+  detailTitle: {
+    margin: "0 0 8px",
+    color: "#f8fafc",
+    fontSize: 28,
+    lineHeight: 1.1,
+    letterSpacing: 0,
+  },
+  detailSubtitle: {
+    margin: 0,
+    color: "#cbd5e1",
+    lineHeight: 1.55,
+    fontSize: 15,
+    maxWidth: 820,
+  },
+  detailActions: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+    marginTop: 16,
+  },
+  detailGrid: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1.35fr) minmax(260px, 0.65fr)",
+    gap: 16,
+  },
+  detailDiagramCard: {
+    padding: 14,
+    borderRadius: 16,
+    background: "rgba(15,23,42,0.72)",
+    border: "1px solid rgba(148,163,184,0.14)",
+  },
+  detailDiagram: {
+    borderRadius: 14,
+    overflow: "hidden",
+    background: "#0f2518",
+    cursor: "zoom-in",
+  },
+  detailEmptyDiagram: {
+    minHeight: 260,
+    display: "grid",
+    placeItems: "center",
+    color: "#64748b",
+    border: "1px dashed rgba(148,163,184,0.25)",
+    borderRadius: 14,
+  },
+  detailSide: {
+    padding: 14,
+    borderRadius: 16,
+    background: "rgba(15,23,42,0.72)",
+    border: "1px solid rgba(148,163,184,0.14)",
+    alignSelf: "start",
+  },
+  detailInfoGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(112px, 1fr))",
+    gap: 8,
+  },
+  detailTags: {
+    display: "flex",
+    gap: 6,
+    flexWrap: "wrap",
+    marginTop: 12,
+  },
+  detailMethodology: {
+    padding: 14,
+    borderRadius: 16,
+    background: "rgba(15,23,42,0.72)",
+    border: "1px solid rgba(148,163,184,0.14)",
+  },
+  detailMethodGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: 10,
+  },
+  detailVariant: {
+    padding: 14,
+    borderRadius: 16,
+    background: "rgba(251,191,36,0.07)",
+    border: "1px solid rgba(251,191,36,0.2)",
+  },
+  detailProgression: {
+    padding: 14,
+    borderRadius: 16,
+    background: "rgba(15,23,42,0.72)",
+    border: "1px solid rgba(148,163,184,0.14)",
+  },
+  progressionGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 10,
+  },
+  progressionCard: {
+    padding: 13,
+    borderRadius: 14,
+    background: "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(15,23,42,0.72))",
+    border: "1px solid rgba(255,255,255,0.09)",
+    minHeight: 158,
+  },
+  progressionTop: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 9,
+  },
+  progressionIndex: {
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(56,189,248,0.15)",
+    border: "1px solid rgba(56,189,248,0.25)",
+    color: "#7dd3fc",
+    fontSize: 12,
+    fontWeight: 950,
+  },
+  progressionLevel: {
+    color: "#f8fafc",
+    fontSize: 12,
+    fontWeight: 900,
+    textTransform: "uppercase",
+  },
+  progressionTitle: {
+    margin: "0 0 7px",
+    color: "#e2e8f0",
+    fontSize: 15,
+    lineHeight: 1.25,
+  },
+  progressionText: {
+    margin: 0,
+    color: "#94a3b8",
+    fontSize: 13,
+    lineHeight: 1.55,
+  },
+  detailSectionKicker: {
+    margin: "0 0 10px",
+    color: "#7dd3fc",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
   },
 };

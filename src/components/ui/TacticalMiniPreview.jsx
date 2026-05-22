@@ -3,6 +3,40 @@
  * Renderizza una mini anteprima SVG della lavagna tattica.
  * Accetta `board` (oggetto tacticalBoard) oppure `imageSrc` (stringa base64 SVG/PNG).
  */
+function MiniPlayerFigure({ x, y, number, isOpponent }) {
+  const shirt = isOpponent ? "#ef4444" : "#38bdf8";
+  const shorts = isOpponent ? "#7f1d1d" : "#075985";
+  const text = isOpponent ? "#fff1f2" : "#f0f9ff";
+
+  return (
+    <g transform={`translate(${x} ${y}) scale(0.22)`}>
+      <ellipse cx="0" cy="18" rx="12" ry="3" fill="rgba(0,0,0,0.3)" />
+      <circle cx="0" cy="-18" r="5" fill="#f7c59f" stroke="rgba(15,23,42,0.4)" strokeWidth="1" />
+      <path
+        d="M-11 -8 Q0 -16 11 -8 L9 8 Q0 12 -9 8Z"
+        fill={shirt}
+        stroke="rgba(15,23,42,0.5)"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path d="M-10 -5 L-18 2 M10 -5 L18 2" stroke={shirt} strokeWidth="4" strokeLinecap="round" />
+      <path d="M-4 8 L-8 20 M4 8 L8 20" stroke={shorts} strokeWidth="4.2" strokeLinecap="round" />
+      <text
+        x="0"
+        y="1"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="12"
+        fontWeight="950"
+        fontFamily="system-ui,sans-serif"
+        fill={text}
+      >
+        {number || ""}
+      </text>
+    </g>
+  );
+}
+
 export default function TacticalMiniPreview({ board = null, imageSrc = null, height = 160 }) {
   // Preferisce l'immagine statica SVG se presente e il board è vuoto
   if (!board && imageSrc) {
@@ -74,22 +108,9 @@ export default function TacticalMiniPreview({ board = null, imageSrc = null, hei
         {boardPlayers.map((p) => {
           const cx = p.x;
           const cy = (p.y / 100) * H;
-          const isOwn = p.team !== "opp";
+          const isOpponent = p.team === "opponent" || p.team === "opp";
           return (
-            <g key={p.id}>
-              <circle cx={cx} cy={cy} r={2.6} fill={isOwn ? "#38bdf8" : "#f87171"} stroke="white" strokeWidth={0.4} />
-              <text
-                x={cx}
-                y={cy + 0.9}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize={1.8}
-                fill="white"
-                fontWeight="bold"
-              >
-                {p.number || ""}
-              </text>
-            </g>
+            <MiniPlayerFigure key={p.id} x={cx} y={cy} number={p.number} isOpponent={isOpponent} />
           );
         })}
       </svg>

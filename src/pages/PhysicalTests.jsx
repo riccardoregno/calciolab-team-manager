@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -14,6 +15,8 @@ import { useAppSettings } from "../hooks/useAppSettings";
 import { useTranslation } from "../i18n";
 
 const GROUP_TONE = { "Gruppo A": "green", "Gruppo B": "blue", "Gruppo C": "orange", "Gruppo D": "red", "Da testare": "purple" };
+const PHYSICAL_TEST_MODAL = "physical-test";
+const PHYSICAL_TEST_DRAFT_KEY = "calciolab_physical_test_draft_v1";
 
 function emptyForm(playerId = "") {
   return {
@@ -22,6 +25,23 @@ function emptyForm(playerId = "") {
     gaconLevel: "", yoYo: "", sprint10m: "", sprint30m: "",
     jumpCm: "", weight: "", bodyFat: "", agility: "", restingHR: "", height: "", notes: "",
   };
+}
+
+function loadPhysicalTestDraft(key, fallback) {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? { ...fallback, ...JSON.parse(stored) } : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function clearPhysicalTestDraft(id = "new") {
+  try {
+    localStorage.removeItem(`${PHYSICAL_TEST_DRAFT_KEY}:${id}`);
+  } catch {
+    /* localStorage can be unavailable in restricted browsers */
+  }
 }
 
 // ─── BMI ──────────────────────────────────────
@@ -220,6 +240,13 @@ export default function PhysicalTests({
 
   const { t } = useTranslation();
   const { showToast, ToastContainer } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const searchParams = new URLSearchParams(location.search);
+  const isTestModalOpen = searchParams.get("modal") === PHYSICAL_TEST_MODAL;
+  const modalPlayerId = searchParams.get("playerId") || "";
+  const modalTestId = searchParams.get("testId") || "";
+  const modalKeyRef = useRef("");
   // FIX #13: memoizzato via hook
   const settings = useAppSettings(appSettings);
   const METRICS  = settings.physicalMetrics.filter((m) => m.enabled);
@@ -241,16 +268,65 @@ export default function PhysicalTests({
     return map;
   }, [players, physicalTests]);
 
+  useEffect(() => {
+    if (!isTestModalOpen) {
+      modalKeyRef.current = "";
+      return;
+    }
+
+    const keyId = modalTestId || modalPlayerId || "new";
+    const key = `${PHYSICAL_TEST_DRAFT_KEY}:${keyId}`;
+    if (modalKeyRef.current === key) return;
+    modalKeyRef.current = key;
+
+    if (modalTestId) {
+      const test = physicalTests.find((item) => String(item.id) === String(modalTestId));
+      if (!test) return;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setModal(loadPhysicalTestDraft(key, { mode: "edit", testId: test.id, form: { ...test } }));
+      return;
+    }
+
+    setModal(loadPhysicalTestDraft(key, { mode: "add", form: emptyForm(String(modalPlayerId)) }));
+  }, [isTestModalOpen, modalPlayerId, modalTestId, physicalTests]);
+
+  useEffect(() => {
+    if (!isTestModalOpen || !modal || !modalKeyRef.current) return;
+    try {
+      localStorage.setItem(modalKeyRef.current, JSON.stringify(modal));
+    } catch {
+      /* localStorage can be unavailable in restricted browsers */
+    }
+  }, [isTestModalOpen, modal]);
+
   // ── Modal helpers ─────────────────────────
   function openAdd(playerId) {
-    setModal({ mode: "add", form: emptyForm(String(playerId)) });
+    const params = new URLSearchParams(location.search);
+    params.set("modal", PHYSICAL_TEST_MODAL);
+    params.set("playerId", String(playerId));
+    params.delete("testId");
+    navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
   }
 
   function openEdit(test) {
-    setModal({ mode: "edit", testId: test.id, form: { ...test } });
+    const params = new URLSearchParams(location.search);
+    params.set("modal", PHYSICAL_TEST_MODAL);
+    params.set("testId", String(test.id));
+    params.delete("playerId");
+    navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
   }
 
-  function closeModal() { setModal(null); }
+  function closeModal({ resetDraft = false } = {}) {
+    const draftId = modal?.testId || modal?.form?.playerId || modalTestId || modalPlayerId || "new";
+    if (resetDraft) clearPhysicalTestDraft(draftId);
+    const params = new URLSearchParams(location.search);
+    params.delete("modal");
+    params.delete("playerId");
+    params.delete("testId");
+    const search = params.toString();
+    setModal(null);
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : "" }, { replace: true });
+  }
 
   function saveTest() {
     const f = modal.form;
@@ -263,6 +339,7 @@ export default function PhysicalTests({
     } else {
       setPhysicalTests((prevTests) => [...prevTests, { ...f, id: createId("pt") }]);
     }
+    clearPhysicalTestDraft(modal.testId || f.playerId || "new");
     closeModal();
   }
 
@@ -570,13 +647,13 @@ export default function PhysicalTests({
 
       {/* ── MODAL AGGIUNGI / MODIFICA ── */}
       {modal && (
-        <div style={pt.overlay} onClick={closeModal}>
+        <div style={pt.overlay} onClick={() => closeModal()}>
           <div style={pt.modalBox} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2 }}>
                 {modal.mode === "edit" ? t("pages.physicalTests.modalEditTitle") : t("pages.physicalTests.modalAddTitle")}
               </h3>
-              <button onClick={closeModal} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 22, cursor: "pointer" }}>×</button>
+              <button onClick={() => closeModal()} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 22, cursor: "pointer" }}>×</button>
             </div>
 
             <div style={{ display: "grid", gap: 14 }}>
@@ -662,7 +739,7 @@ export default function PhysicalTests({
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-              <Button variant="ghost" onClick={closeModal}>{t("pages.physicalTests.cancel")}</Button>
+              <Button variant="ghost" onClick={() => closeModal({ resetDraft: true })}>{t("pages.physicalTests.cancel")}</Button>
               <Button onClick={saveTest}>{modal.mode === "edit" ? t("pages.physicalTests.updateTest") : t("pages.physicalTests.saveTest")}</Button>
             </div>
           </div>

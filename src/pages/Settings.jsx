@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { Eye, EyeOff } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTabState } from "../hooks/useTabState";
 
 import AppCard from "../components/ui/AppCard";
@@ -30,6 +30,27 @@ const TABS = [
   { key: "club",          labelKey: "pages.settings.clubProfile" },
   { key: "notifications", labelKey: "pages.settings.notifications" },
 ];
+
+const INVITE_MEMBER_MODAL = "invite-member";
+const INVITE_MEMBER_DRAFT_KEY = "calciolab_invite_member_draft_v1";
+const EMPTY_INVITE_FORM = { email: "", name: "", role: "assistantCoach", customAreas: {} };
+
+function loadInviteMemberDraft() {
+  try {
+    const stored = localStorage.getItem(INVITE_MEMBER_DRAFT_KEY);
+    return stored ? { ...EMPTY_INVITE_FORM, ...JSON.parse(stored) } : EMPTY_INVITE_FORM;
+  } catch {
+    return EMPTY_INVITE_FORM;
+  }
+}
+
+function clearInviteMemberDraft() {
+  try {
+    localStorage.removeItem(INVITE_MEMBER_DRAFT_KEY);
+  } catch {
+    /* localStorage can be unavailable in restricted browsers */
+  }
+}
 
 const widgetLabelKeys = {
   hero:             "pages.settings.introOperational",
@@ -694,16 +715,44 @@ const DEFAULT_WORKSPACE_PROFILE = {
 function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], sessions = [], matches = [] }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const inviteModal = new URLSearchParams(location.search).get("modal") === INVITE_MEMBER_MODAL;
   const settings = normalizeAppSettings(appSettings) || {};
   const rawProfile = settings.workspaceProfile || {};
   const [profile, setProfile] = useState({ ...DEFAULT_WORKSPACE_PROFILE, ...rawProfile });
-  const [inviteModal, setInviteModal] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ email: "", name: "", role: "assistantCoach", customAreas: {} });
+  const [inviteForm, setInviteForm] = useState(() => loadInviteMemberDraft());
   const [showCustomPerms, setShowCustomPerms] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
 
   // Genera (o recupera) il token invito del team
   const inviteToken = settings.inviteToken || null;
+
+  useEffect(() => {
+    if (!inviteModal) return;
+    try {
+      localStorage.setItem(INVITE_MEMBER_DRAFT_KEY, JSON.stringify(inviteForm));
+    } catch {
+      /* localStorage can be unavailable in restricted browsers */
+    }
+  }, [inviteForm, inviteModal]);
+
+  function openInviteModal() {
+    const params = new URLSearchParams(location.search);
+    params.set("modal", INVITE_MEMBER_MODAL);
+    navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
+  }
+
+  function closeInviteModal({ resetDraft = false } = {}) {
+    if (resetDraft) {
+      clearInviteMemberDraft();
+      setInviteForm(EMPTY_INVITE_FORM);
+      setShowCustomPerms(false);
+    }
+    const params = new URLSearchParams(location.search);
+    params.delete("modal");
+    const search = params.toString();
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : "" }, { replace: true });
+  }
 
   function generateInviteToken() {
     const token = createId("invite").replace("invite-", "");
@@ -743,9 +792,10 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
     };
     const currentInvites = settings.pendingInvites || [];
     setAppSettings?.({ ...settings, pendingInvites: [...currentInvites, pending] });
-    setInviteForm({ email: "", name: "", role: "assistantCoach", customAreas: {} });
+    setInviteForm(EMPTY_INVITE_FORM);
     setShowCustomPerms(false);
-    setInviteModal(false);
+    clearInviteMemberDraft();
+    closeInviteModal();
     // TODO go-live: chiamare Edge Function che invia l'email con il link
   }
 
@@ -990,7 +1040,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
             >
               {inviteCopied ? t("pages.settings.clubLinkCopied") : t("pages.settings.clubCopyLink")}
             </button>
-            <Button onClick={() => setInviteModal(true)}>
+            <Button onClick={openInviteModal}>
               {t("pages.settings.clubBtnInvite")}
             </Button>
           </div>
@@ -1113,7 +1163,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
 
       {/* ── Modale invito ── */}
       {inviteModal && (
-        <div style={inviteStyles.overlay} onClick={() => setInviteModal(false)}>
+        <div style={inviteStyles.overlay} onClick={() => closeInviteModal()}>
           <div style={inviteStyles.modal} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: "0 0 6px", fontSize: 18 }}>{t("pages.settings.clubModalTitle")}</h3>
             <p style={{ color: "#94a3b8", margin: "0 0 20px", fontSize: 13, lineHeight: 1.5 }}>
@@ -1199,7 +1249,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
               </div>
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-                <button type="button" onClick={() => setInviteModal(false)} style={inviteStyles.cancelBtn}>
+                <button type="button" onClick={() => closeInviteModal({ resetDraft: true })} style={inviteStyles.cancelBtn}>
                   {t("pages.settings.clubBtnCancel")}
                 </button>
                 <Button type="submit">{t("pages.settings.clubBtnSendInvite")}</Button>

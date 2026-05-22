@@ -698,7 +698,7 @@ const compactInput = {
 // ─── Componente principale ────────────────────────────────────────────────────
 export default function SetPlays({ players = [], setPlays = {}, setSetPlays, appSettings = {} }) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useTabState("tab", "corners");
+  const [activeTab] = useTabState("tab", "corners");
   const [activeView, setActiveView] = useTabState("view", "all");
   const [, setSearchParams] = useSearchParams();
   const [presetNames, setPresetNames] = useState({});

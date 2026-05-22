@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "../i18n";
 
 import PageHeader from "../components/ui/PageHeader";
@@ -18,6 +18,27 @@ import { emptyPlayer } from "../data/initialData";
 import { createId, isBirthdayToday, getTeamAverageAge } from "../utils/helpers";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
+const PLAYER_MODAL_QUERY = "new-player";
+const NEW_PLAYER_DRAFT_KEY = "calciolab_new_player_draft_v1";
+
+function getEmptyPlayerForm(gruppoFilter = "tutti") {
+  return {
+    ...emptyPlayer(),
+    firstName: "",
+    lastName: "",
+    status: "Disponibile",
+    gruppo: gruppoFilter !== "tutti" ? gruppoFilter : "prima",
+  };
+}
+
+function loadNewPlayerDraft(fallback) {
+  try {
+    const stored = localStorage.getItem(NEW_PLAYER_DRAFT_KEY);
+    return stored ? { ...fallback, ...JSON.parse(stored) } : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 function Players({ players, setPlayers }) {
   const { t } = useTranslation();
@@ -29,21 +50,25 @@ function Players({ players, setPlayers }) {
     esordienti:   t("pages.players.groupEsordienti"),
   };
   const location = useLocation();
+  const navigate = useNavigate();
   const urlGruppo = new URLSearchParams(location.search).get("gruppo") || "tutti";
+  const openModal = new URLSearchParams(location.search).get("modal") === PLAYER_MODAL_QUERY;
 
   const { showToast, ToastContainer } = useToast();
   const [confirmState, setConfirmState] = useState(null);
   const [search, setSearch] = useState("");
   const [gruppoFilter, setGruppoFilter] = useState(urlGruppo);
-  const [openModal, setOpenModal] = useState(false);
 
-  const [form, setForm] = useState({
-    ...emptyPlayer(),
-    firstName: "",
-    lastName: "",
-    status: "Disponibile",
-    gruppo: gruppoFilter !== "tutti" ? gruppoFilter : "prima",
-  });
+  const [form, setForm] = useState(() => loadNewPlayerDraft(getEmptyPlayerForm(urlGruppo)));
+
+  useEffect(() => {
+    if (!openModal) return;
+    try {
+      localStorage.setItem(NEW_PLAYER_DRAFT_KEY, JSON.stringify(form));
+    } catch {
+      /* localStorage can be unavailable in restricted browsers */
+    }
+  }, [form, openModal]);
 
   // Birthday players (today)
   const birthdayPlayers = players.filter((p) => isBirthdayToday(p.birthDate));
@@ -87,6 +112,30 @@ function Players({ players, setPlayers }) {
     reader.readAsDataURL(file);
   }
 
+  function openNewPlayerModal() {
+    const params = new URLSearchParams(location.search);
+    params.set("modal", PLAYER_MODAL_QUERY);
+    navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
+  }
+
+  function closeNewPlayerModal({ resetDraft = false } = {}) {
+    const params = new URLSearchParams(location.search);
+    params.delete("modal");
+    if (resetDraft) {
+      try {
+        localStorage.removeItem(NEW_PLAYER_DRAFT_KEY);
+      } catch {
+        /* localStorage can be unavailable in restricted browsers */
+      }
+      setForm(getEmptyPlayerForm(gruppoFilter));
+    }
+    const searchString = params.toString();
+    navigate(
+      { pathname: location.pathname, search: searchString ? `?${searchString}` : "" },
+      { replace: true }
+    );
+  }
+
   // CRITICO fix: rimossi insert/delete Supabase diretti con schema flat (user_id, first_name, ...).
   // Quegli insert bypassavano useTeamData e usavano un schema diverso da { id, team_id, data }.
   // Ora usiamo setPlayers() — la persistenza Supabase avviene tramite useTeamData con schema corretto.
@@ -113,15 +162,15 @@ function Players({ players, setPlayers }) {
 
     setPlayers((prevPlayers) => [...prevPlayers, newPlayer]);
 
-    setForm({
-      ...emptyPlayer(),
-      firstName: "",
-      lastName:  "",
-      status:    "Disponibile",
-      gruppo:    gruppoFilter !== "tutti" ? gruppoFilter : "prima",
-    });
+    try {
+      localStorage.removeItem(NEW_PLAYER_DRAFT_KEY);
+    } catch {
+      /* localStorage can be unavailable in restricted browsers */
+    }
 
-    setOpenModal(false);
+    setForm(getEmptyPlayerForm(gruppoFilter));
+
+    closeNewPlayerModal();
     showToast(t("pages.players.playerAdded"), "ok");
   }
 
@@ -145,7 +194,7 @@ function Players({ players, setPlayers }) {
       <PageHeader
         title={t("pages.players.title")}
         subtitle={t("pages.players.subtitle")}
-        action={<Button onClick={() => setOpenModal(true)}>{t("pages.players.newPlayer")}</Button>}
+        action={<Button onClick={openNewPlayerModal}>{t("pages.players.newPlayer")}</Button>}
       />
 
       {birthdayPlayers.length > 0 && (
@@ -241,7 +290,7 @@ function Players({ players, setPlayers }) {
       )}
 
       {openModal && (
-        <Modal title={t("pages.players.modalTitle")} onClose={() => setOpenModal(false)}>
+        <Modal title={t("pages.players.modalTitle")} onClose={() => closeNewPlayerModal()}>
           <div
             style={{
               display: "grid",
@@ -343,7 +392,7 @@ function Players({ players, setPlayers }) {
               gap: 12,
             }}
           >
-            <Button variant="ghost" onClick={() => setOpenModal(false)}>
+            <Button variant="ghost" onClick={() => closeNewPlayerModal({ resetDraft: true })}>
               {t("common.cancel")}
             </Button>
 

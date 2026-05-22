@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
@@ -35,6 +35,9 @@ const DIFFERENTIATED_WORK_TYPES = [
 ];
 
 const UNAVAILABLE = STATUS_OPTIONS.map((s) => s.value);
+const AVAILABILITY_DRAFT_KEY = "calciolab_availability_draft_v1";
+const AVAILABILITY_MODAL = "medical";
+const RECOVERY_MODAL = "recovery";
 
 const PREVENTION_CARDS = [
   {
@@ -96,6 +99,23 @@ function emptyForm(players) {
   };
 }
 
+function loadAvailabilityDraft(key, fallback) {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? { ...fallback, ...JSON.parse(stored) } : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function clearAvailabilityDraft(id = "new") {
+  try {
+    localStorage.removeItem(`${AVAILABILITY_DRAFT_KEY}:${id}`);
+  } catch {
+    /* localStorage can be unavailable in restricted browsers */
+  }
+}
+
 // Calcola sedute e partite saltate tra due date
 function calcMissed(startDate, endDate, sessions, matches) {
   if (!startDate || !endDate) return { sessionsMissed: 0, matchesMissed: 0 };
@@ -126,13 +146,17 @@ export default function Availability({
   players = [], setPlayers, sessions = [], matches = [] }) {
 
   const { t } = useTranslation();
+  const location = useLocation();
   const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
-  const [openModal, setOpenModal]       = useState(false);
+  const searchParams = new URLSearchParams(location.search);
+  const openModal = searchParams.get("modal") === AVAILABILITY_MODAL;
+  const editingPlayerParam = searchParams.get("playerId") || "";
+  const recoveryPlayerId = searchParams.get("modal") === RECOVERY_MODAL ? searchParams.get("playerId") : null;
+  const modalKeyRef = useRef("");
   const [editingPlayerId, setEditingPlayerId] = useState(null);
-  const [form, setForm]                 = useState(() => emptyForm(players));
+  const [form, setForm]                 = useState(() => loadAvailabilityDraft(`${AVAILABILITY_DRAFT_KEY}:new`, emptyForm(players)));
   const [historyPlayerId, setHistoryPlayerId] = useState(null);
-  const [recoveryPlayerId, setRecoveryPlayerId] = useState(null);
   const [recoveryDate, setRecoveryDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const injuredPlayers = players.filter((p) => UNAVAILABLE.includes(p.status || "Disponibile"));
@@ -147,30 +171,75 @@ export default function Availability({
     ? Math.max(0, Math.floor((new Date(recoveryDate) - new Date(recoveryStartDate)) / 86400000))
     : 0;
 
+  useEffect(() => {
+    if (!openModal) {
+      modalKeyRef.current = "";
+      return;
+    }
+    const key = `${AVAILABILITY_DRAFT_KEY}:${editingPlayerParam || "new"}`;
+    if (modalKeyRef.current === key) return;
+    modalKeyRef.current = key;
+
+    if (editingPlayerParam) {
+      const player = players.find((p) => String(p.id) === String(editingPlayerParam));
+      if (!player) return;
+      const active = (player.injuries || []).find((i) => !i.endDate);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEditingPlayerId(player.id);
+      setForm(loadAvailabilityDraft(key, {
+        playerId: player.id,
+        status: player.status || "Infortunato",
+        injuryType: active?.injuryType || player.injuryType || "",
+        differentiatedType: player.status === "Differenziato"
+          ? active?.differentiatedType || player.differentiatedType || DIFFERENTIATED_WORK_TYPES[0]
+          : "",
+        injuryStartDate: active?.startDate || player.injuryStartDate || new Date().toISOString().slice(0, 10),
+        expectedReturn: player.expectedReturn || "",
+        notes: active?.notes || player.injuryNotes || "",
+      }));
+      return;
+    }
+
+    setEditingPlayerId(null);
+    setForm(loadAvailabilityDraft(key, emptyForm(players)));
+  }, [editingPlayerParam, openModal, players]);
+
+  useEffect(() => {
+    if (!openModal || !modalKeyRef.current) return;
+    try {
+      localStorage.setItem(modalKeyRef.current, JSON.stringify(form));
+    } catch {
+      /* localStorage can be unavailable in restricted browsers */
+    }
+  }, [form, openModal]);
+
   // ── Apri modal aggiungi
   function openAdd() {
-    setEditingPlayerId(null);
-    setForm(emptyForm(players));
-    setOpenModal(true);
+    openAvailabilityModal();
   }
 
   // ── Apri modal modifica infortunio attivo
   function openEdit(player) {
-    setEditingPlayerId(player.id);
-    // Trova l'infortunio attivo (senza endDate)
-    const active = (player.injuries || []).find((i) => !i.endDate);
-    setForm({
-      playerId:        player.id,
-      status:          player.status || "Infortunato",
-      injuryType:      active?.injuryType || player.injuryType || "",
-      differentiatedType: player.status === "Differenziato"
-        ? active?.differentiatedType || player.differentiatedType || DIFFERENTIATED_WORK_TYPES[0]
-        : "",
-      injuryStartDate: active?.startDate  || player.injuryStartDate || new Date().toISOString().slice(0, 10),
-      expectedReturn:  player.expectedReturn || "",
-      notes:           active?.notes || player.injuryNotes || "",
-    });
-    setOpenModal(true);
+    openAvailabilityModal(player.id);
+  }
+
+  function openAvailabilityModal(playerId = "") {
+    const params = new URLSearchParams(location.search);
+    params.set("modal", AVAILABILITY_MODAL);
+    if (playerId) params.set("playerId", String(playerId));
+    else params.delete("playerId");
+    navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
+  }
+
+  function closeAvailabilityModal({ resetDraft = false } = {}) {
+    if (resetDraft) clearAvailabilityDraft(editingPlayerId || editingPlayerParam || "new");
+    const params = new URLSearchParams(location.search);
+    params.delete("modal");
+    params.delete("playerId");
+    const search = params.toString();
+    setEditingPlayerId(null);
+    setForm(emptyForm(players));
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : "" }, { replace: true });
   }
 
   // ── Salva infortunio (nuovo o modifica)
@@ -240,16 +309,24 @@ export default function Availability({
       }
     }));
 
-    setOpenModal(false);
+    clearAvailabilityDraft(editingPlayerId || editingPlayerParam || "new");
+    closeAvailabilityModal();
   }
 
   function openRecovery(player) {
-    setRecoveryPlayerId(player.id);
+    const params = new URLSearchParams(location.search);
+    params.set("modal", RECOVERY_MODAL);
+    params.set("playerId", String(player.id));
+    navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
     setRecoveryDate(new Date().toISOString().slice(0, 10));
   }
 
   function closeRecovery() {
-    setRecoveryPlayerId(null);
+    const params = new URLSearchParams(location.search);
+    params.delete("modal");
+    params.delete("playerId");
+    const search = params.toString();
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : "" }, { replace: true });
   }
 
   // ── Segna rientro: chiude l'infortunio attivo e aggiorna lo storico
@@ -506,7 +583,7 @@ export default function Availability({
       {openModal && (
         <Modal
           title={editingPlayerId ? t("pages.availability.modalEditTitle") : t("pages.availability.modalAddTitle")}
-          onClose={() => setOpenModal(false)}
+          onClose={() => closeAvailabilityModal()}
         >
           <div style={{ display: "grid", gap: 14 }}>
             {!editingPlayerId && (
@@ -591,7 +668,7 @@ export default function Availability({
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-            <Button variant="ghost" onClick={() => setOpenModal(false)}>{t("pages.availability.btnCancel")}</Button>
+            <Button variant="ghost" onClick={() => closeAvailabilityModal({ resetDraft: true })}>{t("pages.availability.btnCancel")}</Button>
             <Button onClick={saveInjury}>{editingPlayerId ? t("pages.availability.btnUpdate") : t("pages.availability.btnAddInj")}</Button>
           </div>
         </Modal>
