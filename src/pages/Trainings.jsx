@@ -655,7 +655,7 @@ function Trainings({
           )}
         </div>
 
-       <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
+       <div className="no-print" style={{ display: "grid", gap: 20, minWidth: 0 }}>
   <AppCard>
     <div style={trainingStyles.stepHeader}>
       <span style={trainingStyles.stepBadge}>3</span>
@@ -757,7 +757,7 @@ function Trainings({
         </div>
       </div>
 
-      <div style={{ marginTop: 28 }}>
+      <div className="no-print" style={{ marginTop: 28 }}>
         <AppCard>
           <div
             style={{

@@ -18,6 +18,15 @@ const ROLE_LABEL = {
   Attaccante:     { short: "ATT", tone: "red" },
 };
 
+// Maps Italian DB role values → i18n keys for the print template group headers
+const ROLE_I18N_KEY = {
+  Portiere:       "pages.matchConvocation.rolePortiere",
+  Difensore:      "pages.matchConvocation.roleDifensore",
+  Centrocampista: "pages.matchConvocation.roleCentrocampista",
+  Attaccante:     "pages.matchConvocation.roleAttaccante",
+  Altro:          "pages.matchConvocation.roleAltro",
+};
+
 function groupByRole(players) {
   const groups = {};
   players.forEach((p) => {
@@ -307,8 +316,8 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
   const sheetVenue = matchVenue || match.location;
   const meetingInfo = formatMeeting(details);
   const matchContext = [match.competition, match.matchday].filter(Boolean).join(" · ");
-  const matchType = isHomeMatch ? "Casa" : match.location === "Trasferta" ? "Trasferta" : match.location || "Da definire";
-  const publishedLabel = published ? "Pubblicata" : "Bozza";
+  const matchType = match.location || t("pages.matchConvocation.printToBeDefined");
+  const publishedLabel = published ? t("pages.matchConvocation.publishedLabel") : t("pages.matchConvocation.draftLabel");
   const fullMessage = buildConvocationText({
     clubName,
     match,
@@ -387,10 +396,10 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
         </p>
         <div style={s.matchInfoGrid}>
           <InfoTile label="Gara" value={matchType} />
-          <InfoTile label="Competizione" value={matchContext || "Da definire"} />
-          <InfoTile label="Campo" value={venueParts.name || sheetVenue || "Da definire"} />
-          <InfoTile label="Indirizzo" value={venueParts.address || "Da definire"} />
-          <InfoTile label="Superficie" value={venueParts.surface || "Da definire"} />
+          <InfoTile label="Competizione" value={matchContext || t("pages.matchConvocation.printToBeDefined")} />
+          <InfoTile label="Campo" value={venueParts.name || sheetVenue || t("pages.matchConvocation.printToBeDefined")} />
+          <InfoTile label="Indirizzo" value={venueParts.address || t("pages.matchConvocation.printToBeDefined")} />
+          <InfoTile label="Superficie" value={venueParts.surface || t("pages.matchConvocation.printToBeDefined")} />
         </div>
         <div style={s.formGrid}>
           <label style={s.label}>
@@ -611,10 +620,10 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
                 <div className="print-meta">
                   {matchContext && <span>{matchContext}</span>}
                   <span>{formatDate(match.date)}</span>
-                  {details.matchTime && <span>Gara {details.matchTime}</span>}
+                  {details.matchTime && <span>{t("pages.matchConvocation.printTimeLabel")} {details.matchTime}</span>}
                   <span>{matchType}</span>
                   <span>{publishedLabel}</span>
-                  <span>{count} convocati</span>
+                  <span>{t("pages.matchConvocation.printCalledCount", { count })}</span>
                 </div>
               </div>
 
@@ -628,27 +637,27 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
               <section className="print-grid two">
                 <div className="print-box">
                   <span>{t("pages.matchConvocation.printMeeting")}</span>
-                  <p>{meetingInfo || "Da definire"}</p>
+                  <p>{meetingInfo || t("pages.matchConvocation.printToBeDefined")}</p>
                 </div>
                 <div className="print-box">
                   <span>{t("pages.matchConvocation.printField")}</span>
-                  <p>{sheetVenue || "Da definire"}</p>
+                  <p>{sheetVenue || t("pages.matchConvocation.printToBeDefined")}</p>
                 </div>
                 <div className="print-box">
                   <span>{t("pages.matchConvocation.printAddress")}</span>
-                  <p>{venueParts.address || "Da definire"}</p>
+                  <p>{venueParts.address || t("pages.matchConvocation.printToBeDefined")}</p>
                 </div>
                 <div className="print-box">
                   <span>{t("pages.matchConvocation.printSurface")}</span>
-                  <p>{venueParts.surface || "Da definire"}</p>
+                  <p>{venueParts.surface || t("pages.matchConvocation.printToBeDefined")}</p>
                 </div>
                 <div className="print-box">
                   <span>{t("pages.matchConvocation.printLockerRoom")}</span>
-                  <p>{details.lockerRoom || "Da definire"}</p>
+                  <p>{details.lockerRoom || t("pages.matchConvocation.printToBeDefined")}</p>
                 </div>
                 <div className="print-box">
                   <span>{t("pages.matchConvocation.printKit")}</span>
-                  <p>{details.kit || "Da definire"}</p>
+                  <p>{details.kit || t("pages.matchConvocation.printToBeDefined")}</p>
                 </div>
               </section>
 
@@ -680,7 +689,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
                 <div style={s.printRosterGroups}>
                   {Object.entries(convocatiByRole).map(([role, rolePlayers]) => (
                     <div key={role} style={s.printRosterGroup}>
-                      <h3 style={s.printRoleTitle}>{role}</h3>
+                      <h3 style={s.printRoleTitle}>{ROLE_I18N_KEY[role] ? t(ROLE_I18N_KEY[role]) : role}</h3>
                       <table>
                         <thead>
                           <tr>
@@ -717,7 +726,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
                 </div>
                 <div className="print-box">
                   <span>{t("pages.matchConvocation.printPublishedAt")}</span>
-                  <p>{published && existing.publishedAt ? formatDate(existing.publishedAt) : "Da pubblicare"}</p>
+                  <p>{published && existing.publishedAt ? formatDate(existing.publishedAt) : t("pages.matchConvocation.printToBePublished")}</p>
                 </div>
                 <div className="print-box">
                   <span>{t("pages.matchConvocation.printPreMatchCheck")}</span>

@@ -245,6 +245,7 @@ export default function PostMatch({
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
+      <div className="no-print" style={{ display: "contents" }}>
       <PageHeader
         title={match.opponent
           ? t("pages.postMatch.title", { opponent: match.opponent })
@@ -389,6 +390,7 @@ export default function PostMatch({
           </div>
         )}
       </AppCard>
+      </div>{/* /no-print */}
 
       <div className="print-area">
         <section className="print-template">
@@ -495,7 +497,7 @@ export default function PostMatch({
             </section>
 
             <footer style={s.printFooter}>
-              <span>{t("pages.postMatch.printFooter")}</span>
+              <span>{t("pages.postMatch.printFooter", { clubName })}</span>
               <strong>{clubName}</strong>
             </footer>
           </article>
