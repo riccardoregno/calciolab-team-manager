@@ -299,10 +299,16 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
   const convocati = selectedIds
     .map((pid) => players.find((p) => String(p.id) === pid))
     .filter(Boolean);
+  const convocatiByRole = groupByRole(convocati);
+  const selectedRoleCounts = ROLE_ORDER.reduce((acc, role) => {
+    acc[role] = convocati.filter((player) => player.role === role).length;
+    return acc;
+  }, {});
   const sheetVenue = matchVenue || match.location;
   const meetingInfo = formatMeeting(details);
   const matchContext = [match.competition, match.matchday].filter(Boolean).join(" · ");
   const matchType = isHomeMatch ? "Casa" : match.location === "Trasferta" ? "Trasferta" : match.location || "Da definire";
+  const publishedLabel = published ? "Pubblicata" : "Bozza";
   const fullMessage = buildConvocationText({
     clubName,
     match,
@@ -607,10 +613,17 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
                   <span>{formatDate(match.date)}</span>
                   {details.matchTime && <span>Gara {details.matchTime}</span>}
                   <span>{matchType}</span>
-                  <span>{published ? "Pubblicata" : "Bozza"}</span>
+                  <span>{publishedLabel}</span>
                   <span>{count} convocati</span>
                 </div>
               </div>
+
+              <section className="print-kpis">
+                <PrintKpi label="Convocati" value={`${count}/${MAX_PLAYERS}`} />
+                <PrintKpi label="Portieri" value={selectedRoleCounts.Portiere || 0} />
+                <PrintKpi label="Difensori" value={selectedRoleCounts.Difensore || 0} />
+                <PrintKpi label="Centro/attacco" value={(selectedRoleCounts.Centrocampista || 0) + (selectedRoleCounts.Attaccante || 0)} />
+              </section>
 
               <section className="print-grid two">
                 <div className="print-box">
@@ -664,32 +677,37 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
 
               <section className="print-section">
                 <h2>Lista convocati</h2>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>N.</th>
-                      <th>Maglia</th>
-                      <th>Giocatore</th>
-                      <th>Ruolo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {convocati.map((player, index) => {
-                      const displayName =
-                        [player.firstName, player.lastName].filter(Boolean).join(" ") ||
-                        player.name || "—";
+                <div style={s.printRosterGroups}>
+                  {Object.entries(convocatiByRole).map(([role, rolePlayers]) => (
+                    <div key={role} style={s.printRosterGroup}>
+                      <h3 style={s.printRoleTitle}>{role}</h3>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>N.</th>
+                            <th>Maglia</th>
+                            <th>Giocatore</th>
+                            <th>Stato</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rolePlayers.map((player, index) => {
+                            const displayName = getPlayerDisplayName(player);
 
-                      return (
-                        <tr key={player.id}>
-                          <td>{index + 1}</td>
-                          <td>#{player.shirtNumber || "—"}</td>
-                          <td>{displayName}</td>
-                          <td>{player.role || "—"}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            return (
+                              <tr key={player.id}>
+                                <td>{index + 1}</td>
+                                <td>#{player.shirtNumber || "—"}</td>
+                                <td>{displayName}</td>
+                                <td>{player.status || "Disponibile"}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
               </section>
 
               <section className="print-grid two">
@@ -700,6 +718,14 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
                 <div className="print-box">
                   <span>Comunicata il</span>
                   <p>{published && existing.publishedAt ? formatDate(existing.publishedAt) : "Da pubblicare"}</p>
+                </div>
+                <div className="print-box">
+                  <span>Controllo pre-gara</span>
+                  <p>Documenti · materiale gara · distinta · palloni · kit portiere</p>
+                </div>
+                <div className="print-box">
+                  <span>Note logistiche</span>
+                  <p>{details.staffContact ? `Referente: ${details.staffContact}` : "Referente staff da indicare"}</p>
                 </div>
               </section>
             </article>
@@ -742,6 +768,15 @@ function InfoTile({ label, value }) {
     <div style={s.infoTile}>
       <span style={s.infoTileLabel}>{label}</span>
       <strong style={s.infoTileValue}>{value}</strong>
+    </div>
+  );
+}
+
+function PrintKpi({ label, value }) {
+  return (
+    <div className="print-kpi">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
@@ -983,6 +1018,22 @@ const s = {
     alignItems: "center",
     gap: 14,
     minWidth: 0,
+  },
+  printRosterGroups: {
+    display: "grid",
+    gap: 14,
+  },
+  printRosterGroup: {
+    display: "grid",
+    gap: 8,
+  },
+  printRoleTitle: {
+    margin: 0,
+    color: "#0f172a",
+    fontSize: 14,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
   },
   printLogoFrame: {
     width: 72,
