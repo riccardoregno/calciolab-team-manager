@@ -159,15 +159,23 @@ function Auth() {
 
         const user = data.user;
         if (user) {
-          const { error: profileError } = await supabase.from("profiles").upsert([{
+          // Il profilo viene creato automaticamente dal trigger DB handle_new_user().
+          // L'upsert qui sotto è un aggiornamento di sicurezza (non bloccante):
+          // se fallisce (es. email confirmation attiva → session non ancora attiva)
+          // il trigger DB ha già salvato i dati, quindi non mostriamo errore.
+          await supabase.from("profiles").upsert([{
             id:                user.id,
             first_name:        firstName,
             last_name:         lastName,
             email,
             newsletter_opt_in: acceptNewsletter,
             terms_accepted_at: new Date().toISOString(),
-          }]);
-          if (profileError) { setFeedback({ type: "error", text: t("pages.auth.profileSaveError") }); return; }
+          }]).then(({ error: profileError }) => {
+            if (profileError) {
+              // Non bloccante: il trigger DB gestisce la creazione del profilo.
+              console.warn("Profile upsert skipped (will be created by DB trigger):", profileError.message);
+            }
+          });
 
           // Pulisce il token di invito dopo la registrazione
           if (inviteToken && typeof window !== "undefined") {
