@@ -373,6 +373,9 @@ export const it = {
       statusAvailable: "Disponibile",
       statusInjured: "Infortunato",
       statusSuspended: "Squalificato",
+      averageAge: "Età media",
+      birthdayBannerSingle: "Tanti auguri a {{name}}! 🥳",
+      birthdayBannerMulti: "Tanti auguri a {{names}}! 🥳",
     },
     matches: {
       title: "Partite",

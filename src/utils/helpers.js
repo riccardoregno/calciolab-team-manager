@@ -1100,12 +1100,73 @@ export function getSeasonRecord(matches = []) {
   return { wins, draws, losses, goalsFor, goalsAgainst, played };
 }
 
+// ─── Birthday & Age utilities ─────────────────────────────────────────────────
+
+/** Parse a birthDate string — supports "YYYY-MM-DD" and "DD/MM/YYYY". */
+export function parsePlayerBirthDate(birthDate) {
+  if (!birthDate) return null;
+  const s = String(birthDate).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const d = new Date(s + "T00:00:00");
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    const [day, month, year] = s.split("/");
+    const d = new Date(`${year}-${month}-${day}T00:00:00`);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
+/** Returns true if today is the player's birthday (day + month match). */
+export function isBirthdayToday(birthDate) {
+  const d = parsePlayerBirthDate(birthDate);
+  if (!d) return false;
+  const today = new Date();
+  return d.getDate() === today.getDate() && d.getMonth() === today.getMonth();
+}
+
+/** Calculates player age from birthDate. Returns null if birthDate is invalid. */
+export function calcPlayerAge(birthDate) {
+  const d = parsePlayerBirthDate(birthDate);
+  if (!d) return null;
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  const m = today.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+  return age > 0 && age < 80 ? age : null;
+}
+
+/**
+ * Returns the average age of players that have a valid birthDate.
+ * Returns null if no valid ages are found.
+ */
+export function getTeamAverageAge(players = []) {
+  const ages = players
+    .map((p) => calcPlayerAge(p.birthDate))
+    .filter((a) => a !== null);
+  if (!ages.length) return null;
+  return Math.round((ages.reduce((sum, a) => sum + a, 0) / ages.length) * 10) / 10;
+}
+
 export function getCoachAlerts({ players = [], matches = [], physicalTests = [], sessions = [], playerStatsMap = {} } = {}){
   const now = new Date();
   const thirtyDaysAgo = new Date(now);
   thirtyDaysAgo.setDate(now.getDate() - 30);
 
   const alerts = [];
+
+  // Birthday alerts — pushed first so they appear at the top of the list
+  players.forEach((player) => {
+    if (isBirthdayToday(player.birthDate)) {
+      const age = calcPlayerAge(player.birthDate);
+      const ageStr = age ? ` (${age} anni)` : "";
+      alerts.push({
+        tone: "green",
+        text: `🎂 Tanti auguri a ${player.name || player.firstName || ""}${ageStr}!`,
+      });
+    }
+  });
 
   players.forEach((player) => {
     const latestTest = physicalTests

@@ -15,7 +15,7 @@ import PlayerCard from "../components/players/PlayerCard";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
-import { createId } from "../utils/helpers";
+import { createId, isBirthdayToday, getTeamAverageAge } from "../utils/helpers";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
 
@@ -44,6 +44,12 @@ function Players({ players, setPlayers }) {
     status: "Disponibile",
     gruppo: gruppoFilter !== "tutti" ? gruppoFilter : "prima",
   });
+
+  // Birthday players (today)
+  const birthdayPlayers = players.filter((p) => isBirthdayToday(p.birthDate));
+
+  // Average team age
+  const averageAge = getTeamAverageAge(players);
 
   // Gruppi presenti nella rosa
   const presentGroups = [...new Set(players.map((p) => p.gruppo || "prima"))];
@@ -142,6 +148,21 @@ function Players({ players, setPlayers }) {
         action={<Button onClick={() => setOpenModal(true)}>{t("pages.players.newPlayer")}</Button>}
       />
 
+      {birthdayPlayers.length > 0 && (
+        <div style={pStyles.birthdayBanner}>
+          <span style={pStyles.birthdayEmoji}>🎂</span>
+          <span>
+            {birthdayPlayers.length === 1
+              ? t("pages.players.birthdayBannerSingle", {
+                  name: birthdayPlayers[0].name || birthdayPlayers[0].firstName || "",
+                })
+              : t("pages.players.birthdayBannerMulti", {
+                  names: birthdayPlayers.map((p) => p.name || p.firstName || "").join(", "),
+                })}
+          </span>
+        </div>
+      )}
+
       <AppCard style={{ marginBottom: 22 }}>
         <div style={pStyles.toolbar}>
           <div style={pStyles.counterGrid}>
@@ -156,6 +177,9 @@ function Players({ players, setPlayers }) {
               value={players.filter((p) => p.status === "Infortunato").length}
               tone="red"
             />
+            {averageAge !== null && (
+              <MetricCard label={t("pages.players.averageAge")} value={averageAge} tone="purple" />
+            )}
             {Object.entries(countByGroup).map(([g, n]) => (
               <MetricCard key={g} label={GROUP_LABELS[g] || g} value={n} />
             ))}
@@ -336,6 +360,7 @@ function MetricCard({ label, value, tone = "slate" }) {
     blue: "#60a5fa",
     green: "#22c55e",
     red: "#f87171",
+    purple: "#a78bfa",
     slate: "#cbd5e1",
   };
 
@@ -350,6 +375,23 @@ function MetricCard({ label, value, tone = "slate" }) {
 }
 
 const pStyles = {
+  birthdayBanner: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "12px 18px",
+    marginBottom: 16,
+    borderRadius: 14,
+    background: "rgba(134,239,172,0.10)",
+    border: "1px solid rgba(134,239,172,0.30)",
+    color: "#86efac",
+    fontSize: 14,
+    fontWeight: 700,
+  },
+  birthdayEmoji: {
+    fontSize: 22,
+    lineHeight: 1,
+  },
   toolbar: {
     display: "flex",
     justifyContent: "space-between",

@@ -125,7 +125,7 @@ export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSa
         <Field label="Altezza" value={form.height} editing={editing} onChange={(value) => onFieldChange("height", value)} />
         <Field label="Peso" value={form.weight} editing={editing} onChange={(value) => onFieldChange("weight", value)} />
         <Field label="Nazionalità" value={form.nationality} editing={editing} onChange={(value) => onFieldChange("nationality", value)} />
-        <Field label="Data nascita" value={form.birthDate} editing={editing} onChange={(value) => onFieldChange("birthDate", value)} />
+        <Field label="Data nascita" type="date" value={form.birthDate} editing={editing} onChange={(value) => onFieldChange("birthDate", value)} />
       </div>
     </AppCard>
   );
@@ -628,12 +628,17 @@ function StatusField({ value, editing, onChange }) {
   );
 }
 
-function Field({ label, value, editing, onChange }) {
+function Field({ label, value, editing, onChange, type = "text" }) {
   return (
     <div>
       <FieldLabel>{label}</FieldLabel>
       {editing ? (
-        <input value={value || ""} onChange={(event) => onChange(event.target.value)} style={styles.input} />
+        <input
+          type={type}
+          value={value || ""}
+          onChange={(event) => onChange(event.target.value)}
+          style={styles.input}
+        />
       ) : (
         <ReadOnlyBox>{value || "-"}</ReadOnlyBox>
       )}

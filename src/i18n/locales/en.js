@@ -373,6 +373,9 @@ export const en = {
       statusAvailable: "Available",
       statusInjured: "Injured",
       statusSuspended: "Suspended",
+      averageAge: "Avg. age",
+      birthdayBannerSingle: "Happy birthday {{name}}! 🥳",
+      birthdayBannerMulti: "Happy birthday {{names}}! 🥳",
     },
     matches: {
       title: "Matches",
