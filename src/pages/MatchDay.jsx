@@ -493,7 +493,102 @@ function MatchDay({
         </div>
       </div>
 
-      <div className="print-area" style={matchDayStyles.printArea}>
+      <div className="print-area">
+        <section className="print-template">
+          <article>
+            <header className="print-header">
+              <div style={matchDayStyles.printBrand}>
+                <TeamMark
+                  logo={selectedMatch.homeLogo || clubLogo}
+                  logoSize={clubLogoSize}
+                  name={clubName}
+                  fallback={clubName.slice(0, 2).toUpperCase()}
+                />
+                <div>
+                  <p>Distinta gara</p>
+                  <h1>
+                    {clubName} <span style={{ color: "#64748b" }}>vs</span>{" "}
+                    {selectedMatch.opponent || t("pages.matchDay.opponentUndefined")}
+                  </h1>
+                </div>
+              </div>
+              <div className="print-meta">
+                <span>{formatDate(selectedMatch.date)}</span>
+                {selectedMatch.time && <span>{t("pages.matchDay.timePrefix", { time: selectedMatch.time })}</span>}
+                {selectedMatch.competition && <span>{selectedMatch.competition}</span>}
+                {selectedMatch.matchday && <span>{selectedMatch.matchday}</span>}
+                <span>{matchVenue || selectedMatch.location || t("pages.matchDay.fieldUndefined")}</span>
+              </div>
+            </header>
+
+            <section className="print-kpis">
+              <PrintKpi label={t("pages.matchDay.statCalled")} value={calledPlayers.length} />
+              <PrintKpi label={t("pages.matchDay.statStarters")} value={`${starterPlayers.length}/11`} />
+              <PrintKpi label={t("pages.matchDay.statBench")} value={benchPlayers.length} />
+              <PrintKpi label={t("pages.matchDay.statFormation")} value={selectedMatch.formation || "-"} />
+            </section>
+
+            <section className="print-grid two">
+              <PrintBox title="Campo" value={matchVenue || t("pages.matchDay.fieldUndefined")} />
+              <PrintBox title="Raduno" value={[convocationDetails.meetingTime, convocationDetails.meetingPlace].filter(Boolean).join(" · ") || t("pages.matchDay.checklistToBeDefined")} />
+              <PrintBox title="Spogliatoio" value={convocationDetails.lockerRoom || t("pages.matchDay.checklistToBeDefined")} />
+              <PrintBox title="Kit gara" value={convocationDetails.kit || t("pages.matchDay.checklistToBeDefined")} />
+            </section>
+
+            <section className="print-section">
+              <h2>{t("pages.matchDay.startersTitle")}</h2>
+              <PlayerPrintTable players={starterPlayers} lineup={lineup} empty={t("pages.matchDay.noStarters")} />
+            </section>
+
+            <section className="print-section">
+              <h2>{t("pages.matchDay.benchTitle")}</h2>
+              <PlayerPrintTable players={benchPlayers} lineup={lineup} empty={t("pages.matchDay.noBench")} />
+            </section>
+
+            {opponentScouting.lineup.length > 0 && (
+              <section className="print-section">
+                <h2>{t("pages.matchDay.opponentLineupTitle")}</h2>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>{t("pages.matchDay.namePlaceholder")}</th>
+                      <th>{t("pages.matchDay.birthYearPlaceholder")}</th>
+                      <th>{t("pages.matchDay.rolePlaceholder")}</th>
+                      <th>{t("pages.matchDay.notesPlaceholder")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {opponentScouting.lineup.map((player) => (
+                      <tr key={player.id}>
+                        <td>{player.number || "-"}</td>
+                        <td>{player.name || "-"}</td>
+                        <td>{player.birthYear || "-"}</td>
+                        <td>{player.role || player.status || "-"}</td>
+                        <td>{player.notes || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
+
+            <section className="print-grid two">
+              <PrintBox title={t("pages.matchDay.gamePlanLabel")} value={selectedMatch.matchPlan || t("pages.matchDay.checklistToBeDefined")} />
+              <PrintBox title={t("pages.matchDay.staffNotesLabel")} value={selectedMatch.staffNotes || t("pages.matchDay.checklistToBeDefined")} />
+              <PrintBox title={t("pages.matchDay.scoutingQuick")} value={selectedMatch.opponentNotes || t("pages.matchDay.checklistToBeDefined")} />
+              <PrintBox title={t("pages.matchDay.checklistSummaryTitle")} value={t("pages.matchDay.checklistCompleted", { done: completedChecklist, total: checklistItems.length })} />
+            </section>
+
+            <section className="print-grid two">
+              <PrintBox title="Firma allenatore" value=" " />
+              <PrintBox title="Firma dirigente" value=" " />
+            </section>
+          </article>
+        </section>
+      </div>
+
+      <div style={matchDayStyles.printArea}>
         <AppCard>
           <div style={matchDayStyles.matchHeader}>
             <TeamMark
@@ -1049,6 +1144,66 @@ function MiniStat({ label, value }) {
       <span>{label}</span>
       <strong style={{ lineHeight: 1 }}>{value}</strong>
     </div>
+  );
+}
+
+function PrintKpi({ label, value }) {
+  return (
+    <div className="print-kpi">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function PrintBox({ title, value }) {
+  return (
+    <div className="print-box">
+      <span>{title}</span>
+      <p>{value}</p>
+    </div>
+  );
+}
+
+function PlayerPrintTable({ players, lineup, empty }) {
+  if (!players.length) {
+    return (
+      <div className="print-box">
+        <span>{empty}</span>
+        <p>-</p>
+      </div>
+    );
+  }
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>N.</th>
+          <th>Maglia</th>
+          <th>Giocatore</th>
+          <th>Ruolo</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {players.map((player, index) => {
+          const displayName = [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "-";
+          const role = lineup?.roles?.[player.id] || player.role || "-";
+          const isCaptain = lineup?.captainId === player.id;
+
+          return (
+            <tr key={player.id}>
+              <td>{index + 1}</td>
+              <td>#{player.shirtNumber || "-"}</td>
+              <td>{displayName}</td>
+              <td>{role}</td>
+              <td>{isCaptain ? "Capitano" : player.status || "-"}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
