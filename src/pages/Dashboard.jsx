@@ -212,7 +212,7 @@ function Dashboard({
     playerStatsMap,
   });
   const coachAlerts = [
-    ...getMatchOperationalAlerts(nextMatch),
+    ...getMatchOperationalAlerts(nextMatch, t),
     ...baseCoachAlerts,
   ];
 
@@ -928,10 +928,10 @@ function Dashboard({
                 }
               >
                 {billing.trialActive
-                  ? "Trial"
+                  ? t("pages.dashboard.badgeTrial")
                   : billing.trialExpired
                   ? t("pages.dashboard.trialExpired")
-                  : "Free"}
+                  : t("pages.dashboard.badgeFree")}
               </Badge>
 
               <h2 style={{ margin: "12px 0 6px" }}>
@@ -1654,6 +1654,7 @@ function InfoRows({ rows }) {
 }
 
 function EventList({ events, emptyText }) {
+  const { t } = useTranslation();
   if (!events.length) {
     return <p style={roleDashboardStyles.muted}>{emptyText}</p>;
   }
@@ -1668,7 +1669,7 @@ function EventList({ events, emptyText }) {
           </div>
 
           <Badge tone={event.type === "Partita" ? "orange" : "green"}>
-            {event.type || "Evento"}
+            {event.type || t("pages.dashboard.widgetEvent")}
           </Badge>
         </div>
       ))}
@@ -1950,7 +1951,7 @@ function getMatchChecklistProgress(match = {}) {
   };
 }
 
-function getMatchOperationalAlerts(match) {
+function getMatchOperationalAlerts(match, t) {
   if (!match) return [];
 
   const progress = getMatchChecklistProgress(match);
@@ -1959,7 +1960,11 @@ function getMatchOperationalAlerts(match) {
   return [
     {
       tone: "orange",
-      text: `${match.opponent || "Prossima partita"}: checklist pre-gara ${progress.done}/${progress.total}`,
+      text: t("pages.dashboard.matchChecklistAlert", {
+        opponent: match.opponent || t("pages.dashboard.matchChecklistAlertFallback"),
+        done: progress.done,
+        total: progress.total,
+      }),
     },
   ];
 }

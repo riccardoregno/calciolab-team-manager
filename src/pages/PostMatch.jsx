@@ -10,9 +10,31 @@ import { createId, formatDate } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
 
-const clipCategories = ["Tattica", "Tecnica", "Fisico", "Palla inattiva", "Errore", "Occasione", "Transizione"];
-const clipPhases = ["Possesso", "Non possesso", "Transizione +", "Transizione -", "Corner", "Punizione", "Rimessa", "Rigore"];
-const clipAudiences = ["Staff", "Squadra", "Individuale", "Reparto"];
+const clipCategories = [
+  { value: "Tattica",        labelKey: "pages.postMatch.clipCatTactics" },
+  { value: "Tecnica",        labelKey: "pages.postMatch.clipCatTechnical" },
+  { value: "Fisico",         labelKey: "pages.postMatch.clipCatPhysical" },
+  { value: "Palla inattiva", labelKey: "pages.postMatch.clipCatSetPieces" },
+  { value: "Errore",         labelKey: "pages.postMatch.clipCatError" },
+  { value: "Occasione",      labelKey: "pages.postMatch.clipCatChance" },
+  { value: "Transizione",    labelKey: "pages.postMatch.clipCatTransition" },
+];
+const clipPhases = [
+  { value: "Possesso",        labelKey: "pages.postMatch.clipPhasePossession" },
+  { value: "Non possesso",    labelKey: "pages.postMatch.clipPhaseNonPossession" },
+  { value: "Transizione +",   labelKey: "pages.postMatch.clipPhaseTransitionPos" },
+  { value: "Transizione -",   labelKey: "pages.postMatch.clipPhaseTransitionNeg" },
+  { value: "Corner",          labelKey: "pages.postMatch.clipPhaseCorner" },
+  { value: "Punizione",       labelKey: "pages.postMatch.clipPhaseFreekick" },
+  { value: "Rimessa",         labelKey: "pages.postMatch.clipPhaseThrowin" },
+  { value: "Rigore",          labelKey: "pages.postMatch.clipPhasePenalty" },
+];
+const clipAudiences = [
+  { value: "Staff",       labelKey: "pages.postMatch.clipAudStaff" },
+  { value: "Squadra",     labelKey: "pages.postMatch.clipAudTeam" },
+  { value: "Individuale", labelKey: "pages.postMatch.clipAudIndividual" },
+  { value: "Reparto",     labelKey: "pages.postMatch.clipAudUnit" },
+];
 
 export default function PostMatch({
   matches = [], setMatches, players = [], sessions = [], setStaffTasks }) {
@@ -345,7 +367,7 @@ export default function PostMatch({
                 onClick={() => navigate(`/session-attendance/${session.id}`)}
               >
                 <span>
-                  <strong>{session.title || "Seduta"}</strong>
+                  <strong>{session.title || t("common.session")}</strong>
                   <small>{formatDate(session.date)} · {session.theme || t("pages.postMatch.sessionThemeFallback")}</small>
                   {session.objectiveReview && <em>{session.objectiveReview}</em>}
                 </span>
@@ -592,17 +614,17 @@ function VideoAnalysisPanel({ clips, players, onChange, onAppendReport, reportNo
           style={s.smallInput}
         />
         <select value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} style={styles.input}>
-          {clipCategories.map((item) => <option key={item}>{item}</option>)}
+          {clipCategories.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey)}</option>)}
         </select>
         <select value={draft.phase} onChange={(event) => updateDraft("phase", event.target.value)} style={styles.input}>
-          {clipPhases.map((item) => <option key={item}>{item}</option>)}
+          {clipPhases.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey)}</option>)}
         </select>
         <select value={draft.playerId} onChange={(event) => updateDraft("playerId", event.target.value)} style={styles.input}>
           <option value="">{t("pages.postMatch.clipPlayerPlaceholder")}</option>
           {players.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
         </select>
         <select value={draft.audience} onChange={(event) => updateDraft("audience", event.target.value)} style={styles.input}>
-          {clipAudiences.map((item) => <option key={item}>{item}</option>)}
+          {clipAudiences.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey)}</option>)}
         </select>
         <input
           placeholder={t("pages.postMatch.clipLinkPlaceholder")}
@@ -638,10 +660,10 @@ function VideoAnalysisPanel({ clips, players, onChange, onAppendReport, reportNo
                   style={s.smallInput}
                 />
                 <select value={clip.category} onChange={(event) => updateClip(clip.id, "category", event.target.value)} style={styles.input}>
-                  {clipCategories.map((item) => <option key={item}>{item}</option>)}
+                  {clipCategories.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey)}</option>)}
                 </select>
                 <select value={clip.phase} onChange={(event) => updateClip(clip.id, "phase", event.target.value)} style={styles.input}>
-                  {clipPhases.map((item) => <option key={item}>{item}</option>)}
+                  {clipPhases.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey)}</option>)}
                 </select>
                 <div style={s.clipText}>
                   <strong>{player?.name || t("pages.postMatch.noPlayer")}</strong>
@@ -657,7 +679,7 @@ function VideoAnalysisPanel({ clips, players, onChange, onAppendReport, reportNo
                   {players.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
                 <select value={clip.audience} onChange={(event) => updateClip(clip.id, "audience", event.target.value)} style={styles.input}>
-                  {clipAudiences.map((item) => <option key={item}>{item}</option>)}
+                  {clipAudiences.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey)}</option>)}
                 </select>
                 <Button variant="danger" onClick={() => deleteClip(clip.id)}>{t("pages.postMatch.btnDeleteClip")}</Button>
               </div>
@@ -682,10 +704,10 @@ function VideoAnalysisPanel({ clips, players, onChange, onAppendReport, reportNo
 function getEmptyClip() {
   return {
     minute: "",
-    category: "Tattica",
-    phase: "Possesso",
+    category: clipCategories[0].value,
+    phase: clipPhases[0].value,
     playerId: "",
-    audience: "Staff",
+    audience: clipAudiences[0].value,
     url: "",
     tags: "",
     note: "",
