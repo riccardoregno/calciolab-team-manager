@@ -652,6 +652,8 @@ export function normalizeMember(member = {}){
     sponsorId: member.sponsorId || "",
     // Per-area access overrides: { [areaKey]: "none" | "view" | "manage" | "role" }
     customAreas: member.customAreas || {},
+    // VIP — granted via permanent promo code or manually by owner
+    vip: Boolean(member.vip),
   };
 }
 

@@ -118,6 +118,7 @@ export default function Settings({
           team={team}
           authError={authError}
           storageSource={storageSource}
+          appSettings={appSettings}
         />
       )}
 
@@ -157,7 +158,9 @@ export default function Settings({
 /* ═══════════════════════════════════════════════════════════════
    TAB 1 — Account
 ═══════════════════════════════════════════════════════════════ */
-function AccountTab({ authConfigured, authLoading, user, team, authError, storageSource }) {
+function AccountTab({ authConfigured, authLoading, user, team, authError, storageSource, appSettings = {} }) {
+  const accountSettings = normalizeAppSettings(appSettings);
+  const isVipOwner = Boolean(accountSettings.redeemedPromo?.permanent);
   const { t } = useTranslation();
   /* ── Profile form ── */
   const [profileForm,    setProfileForm]    = useState({ first_name: "", last_name: "" });
@@ -254,9 +257,15 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
           <h3 style={{ ...styles.cardTitle, lineHeight: 1.2 }}>{t("pages.settings.acctProfileTitle")}</h3>
 
           <div style={s.profileBox}>
-            <div style={s.avatar}>{avatarInitial}</div>
+            <div style={{ position: "relative" }}>
+              <div style={isVipOwner ? { ...s.avatar, ...s.avatarVip } : s.avatar}>{avatarInitial}</div>
+              {isVipOwner && <span style={s.avatarVipStarOwner}>⭐</span>}
+            </div>
             <div>
-              <h2 style={s.profileName}>{fullName}</h2>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <h2 style={s.profileName}>{fullName}</h2>
+                {isVipOwner && <VipBadge />}
+              </div>
               <p style={s.profileRole}>{user?.email || "—"}</p>
             </div>
           </div>
@@ -784,6 +793,16 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
     });
   }
 
+  function toggleMemberVip(memberId) {
+    const currentMembers = settings.members || [];
+    setAppSettings?.({
+      ...settings,
+      members: currentMembers.map((m) =>
+        String(m.id) === String(memberId) ? { ...m, vip: !m.vip } : m
+      ),
+    });
+  }
+
   return (
     <div style={s.panel}>
       <AppCard style={{ marginBottom: 18 }}>
@@ -1025,14 +1044,26 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
             </p>
             <div style={s.memberList}>
               {(settings.members || []).map((member) => (
-                <div key={member.id} style={inviteStyles.memberRow}>
+                <div
+                  key={member.id}
+                  style={{
+                    ...inviteStyles.memberRow,
+                    ...(member.vip ? inviteStyles.memberRowVip : {}),
+                  }}
+                >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <div style={inviteStyles.avatar}>
+                      <div style={member.vip ? inviteStyles.avatarVip : inviteStyles.avatar}>
                         {(member.name || "?")[0].toUpperCase()}
+                        {member.vip && (
+                          <span style={inviteStyles.avatarVipStar}>⭐</span>
+                        )}
                       </div>
                       <div>
-                        <strong style={{ fontSize: 13, lineHeight: 1.2 }}>{member.name}</strong>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <strong style={{ fontSize: 13, lineHeight: 1.2 }}>{member.name}</strong>
+                          {member.vip && <VipBadge />}
+                        </div>
                         <p style={{ color: "#64748b", margin: 0, fontSize: 12 }}>{member.email || "Email non inserita"}</p>
                       </div>
                     </div>
@@ -1046,6 +1077,17 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                       <option key={key} value={key}>{role.label}</option>
                     ))}
                   </select>
+                  <button
+                    type="button"
+                    onClick={() => toggleMemberVip(member.id)}
+                    title={member.vip ? "Rimuovi VIP" : "Assegna VIP"}
+                    style={{
+                      ...inviteStyles.cancelBtn,
+                      ...(member.vip ? inviteStyles.vipActiveBtn : {}),
+                    }}
+                  >
+                    {member.vip ? "⭐ VIP" : "☆ VIP"}
+                  </button>
                   <button
                     type="button"
                     onClick={() => removeMember(member.id)}
@@ -1593,7 +1635,63 @@ const inviteStyles = {
     none:   { background: "rgba(248,113,113,0.18)", border: "1px solid rgba(248,113,113,0.4)", color: "#f87171"  },
   },
   permBtnActiveDefault: { background: "rgba(37,99,235,0.2)", border: "1px solid rgba(96,165,250,0.4)", color: "#93c5fd" },
+
+  /* VIP member row */
+  memberRowVip: {
+    background: "rgba(250,204,21,0.05)",
+    border: "1px solid rgba(250,204,21,0.25)",
+  },
+  avatarVip: {
+    width: 36,
+    height: 36,
+    borderRadius: "50%",
+    background: "linear-gradient(135deg, rgba(250,204,21,0.35), rgba(251,146,60,0.25))",
+    border: "1.5px solid rgba(250,204,21,0.55)",
+    display: "grid",
+    placeItems: "center",
+    color: "#fbbf24",
+    fontWeight: 900,
+    fontSize: 14,
+    flexShrink: 0,
+    position: "relative",
+    boxShadow: "0 0 10px rgba(250,204,21,0.25)",
+  },
+  avatarVipStar: {
+    position: "absolute",
+    bottom: -4,
+    right: -4,
+    fontSize: 10,
+    lineHeight: 1,
+  },
+  vipActiveBtn: {
+    background: "rgba(250,204,21,0.14)",
+    border: "1px solid rgba(250,204,21,0.4)",
+    color: "#fbbf24",
+  },
 };
+
+/* ─── VIP badge component ───────────────────────────────────── */
+function VipBadge() {
+  return (
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+      padding: "2px 8px",
+      borderRadius: 20,
+      fontSize: 10,
+      fontWeight: 900,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      background: "linear-gradient(135deg, rgba(250,204,21,0.22), rgba(251,146,60,0.16))",
+      border: "1px solid rgba(250,204,21,0.45)",
+      color: "#fbbf24",
+      boxShadow: "0 0 8px rgba(250,204,21,0.2)",
+    }}>
+      ⭐ VIP
+    </span>
+  );
+}
 
 /* ─── Promo code styles ─────────────────────────────────────── */
 const promoStyles = {
@@ -1675,6 +1773,8 @@ const s = {
   /* profile */
   profileBox:  { display: "flex", alignItems: "center", gap: 16, marginBottom: 24 },
   avatar:      { width: 64, height: 64, borderRadius: 16, background: "linear-gradient(135deg,#22c55e,#16a34a)", display: "flex", alignItems: "center", justifyContent: "center", color: "#052e16", fontSize: 26, fontWeight: 950 },
+  avatarVip:   { background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "#1c1917", border: "2px solid rgba(250,204,21,0.6)", boxShadow: "0 0 20px rgba(250,204,21,0.3)" },
+  avatarVipStarOwner: { position: "absolute", bottom: -6, right: -6, fontSize: 18, lineHeight: 1, filter: "drop-shadow(0 0 4px rgba(250,204,21,0.6))" },
   profileName: { margin: 0, color: "white", fontSize: 22, lineHeight: 1.2 },
   profileRole: { margin: "5px 0 0", color: "#94a3b8", lineHeight: 1.35 },
   infoGrid:    { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 },
