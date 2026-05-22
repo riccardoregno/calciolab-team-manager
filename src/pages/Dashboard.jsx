@@ -12,7 +12,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { useAuth } from "../hooks/useAuth";
 import { loadAllPlayerStats } from "../services/playerProfile";
 import { useTranslation } from "../i18n";
-import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
+import { getObjectiveStatusMeta } from "../constants/objectiveStatus";
 
 import {
   formatDate,

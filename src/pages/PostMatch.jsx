@@ -8,7 +8,7 @@ import MatchTabBar from "../components/match/MatchTabBar";
 import { styles } from "../styles/index.js";
 import { createId, formatDate } from "../utils/helpers";
 import { useTranslation } from "../i18n";
-import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
+import { getObjectiveStatusMeta } from "../constants/objectiveStatus";
 
 const clipCategories = [
   { value: "Tattica",        labelKey: "pages.postMatch.clipCatTactics" },
@@ -109,7 +109,7 @@ export default function PostMatch({
       },
       {
         title: t("pages.postMatch.taskPrepareClips"),
-        description: buildVideoTaskDescription(match.videoAnalysis || [], t),
+        description: buildVideoTaskDescription(match.videoAnalysis || []),
         ownerRole: "assistantCoach",
         priority: "medium",
       },
@@ -714,7 +714,7 @@ function getEmptyClip() {
   };
 }
 
-function buildVideoTaskDescription(clips, t) {
+function buildVideoTaskDescription(clips) {
   if (!clips.length) return "";
   const individualCount = clips.filter((clip) => clip.audience === "Individuale" || clip.playerId).length;
   const staffCount = clips.length - individualCount;

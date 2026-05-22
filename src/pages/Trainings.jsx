@@ -50,7 +50,11 @@ function Trainings({
     if (fromState) {
       // Pulisce il backup sessionStorage subito, così un successivo
       // back+forward non ricarica la bozza originale sovrascrivendo le modifiche
-      try { sessionStorage.removeItem("trainings_draft"); } catch (_) {}
+      try {
+        sessionStorage.removeItem("trainings_draft");
+      } catch {
+        /* sessionStorage can be unavailable in restricted browsers */
+      }
       return getInitialTrainingForm(fromState);
     }
     try {
@@ -59,7 +63,9 @@ function Trainings({
         sessionStorage.removeItem("trainings_draft");
         return getInitialTrainingForm(JSON.parse(stored));
       }
-    } catch (_) {}
+    } catch {
+      /* Ignore stale or unreadable draft backups */
+    }
     return getInitialTrainingForm(null);
   });
 

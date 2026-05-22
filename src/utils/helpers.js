@@ -5,7 +5,7 @@ function getAppLocale() {
       : null;
     const map = { it: "it-IT", en: "en-GB" };
     return map[lang] || "it-IT";
-  } catch (_) {
+  } catch {
     return "it-IT";
   }
 }
