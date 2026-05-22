@@ -140,6 +140,7 @@ export default function Settings({
           authError={authError}
           storageSource={storageSource}
           appSettings={appSettings}
+          setAppSettings={setAppSettings}
         />
       )}
 
@@ -179,7 +180,7 @@ export default function Settings({
 /* ═══════════════════════════════════════════════════════════════
    TAB 1 — Account
 ═══════════════════════════════════════════════════════════════ */
-function AccountTab({ authConfigured, authLoading, user, team, authError, storageSource, appSettings = {} }) {
+function AccountTab({ authConfigured, authLoading, user, team, authError, storageSource, appSettings = {}, setAppSettings }) {
   const accountSettings = normalizeAppSettings(appSettings);
   const isVipOwner = Boolean(accountSettings.redeemedPromo?.permanent);
   const { t } = useTranslation();
@@ -446,6 +447,8 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
           <RoadmapItem title="Staff roles" text="Estendere permessi per coach, preparatore e osservatore." />
         </div>
       </AppCard>
+
+      <RedeemPromoCard appSettings={appSettings} setAppSettings={setAppSettings} />
     </div>
   );
 }
@@ -1259,6 +1262,110 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
         </div>
       )}
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Redeem Promo — shown in Account tab
+═══════════════════════════════════════════════════════════════ */
+function RedeemPromoCard({ appSettings = {}, setAppSettings }) {
+  const settings = normalizeAppSettings(appSettings);
+  const codes = settings.promoCodes || [];
+  const redeemed = settings.redeemedPromo || null;
+
+  const [input, setInput] = useState("");
+  const [feedback, setFeedback] = useState(null);
+
+  function handleRedeem(e) {
+    e.preventDefault();
+    setFeedback(null);
+    const code = input.trim().toUpperCase();
+    const found = codes.find((c) => c.code === code);
+    if (!found) {
+      setFeedback({ ok: false, text: "Codice non trovato o non valido." });
+      return;
+    }
+    if (!found.permanent && found.expiresAt && new Date(found.expiresAt) < new Date()) {
+      setFeedback({ ok: false, text: "Questo codice è scaduto." });
+      return;
+    }
+    if (found.maxUses > 0 && found.uses >= found.maxUses) {
+      setFeedback({ ok: false, text: "Questo codice ha raggiunto il limite di utilizzi." });
+      return;
+    }
+    const updatedCodes = codes.map((c) =>
+      c.id === found.id ? { ...c, uses: c.uses + 1 } : c
+    );
+    setAppSettings?.({
+      ...settings,
+      promoCodes: updatedCodes,
+      redeemedPromo: {
+        code:       found.code,
+        plan:       found.plan,
+        permanent:  found.permanent,
+        redeemedAt: new Date().toISOString(),
+      },
+      subscription: {
+        ...settings.subscription,
+        plan:          found.plan,
+        billingStatus: "active",
+      },
+    });
+    setFeedback({ ok: true, text: `✓ Codice applicato! Piano ${found.plan.toUpperCase()} attivato.` });
+    setInput("");
+  }
+
+  const planColors = { premium: "#38bdf8", club: "#a78bfa" };
+
+  return (
+    <AppCard>
+      <h3 style={{ margin: "0 0 6px", lineHeight: 1.2 }}>🎟️ Codice promozionale</h3>
+      <p style={{ color: "#94a3b8", margin: "0 0 16px", fontSize: 13, lineHeight: 1.5 }}>
+        Hai ricevuto un codice di accesso? Inseriscilo qui per attivare il piano associato.
+      </p>
+
+      {redeemed ? (
+        <div style={promoStyles.redeemedBox}>
+          <span style={{ fontSize: 20 }}>✓</span>
+          <div>
+            <strong style={{ color: planColors[redeemed.plan] || "#22c55e" }}>
+              Codice <span style={{ fontFamily: "monospace", letterSpacing: 1 }}>{redeemed.code}</span> attivo — piano {redeemed.plan.toUpperCase()}
+            </strong>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: "#64748b" }}>
+              Riscattato il {new Date(redeemed.redeemedAt).toLocaleDateString("it-IT")}
+              {redeemed.permanent ? " · accesso permanente" : ""}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleRedeem} style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <input
+            placeholder="Inserisci il codice..."
+            value={input}
+            onChange={(e) => setInput(e.target.value.toUpperCase())}
+            style={{
+              ...styles.input,
+              flex: "1 1 200px",
+              letterSpacing: 3,
+              textTransform: "uppercase",
+              fontFamily: "monospace",
+              fontWeight: 700,
+            }}
+          />
+          <Button type="submit">Applica</Button>
+        </form>
+      )}
+
+      {feedback && (
+        <div style={{
+          ...acctStyles.feedback,
+          marginTop: 12,
+          ...(feedback.ok ? acctStyles.feedbackOk : acctStyles.feedbackErr),
+        }}>
+          {feedback.text}
+        </div>
+      )}
+    </AppCard>
   );
 }
 
