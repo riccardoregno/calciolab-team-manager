@@ -66,6 +66,15 @@ export const en = {
     enabled: "Active",
     disabled: "Inactive",
     custom: "Custom",
+    setupChecks: {
+      onboarding: "Complete onboarding",
+      workspace:  "Configure team and season goal",
+      members:    "Invite staff or Club roles",
+      players:    "Add at least 18 players",
+      exercises:  "Create or import 10 exercises",
+      sessions:   "Create your first session",
+      matches:    "Add your first match",
+    },
   },
   navigation: {
     groups: {

@@ -1019,7 +1019,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                 <span style={{ color: check.done ? "#22c55e" : "#64748b" }}>
                   {check.done ? "✓" : "○"}
                 </span>
-                <strong>{check.label}</strong>
+                <strong>{t(check.labelKey)}</strong>
               </button>
             ))}
           </div>

@@ -971,7 +971,7 @@ function Dashboard({
             </Badge>
 
             <h2 style={{ margin: "12px 0 6px" }}>
-              {setup.next ? setup.next.label : t("pages.dashboard.workspaceReady")}
+              {setup.next ? t(setup.next.labelKey) : t("pages.dashboard.workspaceReady")}
             </h2>
 
             <p style={{ color: "#94a3b8", margin: 0 }}>

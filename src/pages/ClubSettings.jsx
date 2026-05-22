@@ -132,7 +132,7 @@ export default function ClubSettings({
             {setup.checks.map((check) => (
               <button key={check.key} onClick={() => navigate(check.path)} style={clubStyles.checkRow}>
                 <span>{check.done ? "✓" : "○"}</span>
-                <strong>{check.label}</strong>
+                <strong>{t(check.labelKey)}</strong>
               </button>
             ))}
           </div>
