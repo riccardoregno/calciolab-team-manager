@@ -20,10 +20,10 @@ const INJURY_TYPES = [
 ];
 
 const STATUS_OPTIONS = [
-  { value: "Infortunato",   color: "#f87171", bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.3)"  },
-  { value: "Recupero",      color: "#fb923c", bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.3)"   },
-  { value: "Differenziato", color: "#f59e0b", bg: "rgba(245,158,11,0.12)",  border: "rgba(245,158,11,0.3)"   },
-  { value: "Squalificato",  color: "#a855f7", bg: "rgba(168,85,247,0.12)",  border: "rgba(168,85,247,0.3)"   },
+  { value: "Infortunato",   labelKey: "pages.availability.statusInjured",       color: "#f87171", bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.3)"  },
+  { value: "Recupero",      labelKey: "pages.availability.statusRecovery",      color: "#fb923c", bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.3)"   },
+  { value: "Differenziato", labelKey: "pages.availability.statusDifferentiated", color: "#f59e0b", bg: "rgba(245,158,11,0.12)",  border: "rgba(245,158,11,0.3)"   },
+  { value: "Squalificato",  labelKey: "pages.availability.statusSuspended",      color: "#a855f7", bg: "rgba(168,85,247,0.12)",  border: "rgba(168,85,247,0.3)"   },
 ];
 
 const DIFFERENTIATED_WORK_TYPES = [
@@ -176,7 +176,7 @@ export default function Availability({
   // ── Salva infortunio (nuovo o modifica)
   function saveInjury() {
     if (!form.playerId) {
-      showToast("Seleziona un giocatore", "warn");
+      showToast(t("pages.availability.toastSelectPlayer"), "warn");
       return;
     }
     const differentiatedType = form.status === "Differenziato"
@@ -300,16 +300,16 @@ export default function Availability({
       <ToastContainer />
       <PageHeader
         title={t("pages.availability.title")}
-        subtitle="Gestisci stop e recuperi. I giocatori qui sotto non sono disponibili per le sedute."
-        action={<Button onClick={openAdd}>+ Aggiungi infortunio</Button>}
+        subtitle={t("pages.availability.subtitle")}
+        action={<Button onClick={openAdd}>{t("pages.availability.btnAdd")}</Button>}
       />
 
       {/* KPI + azione */}
       <div style={av.kpiRow}>
-        <KpiPill label="Disponibili" value={availablePlayers.length} color="#22c55e" />
+        <KpiPill label={t("pages.availability.kpiAvailable")} value={availablePlayers.length} color="#22c55e" />
         {STATUS_OPTIONS.map((s) => {
           const n = players.filter((p) => p.status === s.value).length;
-          return n > 0 ? <KpiPill key={s.value} label={s.value} value={n} color={s.color} /> : null;
+          return n > 0 ? <KpiPill key={s.value} label={t(s.labelKey)} value={n} color={s.color} /> : null;
         })}
         <div style={{ flex: 1 }} />
       </div>
@@ -317,8 +317,8 @@ export default function Availability({
       <AppCard>
         <div style={av.sectionHeader}>
           <div>
-            <h3 style={av.sectionTitle}>Prevenzione e Return to Play</h3>
-            <p style={av.muted}>Schede rapide per gestire rischio ricaduta, recupero e lavoro individuale.</p>
+            <h3 style={av.sectionTitle}>{t("pages.availability.preventionTitle")}</h3>
+            <p style={av.muted}>{t("pages.availability.preventionSub")}</p>
           </div>
         </div>
         <div style={av.preventionGrid}>
@@ -342,12 +342,13 @@ export default function Availability({
 
       {/* Lista infortuni attivi */}
       {injuredPlayers.length === 0 ? (
-        <EmptyState icon="🏥" title="Nessun infortunio attivo" text="Tutti i giocatori sono disponibili per gli allenamenti." />
+        <EmptyState icon="🏥" title={t("pages.availability.emptyTitle")} text={t("pages.availability.emptyText")} />
       ) : (
         <div style={av.grid}>
           {injuredPlayers.map((player) => {
             const name = [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "—";
             const st   = getStatusStyle(player.status);
+            const statusLabel = st.labelKey ? t(st.labelKey) : player.status;
             const activeInj = (player.injuries || []).find((i) => !i.endDate);
             const startDate = activeInj?.startDate || player.injuryStartDate || null;
             const daysOut   = startDate ? Math.floor((new Date() - new Date(startDate)) / 86400000) : null;
@@ -370,27 +371,27 @@ export default function Availability({
                     </div>
                   </div>
                   <span style={{ ...av.badge, color: st.color, background: "rgba(0,0,0,0.2)", border: `1px solid ${st.border}` }}>
-                    {player.status}
+                    {statusLabel}
                   </span>
                 </div>
 
                 {/* Dettagli */}
                 <div style={av.details}>
-                  {player.injuryType && <InfoRow icon="🏥" label="Tipo" value={player.injuryType} />}
+                  {player.injuryType && <InfoRow icon="🏥" label={t("pages.availability.labelType")} value={player.injuryType} />}
                   {player.status === "Differenziato" && player.differentiatedType && (
-                    <InfoRow icon="🏃" label="Lavoro" value={player.differentiatedType} />
+                    <InfoRow icon="🏃" label={t("pages.availability.labelWork")} value={player.differentiatedType} />
                   )}
                   {daysOut !== null && (
-                    <InfoRow icon="📅" label="Stop iniziato" value={`${startDate} · ${daysOut === 0 ? "oggi" : `${daysOut} gg fa`}`} />
+                    <InfoRow icon="📅" label={t("pages.availability.labelStopDate")} value={`${startDate} · ${daysOut === 0 ? t("pages.availability.today") : t("pages.availability.daysAgo", { days: daysOut })}`} />
                   )}
                   {player.expectedReturn && (
                     <InfoRow
                       icon="🔄"
-                      label="Rientro previsto"
+                      label={t("pages.availability.labelExpReturn")}
                       value={player.expectedReturn}
                       extra={daysLeft !== null && (
                         <span style={{ fontSize: 12, fontWeight: 800, marginLeft: 8, color: daysLeft <= 0 ? "#22c55e" : daysLeft <= 7 ? "#fb923c" : "#64748b" }}>
-                          {daysLeft <= 0 ? "✓ Può rientrare" : `${daysLeft} giorni`}
+                          {daysLeft <= 0 ? t("pages.availability.canReturn") : t("pages.availability.daysLeft", { days: daysLeft })}
                         </span>
                       )}
                     />
@@ -404,18 +405,18 @@ export default function Availability({
                       onClick={() => setHistoryPlayerId(historyPlayerId === player.id ? null : player.id)}
                       style={av.historyBtn}
                     >
-                      Storico ({pastInjuries.length})
+                      {t("pages.availability.historyBtn", { count: pastInjuries.length })}
                     </button>
                   )}
-                  <Button variant="ghost" onClick={() => openEdit(player)} style={{ flex: 1 }}>Modifica</Button>
-                  <Button variant="ghost" onClick={() => navigate(`/players/${player.id}`)} style={{ flex: 1 }}>Scheda</Button>
-                  <Button onClick={() => openRecovery(player)} style={{ flex: 1 }}>Rientro</Button>
+                  <Button variant="ghost" onClick={() => openEdit(player)} style={{ flex: 1 }}>{t("pages.availability.btnEdit")}</Button>
+                  <Button variant="ghost" onClick={() => navigate(`/players/${player.id}`)} style={{ flex: 1 }}>{t("pages.availability.btnCard")}</Button>
+                  <Button onClick={() => openRecovery(player)} style={{ flex: 1 }}>{t("pages.availability.btnRecovery")}</Button>
                 </div>
 
                 {/* Storico infortuni inline */}
                 {historyPlayerId === player.id && pastInjuries.length > 0 && (
                   <div style={av.historyBox}>
-                    <p style={av.historyTitle}>Storico infortuni — {name}</p>
+                    <p style={av.historyTitle}>{t("pages.availability.historyTitle", { name })}</p>
                     {[...pastInjuries].reverse().map((inj, index) => (
                       <div key={inj.id || `${inj.startDate}-${inj.injuryType}-${index}`} style={av.historyRow}>
                         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -426,9 +427,9 @@ export default function Availability({
                           <span style={{ fontSize: 12, color: "#64748b" }}>{inj.startDate} → {inj.endDate}</span>
                         </div>
                         <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
-                          <StatPill color="#94a3b8" label="Giorni fuori" value={inj.daysOut ?? "—"} />
-                          <StatPill color="#f87171" label="Sedute saltate" value={inj.sessionsMissed ?? 0} />
-                          <StatPill color="#fb923c" label="Partite saltate" value={inj.matchesMissed ?? 0} />
+                          <StatPill color="#94a3b8" label={t("pages.availability.statDaysOut")} value={inj.daysOut ?? "—"} />
+                          <StatPill color="#f87171" label={t("pages.availability.statSessionsMissed")} value={inj.sessionsMissed ?? 0} />
+                          <StatPill color="#fb923c" label={t("pages.availability.statMatchesMissed")} value={inj.matchesMissed ?? 0} />
                         </div>
                         {inj.notes && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>{inj.notes}</p>}
                       </div>
@@ -444,7 +445,7 @@ export default function Availability({
       {/* Storico giocatori senza infortuni attivi */}
       {players.some((p) => !UNAVAILABLE.includes(p.status || "Disponibile") && (p.injuries || []).some((i) => i.endDate)) && (
         <AppCard>
-          <h3 style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.2 }}>Storico infortuni risolti</h3>
+          <h3 style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.2 }}>{t("pages.availability.pastHistoryTitle")}</h3>
           <div style={{ display: "grid", gap: 12 }}>
             {players
               .filter((p) => !UNAVAILABLE.includes(p.status || "Disponibile") && (p.injuries || []).some((i) => i.endDate))
@@ -462,15 +463,15 @@ export default function Availability({
                       <p style={av.muted}>{player.role || "—"}</p>
                     </div>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                      <StatPill color="#94a3b8" label="Infortuni" value={past.length} />
-                      <StatPill color="#64748b" label="Giorni totali" value={totalDays} />
-                      <StatPill color="#f87171" label="Sedute saltate" value={totalSessions} />
-                      <StatPill color="#fb923c" label="Partite saltate" value={totalMatches} />
+                      <StatPill color="#94a3b8" label={t("pages.availability.statInjuries")} value={past.length} />
+                      <StatPill color="#64748b" label={t("pages.availability.statTotalDays")} value={totalDays} />
+                      <StatPill color="#f87171" label={t("pages.availability.statSessionsMissed")} value={totalSessions} />
+                      <StatPill color="#fb923c" label={t("pages.availability.statMatchesMissed")} value={totalMatches} />
                       <button onClick={() => setHistoryPlayerId(historyPlayerId === player.id ? null : player.id)} style={av.historyBtn}>
-                        {historyPlayerId === player.id ? "Chiudi" : "Dettaglio"}
+                        {historyPlayerId === player.id ? t("pages.availability.btnClose") : t("pages.availability.btnDetail")}
                       </button>
                       <button onClick={() => navigate(`/players/${player.id}`)} style={av.historyBtn}>
-                        Scheda
+                        {t("pages.availability.btnCard")}
                       </button>
                     </div>
                     {historyPlayerId === player.id && (
@@ -485,9 +486,9 @@ export default function Availability({
                               <span style={{ fontSize: 12, color: "#64748b" }}>{inj.startDate} → {inj.endDate}</span>
                             </div>
                             <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
-                              <StatPill color="#94a3b8" label="Giorni fuori" value={inj.daysOut ?? "—"} />
-                              <StatPill color="#f87171" label="Sedute saltate" value={inj.sessionsMissed ?? 0} />
-                              <StatPill color="#fb923c" label="Partite saltate" value={inj.matchesMissed ?? 0} />
+                              <StatPill color="#94a3b8" label={t("pages.availability.statDaysOut")} value={inj.daysOut ?? "—"} />
+                              <StatPill color="#f87171" label={t("pages.availability.statSessionsMissed")} value={inj.sessionsMissed ?? 0} />
+                              <StatPill color="#fb923c" label={t("pages.availability.statMatchesMissed")} value={inj.matchesMissed ?? 0} />
                             </div>
                             {inj.notes && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>{inj.notes}</p>}
                           </div>
@@ -504,15 +505,15 @@ export default function Availability({
       {/* Modal aggiungi / modifica */}
       {openModal && (
         <Modal
-          title={editingPlayerId ? "Modifica infortunio" : "Aggiungi infortunio"}
+          title={editingPlayerId ? t("pages.availability.modalEditTitle") : t("pages.availability.modalAddTitle")}
           onClose={() => setOpenModal(false)}
         >
           <div style={{ display: "grid", gap: 14 }}>
             {!editingPlayerId && (
               <div style={{ display: "grid", gap: 6 }}>
-                <label style={av.fieldLabel}>Giocatore *</label>
+                <label style={av.fieldLabel}>{t("pages.availability.fieldPlayer")}</label>
                 <select value={form.playerId} onChange={(e) => setForm({ ...form, playerId: e.target.value })} style={styles.input}>
-                  <option value="">Seleziona giocatore...</option>
+                  <option value="">{t("pages.availability.selectPlayer")}</option>
                   {selectablePlayers.map((p) => {
                     const n = [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
                     return <option key={p.id} value={p.id}>{n}{p.shirtNumber ? ` (#${p.shirtNumber})` : ""}</option>;
@@ -522,7 +523,7 @@ export default function Availability({
             )}
 
             <div style={{ display: "grid", gap: 6 }}>
-              <label style={av.fieldLabel}>Status</label>
+              <label style={av.fieldLabel}>{t("pages.availability.fieldStatus")}</label>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {STATUS_OPTIONS.map((s) => (
                   <button
@@ -541,23 +542,23 @@ export default function Availability({
                     background: form.status === s.value ? s.bg : "rgba(255,255,255,0.04)",
                     border: `1px solid ${form.status === s.value ? s.border : "rgba(255,255,255,0.08)"}`,
                   }}>
-                    {s.value}
+                    {t(s.labelKey)}
                   </button>
                 ))}
               </div>
             </div>
 
             <div style={{ display: "grid", gap: 6 }}>
-              <label style={av.fieldLabel}>Tipo infortunio</label>
+              <label style={av.fieldLabel}>{t("pages.availability.fieldInjuryType")}</label>
               <select value={form.injuryType} onChange={(e) => setForm({ ...form, injuryType: e.target.value })} style={styles.input}>
-                <option value="">Seleziona tipo...</option>
-                {INJURY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                <option value="">{t("pages.availability.selectType")}</option>
+                {INJURY_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
               </select>
             </div>
 
             {form.status === "Differenziato" && (
               <div style={{ display: "grid", gap: 6 }}>
-                <label style={av.fieldLabel}>Tipologia lavoro differenziato</label>
+                <label style={av.fieldLabel}>{t("pages.availability.fieldDiffType")}</label>
                 <select
                   value={form.differentiatedType}
                   onChange={(e) => setForm({ ...form, differentiatedType: e.target.value })}
@@ -572,51 +573,51 @@ export default function Availability({
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 }}>
               <div style={{ display: "grid", gap: 6 }}>
-                <label style={av.fieldLabel}>Data inizio</label>
+                <label style={av.fieldLabel}>{t("pages.availability.fieldStartDate")}</label>
                 <input type="date" value={form.injuryStartDate} onChange={(e) => setForm({ ...form, injuryStartDate: e.target.value })} style={styles.input} />
               </div>
               <div style={{ display: "grid", gap: 6 }}>
-                <label style={av.fieldLabel}>Rientro previsto</label>
+                <label style={av.fieldLabel}>{t("pages.availability.fieldExpReturnDate")}</label>
                 <input type="date" value={form.expectedReturn} onChange={(e) => setForm({ ...form, expectedReturn: e.target.value })} style={styles.input} />
               </div>
             </div>
 
             <div style={{ display: "grid", gap: 6 }}>
-              <label style={av.fieldLabel}>Note</label>
+              <label style={av.fieldLabel}>{t("pages.availability.fieldNotes")}</label>
               <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="Dettagli, fase di recupero, limitazioni..."
+                placeholder={t("pages.availability.notesPlaceholder")}
                 style={{ ...styles.input, minHeight: 72, resize: "vertical" }} />
             </div>
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-            <Button variant="ghost" onClick={() => setOpenModal(false)}>Annulla</Button>
-            <Button onClick={saveInjury}>{editingPlayerId ? "Aggiorna" : "Aggiungi"}</Button>
+            <Button variant="ghost" onClick={() => setOpenModal(false)}>{t("pages.availability.btnCancel")}</Button>
+            <Button onClick={saveInjury}>{editingPlayerId ? t("pages.availability.btnUpdate") : t("pages.availability.btnAddInj")}</Button>
           </div>
         </Modal>
       )}
 
       {recoveryPlayer && (
-        <Modal title="Conferma rientro" onClose={closeRecovery}>
+        <Modal title={t("pages.availability.recoveryModalTitle")} onClose={closeRecovery}>
           <div style={{ display: "grid", gap: 14 }}>
             <div style={av.recoverySummary}>
               <div>
-                <p style={av.fieldLabel}>Giocatore</p>
+                <p style={av.fieldLabel}>{t("pages.availability.recoveryPlayerLabel")}</p>
                 <strong style={{ color: "#e2e8f0", fontSize: 18 }}>
                   {[recoveryPlayer.firstName, recoveryPlayer.lastName].filter(Boolean).join(" ") || recoveryPlayer.name || "—"}
                 </strong>
                 <p style={av.muted}>
-                  {recoveryPlayer.injuryType || recoveryActiveInjury?.injuryType || "Stop attivo"}
+                  {recoveryPlayer.injuryType || recoveryActiveInjury?.injuryType || t("pages.availability.recoveryActiveStop")}
                   {recoveryPlayer.differentiatedType ? ` · ${recoveryPlayer.differentiatedType}` : ""}
                 </p>
               </div>
               <span style={{ ...av.badge, color: "#22c55e", border: "1px solid rgba(34,197,94,0.35)", background: "rgba(34,197,94,0.12)" }}>
-                Rientro
+                {t("pages.availability.recoveryBadge")}
               </span>
             </div>
 
             <div style={{ display: "grid", gap: 6 }}>
-              <label style={av.fieldLabel}>Data rientro</label>
+              <label style={av.fieldLabel}>{t("pages.availability.recoveryDateLabel")}</label>
               <input
                 type="date"
                 value={recoveryDate}
@@ -626,19 +627,19 @@ export default function Availability({
             </div>
 
             <div style={av.recoveryStats}>
-              <StatPill color="#94a3b8" label="giorni fuori" value={recoveryDaysOut} />
-              <StatPill color="#f87171" label="sedute saltate" value={recoveryStats.sessionsMissed} />
-              <StatPill color="#fb923c" label="partite saltate" value={recoveryStats.matchesMissed} />
+              <StatPill color="#94a3b8" label={t("pages.availability.statDaysOut")} value={recoveryDaysOut} />
+              <StatPill color="#f87171" label={t("pages.availability.statSessionsMissed")} value={recoveryStats.sessionsMissed} />
+              <StatPill color="#fb923c" label={t("pages.availability.statMatchesMissed")} value={recoveryStats.matchesMissed} />
             </div>
 
             <p style={{ ...av.muted, margin: 0 }}>
-              Il giocatore tornerà disponibile e lo stop attivo verrà chiuso nello storico medico.
+              {t("pages.availability.recoveryNote")}
             </p>
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
-            <Button variant="ghost" onClick={closeRecovery}>Annulla</Button>
-            <Button onClick={() => markRecovered(recoveryPlayer.id, recoveryDate)}>Conferma rientro</Button>
+            <Button variant="ghost" onClick={closeRecovery}>{t("pages.availability.btnCancel")}</Button>
+            <Button onClick={() => markRecovered(recoveryPlayer.id, recoveryDate)}>{t("pages.availability.btnConfirmRecovery")}</Button>
           </div>
         </Modal>
       )}

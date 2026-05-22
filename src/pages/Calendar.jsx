@@ -10,12 +10,20 @@ import { styles } from "../styles/index.js";
 import { useTranslation } from "../i18n";
 
 const EVENT_TYPES = [
-  { value: "Allenamento", label: "Allenamento", tone: "green" },
-  { value: "Partita",     label: "Partita",     tone: "orange" },
-  { value: "Altro",       label: "Altro",       tone: "blue" },
+  { value: "Allenamento", labelKey: "pages.calendar.typeTraining", tone: "green" },
+  { value: "Partita",     labelKey: "pages.calendar.typeMatch",    tone: "orange" },
+  { value: "Altro",       labelKey: "pages.calendar.typeOther",   tone: "blue" },
 ];
 
-const weekDays = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+const weekDayKeys = [
+  "pages.calendar.weekDayMon",
+  "pages.calendar.weekDayTue",
+  "pages.calendar.weekDayWed",
+  "pages.calendar.weekDayThu",
+  "pages.calendar.weekDayFri",
+  "pages.calendar.weekDaySat",
+  "pages.calendar.weekDaySun",
+];
 
 function buildWeek(offsetWeeks = 0) {
   const today = new Date();
@@ -47,7 +55,7 @@ function Calendar({
       attendance: {},
     };
     if (type === "Partita") {
-      const opponent = title || "Avversario";
+      const opponent = title || "Avversario"; // stored data value — not translated
       setMatches?.([...matches, {
         ...base,
         type:       "Partita",
@@ -85,8 +93,8 @@ function Calendar({
 
   function requestDeleteEvent(event) {
     setConfirmState({
-      message: `Eliminare "${event.title}"?`,
-      confirmLabel: "Elimina",
+      message: t("pages.calendar.deleteTitle", { title: event.title }),
+      confirmLabel: t("pages.calendar.deleteLabel"),
       confirmTone: "red",
       onConfirm: () => {
         if (event.type === "Partita") {
@@ -103,7 +111,7 @@ function Calendar({
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
         title={t("pages.calendar.title")}
-        subtitle="Gestisci eventi, presenze e statistiche partita/allenamento"
+        subtitle={t("pages.calendar.subtitle")}
       />
 
       <div
@@ -121,9 +129,9 @@ function Calendar({
         }}
       >
         <div>
-          <Badge tone="blue">{events.length} eventi</Badge>
+          <Badge tone="blue">{t("pages.calendar.eventsBadge", { count: events.length })}</Badge>
           <p style={{ color: "#94a3b8", margin: "8px 0 0", lineHeight: 1.4 }}>
-            Vista operativa per pianificare settimana e mese.
+            {t("pages.calendar.planningDesc")}
           </p>
         </div>
 
@@ -132,13 +140,13 @@ function Calendar({
             variant={view === "week" ? "primary" : "ghost"}
             onClick={() => setView("week")}
           >
-            Settimana
+            {t("pages.calendar.viewWeek")}
           </Button>
           <Button
             variant={view === "month" ? "primary" : "ghost"}
             onClick={() => setView("month")}
           >
-            Mese
+            {t("pages.calendar.viewMonth")}
           </Button>
         </div>
       </div>
@@ -176,6 +184,7 @@ function Calendar({
 }
 
 function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQuickCreate, onDeleteEvent, onEditEvent }) {
+  const { t } = useTranslation();
   const [openDay, setOpenDay] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
   const today = new Date();
@@ -232,7 +241,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
         }}
       >
         <Button variant="ghost" onClick={() => moveMonth(-1)}>
-          Prec.
+          {t("pages.calendar.prevBtn")}
         </Button>
 
         <h3 style={{ margin: 0, textTransform: "capitalize", lineHeight: 1.2 }}>
@@ -240,7 +249,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
         </h3>
 
         <Button variant="ghost" onClick={() => moveMonth(1)}>
-          Succ.
+          {t("pages.calendar.nextBtn")}
         </Button>
       </div>
 
@@ -256,8 +265,8 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
           textTransform: "uppercase",
         }}
       >
-        {["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"].map((day) => (
-          <span key={day}>{day}</span>
+        {weekDayKeys.map((key) => (
+          <span key={key}>{t(key)}</span>
         ))}
       </div>
 
@@ -301,7 +310,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                   <strong style={{ fontSize: 13 }}>{String(cell.day).padStart(2, "0")}</strong>
                   {isToday && (
                     <span style={{ fontSize: 10, fontWeight: 800, color: "#3b82f6", background: "rgba(59,130,246,0.18)", borderRadius: 6, padding: "1px 5px", lineHeight: 1.5 }}>
-                      Oggi
+                      {t("pages.calendar.today")}
                     </span>
                   )}
                 </div>
@@ -367,7 +376,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                         onClick={() => onSelect(event.id)}
                         style={{ flex: 1, cursor: "pointer", fontSize: 11, fontWeight: 700, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", border: "none", background: "transparent", padding: 0, textAlign: "left", minHeight: 0 }}
                       >
-                        {event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"} {event.title}
+                        {event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}{" "}{event.title}
                       </button>
                     {/* Bottoni per-chip solo quando ci sono più eventi nella cella */}
                     {cell.events.length > 1 && (
@@ -410,6 +419,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
 // Vista Settimana (ex WeekPlan)
 // ─────────────────────────────────────────────
 function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }) {
+  const { t } = useTranslation();
   const [offset, setOffset] = useState(0);
   const [openDay, setOpenDay] = useState(null); // dateKey del giorno con form aperto
   const [editingEvent, setEditingEvent] = useState(null);
@@ -439,24 +449,24 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
     <div style={{ display: "grid", gap: 20 }}>
       {/* Navigazione settimana */}
       <div style={wv.navBar}>
-        <Button variant="ghost" onClick={() => setOffset((o) => o - 1)}>Prec.</Button>
+        <Button variant="ghost" onClick={() => setOffset((o) => o - 1)}>{t("pages.calendar.prevBtn")}</Button>
         <div style={wv.navCenter}>
           <span style={wv.navLabel}>{weekLabel}</span>
           {!isCurrentWeek && (
             <button onClick={() => setOffset(0)} style={wv.todayBtn}>
-              Questa settimana
+              {t("pages.calendar.todayBtn")}
             </button>
           )}
         </div>
-        <Button variant="ghost" onClick={() => setOffset((o) => o + 1)}>Succ.</Button>
+        <Button variant="ghost" onClick={() => setOffset((o) => o + 1)}>{t("pages.calendar.nextBtn")}</Button>
       </div>
 
       {/* KPI */}
       <div style={wv.kpiGrid}>
-        <WeekKpi label="Allenamenti" value={sessions.length} tone="green" sub="sedute programmate" />
-        <WeekKpi label="Partite" value={matches.length} tone="orange" sub="gare in calendario" />
-        <WeekKpi label="Carico settimana" value={weeklyLoad || "—"} tone="purple" sub="RPE × minuti (u.a.)" />
-        <WeekKpi label="A rischio" value={availability.injured.length + availability.limited.length} tone="red" sub="infortunati + differenziato" />
+        <WeekKpi label={t("pages.calendar.kpiSessions")} value={sessions.length} tone="green" sub={t("pages.calendar.kpiSessionsSub")} />
+        <WeekKpi label={t("pages.calendar.kpiMatches")} value={matches.length} tone="orange" sub={t("pages.calendar.kpiMatchesSub")} />
+        <WeekKpi label={t("pages.calendar.kpiLoad")} value={weeklyLoad || "—"} tone="purple" sub={t("pages.calendar.kpiLoadSub")} />
+        <WeekKpi label={t("pages.calendar.kpiRisk")} value={availability.injured.length + availability.limited.length} tone="red" sub={t("pages.calendar.kpiRiskSub")} />
       </div>
 
       {/* Griglia giorni */}
@@ -481,7 +491,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
               <div style={wv.dayHeader}>
                 <div>
                   <p style={{ margin: 0, fontWeight: 900, fontSize: 13, color: isToday ? "#38bdf8" : "#94a3b8", textTransform: "uppercase" }}>
-                    {weekDays[index]}
+                    {t(weekDayKeys[index])}
                   </p>
                   <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>
                     {formatShortDate(day.key)}
@@ -528,7 +538,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
                         <Badge tone={event.type === "Partita" ? "orange" : event.type === "Altro" ? "blue" : "green"}>
-                          {event.type}
+                          {t(EVENT_TYPES.find(et => et.value === event.type)?.labelKey ?? "pages.calendar.typeTraining")}
                         </Badge>
                         <div style={{ display: "flex", gap: 3 }}>
                           <button
@@ -554,7 +564,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
                     </div>
                   ))
                 ) : !isOpen ? (
-                  <p style={wv.muted}>Recupero / riposo</p>
+                  <p style={wv.muted}>{t("pages.calendar.dayRest")}</p>
                 ) : null}
               </div>
             </div>
@@ -566,16 +576,16 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
       <AppCard>
         <div style={wv.alertHeader}>
           <div>
-            <h3 style={{ margin: 0, lineHeight: 1.2 }}>Alert staff</h3>
-            <p style={{ ...wv.muted, marginTop: 6 }}>Giocatori da monitorare questa settimana</p>
+            <h3 style={{ margin: 0, lineHeight: 1.2 }}>{t("pages.calendar.alertTitle")}</h3>
+            <p style={{ ...wv.muted, marginTop: 6 }}>{t("pages.calendar.alertSubtitle")}</p>
           </div>
-          <Button variant="ghost" onClick={() => window.print()}>Stampa settimana</Button>
+          <Button variant="ghost" onClick={() => window.print()}>{t("pages.calendar.printWeek")}</Button>
         </div>
 
         <div style={wv.alertGrid}>
-          <AlertCol title="🚑 Infortunati"          players={availability.injured}  />
-          <AlertCol title="🔄 Recupero/Differenziato" players={availability.limited} />
-          <AlertCol title="🟥 Squalificati"           players={availability.suspended} />
+          <AlertCol title={t("pages.calendar.alertInjured")}   players={availability.injured}  />
+          <AlertCol title={t("pages.calendar.alertRecovery")}  players={availability.limited} />
+          <AlertCol title={t("pages.calendar.alertSuspended")} players={availability.suspended} />
         </div>
       </AppCard>
 
@@ -605,17 +615,18 @@ function WeekKpi({ label, value, tone, sub }) {
 }
 
 function AlertCol({ title, players }) {
+  const { t } = useTranslation();
   return (
     <div style={wv.alertCol}>
       <strong style={{ fontSize: 13 }}>{title}</strong>
       {players.length ? (
         players.map((p) => (
           <span key={p.id} style={{ color: "#cbd5e1", fontSize: 13 }}>
-            {p.name}{p.expectedReturn ? ` · rientro ${p.expectedReturn}` : ""}
+            {p.name}{p.expectedReturn ? t("pages.calendar.expectedReturn", { date: p.expectedReturn }) : ""}
           </span>
         ))
       ) : (
-        <span style={{ color: "#475569", fontSize: 13 }}>Nessun giocatore</span>
+        <span style={{ color: "#475569", fontSize: 13 }}>{t("pages.calendar.noPlayers")}</span>
       )}
     </div>
   );
@@ -689,6 +700,7 @@ const wv = {
 // Mini-form aggiunta rapida evento
 // ─────────────────────────────────────────────
 function QuickAddForm({ date, onSave, onCancel, compact = false }) {
+  const { t } = useTranslation();
   const [type,  setType]  = useState("Allenamento");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -704,16 +716,16 @@ function QuickAddForm({ date, onSave, onCancel, compact = false }) {
     <div style={{ ...qa.wrap, ...(compact ? qa.wrapCompact : {}) }}>
       {/* Tipo */}
       <div style={qa.typeRow}>
-        {EVENT_TYPES.map((t) => (
+        {EVENT_TYPES.map((et) => (
           <button
-            key={t.value}
-            onClick={() => setType(t.value)}
+            key={et.value}
+            onClick={() => setType(et.value)}
             style={{
               ...qa.typeBtn,
-              ...(type === t.value ? qa.typeBtnActive : {}),
+              ...(type === et.value ? qa.typeBtnActive : {}),
             }}
           >
-            {t.value}
+            {t(et.labelKey)}
           </button>
         ))}
       </div>
@@ -721,7 +733,7 @@ function QuickAddForm({ date, onSave, onCancel, compact = false }) {
       {/* Titolo / avversario */}
       <input
         style={qa.input}
-        placeholder={type === "Partita" ? "Avversario *" : "Titolo (opzionale)"}
+        placeholder={type === "Partita" ? t("pages.calendar.opponentPlaceholder") : t("pages.calendar.titlePlaceholder")}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         autoFocus
@@ -731,7 +743,7 @@ function QuickAddForm({ date, onSave, onCancel, compact = false }) {
       {!compact && (
         <input
           style={qa.input}
-          placeholder="Nota (es. campo sintetico, ore 18:30)"
+          placeholder={t("pages.calendar.notePlaceholder")}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
@@ -739,7 +751,7 @@ function QuickAddForm({ date, onSave, onCancel, compact = false }) {
 
       {/* Azioni */}
       <div style={qa.actions}>
-        <button onClick={onCancel} style={qa.cancelBtn}>Annulla</button>
+        <button onClick={onCancel} style={qa.cancelBtn}>{t("pages.calendar.cancel")}</button>
         <button
           onClick={handleSave}
           disabled={type === "Partita" && !title.trim()}
@@ -748,7 +760,7 @@ function QuickAddForm({ date, onSave, onCancel, compact = false }) {
             opacity: type === "Partita" && !title.trim() ? 0.45 : 1,
           }}
         >
-          + Aggiungi
+          {t("pages.calendar.addEventBtn")}
         </button>
       </div>
     </div>
@@ -759,6 +771,7 @@ function QuickAddForm({ date, onSave, onCancel, compact = false }) {
 // Modal modifica evento calendario
 // ─────────────────────────────────────────────
 function EventEditModal({ event, onSave, onClose }) {
+  const { t } = useTranslation();
   const isMatch = event.type === "Partita";
 
   const [form, setForm] = useState({
@@ -798,22 +811,22 @@ function EventEditModal({ event, onSave, onClose }) {
       <div style={em.modal} onClick={(e) => e.stopPropagation()}>
         <div style={em.header}>
           <h3 style={{ margin: 0, fontSize: 16 }}>
-            {isMatch ? "✏️ Modifica partita" : "✏️ Modifica allenamento"}
+            {isMatch ? t("pages.calendar.editMatchTitle") : t("pages.calendar.editSessionTitle")}
           </h3>
           <button onClick={onClose} style={em.closeBtn}>×</button>
         </div>
 
         <div style={{ display: "grid", gap: 10 }}>
-          <label style={em.label}>{isMatch ? "Avversario" : "Titolo"}</label>
+          <label style={em.label}>{isMatch ? t("pages.calendar.fieldOpponent") : t("pages.calendar.fieldTitle")}</label>
           <input
             style={em.input}
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder={isMatch ? "Nome avversario" : "Titolo seduta"}
+            placeholder={isMatch ? t("pages.calendar.opponentNamePlaceholder") : t("pages.calendar.sessionTitlePlaceholder")}
             autoFocus
           />
 
-          <label style={em.label}>Data</label>
+          <label style={em.label}>{t("pages.calendar.fieldDate")}</label>
           <input
             type="date"
             style={em.input}
@@ -823,34 +836,34 @@ function EventEditModal({ event, onSave, onClose }) {
 
           {isMatch && (
             <>
-              <label style={em.label}>Campo</label>
+              <label style={em.label}>{t("pages.calendar.fieldLocation")}</label>
               <select style={em.input} value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}>
                 <option>Casa</option>
                 <option>Trasferta</option>
                 <option>Neutro</option>
               </select>
 
-              <label style={em.label}>Risultato</label>
+              <label style={em.label}>{t("pages.calendar.fieldResult")}</label>
               <input
                 style={em.input}
                 value={form.result}
                 onChange={(e) => setForm({ ...form, result: e.target.value })}
-                placeholder="es. 2-1"
+                placeholder={t("pages.calendar.resultPlaceholder")}
               />
             </>
           )}
 
           {!isMatch && (
             <>
-              <label style={em.label}>Tema</label>
+              <label style={em.label}>{t("pages.calendar.fieldTheme")}</label>
               <input
                 style={em.input}
                 value={form.theme}
                 onChange={(e) => setForm({ ...form, theme: e.target.value })}
-                placeholder="es. Pressing, Fase difensiva..."
+                placeholder={t("pages.calendar.themePlaceholder")}
               />
 
-              <label style={em.label}>Durata (min)</label>
+              <label style={em.label}>{t("pages.calendar.fieldDuration")}</label>
               <input
                 type="number"
                 style={em.input}
@@ -862,18 +875,18 @@ function EventEditModal({ event, onSave, onClose }) {
             </>
           )}
 
-          <label style={em.label}>Note</label>
+          <label style={em.label}>{t("pages.calendar.fieldNotes")}</label>
           <textarea
             style={{ ...em.input, minHeight: 72, resize: "vertical" }}
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            placeholder="Note aggiuntive..."
+            placeholder={t("pages.calendar.notesPlaceholder")}
           />
         </div>
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={em.cancelBtn}>Annulla</button>
-          <button onClick={handleSave} style={em.saveBtn}>Salva modifiche</button>
+          <button onClick={onClose} style={em.cancelBtn}>{t("pages.calendar.cancel")}</button>
+          <button onClick={handleSave} style={em.saveBtn}>{t("pages.calendar.saveChanges")}</button>
         </div>
       </div>
     </div>
