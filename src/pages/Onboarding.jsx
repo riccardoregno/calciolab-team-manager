@@ -45,7 +45,8 @@ const MODULE_OPTIONS = [
   { id: "sponsors",  label: "Gestione Sponsor",    icon: "🤝", desc: "Hub sponsor, offerte e visibilità brand", plan: "club" },
 ];
 
-const STEPS = ["Chi sei", "Il tuo club", "Strumenti"];
+// Labels resolved at render time via t() inside the component — see stepLabels below
+const STEP_COUNT = 3;
 
 function recommendPlan(modules) {
   if (modules.some((m) => ["portal", "sponsors"].includes(m))) return "club";
@@ -57,8 +58,14 @@ function recommendPlan(modules) {
 // Componente principale
 // ─────────────────────────────────────────────
 export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
+  const { t }     = useTranslation();
   const navigate  = useNavigate();
   const settings  = normalizeAppSettings(appSettings) || {};
+  const stepLabels = [
+    t("pages.onboarding.whoCareYou"),
+    t("pages.onboarding.yourClub"),
+    t("pages.onboarding.tools"),
+  ];
 
   const [step, setStep]         = useState(1);
   const [saving, setSaving]     = useState(false);
@@ -139,14 +146,14 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
 
       {/* ── Sidebar desktop / Progress bar mobile ── */}
       {isMobile ? (
-        <MobileProgress step={step} total={STEPS.length} labels={STEPS} />
+        <MobileProgress step={step} total={STEP_COUNT} labels={stepLabels} />
       ) : (
         <aside style={ob.aside}>
           <div style={ob.asideLogo}>⚽ CalcioLab</div>
-          <p style={ob.asideTagline}>Il workspace per allenatori professionisti.</p>
+          <p style={ob.asideTagline}>{t("pages.onboarding.tagline")}</p>
 
           <div style={ob.stepList}>
-            {STEPS.map((label, i) => {
+            {stepLabels.map((label, i) => {
               const n      = i + 1;
               const done   = step > n;
               const active = step === n;
@@ -161,7 +168,7 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
                   </div>
                   <div>
                     <p style={{ ...ob.stepLabel, color: active ? "#e2e8f0" : done ? "#94a3b8" : "#475569" }}>
-                      Step {n}
+                      {t("pages.onboarding.stepLabel", { n })}
                     </p>
                     <p style={{ ...ob.stepName, color: active ? "#fff" : done ? "#94a3b8" : "#334155" }}>
                       {label}
@@ -174,7 +181,7 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
 
           <div style={ob.asideFooter}>
             <p style={{ margin: 0, color: "#334155", fontSize: 12 }}>
-              Puoi modificare tutto in seguito dalle Impostazioni.
+              {t("pages.onboarding.settingsNote")}
             </p>
           </div>
         </aside>
@@ -200,11 +207,12 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
 // Mobile progress bar
 // ─────────────────────────────────────────────
 function MobileProgress({ step, total, labels }) {
+  const { t } = useTranslation();
   return (
     <div style={ob.mobileProgress}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ fontWeight: 900, fontSize: 16 }}>⚽ CalcioLab</span>
-        <span style={{ color: "#64748b", fontSize: 13 }}>Step {step} di {total} — {labels[step - 1]}</span>
+        <span style={{ color: "#64748b", fontSize: 13 }}>{t("pages.onboarding.mobileProgress", { step, total, label: labels[step - 1] })}</span>
       </div>
       <div style={ob.progressBar}>
         <div style={{ ...ob.progressFill, width: `${(step / total) * 100}%` }} />
@@ -223,14 +231,12 @@ function Step1({ form, setForm, onNext, isMobile }) {
   return (
     <div style={ob.stepContent}>
       <div style={ob.stepHeader}>
-        {!isMobile && <span style={ob.stepBadge}>Step 1 di 3</span>}
+        {!isMobile && <span style={ob.stepBadge}>{t("pages.onboarding.step", { current: 1, total: STEP_COUNT })}</span>}
         <h1 style={isMobile ? { ...ob.stepTitle, fontSize: 24 } : ob.stepTitle}>{t("pages.onboarding.welcome")}</h1>
-        <p style={ob.stepSubtitle}>
-          Dicci chi sei e che squadra alleni. Personalizzeremo il workspace in base alle tue risposte.
-        </p>
+        <p style={ob.stepSubtitle}>{t("pages.onboarding.step1Subtitle")}</p>
       </div>
 
-      <Section label="Qual è il tuo ruolo?">
+      <Section label={t("pages.onboarding.yourRoleQuestion")}>
         <div style={ob.cardGrid}>
           {STAFF_ROLES.map((role) => (
             <SelectCard
@@ -245,7 +251,7 @@ function Step1({ form, setForm, onNext, isMobile }) {
         </div>
       </Section>
 
-      <Section label="Che squadra alleni?">
+      <Section label={t("pages.onboarding.yourTeamQuestion")}>
         <div style={ob.cardGrid}>
           {TEAM_LEVELS.map((t) => (
             <SelectCard
@@ -261,7 +267,7 @@ function Step1({ form, setForm, onNext, isMobile }) {
       </Section>
 
       {form.teamLevel === "prima" && (
-        <Section label="Gestione multi-squadra">
+        <Section label={t("pages.onboarding.multiTeam")}>
           <button
             onClick={() => setForm({ ...form, managesJuniores: !form.managesJuniores })}
             style={{
@@ -274,9 +280,9 @@ function Step1({ form, setForm, onNext, isMobile }) {
               {form.managesJuniores && <span style={{ color: "white", fontSize: 11, fontWeight: 900 }}>✓</span>}
             </div>
             <div>
-              <strong style={{ fontSize: 14, color: "#e2e8f0" }}>Gestisco anche il settore giovanile</strong>
+              <strong style={{ fontSize: 14, color: "#e2e8f0" }}>{t("pages.onboarding.managesJunioresLabel")}</strong>
               <p style={{ margin: "3px 0 0", fontSize: 12, color: "#64748b" }}>
-                Potrai vedere e filtrare i giocatori delle squadre giovanili direttamente da CalcioLab
+                {t("pages.onboarding.managesJunioresDesc")}
               </p>
             </div>
           </button>
@@ -284,7 +290,7 @@ function Step1({ form, setForm, onNext, isMobile }) {
       )}
 
       <div style={ob.actions}>
-        <NextBtn disabled={!canProceed} onClick={onNext} label="Avanti →" />
+        <NextBtn disabled={!canProceed} onClick={onNext} label={t("pages.onboarding.next")} />
       </div>
     </div>
   );
@@ -294,6 +300,7 @@ function Step1({ form, setForm, onNext, isMobile }) {
 // Step 2 — Identità club + modulo
 // ─────────────────────────────────────────────
 function Step2({ form, setForm, onBack, onNext, isMobile }) {
+  const { t } = useTranslation();
   const [attempted, setAttempted] = useState(false);
   const canProceed = !!form.clubName?.trim();
 
@@ -305,15 +312,13 @@ function Step2({ form, setForm, onBack, onNext, isMobile }) {
   return (
     <div style={ob.stepContent}>
       <div style={ob.stepHeader}>
-        {!isMobile && <span style={ob.stepBadge}>Step 2 di 3</span>}
-        <h1 style={isMobile ? { ...ob.stepTitle, fontSize: 24 } : ob.stepTitle}>Identità del tuo club 🏟️</h1>
-        <p style={ob.stepSubtitle}>
-          Questi dati compaiono nei report, nelle convocazioni e nell'area giocatori.
-        </p>
+        {!isMobile && <span style={ob.stepBadge}>{t("pages.onboarding.step", { current: 2, total: STEP_COUNT })}</span>}
+        <h1 style={isMobile ? { ...ob.stepTitle, fontSize: 24 } : ob.stepTitle}>{t("pages.onboarding.step2Title")}</h1>
+        <p style={ob.stepSubtitle}>{t("pages.onboarding.step2Subtitle")}</p>
       </div>
 
       <div style={ob.formGrid}>
-        <FormField label="Nome società *">
+        <FormField label={t("pages.onboarding.clubNameLabel")}>
           <input
             style={{
               ...ob.input,
@@ -323,26 +328,26 @@ function Step2({ form, setForm, onBack, onNext, isMobile }) {
             }}
             value={form.clubName}
             onChange={(e) => setForm({ ...form, clubName: e.target.value })}
-            placeholder="es. A.S.D. Calcio Rosso"
+            placeholder={t("pages.onboarding.clubNamePlaceholder")}
             autoFocus
           />
           {attempted && !canProceed && (
             <span style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>
-              ⚠️ Il nome della società è obbligatorio
+              {t("pages.onboarding.clubNameRequired")}
             </span>
           )}
         </FormField>
 
-        <FormField label="Nome squadra">
+        <FormField label={t("pages.onboarding.teamNameLabel")}>
           <input
             style={ob.input}
             value={form.teamName}
             onChange={(e) => setForm({ ...form, teamName: e.target.value })}
-            placeholder="es. Prima Squadra, Under 19…"
+            placeholder={t("pages.onboarding.teamNamePlaceholder")}
           />
         </FormField>
 
-        <FormField label="Stagione corrente">
+        <FormField label={t("pages.onboarding.seasonLabel")}>
           <input
             style={ob.input}
             value={form.currentSeason}
@@ -351,18 +356,18 @@ function Step2({ form, setForm, onBack, onNext, isMobile }) {
           />
         </FormField>
 
-        <FormField label="Obiettivo stagione">
+        <FormField label={t("pages.onboarding.seasonGoalLabel")}>
           <textarea
             style={{ ...ob.input, minHeight: 90, resize: "vertical" }}
             value={form.seasonGoal}
             onChange={(e) => setForm({ ...form, seasonGoal: e.target.value })}
-            placeholder="es. Promozione in Eccellenza, consolidamento categoria…"
+            placeholder={t("pages.onboarding.seasonGoalPlaceholder")}
           />
         </FormField>
       </div>
 
       {/* Modulo di gioco */}
-      <Section label="Modulo di gioco preferito">
+      <Section label={t("pages.onboarding.formationLabel")}>
         <div style={ob.formationGrid}>
           {FORMATIONS.map((f) => {
             const active = form.formation === f.id;
@@ -398,7 +403,7 @@ function Step2({ form, setForm, onBack, onNext, isMobile }) {
 
       <div style={ob.actions}>
         <BackBtn onClick={onBack} />
-        <NextBtn disabled={false} onClick={handleNext} label="Avanti →" />
+        <NextBtn disabled={false} onClick={handleNext} label={t("pages.onboarding.next")} />
       </div>
     </div>
   );
@@ -408,6 +413,7 @@ function Step2({ form, setForm, onBack, onNext, isMobile }) {
 // Step 3 — Strumenti
 // ─────────────────────────────────────────────
 function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
+  const { t } = useTranslation();
   const plan = recommendPlan(form.modules);
 
   const planColors = {
@@ -420,11 +426,9 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
   return (
     <div style={ob.stepContent}>
       <div style={ob.stepHeader}>
-        {!isMobile && <span style={ob.stepBadge}>Step 3 di 3</span>}
-        <h1 style={isMobile ? { ...ob.stepTitle, fontSize: 24 } : ob.stepTitle}>Scegli i tuoi strumenti 🧰</h1>
-        <p style={ob.stepSubtitle}>
-          Seleziona i moduli che vuoi usare. Il piano consigliato si aggiorna in automatico.
-        </p>
+        {!isMobile && <span style={ob.stepBadge}>{t("pages.onboarding.step", { current: 3, total: STEP_COUNT })}</span>}
+        <h1 style={isMobile ? { ...ob.stepTitle, fontSize: 24 } : ob.stepTitle}>{t("pages.onboarding.step3Title")}</h1>
+        <p style={ob.stepSubtitle}>{t("pages.onboarding.step3Subtitle")}</p>
       </div>
 
       <div style={ob.moduleGrid}>
@@ -447,7 +451,7 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
                   fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 999,
                   background: pColor.bg, border: `1px solid ${pColor.border}`, color: pColor.text,
                 }}>
-                  {mod.plan === "free" ? "Free" : mod.plan === "premium" ? "Premium" : "Club"}
+                  {mod.plan === "free" ? t("pages.onboarding.planLabelFree") : mod.plan === "premium" ? t("pages.onboarding.planLabelPremium") : t("pages.onboarding.planLabelClub")}
                 </span>
               </div>
               <div style={{ flex: 1, textAlign: "left" }}>
@@ -475,16 +479,16 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
       }}>
         <div>
           <p style={{ margin: 0, fontSize: 12, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 }}>
-            Piano consigliato
+            {t("pages.onboarding.recommendedPlanTitle")}
           </p>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#cbd5e1" }}>
-            {plan === "free"    && "Rosa e sedute base — perfetto per iniziare."}
-            {plan === "premium" && "Strumenti avanzati per allenatori esigenti."}
-            {plan === "club"    && "Workspace completo per il club, staff e sponsor."}
+            {plan === "free"    && t("pages.onboarding.planFreeDesc")}
+            {plan === "premium" && t("pages.onboarding.planPremiumDesc")}
+            {plan === "club"    && t("pages.onboarding.planClubDesc")}
           </p>
         </div>
         <Badge tone={planBadgeTone[plan]}>
-          {planColors[plan].label}
+          {t(`pages.onboarding.planLabel${plan.charAt(0).toUpperCase() + plan.slice(1)}`)}
         </Badge>
       </div>
 
@@ -495,7 +499,7 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
           disabled={saving}
           style={{ ...ob.completeBtn, ...(saving ? { opacity: 0.6, cursor: "not-allowed" } : {}) }}
         >
-          {saving ? "Configurazione in corso…" : "Inizia a lavorare 🚀"}
+          {saving ? t("pages.onboarding.btnConfiguring") : t("pages.onboarding.btnStart")}
         </button>
       </div>
     </div>
@@ -564,8 +568,9 @@ function NextBtn({ onClick, disabled, label = "Avanti →" }) {
 }
 
 function BackBtn({ onClick }) {
+  const { t } = useTranslation();
   return (
-    <button onClick={onClick} style={ob.backBtn}>← Indietro</button>
+    <button onClick={onClick} style={ob.backBtn}>← {t("pages.onboarding.back")}</button>
   );
 }
 

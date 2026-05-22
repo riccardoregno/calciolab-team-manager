@@ -1068,7 +1068,7 @@ export default function TacticalBoard({
   function saveCurrentSchema() {
     const name = schemaName.trim();
     if (!name) {
-      showToast("Inserisci un nome per lo schema", "warn");
+      showToast(t("pages.tacticalBoard.toastSchemaNameRequired"), "warn");
       return;
     }
     const schema = {
@@ -1249,21 +1249,21 @@ export default function TacticalBoard({
       <ToastContainer />
       <PageHeader
         title={t("pages.tacticalBoard.title")}
-        subtitle="Costruisci struttura, principi, rotazioni e distinta gara in un unico ambiente professionale."
+        subtitle={t("pages.tacticalBoard.pageSubtitle")}
       />
 
       {/* ── Banner: si arriva da un esercizio specifico ── */}
       {editingExerciseId && (
         <div style={exStyles.banner}>
           <span style={exStyles.bannerText}>
-            ✏️ Stai modificando il disegno di: <strong>{editingExerciseName || "esercizio"}</strong>
+            {t("pages.tacticalBoard.bannerEditing")} <strong>{editingExerciseName || t("pages.tacticalBoard.exNamePlaceholder")}</strong>
           </span>
           <button
             type="button"
             onClick={() => navigate("/exercise-library?tab=miei")}
             style={exStyles.bannerBack}
           >
-            ← Torna all'Eserciziario
+            {t("pages.tacticalBoard.bannerEditBack")}
           </button>
         </div>
       )}
@@ -1272,7 +1272,7 @@ export default function TacticalBoard({
       {setPlaySection && (
         <div style={{ ...exStyles.banner, background: "rgba(139,92,246,0.15)", borderColor: "rgba(139,92,246,0.35)" }}>
           <span style={exStyles.bannerText}>
-            📐 Disegna lo schema per: <strong>{setPlayLabel || setPlaySection}</strong>
+            {t("pages.tacticalBoard.bannerDrawSchema")} <strong>{setPlayLabel || setPlaySection}</strong>
           </span>
           <div style={{ display: "flex", gap: 10 }}>
             <button
@@ -1280,14 +1280,14 @@ export default function TacticalBoard({
               onClick={() => navigate("/set-plays")}
               style={exStyles.bannerBack}
             >
-              ← Annulla
+              {t("pages.tacticalBoard.bannerCancel")}
             </button>
             <button
               type="button"
               onClick={saveForSetPlay}
               style={{ ...exStyles.bannerBack, background: "rgba(139,92,246,0.3)", borderColor: "rgba(139,92,246,0.6)", color: "#c4b5fd" }}
             >
-              💾 Salva in Palle Inattive
+              {t("pages.tacticalBoard.bannerSaveSetPlay")}
             </button>
           </div>
         </div>
@@ -1298,16 +1298,16 @@ export default function TacticalBoard({
         <div style={exStyles.modalOverlay} onClick={() => { setExModalOpen(false); setExFeedback(null); }}>
           <div style={exStyles.modal} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: "0 0 6px", fontSize: 18 }}>
-              {editingExerciseId ? "Salva disegno nell'esercizio" : "Inserisci come esercizio"}
+              {editingExerciseId ? t("pages.tacticalBoard.modalSaveDrawTitle") : t("pages.tacticalBoard.modalInsertTitle")}
             </h3>
             <p style={{ color: "#94a3b8", margin: "0 0 18px", fontSize: 13, lineHeight: 1.5 }}>
               {editingExerciseId
-                ? `Il disegno corrente della lavagna verrà salvato nell'esercizio "${editingExerciseName}".`
-                : "La lavagna corrente (giocatori, linee e oggetti) verrà associata a un nuovo esercizio nell'Eserciziario."}
+                ? t("pages.tacticalBoard.modalSaveDrawSub", { name: editingExerciseName })
+                : t("pages.tacticalBoard.modalInsertSub")}
             </p>
             {!editingExerciseId && (
               <input
-                placeholder="Nome esercizio"
+                placeholder={t("pages.tacticalBoard.exNamePlaceholder")}
                 value={exName}
                 onChange={(e) => { setExName(e.target.value); setExFeedback(null); }}
                 onKeyDown={(e) => e.key === "Enter" && exportToExercise()}
@@ -1322,15 +1322,15 @@ export default function TacticalBoard({
             )}
             <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "flex-end" }}>
               <button type="button" onClick={() => { setExModalOpen(false); setExFeedback(null); }} style={exStyles.btnGhost}>
-                Annulla
+                {t("pages.tacticalBoard.undo")}
               </button>
               {exFeedback?.ok ? (
                 <button type="button" onClick={() => navigate("/exercise-library?tab=miei")} style={exStyles.btnPrimary}>
-                  Vai all'Eserciziario →
+                  {t("pages.tacticalBoard.btnGotoLibrary")}
                 </button>
               ) : (
                 <button type="button" onClick={exportToExercise} style={exStyles.btnPrimary}>
-                  {editingExerciseId ? "Salva disegno" : "Crea esercizio"}
+                  {editingExerciseId ? t("pages.tacticalBoard.btnSaveDrawing") : t("pages.tacticalBoard.btnCreateExercise")}
                 </button>
               )}
             </div>
@@ -1365,7 +1365,7 @@ export default function TacticalBoard({
             {/* ── Riga 1: formazioni + azioni gara ── */}
             <div style={boardStyles.toolbar}>
               <label style={boardStyles.label}>
-                Squadra
+                {t("pages.tacticalBoard.ownTeam")}
                 <select value={ownFormation} onChange={(e) => changeOwnFormation(e.target.value)} style={boardStyles.select}>
                   {formationOptions.map((formation) => (
                     <option key={formation}>{formation}</option>
@@ -1373,7 +1373,7 @@ export default function TacticalBoard({
                 </select>
               </label>
               <label style={boardStyles.label}>
-                Avversari
+                {t("pages.tacticalBoard.opponents")}
                 <select value={opponentFormation} onChange={(e) => changeOpponentFormation(e.target.value)} style={boardStyles.select}>
                   {formationOptions.map((formation) => (
                     <option key={formation}>{formation}</option>
@@ -1381,7 +1381,7 @@ export default function TacticalBoard({
                 </select>
               </label>
               <div style={{ ...boardStyles.actions, marginLeft: "auto" }}>
-                <button style={boardStyles.secondaryButton} onClick={clearLineup}>Pulisci titolari</button>
+                <button style={boardStyles.secondaryButton} onClick={clearLineup}>{t("pages.tacticalBoard.btnClearLineup")}</button>
                 <button style={boardStyles.primaryButton} onClick={resetBoard}>Reset board</button>
               </div>
             </div>
@@ -1860,17 +1860,17 @@ export default function TacticalBoard({
 
         <div style={boardStyles.sideColumn}>
           <AppCard>
-            <h3 style={styles.cardTitle}>Principi di gioco</h3>
+            <h3 style={styles.cardTitle}>{t("pages.tacticalBoard.gamePrinciples")}</h3>
             <div style={boardStyles.notes}>
-              <Note title="Costruzione" value={notes.costruzione} onChange={(v) => setNotes((p) => ({ ...p, costruzione: v }))} />
-              <Note title="Rifinitura" value={notes.rifinitura} onChange={(v) => setNotes((p) => ({ ...p, rifinitura: v }))} />
-              <Note title="Transizione" value={notes.transizione} onChange={(v) => setNotes((p) => ({ ...p, transizione: v }))} />
-              <Note title="Non possesso" value={notes.nonPossesso} onChange={(v) => setNotes((p) => ({ ...p, nonPossesso: v }))} />
+              <Note title={t("pages.tacticalBoard.costruzione")} value={notes.costruzione} onChange={(v) => setNotes((p) => ({ ...p, costruzione: v }))} />
+              <Note title={t("pages.tacticalBoard.rifinitura")} value={notes.rifinitura} onChange={(v) => setNotes((p) => ({ ...p, rifinitura: v }))} />
+              <Note title={t("pages.tacticalBoard.transizione")} value={notes.transizione} onChange={(v) => setNotes((p) => ({ ...p, transizione: v }))} />
+              <Note title={t("pages.tacticalBoard.nonPossesso")} value={notes.nonPossesso} onChange={(v) => setNotes((p) => ({ ...p, nonPossesso: v }))} />
             </div>
           </AppCard>
 
           <AppCard>
-            <h3 style={styles.cardTitle}>Titolari ({selectedLineup.length}/11)</h3>
+            <h3 style={styles.cardTitle}>{t("pages.tacticalBoard.starters", { count: selectedLineup.length })}</h3>
             <div style={boardStyles.lineup}>
               {selectedLineup.length ? (
                 selectedLineup.map((player) => (
@@ -1878,22 +1878,22 @@ export default function TacticalBoard({
                     <div style={boardStyles.lineupNumber}>{player.number || "--"}</div>
                     <div style={boardStyles.lineupInfo}>
                       <strong>{player.name}</strong>
-                      <span>{player.role || "Giocatore"}</span>
+                      <span>{player.role || t("pages.tacticalBoard.player")}</span>
                     </div>
                   </div>
                 ))
               ) : (
-                <div style={boardStyles.emptyLineup}>Nessun titolare selezionato</div>
+                <div style={boardStyles.emptyLineup}>{t("pages.tacticalBoard.noStartersSelected")}</div>
               )}
             </div>
           </AppCard>
 
           <AppCard>
-            <h3 style={styles.cardTitle}>Panchina ({availablePlayers.length - selectedLineup.length})</h3>
+            <h3 style={styles.cardTitle}>{t("pages.tacticalBoard.bench", { count: availablePlayers.length - selectedLineup.length })}</h3>
 
             {selectedSlotId && (
               <div style={boardStyles.slotHint}>
-                Slot selezionato: <strong>{boardPlayers.find((p) => p.id === selectedSlotId)?.slotRole}</strong>
+                {t("pages.tacticalBoard.benchSlotHint")} <strong>{boardPlayers.find((p) => p.id === selectedSlotId)?.slotRole}</strong>
               </div>
             )}
 
@@ -1915,7 +1915,7 @@ export default function TacticalBoard({
                     <div style={boardStyles.benchNumber}>{player.number || "--"}</div>
                     <div style={boardStyles.benchInfo}>
                       <strong>{player.name}</strong>
-                      <span>{player.role || "Giocatore"}</span>
+                      <span>{player.role || t("pages.tacticalBoard.player")}</span>
                     </div>
                   </div>
                 ))}
@@ -1924,12 +1924,12 @@ export default function TacticalBoard({
 
           {/* ── Schemi Salvati ── */}
           <AppCard>
-            <h3 style={styles.cardTitle}>Schemi salvati</h3>
+            <h3 style={styles.cardTitle}>{t("pages.tacticalBoard.savedSchemas")}</h3>
 
             {/* Salva schema corrente */}
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               <input
-                placeholder="Nome schema..."
+                placeholder={t("pages.tacticalBoard.schemaNamePlaceholder")}
                 value={schemaName}
                 onChange={(e) => setSchemaName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && saveCurrentSchema()}
@@ -1949,9 +1949,9 @@ export default function TacticalBoard({
                 onClick={saveCurrentSchema}
                 style={boardStyles.frameAddButton}
               >
-                Salva
+                {t("pages.tacticalBoard.btnSave")}
               </button>
-              {schemaSaved && <span style={{ color: "#4ade80", fontSize: 13, marginLeft: 8 }}>✓ Salvato</span>}
+              {schemaSaved && <span style={{ color: "#4ade80", fontSize: 13, marginLeft: 8 }}>{t("pages.tacticalBoard.btnSaved")}</span>}
             </div>
 
             {/* Esporta in esercizi */}
@@ -1960,12 +1960,12 @@ export default function TacticalBoard({
               onClick={() => { setExName(""); setExFeedback(null); setExModalOpen(true); }}
               style={boardStyles.exportExerciseBtn}
             >
-              📋 Inserisci come esercizio
+              {t("pages.tacticalBoard.btnInsertExercise")}
             </button>
 
             {/* Preset palle inattive */}
             <p style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0, color: "#64748b", margin: "12px 0 8px" }}>
-              Preset palle inattive
+              {t("pages.tacticalBoard.presetSchemas")}
             </p>
             <div style={{ display: "grid", gap: 6, marginBottom: 14 }}>
               {PRESET_SCHEMAS.map((preset) => (
@@ -1979,7 +1979,7 @@ export default function TacticalBoard({
                     onClick={() => loadSchema(preset)}
                     style={boardStyles.schemaLoadBtn}
                   >
-                    Carica
+                    {t("pages.tacticalBoard.btnLoad")}
                   </button>
                 </div>
               ))}
@@ -1989,7 +1989,7 @@ export default function TacticalBoard({
             {savedSchemas.length > 0 && (
               <>
                 <p style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0, color: "#64748b", margin: "0 0 8px" }}>
-                  Personalizzati ({savedSchemas.length})
+                  {t("pages.tacticalBoard.customSchemas", { count: savedSchemas.length })}
                 </p>
                 <div style={{ display: "grid", gap: 6 }}>
                   {savedSchemas.map((schema) => (
@@ -2006,7 +2006,7 @@ export default function TacticalBoard({
                           onClick={() => loadSchema(schema)}
                           style={boardStyles.schemaLoadBtn}
                         >
-                          Carica
+                          {t("pages.tacticalBoard.btnLoad")}
                         </button>
                         <button
                           type="button"
@@ -2024,7 +2024,7 @@ export default function TacticalBoard({
 
             {savedSchemas.length === 0 && (
               <p style={{ color: "#475569", fontSize: 12, margin: 0, lineHeight: 1.5 }}>
-                Salva la posizione corrente per ritrovarla in qualsiasi momento.
+                {t("pages.tacticalBoard.noSavedSchemasHint")}
               </p>
             )}
           </AppCard>

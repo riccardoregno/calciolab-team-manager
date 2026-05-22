@@ -31,7 +31,7 @@ function parseRating(val) {
   return Math.min(10, Math.max(0, Math.round(n * 10) / 10));
 }
 
-function validateRow(row) {
+function validateRow(row, t) {
   const errors = [];
   const mins    = parseInt(row.minutes_played, 10);
   const yellows = parseInt(row.yellow_cards,   10);
@@ -40,12 +40,12 @@ function validateRow(row) {
   const assists = parseInt(row.assists,        10);
   const rating  = parseFloat(row.rating);
 
-  if (!isNaN(mins)    && (mins    < 0 || mins    > 120)) errors.push("Minuti fuori range (0–120)");
-  if (!isNaN(goals)   && goals   < 0)                    errors.push("Gol non può essere negativo");
-  if (!isNaN(assists) && assists < 0)                     errors.push("Assist non può essere negativo");
-  if (!isNaN(yellows) && (yellows < 0 || yellows > 2))   errors.push("Gialli: max 2 per partita");
-  if (!isNaN(reds)    && (reds    < 0 || reds    > 1))   errors.push("Rossi: max 1 per partita");
-  if (!isNaN(rating)  && (rating  < 0 || rating  > 10))  errors.push("Voto fuori range (0–10)");
+  if (!isNaN(mins)    && (mins    < 0 || mins    > 120)) errors.push(t("pages.matchStats.errMinutes"));
+  if (!isNaN(goals)   && goals   < 0)                    errors.push(t("pages.matchStats.errGoalsNeg"));
+  if (!isNaN(assists) && assists < 0)                     errors.push(t("pages.matchStats.errAssistsNeg"));
+  if (!isNaN(yellows) && (yellows < 0 || yellows > 2))   errors.push(t("pages.matchStats.errYellows"));
+  if (!isNaN(reds)    && (reds    < 0 || reds    > 1))   errors.push(t("pages.matchStats.errReds"));
+  if (!isNaN(rating)  && (rating  < 0 || rating  > 10))  errors.push(t("pages.matchStats.errRating"));
 
   return errors;
 }
@@ -154,7 +154,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       const pid = String(player.id);
       const row = rows[pid];
       if (!row) continue;
-      const rowErrors = validateRow(row);
+      const rowErrors = validateRow(row, t);
       if (rowErrors.length > 0) errors[pid] = rowErrors;
     }
     if (Object.keys(errors).length > 0) {
@@ -201,8 +201,8 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     return (
       <div style={s.page}>
         <AppCard>
-          <p style={s.muted}>Partita non trovata.</p>
-          <Button variant="ghost" onClick={() => navigate("/matches")}>Torna alle partite</Button>
+          <p style={s.muted}>{t("pages.matchStats.notFound")}</p>
+          <Button variant="ghost" onClick={() => navigate("/matches")}>{t("pages.matchStats.backToMatches")}</Button>
         </AppCard>
       </div>
     );
@@ -215,7 +215,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       <PageHeader
         title={`${t("pages.matchStats.title")} — ${match.opponent || t("pages.matchStats.defaultOpponent")}`}
         subtitle={subtitle}
-        badge={`${convocati.length} convocati`}
+        badge={t("pages.matchStats.badge", { count: convocati.length })}
       />
 
       <MatchTabBar
@@ -227,46 +227,44 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
 
       <AppCard>
         <div style={s.topBar}>
-          <span style={s.muted}>
-            Inserisci le statistiche per ogni giocatore convocato. Lascia vuoto per saltare.
-          </span>
+          <span style={s.muted}>{t("pages.matchStats.topBarHint")}</span>
           <div style={s.topActions}>
-            <Button variant="ghost" onClick={() => navigate("/matches")}>Indietro</Button>
+            <Button variant="ghost" onClick={() => navigate("/matches")}>{t("pages.matchStats.btnBack")}</Button>
             <Button onClick={handleSave} disabled={saving || loading}>
-              {saving ? "Salvataggio..." : "Salva statistiche"}
+              {saving ? t("pages.matchStats.btnSaving") : t("pages.matchStats.btnSave")}
             </Button>
           </div>
         </div>
 
         {saveResult === "ok" && (
-          <p style={s.successMsg}>Statistiche salvate correttamente.</p>
+          <p style={s.successMsg}>{t("pages.matchStats.successMsg")}</p>
         )}
         {saveResult === "error" && (
-          <p style={s.errorMsg}>Errore durante il salvataggio. Controlla la console.</p>
+          <p style={s.errorMsg}>{t("pages.matchStats.errorMsg")}</p>
         )}
       </AppCard>
 
       {loading ? (
-        <AppCard><p style={s.muted}>Caricamento...</p></AppCard>
+        <AppCard><p style={s.muted}>{t("pages.matchStats.loading")}</p></AppCard>
       ) : convocati.length === 0 ? (
         <AppCard>
           <p style={s.muted}>
-            Nessun giocatore in distinta.{" "}
+            {t("pages.matchStats.noPlayersMsg")}{" "}
             {match?.convocazione?.playerIds?.length > 0 ? (
               <>
-                Hai {match.convocazione.playerIds.length} convocati — vai alla{" "}
+                {t("pages.matchStats.noPlayersConvocatiPre", { count: match.convocazione.playerIds.length })}{" "}
                 <button style={s.link} onClick={() => navigate(`/match-day/${id}`)}>
-                  Scheda gara
-                </button>
-                {" "}e usa <strong style={{ color: "#93c5fd" }}>«Importa convocati»</strong> per compilare la distinta in un click.
+                  {t("pages.matchStats.matchSheetLink")}
+                </button>{" "}
+                {t("pages.matchStats.noPlayersConvocatiPost")}
               </>
             ) : (
               <>
-                Aggiungi titolari e panchina dalla{" "}
+                {t("pages.matchStats.noPlayersLineupPre")}{" "}
                 <button style={s.link} onClick={() => navigate(`/match-day/${id}`)}>
-                  Scheda gara
+                  {t("pages.matchStats.matchSheetLink")}
                 </button>
-                .
+                {t("pages.matchStats.noPlayersLineupPost")}
               </>
             )}
           </p>
@@ -293,13 +291,13 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                   <div style={s.playerIdentity}>
                     <span style={s.playerName}>{displayName}</span>
                     <Badge tone={isStarter ? "green" : "blue"}>
-                      {isStarter ? "Titolare" : "Panchina"}
+                      {isStarter ? t("pages.matchStats.badgeStarter") : t("pages.matchStats.badgeBench")}
                     </Badge>
                   </div>
                 </div>
 
                 <div style={s.statGrid}>
-                  <StatInput label="Minuti" hint="0-120" value={row.minutes_played}>
+                  <StatInput label={t("pages.matchStats.labelMinutes")} hint={t("pages.matchStats.hintMinutes")} value={row.minutes_played}>
                     <input
                       style={s.input}
                       type="number"
@@ -310,7 +308,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                       onChange={(e) => updateCell(pid, "minutes_played", e.target.value)}
                     />
                   </StatInput>
-                  <StatInput label="Gol" value={row.goals}>
+                  <StatInput label={t("pages.matchStats.labelGoals")} value={row.goals}>
                     <input
                       style={s.input}
                       type="number"
@@ -320,7 +318,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                       onChange={(e) => updateCell(pid, "goals", e.target.value)}
                     />
                   </StatInput>
-                  <StatInput label="Assist" value={row.assists}>
+                  <StatInput label={t("pages.matchStats.labelAssists")} value={row.assists}>
                     <input
                       style={s.input}
                       type="number"
@@ -330,7 +328,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                       onChange={(e) => updateCell(pid, "assists", e.target.value)}
                     />
                   </StatInput>
-                  <StatInput label="Gialli" hint="max 2" value={row.yellow_cards}>
+                  <StatInput label={t("pages.matchStats.labelYellows")} hint={t("pages.matchStats.hintYellows")} value={row.yellow_cards}>
                     <input
                       style={s.input}
                       type="number"
@@ -341,7 +339,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                       onChange={(e) => updateCell(pid, "yellow_cards", e.target.value)}
                     />
                   </StatInput>
-                  <StatInput label="Rossi" hint="max 1" value={row.red_cards}>
+                  <StatInput label={t("pages.matchStats.labelReds")} hint={t("pages.matchStats.hintReds")} value={row.red_cards}>
                     <input
                       style={s.input}
                       type="number"
@@ -352,7 +350,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                       onChange={(e) => updateCell(pid, "red_cards", e.target.value)}
                     />
                   </StatInput>
-                  <StatInput label="Voto" hint="0-10" value={row.rating}>
+                  <StatInput label={t("pages.matchStats.labelRating")} hint={t("pages.matchStats.hintRating")} value={row.rating}>
                     <input
                       style={{ ...s.input, ...s.inputRating }}
                       type="number"
@@ -367,11 +365,11 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                 </div>
 
                 <label style={s.notesField}>
-                  <span style={s.fieldLabel}>Note</span>
+                  <span style={s.fieldLabel}>{t("pages.matchStats.labelNotes")}</span>
                   <input
                     style={{ ...s.input, ...s.inputNotes }}
                     type="text"
-                    placeholder="Nota libera"
+                    placeholder={t("pages.matchStats.notesPlaceholder")}
                     value={row.notes}
                     onChange={(e) => updateCell(pid, "notes", e.target.value)}
                   />

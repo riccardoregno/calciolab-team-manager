@@ -23,7 +23,11 @@ const HEADER_MAP = {
   notes:             ["notes", "note"],
 };
 
-const TYPE_LABEL = { training: "Allenamento", match: "Partita", test: "Test" };
+const TYPE_LABEL_KEY = {
+  training: "pages.gpsLoad.typeTraining",
+  match:    "pages.gpsLoad.typeMatch",
+  test:     "pages.gpsLoad.typeTest",
+};
 const TYPE_TONE  = { training: "blue", match: "green", test: "orange" };
 
 export default function GpsLoad({
@@ -50,7 +54,7 @@ export default function GpsLoad({
     reader.onload = (event) => {
       const rows = parseCSV(event.target.result);
       if (!rows.length) {
-        showToast("Nessuna riga valida trovata nel CSV", "error");
+        showToast(t("pages.gpsLoad.toastNoRows"), "error");
         return;
       }
       setPendingRows(rows.map((row) => matchGpsRowToPlayer(row, players)));
@@ -62,7 +66,7 @@ export default function GpsLoad({
 
   function handleSaveSession() {
     if (!sessionForm.title.trim()) {
-      showToast("Inserisci un titolo per la sessione", "warn");
+      showToast(t("pages.gpsLoad.toastTitleRequired"), "warn");
       return;
     }
 
@@ -80,31 +84,29 @@ export default function GpsLoad({
     setPendingRows([]);
     setShowForm(false);
     setSessionForm({ title: "", date: new Date().toISOString().slice(0, 10), type: "training", notes: "" });
-    showToast("Sessione GPS salvata", "ok");
+    showToast(t("pages.gpsLoad.toastSessionSaved"), "ok");
   }
 
   function handleDeleteSession(id) {
     setGpsSessions((prevSessions) => prevSessions.filter((session) => session.id !== id));
-    showToast("Sessione eliminata", "ok");
+    showToast(t("pages.gpsLoad.toastSessionDeleted"), "ok");
   }
 
   return (
     <div style={styles.page}>
       <PageHeader
         title={t("pages.gpsLoad.title")}
-        subtitle="Importa e analizza dati GPS, carico esterno, sprint e intensità della squadra."
+        subtitle={t("pages.gpsLoad.pageSubtitle")}
       />
 
       <AppCard>
         <div style={gl.headerRow}>
           <div>
-            <h3 style={gl.cardTitle}>Importa dati GPS</h3>
-            <p style={gl.muted}>
-              CSV con colonne: playerName, duration, totalDistance, highSpeedDistance, sprintDistance, maxSpeed, accelerations, decelerations, playerLoad, rpe, notes
-            </p>
+            <h3 style={gl.cardTitle}>{t("pages.gpsLoad.importCardTitle")}</h3>
+            <p style={gl.muted}>{t("pages.gpsLoad.importCsvDesc")}</p>
           </div>
           <Button onClick={() => fileInputRef.current?.click()}>
-            Importa CSV
+            {t("pages.gpsLoad.btnImportCsv")}
           </Button>
         </div>
         <input
@@ -117,19 +119,19 @@ export default function GpsLoad({
 
         {showForm && (
           <div style={gl.importBox}>
-            <h4 style={gl.importTitle}>Configura sessione ({pendingRows.length} atleti importati)</h4>
+            <h4 style={gl.importTitle}>{t("pages.gpsLoad.configTitle", { count: pendingRows.length })}</h4>
             <div style={gl.formGrid}>
               <label style={labelStyle}>
-                Titolo *
+                {t("pages.gpsLoad.fieldTitle")}
                 <input
                   style={inputStyle}
                   value={sessionForm.title}
                   onChange={(e) => setSessionForm((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="Es. Allenamento MD-3"
+                  placeholder={t("pages.gpsLoad.titlePlaceholder")}
                 />
               </label>
               <label style={labelStyle}>
-                Data
+                {t("pages.gpsLoad.fieldDate")}
                 <input
                   type="date"
                   style={inputStyle}
@@ -138,29 +140,29 @@ export default function GpsLoad({
                 />
               </label>
               <label style={labelStyle}>
-                Tipo
+                {t("pages.gpsLoad.fieldType")}
                 <select
                   style={inputStyle}
                   value={sessionForm.type}
                   onChange={(e) => setSessionForm((prev) => ({ ...prev, type: e.target.value }))}
                 >
-                  <option value="training">Allenamento</option>
-                  <option value="match">Partita</option>
-                  <option value="test">Test</option>
+                  <option value="training">{t("pages.gpsLoad.typeTraining")}</option>
+                  <option value="match">{t("pages.gpsLoad.typeMatch")}</option>
+                  <option value="test">{t("pages.gpsLoad.typeTest")}</option>
                 </select>
               </label>
               <label style={{ ...labelStyle, gridColumn: "1 / -1" }}>
-                Note
+                {t("pages.gpsLoad.fieldNotes")}
                 <input
                   style={inputStyle}
                   value={sessionForm.notes}
                   onChange={(e) => setSessionForm((prev) => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Note opzionali"
+                  placeholder={t("pages.gpsLoad.notesPlaceholder")}
                 />
               </label>
             </div>
             <div style={gl.actions}>
-              <Button onClick={handleSaveSession}>Salva sessione</Button>
+              <Button onClick={handleSaveSession}>{t("pages.gpsLoad.btnSave")}</Button>
               <button
                 type="button"
                 onClick={() => {
@@ -169,7 +171,7 @@ export default function GpsLoad({
                 }}
                 style={ghostBtn}
               >
-                Annulla
+                {t("pages.gpsLoad.btnCancel")}
               </button>
             </div>
           </div>
@@ -177,12 +179,12 @@ export default function GpsLoad({
       </AppCard>
 
       {gpsSessions.length === 0 && !showForm && (
-        <EmptyState title="Nessuna sessione GPS" description="Importa un file CSV per iniziare a tracciare i carichi." />
+        <EmptyState title={t("pages.gpsLoad.emptyTitle")} description={t("pages.gpsLoad.emptyDesc")} />
       )}
 
       {gpsSessions.length > 0 && (
         <AppCard>
-          <h3 style={gl.cardTitle}>Sessioni salvate</h3>
+          <h3 style={gl.cardTitle}>{t("pages.gpsLoad.savedSessionsTitle")}</h3>
           <div style={gl.sessionList}>
             {[...gpsSessions].sort((a, b) => b.date.localeCompare(a.date)).map((session) => {
               const isOpen = expandedId === session.id;
@@ -202,14 +204,14 @@ export default function GpsLoad({
                   >
                     <div style={gl.sessionTitleRow}>
                       <span style={gl.sessionTitle}>{session.title}</span>
-                      <Badge tone={TYPE_TONE[session.type] || "blue"}>{TYPE_LABEL[session.type] || session.type}</Badge>
+                      <Badge tone={TYPE_TONE[session.type] || "blue"}>{TYPE_LABEL_KEY[session.type] ? t(TYPE_LABEL_KEY[session.type]) : session.type}</Badge>
                       <span style={gl.sessionDate}>{formatDate(session.date)}</span>
                     </div>
                     <div style={gl.sessionMeta}>
-                      <span>Atleti {session.rows.length}</span>
-                      {avgDist > 0 && <span>{avgDist} m medi</span>}
-                      {maxSpeed > 0 && <span>{maxSpeed.toFixed(1)} km/h max</span>}
-                      <span>{isOpen ? "Chiudi" : "Apri"}</span>
+                      <span>{t("pages.gpsLoad.metaAthletes", { count: session.rows.length })}</span>
+                      {avgDist > 0 && <span>{t("pages.gpsLoad.metaAvgDist", { dist: avgDist })}</span>}
+                      {maxSpeed > 0 && <span>{t("pages.gpsLoad.metaMaxSpeed", { speed: maxSpeed.toFixed(1) })}</span>}
+                      <span>{isOpen ? t("pages.gpsLoad.btnClose") : t("pages.gpsLoad.btnOpen")}</span>
                     </div>
                   </button>
 
@@ -219,7 +221,18 @@ export default function GpsLoad({
                         <table style={gl.table}>
                           <thead>
                             <tr>
-                              {["Atleta", "Durata", "Dist (m)", "HSD (m)", "Sprint (m)", "V.Max", "Acc", "Dec", "Load", "RPE"].map((header) => (
+                              {[
+                                t("pages.gpsLoad.tableHeaderAthlete"),
+                                t("pages.gpsLoad.tableHeaderDuration"),
+                                t("pages.gpsLoad.tableHeaderDist"),
+                                t("pages.gpsLoad.tableHeaderHSD"),
+                                t("pages.gpsLoad.tableHeaderSprint"),
+                                t("pages.gpsLoad.tableHeaderVMax"),
+                                t("pages.gpsLoad.tableHeaderAcc"),
+                                t("pages.gpsLoad.tableHeaderDec"),
+                                t("pages.gpsLoad.tableHeaderLoad"),
+                                t("pages.gpsLoad.tableHeaderRPE"),
+                              ].map((header) => (
                                 <th key={header} style={gl.th}>{header}</th>
                               ))}
                             </tr>
@@ -244,7 +257,7 @@ export default function GpsLoad({
                       </div>
                       <div style={gl.sessionActions}>
                         <button type="button" onClick={() => handleDeleteSession(session.id)} style={ghostBtn}>
-                          Elimina sessione
+                          {t("pages.gpsLoad.btnDeleteSession")}
                         </button>
                       </div>
                     </div>
