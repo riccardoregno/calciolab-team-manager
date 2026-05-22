@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTabState } from "../hooks/useTabState";
 import { useTranslation } from "../i18n";
 
 import Badge from "../components/ui/Badge";
@@ -697,8 +698,9 @@ const compactInput = {
 // ─── Componente principale ────────────────────────────────────────────────────
 export default function SetPlays({ players = [], setPlays = {}, setSetPlays, appSettings = {} }) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState("corners");
-  const [activeView, setActiveView] = useState("all");
+  const [activeTab, setActiveTab] = useTabState("tab", "corners");
+  const [activeView, setActiveView] = useTabState("view", "all");
+  const [, setSearchParams] = useSearchParams();
   const [presetNames, setPresetNames] = useState({});
   const navigate = useNavigate();
   const role = getCurrentUserRole(appSettings);
@@ -951,8 +953,10 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
           <button
             key={t.key}
             onClick={() => {
-              setActiveTab(t.key);
-              setActiveView("all");
+              setSearchParams(
+                (prev) => { const n = new URLSearchParams(prev); n.set("tab", t.key); n.set("view", "all"); return n; },
+                { replace: true }
+              );
             }}
             style={{
               padding: "9px 18px",

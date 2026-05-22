@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTabState } from "../hooks/useTabState";
 
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
@@ -43,7 +44,7 @@ function Calendar({
   events, players, setSessions, setMatches, sessions = [], matches = [] }) {
 
   const { t } = useTranslation();
-  const [view, setView] = useState("week");
+  const [view, setView] = useTabState("view", "week");
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [confirmState, setConfirmState] = useState(null);
 

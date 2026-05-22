@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { Eye, EyeOff } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useTabState } from "../hooks/useTabState";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -59,11 +60,7 @@ export default function Settings({
   matches = [],
 }) {
   const { t } = useTranslation();
-  const location = useLocation();
-  const initialTab = new URLSearchParams(location.search).get("tab");
-  const [activeTab, setActiveTab] = useState(
-    TABS.some((tab) => tab.key === initialTab) ? initialTab : "account"
-  );
+  const [activeTab, setActiveTab] = useTabState("tab", "account");
   const [confirmState, setConfirmState] = useState(null);
   const { showToast, ToastContainer } = useToast();
 

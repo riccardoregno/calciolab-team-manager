@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTabState } from "../hooks/useTabState";
 
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
@@ -45,7 +46,7 @@ function PlayerDetail({
 
   const [editing, setEditing] = useState(false);
   const [editBaseUpdatedAt, setEditBaseUpdatedAt] = useState(null);
-  const [activeTab, setActiveTab] = useState("cartella");
+  const [activeTab, setActiveTab] = useTabState("tab", "cartella");
   const [form, setForm] = useState({ ...player });
   const [medicalModal, setMedicalModal] = useState(null);
   const [conflictModal, setConflictModal] = useState(false);
