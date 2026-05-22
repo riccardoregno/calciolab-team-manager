@@ -47,7 +47,12 @@ function Trainings({
 
   const [form, setForm] = useState(() => {
     const fromState = location.state?.draftTraining;
-    if (fromState) return getInitialTrainingForm(fromState);
+    if (fromState) {
+      // Pulisce il backup sessionStorage subito, così un successivo
+      // back+forward non ricarica la bozza originale sovrascrivendo le modifiche
+      try { sessionStorage.removeItem("trainings_draft"); } catch (_) {}
+      return getInitialTrainingForm(fromState);
+    }
     try {
       const stored = sessionStorage.getItem("trainings_draft");
       if (stored) {
@@ -747,7 +752,7 @@ function Trainings({
                           <div style={trainingStyles.sourceInline}>
                             <Badge tone="purple">{t("pages.trainings.sourcePostMatch")}</Badge>
                             <Badge tone={getObjectiveStatusMeta(session.objectiveStatus).tone}>
-                              {getObjectiveStatusMeta(session.objectiveStatus).label}
+                              {t(getObjectiveStatusMeta(session.objectiveStatus).labelKey)}
                             </Badge>
                             <span>
                               {session.sourceMatchLabel ? `vs ${session.sourceMatchLabel}` : t("pages.trainings.sourceLinked")}

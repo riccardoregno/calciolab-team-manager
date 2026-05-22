@@ -1059,7 +1059,7 @@ function PlayerRoleDashboard({
     .filter((event) => new Date(event.date) >= todayStart())
     .sort((a, b) => new Date(a.date) - new Date(b.date))
     .slice(0, 3);
-  const program = player ? appSettings.playerPortal.programs[player.id] : "";
+  const program = player ? (appSettings?.playerPortal?.programs?.[player.id] ?? "") : "";
 
   return (
     <div>
