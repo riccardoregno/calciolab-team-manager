@@ -17,6 +17,7 @@ import {
   getSetupProgress,
   memberRoles,
   normalizeAppSettings,
+  normalizePromoCode,
 } from "../utils/helpers";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useNotifications } from "../hooks/useNotifications";
@@ -40,6 +41,24 @@ const widgetLabelKeys = {
   recentActivities: "pages.settings.recentActivities",
   quickActions:     "pages.settings.quickActions",
   rewardCenter:     "pages.settings.rewardPlan",
+};
+
+/* ─── Permission areas for custom access overrides ─────────── */
+const PERMISSION_AREAS = [
+  { key: "players",    label: "Rosa",         icon: "👥" },
+  { key: "sessions",   label: "Allenamenti",  icon: "📋" },
+  { key: "matches",    label: "Partite",      icon: "⚽" },
+  { key: "physical",   label: "Test fisici",  icon: "📊" },
+  { key: "statistics", label: "Statistiche",  icon: "📈" },
+  { key: "setPlays",   label: "Schemi",       icon: "🎯" },
+  { key: "calendar",   label: "Calendario",   icon: "📅" },
+];
+
+const AREA_ACCESS_LABELS = {
+  role:   "Ruolo",
+  view:   "Solo lettura",
+  manage: "Lett. + scrittura",
+  none:   "Nessun accesso",
 };
 
 /* ─── main component ────────────────────────────────────────── */
@@ -670,7 +689,8 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
   const rawProfile = settings.workspaceProfile || {};
   const [profile, setProfile] = useState({ ...DEFAULT_WORKSPACE_PROFILE, ...rawProfile });
   const [inviteModal, setInviteModal] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ email: "", name: "", role: "assistantCoach" });
+  const [inviteForm, setInviteForm] = useState({ email: "", name: "", role: "assistantCoach", customAreas: {} });
+  const [showCustomPerms, setShowCustomPerms] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
 
   // Genera (o recupera) il token invito del team
@@ -703,17 +723,19 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
     if (!inviteForm.email) return;
     const token = inviteToken || generateInviteToken();
     const pending = {
-      id:        createId("invite"),
-      name:      inviteForm.name,
-      email:     inviteForm.email,
-      role:      inviteForm.role,
-      status:    "In attesa",
+      id:          createId("invite"),
+      name:        inviteForm.name,
+      email:       inviteForm.email,
+      role:        inviteForm.role,
+      customAreas: inviteForm.customAreas,
+      status:      "In attesa",
       token,
-      sentAt:    new Date().toISOString(),
+      sentAt:      new Date().toISOString(),
     };
     const currentInvites = settings.pendingInvites || [];
     setAppSettings?.({ ...settings, pendingInvites: [...currentInvites, pending] });
-    setInviteForm({ email: "", name: "", role: "assistantCoach" });
+    setInviteForm({ email: "", name: "", role: "assistantCoach", customAreas: {} });
+    setShowCustomPerms(false);
     setInviteModal(false);
     // TODO go-live: chiamare Edge Function che invia l'email con il link
   }
@@ -1044,6 +1066,9 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
         )}
       </AppCard>
 
+      {/* ── Codici promo / accesso founder ── */}
+      <PromoCodesCard appSettings={appSettings} setAppSettings={setAppSettings} />
+
       {/* ── Modale invito ── */}
       {inviteModal && (
         <div style={inviteStyles.overlay} onClick={() => setInviteModal(false)}>
@@ -1084,6 +1109,53 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                 </p>
               </div>
 
+              {/* ── Personalizza accessi ── */}
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCustomPerms((v) => !v)}
+                  style={inviteStyles.expandBtn}
+                >
+                  <span>🔧 Personalizza accessi per area</span>
+                  <span style={{ fontSize: 10, opacity: 0.6 }}>{showCustomPerms ? "▲" : "▼"}</span>
+                </button>
+
+                {showCustomPerms && (
+                  <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 11, color: "#64748b", lineHeight: 1.4 }}>
+                      Imposta un accesso specifico per ogni area. <strong style={{ color: "#93c5fd" }}>Basato sul ruolo</strong> usa i permessi predefiniti del ruolo scelto.
+                    </p>
+                    {PERMISSION_AREAS.map((area) => {
+                      const val = inviteForm.customAreas[area.key] || "role";
+                      return (
+                        <div key={area.key} style={inviteStyles.permRow}>
+                          <span style={{ fontSize: 15, width: 22, textAlign: "center" }}>{area.icon}</span>
+                          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{area.label}</span>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            {["role", "view", "manage", "none"].map((level) => (
+                              <button
+                                key={level}
+                                type="button"
+                                onClick={() => setInviteForm((f) => ({
+                                  ...f,
+                                  customAreas: { ...f.customAreas, [area.key]: level },
+                                }))}
+                                style={{
+                                  ...inviteStyles.permBtn,
+                                  ...(val === level ? inviteStyles.permBtnActive[level] || inviteStyles.permBtnActiveDefault : {}),
+                                }}
+                              >
+                                {AREA_ACCESS_LABELS[level]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
                 <button type="button" onClick={() => setInviteModal(false)} style={inviteStyles.cancelBtn}>
                   {t("pages.settings.clubBtnCancel")}
@@ -1095,6 +1167,227 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
         </div>
       )}
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Promo Codes — founder/developer permanent access codes
+═══════════════════════════════════════════════════════════════ */
+function PromoCodesCard({ appSettings, setAppSettings }) {
+  const settings = normalizeAppSettings(appSettings);
+  const codes = settings.promoCodes || [];
+  const redeemed = settings.redeemedPromo || null;
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ code: "", plan: "club", permanent: true, maxUses: 1, note: "" });
+  const [redeemInput, setRedeemInput] = useState("");
+  const [redeemFeedback, setRedeemFeedback] = useState(null);
+
+  function createCode(e) {
+    e.preventDefault();
+    if (!form.code.trim()) return;
+    const newCode = normalizePromoCode({
+      code:      form.code.trim().toUpperCase(),
+      plan:      form.plan,
+      permanent: form.permanent,
+      maxUses:   Number(form.maxUses) || 0,
+      note:      form.note,
+    });
+    setAppSettings({ ...settings, promoCodes: [...codes, newCode] });
+    setForm({ code: "", plan: "club", permanent: true, maxUses: 1, note: "" });
+    setShowCreate(false);
+  }
+
+  function deleteCode(id) {
+    setAppSettings({ ...settings, promoCodes: codes.filter((c) => c.id !== id) });
+  }
+
+  function redeemCode(e) {
+    e.preventDefault();
+    setRedeemFeedback(null);
+    const input = redeemInput.trim().toUpperCase();
+    const found = codes.find((c) => c.code === input);
+    if (!found) {
+      setRedeemFeedback({ ok: false, text: "Codice non trovato o non valido." });
+      return;
+    }
+    if (!found.permanent && found.expiresAt && new Date(found.expiresAt) < new Date()) {
+      setRedeemFeedback({ ok: false, text: "Questo codice è scaduto." });
+      return;
+    }
+    if (found.maxUses > 0 && found.uses >= found.maxUses) {
+      setRedeemFeedback({ ok: false, text: "Questo codice ha raggiunto il limite di utilizzi." });
+      return;
+    }
+    // Mark code as used and apply plan
+    const updatedCodes = codes.map((c) =>
+      c.id === found.id ? { ...c, uses: c.uses + 1 } : c
+    );
+    const redeemedPromo = {
+      code:       found.code,
+      plan:       found.plan,
+      permanent:  found.permanent,
+      redeemedAt: new Date().toISOString(),
+    };
+    setAppSettings({
+      ...settings,
+      promoCodes: updatedCodes,
+      redeemedPromo,
+      subscription: {
+        ...settings.subscription,
+        plan:          found.plan,
+        billingStatus: "active",
+      },
+    });
+    setRedeemFeedback({ ok: true, text: `✓ Codice applicato! Piano ${found.plan.toUpperCase()} attivato.` });
+    setRedeemInput("");
+  }
+
+  const planColors = { premium: "#38bdf8", club: "#a78bfa" };
+
+  return (
+    <AppCard>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+        <div>
+          <h3 style={{ margin: 0, lineHeight: 1.2 }}>🎟️ Codici accesso</h3>
+          <p style={{ color: "#94a3b8", margin: "6px 0 0", fontSize: 13, lineHeight: 1.5 }}>
+            Crea codici che garantiscono accesso Premium o Club — permanenti o con scadenza.
+            Condividili con chi vuoi (staff, partner, fondatori).
+          </p>
+        </div>
+        <Button onClick={() => setShowCreate((v) => !v)}>
+          {showCreate ? "Annulla" : "+ Nuovo codice"}
+        </Button>
+      </div>
+
+      {/* Create form */}
+      {showCreate && (
+        <form onSubmit={createCode} style={promoStyles.createForm}>
+          <label style={s.label}>
+            Codice
+            <input
+              required
+              placeholder="es. FOUNDER2025"
+              value={form.code}
+              onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+              style={{ ...styles.input, textTransform: "uppercase", letterSpacing: 2 }}
+            />
+          </label>
+          <label style={s.label}>
+            Piano
+            <select
+              value={form.plan}
+              onChange={(e) => setForm({ ...form, plan: e.target.value })}
+              style={styles.input}
+            >
+              <option value="premium">Premium Coach</option>
+              <option value="club">Club (massimo accesso)</option>
+            </select>
+          </label>
+          <label style={s.label}>
+            Usi massimi
+            <input
+              type="number"
+              min="0"
+              placeholder="0 = illimitati"
+              value={form.maxUses}
+              onChange={(e) => setForm({ ...form, maxUses: e.target.value })}
+              style={styles.input}
+            />
+          </label>
+          <label style={{ ...s.label, gridColumn: "1 / -1" }}>
+            Nota (opzionale)
+            <input
+              placeholder="es. Founder access - Papà"
+              value={form.note}
+              onChange={(e) => setForm({ ...form, note: e.target.value })}
+              style={styles.input}
+            />
+          </label>
+          <div style={{ gridColumn: "1 / -1", display: "flex", gap: 10, alignItems: "center" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#94a3b8", fontSize: 13, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={form.permanent}
+                onChange={(e) => setForm({ ...form, permanent: e.target.checked })}
+                style={{ width: 16, height: 16, accentColor: "#22c55e" }}
+              />
+              <span>Permanente (no scadenza)</span>
+            </label>
+            <div style={{ flex: 1 }} />
+            <Button type="submit">Crea codice</Button>
+          </div>
+        </form>
+      )}
+
+      {/* Codes list */}
+      {codes.length > 0 && (
+        <div style={{ display: "grid", gap: 8, marginBottom: redeemed ? 16 : 0 }}>
+          {codes.map((c) => (
+            <div key={c.id} style={promoStyles.codeRow}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                <span style={{ ...promoStyles.codeBadge, color: planColors[c.plan] || "#94a3b8", borderColor: (planColors[c.plan] || "#94a3b8") + "40" }}>
+                  {c.code}
+                </span>
+                <div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                    <Badge tone={c.plan === "club" ? "purple" : "blue"}>{c.plan.toUpperCase()}</Badge>
+                    {c.permanent && <Badge tone="green">Permanente</Badge>}
+                    {c.maxUses > 0 && (
+                      <span style={{ fontSize: 11, color: "#64748b" }}>{c.uses}/{c.maxUses} usi</span>
+                    )}
+                  </div>
+                  {c.note && <p style={{ margin: "3px 0 0", fontSize: 12, color: "#64748b" }}>{c.note}</p>}
+                </div>
+              </div>
+              <button type="button" onClick={() => deleteCode(c.id)} style={inviteStyles.cancelBtn}>
+                Elimina
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {codes.length === 0 && !showCreate && (
+        <p style={{ color: "#475569", fontSize: 13, margin: "0 0 16px" }}>Nessun codice creato.</p>
+      )}
+
+      {/* Redeem section */}
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 16, marginTop: codes.length || showCreate ? 16 : 0 }}>
+        <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 900, textTransform: "uppercase", color: "#64748b" }}>
+          Riscatta un codice
+        </p>
+        {redeemed ? (
+          <div style={promoStyles.redeemedBox}>
+            <span style={{ fontSize: 18 }}>✓</span>
+            <div>
+              <strong style={{ color: planColors[redeemed.plan] || "#22c55e" }}>
+                Codice {redeemed.code} attivo — piano {redeemed.plan.toUpperCase()}
+              </strong>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
+                Riscattato il {new Date(redeemed.redeemedAt).toLocaleDateString("it-IT")}
+                {redeemed.permanent ? " · accesso permanente" : ""}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={redeemCode} style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <input
+              placeholder="Inserisci il codice..."
+              value={redeemInput}
+              onChange={(e) => setRedeemInput(e.target.value.toUpperCase())}
+              style={{ ...styles.input, flex: "1 1 200px", letterSpacing: 2, textTransform: "uppercase" }}
+            />
+            <Button type="submit" variant="ghost">Applica</Button>
+          </form>
+        )}
+        {redeemFeedback && (
+          <div style={{ ...acctStyles.feedback, marginTop: 10, ...(redeemFeedback.ok ? acctStyles.feedbackOk : acctStyles.feedbackErr) }}>
+            {redeemFeedback.text}
+          </div>
+        )}
+      </div>
+    </AppCard>
   );
 }
 
@@ -1254,6 +1547,97 @@ const inviteStyles = {
     borderRadius: 10,
     background: "rgba(255,255,255,0.04)",
     border: "1px solid rgba(255,255,255,0.07)",
+  },
+  expandBtn: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 10,
+    padding: "9px 14px",
+    color: "#94a3b8",
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: "pointer",
+    textAlign: "left",
+    gap: 8,
+  },
+  permRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "8px 12px",
+    borderRadius: 10,
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.06)",
+    flexWrap: "wrap",
+  },
+  permBtn: {
+    padding: "4px 8px",
+    borderRadius: 7,
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: "pointer",
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.04)",
+    color: "#64748b",
+    whiteSpace: "nowrap",
+    transition: "all 0.12s",
+  },
+  permBtnActive: {
+    role:   { background: "rgba(56,189,248,0.18)",  border: "1px solid rgba(56,189,248,0.4)",  color: "#38bdf8"  },
+    view:   { background: "rgba(250,204,21,0.18)",  border: "1px solid rgba(250,204,21,0.4)",  color: "#facc15"  },
+    manage: { background: "rgba(34,197,94,0.18)",   border: "1px solid rgba(34,197,94,0.4)",   color: "#22c55e"  },
+    none:   { background: "rgba(248,113,113,0.18)", border: "1px solid rgba(248,113,113,0.4)", color: "#f87171"  },
+  },
+  permBtnActiveDefault: { background: "rgba(37,99,235,0.2)", border: "1px solid rgba(96,165,250,0.4)", color: "#93c5fd" },
+};
+
+/* ─── Promo code styles ─────────────────────────────────────── */
+const promoStyles = {
+  createForm: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 12,
+    marginBottom: 18,
+    padding: "16px",
+    borderRadius: 14,
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+  codeRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: "11px 14px",
+    borderRadius: 12,
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    flexWrap: "wrap",
+  },
+  codeBadge: {
+    fontFamily: "monospace",
+    fontSize: 13,
+    fontWeight: 900,
+    letterSpacing: 2,
+    padding: "4px 10px",
+    borderRadius: 8,
+    border: "1px solid",
+    background: "rgba(255,255,255,0.04)",
+    flexShrink: 0,
+  },
+  redeemedBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: "12px 16px",
+    borderRadius: 12,
+    background: "rgba(34,197,94,0.08)",
+    border: "1px solid rgba(34,197,94,0.25)",
+    color: "#86efac",
+    fontSize: 13,
   },
 };
 

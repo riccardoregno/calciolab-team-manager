@@ -624,6 +624,8 @@ export function normalizeAppSettings(settings = {}){
     communications: (settings.communications || []).map(normalizeComm),
     developmentPreviewPlan: settings.developmentPreviewPlan || "",
     developmentPreviewRole: settings.developmentPreviewRole || "",
+    promoCodes: (settings.promoCodes || []).map(normalizePromoCode),
+    redeemedPromo: settings.redeemedPromo || null,  // { code, plan, redeemedAt }
   };
 }
 
@@ -648,6 +650,22 @@ export function normalizeMember(member = {}){
     status: member.status || "Invitato",
     linkedPlayerId: member.linkedPlayerId || "",
     sponsorId: member.sponsorId || "",
+    // Per-area access overrides: { [areaKey]: "none" | "view" | "manage" | "role" }
+    customAreas: member.customAreas || {},
+  };
+}
+
+export function normalizePromoCode(code = {}) {
+  return {
+    id:        code.id        || createId("promo"),
+    code:      code.code      || "",
+    plan:      code.plan      || "premium",      // "premium" | "club"
+    permanent: Boolean(code.permanent !== false), // true = no expiry
+    maxUses:   Number(code.maxUses  || 0),       // 0 = unlimited
+    uses:      Number(code.uses     || 0),
+    createdAt: code.createdAt || new Date().toISOString(),
+    expiresAt: code.expiresAt || "",
+    note:      code.note      || "",
   };
 }
 
