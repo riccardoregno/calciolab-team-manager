@@ -108,6 +108,10 @@ function Trainings({
     (sum, item) => sum + Number(item.customDuration || item.duration || 0),
     0
   );
+  const availablePlayersCount = players.filter(
+    (player) => !UNAVAILABLE_STATUSES.includes(player.status || "Disponibile")
+  ).length;
+  const objectiveStatusMeta = getObjectiveStatusMeta(form.objectiveStatus);
 
   function toggleExercise(exercise) {
     const alreadySelected = form.exercises.some(
@@ -248,38 +252,104 @@ function Trainings({
       >
         <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
           <div className="print-area">
+            <section className="print-template">
+              <article>
+                <header className="print-header">
+                  <div>
+                    <p>{t("pages.trainings.printSectionEyebrow")}</p>
+                    <h1>{form.title || t("pages.trainings.printTitlePlaceholder")}</h1>
+                  </div>
+                  <div className="print-meta">
+                    <span>{formatDate(form.date)}</span>
+                    <span>{form.theme}</span>
+                    <span>{form.matchDayDistance}</span>
+                    <span>CalcioLab</span>
+                  </div>
+                </header>
+
+                <section className="print-kpis">
+                  <PrintKpi title={t("pages.trainings.printMetaDuration")} value={`${totalMinutes} min`} />
+                  <PrintKpi title={t("pages.trainings.previewMetaExercises")} value={selectedExercises.length} />
+                  <PrintKpi title={t("pages.trainings.printRpeTarget")} value={`${rpeTarget.min}-${rpeTarget.max}`} />
+                  <PrintKpi
+                    title={t("pages.trainings.printAvailablePlayers")}
+                    value={players.length ? `${availablePlayersCount}/${players.length}` : "-"}
+                  />
+                </section>
+
+                <section className="print-section">
+                  <h2>{t("pages.trainings.printPlanTitle")}</h2>
+                  <div className="print-grid two">
+                    <PrintBox
+                      title={t("pages.trainings.printMetaObjective")}
+                      value={form.objective || t("pages.trainings.printMetaObjectiveFallback")}
+                    />
+                    <PrintBox
+                      title={t("pages.trainings.printMetaTheme")}
+                      value={`${form.theme} · ${form.matchDayDistance}`}
+                    />
+                    {form.sourceType === "postMatch" && (
+                      <PrintBox
+                        title={t("pages.trainings.printOrigin")}
+                        value={`${t("pages.trainings.sourcePostMatch")}${form.sourceMatchLabel ? ` vs ${form.sourceMatchLabel}` : ""} · ${formatDate(form.sourceMatchDate)}`}
+                      />
+                    )}
+                    {form.sourceType === "postMatch" && (
+                      <PrintBox
+                        title={t("pages.trainings.printObjectiveStatus")}
+                        value={t(objectiveStatusMeta.labelKey)}
+                      />
+                    )}
+                    {form.objectiveReview && (
+                      <PrintBox title={t("pages.trainings.printObjectiveReview")} value={form.objectiveReview} />
+                    )}
+                    {form.notes && (
+                      <PrintBox title={t("pages.trainings.printNotesStaff")} value={form.notes} />
+                    )}
+                  </div>
+                </section>
+
+                <section className="print-section">
+                  <h2>{t("pages.trainings.printTimelineTitle")}</h2>
+                  {selectedExercises.length > 0 ? (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>{t("pages.trainings.printExercise")}</th>
+                          <th>{t("pages.trainings.printDuration")}</th>
+                          <th>{t("pages.trainings.printPlayers")}</th>
+                          <th>{t("pages.trainings.printVariantNotes")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedExercises.map((item, index) => (
+                          <tr key={`${item.exerciseId}-${index}`}>
+                            <td>{index + 1}</td>
+                            <td>
+                              <strong>{item.title}</strong>
+                              <small>{item.category || t("pages.trainings.categoryFallback")}</small>
+                            </td>
+                            <td>{Number(item.customDuration || item.duration || 0)} min</td>
+                            <td>{item.customPlayers || "-"}</td>
+                            <td>{item.variantNotes || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <PrintBox title={t("pages.trainings.printExercise")} value={t("pages.trainings.printNoExercises")} />
+                  )}
+                </section>
+
+                <footer style={trainingStyles.printFooter}>
+                  {t("pages.trainings.printFooter")} · {formatDate(new Date().toISOString())}
+                </footer>
+              </article>
+            </section>
+          </div>
+
   <AppCard>
-    {/* 👇 SOLO PER PDF */}
-    <div className="print-only" style={trainingStyles.sessionSummary}>
-      <div>
-        <span style={trainingStyles.summaryEyebrow}>{t("pages.trainings.printSectionEyebrow")}</span>
-        <h1 style={trainingStyles.summaryTitle}>{form.title || t("pages.trainings.printTitlePlaceholder")}</h1>
-      </div>
-
-      <div style={trainingStyles.summaryGrid}>
-        <SessionMeta label={t("pages.trainings.printMetaDate")} value={formatDate(form.date)} />
-        <SessionMeta label={t("pages.trainings.printMetaTheme")} value={form.theme} />
-        <SessionMeta label={t("pages.trainings.printMetaObjective")} value={form.objective || t("pages.trainings.printMetaObjectiveFallback")} />
-        <SessionMeta label={t("pages.trainings.printMetaDuration")} value={`${totalMinutes} min`} />
-      </div>
-
-      {form.notes && (
-        <div style={trainingStyles.summaryNotes}>
-          <strong>{t("pages.trainings.printNotesStaff")}</strong>
-          <span>{form.notes}</span>
-        </div>
-      )}
-
-      {form.sourceType === "postMatch" && (
-        <div style={trainingStyles.summaryNotes}>
-          <strong>{t("pages.trainings.printOrigin")}</strong>
-          <span>
-            Post-gara {form.sourceMatchLabel ? `vs ${form.sourceMatchLabel}` : ""} · {formatDate(form.sourceMatchDate)}
-          </span>
-        </div>
-      )}
-    </div>
-
     <div style={trainingStyles.formHero}>
       <div style={{ minWidth: 0 }}>
         <div style={trainingStyles.stepHeader}>
@@ -401,7 +471,6 @@ function Trainings({
       <AvailablePlayers players={players} />
     )}
   </AppCard>
-</div>
 
           <AppCard>
             <div
@@ -863,6 +932,24 @@ function SessionMeta({ label, value }) {
   );
 }
 
+function PrintKpi({ title, value }) {
+  return (
+    <div className="print-kpi">
+      <span>{title}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function PrintBox({ title, value }) {
+  return (
+    <div className="print-box">
+      <span>{title}</span>
+      <p>{value}</p>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────
 // Box giocatori disponibili nel form seduta
 // ─────────────────────────────────────────────
@@ -1191,6 +1278,12 @@ const trainingStyles = {
     border: "1px solid rgba(56,189,248,0.3)",
     color: "#bae6fd",
     fontSize: 12,
+  },
+  printFooter: {
+    borderTop: "1px solid #dbe3ef",
+    color: "#64748b",
+    fontSize: 11,
+    paddingTop: 12,
   },
 };
 
