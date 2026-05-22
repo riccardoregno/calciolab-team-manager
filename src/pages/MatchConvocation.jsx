@@ -106,27 +106,28 @@ function getPlayerDisplayName(player = {}) {
   return [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "-";
 }
 
-function buildConvocationText({ clubName, match, details, meetingInfo, sheetVenue, notes, convocati }) {
+function buildConvocationText({ clubName, match, details, meetingInfo, sheetVenue, notes, convocati, t }) {
   const matchContext = [match.competition, match.matchday].filter(Boolean).join(" · ");
+  const opponent = match.opponent || t("pages.matchConvocation.defaultOpponent");
   const lines = [
-    `Convocazione: ${clubName} vs ${match.opponent || "Avversario"}`,
-    matchContext ? `Competizione: ${matchContext}` : "",
-    `Data: ${formatDate(match.date)}`,
-    match.location ? `Gara: ${match.location}` : "",
-    details.matchTime ? `Ora gara: ${details.matchTime}` : "",
-    meetingInfo ? `Raduno: ${meetingInfo}` : "",
-    sheetVenue ? `Campo: ${sheetVenue}` : "",
-    details.lockerRoom ? `Spogliatoio: ${details.lockerRoom}` : "",
-    details.kit ? `Kit: ${details.kit}` : "",
-    details.staffContact ? `Contatto staff: ${details.staffContact}` : "",
+    t("pages.matchConvocation.convTextTitle", { club: clubName, opponent }),
+    matchContext ? t("pages.matchConvocation.convTextCompetition", { value: matchContext }) : "",
+    t("pages.matchConvocation.convTextDate", { value: formatDate(match.date) }),
+    match.location ? t("pages.matchConvocation.convTextLocation", { value: match.location }) : "",
+    details.matchTime ? t("pages.matchConvocation.convTextMatchTime", { value: details.matchTime }) : "",
+    meetingInfo ? t("pages.matchConvocation.convTextMeeting", { value: meetingInfo }) : "",
+    sheetVenue ? t("pages.matchConvocation.convTextField", { value: sheetVenue }) : "",
+    details.lockerRoom ? t("pages.matchConvocation.convTextLockerRoom", { value: details.lockerRoom }) : "",
+    details.kit ? t("pages.matchConvocation.convTextKit", { value: details.kit }) : "",
+    details.staffContact ? t("pages.matchConvocation.convTextStaffContact", { value: details.staffContact }) : "",
     "",
-    "Convocati:",
+    t("pages.matchConvocation.convTextRosterHeader"),
     ...convocati.map((player, index) => {
       const shirt = player.shirtNumber ? ` #${player.shirtNumber}` : "";
       return `${index + 1}. ${getPlayerDisplayName(player)}${shirt}`;
     }),
-    details.message ? `\nMessaggio: ${details.message}` : "",
-    notes ? `Note: ${notes}` : "",
+    details.message ? `\n${t("pages.matchConvocation.convTextMessage", { value: details.message })}` : "",
+    notes ? t("pages.matchConvocation.convTextNotes", { value: notes }) : "",
   ];
 
   return lines.filter((line) => line !== "").join("\n");
@@ -173,7 +174,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
   const isHomeMatch = match?.location === "Casa";
   const venueParts = getVenueParts(match, workspaceProfile);
   const defaultNotes = matchVenue
-    ? `Raduno presso ${matchVenue}`
+    ? t("pages.matchConvocation.defaultNotesTemplate", { venue: matchVenue })
     : "";
   const defaultDetails = getDefaultConvocationDetails(match, isHomeMatch, matchVenue);
 
@@ -206,9 +207,9 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
     return (
       <div style={s.page}>
         <AppCard>
-          <p style={s.muted}>Partita non trovata.</p>
+          <p style={s.muted}>{t("pages.matchConvocation.notFound")}</p>
           <Button variant="ghost" onClick={() => navigate("/matches")}>
-            Torna alle partite
+            {t("pages.matchConvocation.backToMatches")}
           </Button>
         </AppCard>
       </div>
@@ -298,7 +299,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
 
   const subtitle = [
     formatDate(match.date),
-    match.time ? `Ore ${match.time}` : null,
+    match.time ? t("pages.matchConvocation.subtitleTimePrefix", { time: match.time }) : null,
     matchVenue || match.location,
     match.result || null,
   ]
@@ -326,6 +327,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
     sheetVenue,
     notes,
     convocati,
+    t,
   });
   const rosterMessage = buildConvocationRosterText(convocati);
 
@@ -334,7 +336,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
       <PageHeader
         title={`${t("pages.matchConvocation.title")} — ${match.opponent || t("pages.matchConvocation.defaultOpponent")}`}
         subtitle={subtitle}
-        badge={published ? "Pubblicata" : "Bozza"}
+        badge={publishedLabel}
       />
 
       <MatchTabBar
@@ -351,38 +353,38 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
             <span style={{ ...s.countNum, color: full ? "#f87171" : "#22c55e" }}>
               {count}
             </span>
-            <span style={s.countOf}>/ {MAX_PLAYERS} convocati</span>
+            <span style={s.countOf}>{t("pages.matchConvocation.counterOf", { max: MAX_PLAYERS })}</span>
             {published && (
-              <Badge tone="green" style={{ marginLeft: 8 }}>✓ Pubblicata</Badge>
+              <Badge tone="green" style={{ marginLeft: 8 }}>{t("pages.matchConvocation.badgePublished")}</Badge>
             )}
             {!published && count > 0 && (
-              <Badge tone="orange" style={{ marginLeft: 8 }}>Bozza</Badge>
+              <Badge tone="orange" style={{ marginLeft: 8 }}>{t("pages.matchConvocation.draftLabel")}</Badge>
             )}
           </div>
 
           <div style={s.topActions}>
-            <Button variant="ghost" onClick={clearAll}>Deseleziona tutti</Button>
-            <Button variant="ghost" onClick={selectAll}>Seleziona tutti</Button>
-            <Button variant="ghost" onClick={() => navigate("/matches")}>Indietro</Button>
+            <Button variant="ghost" onClick={clearAll}>{t("pages.matchConvocation.clearAll")}</Button>
+            <Button variant="ghost" onClick={selectAll}>{t("common.selectAll")}</Button>
+            <Button variant="ghost" onClick={() => navigate("/matches")}>{t("common.back")}</Button>
             <Button variant="ghost" onClick={() => persistConvocazione(false)} disabled={count === 0}>
-              Salva bozza
+              {t("pages.matchConvocation.saveDraft")}
             </Button>
             <Button onClick={() => persistConvocazione(true)} disabled={count === 0}>
-              {published ? "Aggiorna pubblicazione" : "Pubblica convocazione"}
+              {published ? t("pages.matchConvocation.updatePublication") : t("pages.matchConvocation.publishConvocation")}
             </Button>
           </div>
         </div>
 
         {saved && (
           <p style={s.savedMsg}>
-            {published ? "✓ Convocazione pubblicata." : "✓ Bozza salvata."}
+            {published ? t("pages.matchConvocation.savedPublished") : t("pages.matchConvocation.savedDraft")}
           </p>
         )}
         {published && (
           <div style={s.portalRow}>
-            <span style={s.portalMsg}>🎽 Visibile ai giocatori nel portale</span>
+            <span style={s.portalMsg}>{t("pages.matchConvocation.portalVisible")}</span>
             <Button variant="ghost" onClick={() => navigate("/player-portal")}>
-              Apri portale →
+              {t("pages.matchConvocation.openPortal")}
             </Button>
           </div>
         )}
@@ -390,20 +392,20 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
 
       {/* ── Dettagli professionali convocazione ── */}
       <AppCard>
-        <h3 style={{ margin: "0 0 10px", lineHeight: 1.2 }}>Dettagli convocazione</h3>
+        <h3 style={{ margin: "0 0 10px", lineHeight: 1.2 }}>{t("pages.matchConvocation.detailsTitle")}</h3>
         <p style={s.muted}>
-          Visibili ai giocatori nel portale. Per le gare in casa compiliamo già campo e indirizzo dal profilo società.
+          {t("pages.matchConvocation.detailsSubtitle")}
         </p>
         <div style={s.matchInfoGrid}>
-          <InfoTile label="Gara" value={matchType} />
-          <InfoTile label="Competizione" value={matchContext || t("pages.matchConvocation.printToBeDefined")} />
-          <InfoTile label="Campo" value={venueParts.name || sheetVenue || t("pages.matchConvocation.printToBeDefined")} />
-          <InfoTile label="Indirizzo" value={venueParts.address || t("pages.matchConvocation.printToBeDefined")} />
-          <InfoTile label="Superficie" value={venueParts.surface || t("pages.matchConvocation.printToBeDefined")} />
+          <InfoTile label={t("pages.matchConvocation.tileMatch")} value={matchType} />
+          <InfoTile label={t("pages.matchConvocation.tileCompetition")} value={matchContext || t("pages.matchConvocation.printToBeDefined")} />
+          <InfoTile label={t("pages.matchConvocation.printField")} value={venueParts.name || sheetVenue || t("pages.matchConvocation.printToBeDefined")} />
+          <InfoTile label={t("pages.matchConvocation.tileAddress")} value={venueParts.address || t("pages.matchConvocation.printToBeDefined")} />
+          <InfoTile label={t("pages.matchConvocation.printSurface")} value={venueParts.surface || t("pages.matchConvocation.printToBeDefined")} />
         </div>
         <div style={s.formGrid}>
           <label style={s.label}>
-            Ora gara
+            {t("pages.matchConvocation.fieldMatchTime")}
             <input
               type="time"
               value={details.matchTime}
@@ -412,7 +414,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
             />
           </label>
           <label style={s.label}>
-            Ora raduno
+            {t("pages.matchConvocation.fieldMeetingTime")}
             <input
               type="time"
               value={details.meetingTime}
@@ -421,47 +423,47 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
             />
           </label>
           <label style={s.labelFull}>
-            Luogo ritrovo
+            {t("pages.matchConvocation.fieldMeetingPlace")}
             <input
               value={details.meetingPlace}
               onChange={(e) => updateDetails("meetingPlace", e.target.value)}
-              placeholder={matchVenue || homeVenue || "Es. Campo comunale, via Roma 12"}
+              placeholder={matchVenue || homeVenue || t("pages.matchConvocation.meetingPlacePlaceholder")}
               style={s.input}
             />
           </label>
           <label style={s.label}>
-            Spogliatoio
+            {t("pages.matchConvocation.printLockerRoom")}
             <input
               value={details.lockerRoom}
               onChange={(e) => updateDetails("lockerRoom", e.target.value)}
-              placeholder="Es. Spogliatoio 3"
+              placeholder={t("pages.matchConvocation.lockerRoomPlaceholder")}
               style={s.input}
             />
           </label>
           <label style={s.label}>
-            Kit
+            {t("pages.matchConvocation.fieldKit")}
             <input
               value={details.kit}
               onChange={(e) => updateDetails("kit", e.target.value)}
-              placeholder="Es. completo blu, tuta, k-way"
+              placeholder={t("pages.matchConvocation.kitPlaceholder")}
               style={s.input}
             />
           </label>
           <label style={s.labelFull}>
-            Contatto staff
+            {t("pages.matchConvocation.printStaffContact")}
             <input
               value={details.staffContact}
               onChange={(e) => updateDetails("staffContact", e.target.value)}
-              placeholder="Es. Team manager 333..."
+              placeholder={t("pages.matchConvocation.staffContactPlaceholder")}
               style={s.input}
             />
           </label>
           <label style={s.labelFull}>
-            Messaggio ai convocati
+            {t("pages.matchConvocation.fieldMessage")}
             <textarea
               style={s.textarea}
               rows={2}
-              placeholder="Es. Presentarsi puntuali con documento, borraccia e materiale gara."
+              placeholder={t("pages.matchConvocation.messagePlaceholder")}
               value={details.message}
               onChange={(e) => updateDetails("message", e.target.value)}
             />
@@ -470,7 +472,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
         <textarea
           style={s.textarea}
           rows={3}
-          placeholder={defaultNotes || "Note interne o indicazioni extra per la convocazione"}
+          placeholder={defaultNotes || t("pages.matchConvocation.notesInternalPlaceholder")}
           value={notes}
           onChange={(e) => { setNotes(e.target.value); setSaved(false); }}
         />
@@ -480,15 +482,17 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
       <AppCard>
         <div style={s.communicationHeader}>
           <div>
-            <h3 style={{ margin: "0 0 6px", lineHeight: 1.2 }}>Comunicazione convocazione</h3>
+            <h3 style={{ margin: "0 0 6px", lineHeight: 1.2 }}>{t("pages.matchConvocation.commTitle")}</h3>
             <p style={s.muted}>
-              Testo pronto per WhatsApp, email o gruppo squadra. La comunicazione resta tracciata sulla partita.
+              {t("pages.matchConvocation.commSubtitle")}
             </p>
           </div>
           <Badge tone={existing.sentAt ? "green" : "orange"}>
             {existing.sentAt
-              ? `Inviata${existing.sentChannel ? ` via ${existing.sentChannel}` : ""}`
-              : "Da inviare"}
+              ? (existing.sentChannel
+                  ? t("pages.matchConvocation.sentBadgeWithChannel", { channel: existing.sentChannel })
+                  : t("pages.matchConvocation.sentBadge"))
+              : t("pages.matchConvocation.notSentBadge")}
           </Badge>
         </div>
 
@@ -502,31 +506,31 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
         <div style={s.communicationActions}>
           <Button
             variant="ghost"
-            onClick={() => copyConvocation("messaggio", fullMessage)}
+            onClick={() => copyConvocation(t("pages.matchConvocation.copiedLabelMessage"), fullMessage)}
             disabled={count === 0}
           >
-            Copia testo WhatsApp
+            {t("pages.matchConvocation.copyWhatsApp")}
           </Button>
           <Button
             variant="ghost"
-            onClick={() => copyConvocation("lista", rosterMessage)}
+            onClick={() => copyConvocation(t("pages.matchConvocation.copiedLabelRoster"), rosterMessage)}
             disabled={count === 0}
           >
-            Copia lista convocati
+            {t("pages.matchConvocation.copyRoster")}
           </Button>
           <Button
             onClick={() => markAsSent("WhatsApp")}
             disabled={count === 0}
           >
-            Segna come inviata
+            {t("pages.matchConvocation.markSent")}
           </Button>
         </div>
 
         <div style={s.communicationFooter}>
-          {copiedLabel && <span style={s.copyOk}>Copiato: {copiedLabel}</span>}
+          {copiedLabel && <span style={s.copyOk}>{t("pages.matchConvocation.copiedFeedback", { label: copiedLabel })}</span>}
           {existing.sentAt && (
             <span style={s.sentInfo}>
-              Ultimo invio: {formatDate(existing.sentAt)}
+              {t("pages.matchConvocation.lastSentDate", { date: formatDate(existing.sentAt) })}
             </span>
           )}
         </div>
@@ -534,10 +538,10 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
 
       {/* ── Selezione giocatori ── */}
       <AppCard>
-        <h3 style={{ margin: "0 0 4px", lineHeight: 1.2 }}>Seleziona convocati</h3>
+        <h3 style={{ margin: "0 0 4px", lineHeight: 1.2 }}>{t("pages.matchConvocation.selectPlayersTitle")}</h3>
         <p style={s.muted}>
-          Clicca per selezionare/deselezionare. Massimo {MAX_PLAYERS} giocatori.
-          {full && <span style={{ color: "#f87171", marginLeft: 6 }}>Limite raggiunto.</span>}
+          {t("pages.matchConvocation.selectPlayersHint", { max: MAX_PLAYERS })}
+          {full && <span style={{ color: "#f87171", marginLeft: 6 }}>{t("pages.matchConvocation.limitReached")}</span>}
         </p>
 
         <div style={s.groups}>
@@ -547,7 +551,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
               <div key={role} style={s.roleGroup}>
                 <div style={s.roleHeader}>
                   <Badge tone={meta.tone}>{meta.short}</Badge>
-                  <span style={s.roleLabel}>{role}</span>
+                  <span style={s.roleLabel}>{ROLE_I18N_KEY[role] ? t(ROLE_I18N_KEY[role]) : role}</span>
                   <span style={s.roleCount}>
                     {rolePlayers.filter((p) => selectedIds.includes(String(p.id))).length}/{rolePlayers.length}
                   </span>
@@ -592,15 +596,15 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
         <AppCard>
           <div style={s.sheetToolbar}>
             <h3 style={{ margin: 0, lineHeight: 1.2 }}>
-              Foglio convocazione
-              {!published && <span style={{ ...s.muted, marginLeft: 8, fontSize: 13 }}>(bozza)</span>}
+              {t("pages.matchConvocation.printSheet")}
+              {!published && <span style={{ ...s.muted, marginLeft: 8, fontSize: 13 }}>{t("pages.matchConvocation.sheetDraftNote")}</span>}
             </h3>
             <div style={s.sheetToolbarActions}>
               <Button variant="ghost" onClick={printConvocationSheet}>
-                Stampa / PDF
+                {t("pages.matchConvocation.printPdf")}
               </Button>
               <Button onClick={() => persistConvocazione(true)} disabled={count === 0}>
-                {published ? "Aggiorna pubblicazione" : "Pubblica adesso"}
+                {published ? t("pages.matchConvocation.updatePublication") : t("pages.matchConvocation.publishNow")}
               </Button>
             </div>
           </div>
@@ -742,7 +746,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
 
           <div style={s.previewActions}>
             <Button variant="ghost" onClick={() => persistConvocazione(false)}>
-              Salva bozza
+              {t("pages.matchConvocation.saveDraft")}
             </Button>
           </div>
         </AppCard>
