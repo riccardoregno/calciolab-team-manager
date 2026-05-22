@@ -105,7 +105,7 @@ function MatchDay({
   const completedChecklist = checklistItems.filter((item) => preMatchChecklist.items[item.key]).length;
   const matchMeta = [
     formatDate(selectedMatch.date),
-    selectedMatch.time ? `Ore ${selectedMatch.time}` : "",
+    selectedMatch.time ? t("pages.matchDay.timePrefix", { time: selectedMatch.time }) : "",
     selectedMatch.competition,
     selectedMatch.matchday,
     matchVenue || selectedMatch.location,
@@ -363,7 +363,7 @@ function MatchDay({
       benchIds:    convIds,
       starterIds:  [],
     });
-    showToast(`${convIds.length} convocati importati dalla convocazione`, "success");
+    showToast(t("pages.matchDay.importConvocazioneSuccess", { count: convIds.length }), "success");
   }
 
   function prefillMatchDayFromSchedule() {
@@ -505,7 +505,7 @@ function MatchDay({
                   fallback={clubName.slice(0, 2).toUpperCase()}
                 />
                 <div>
-                  <p>Distinta gara</p>
+                  <p>{t("pages.matchDay.printDocType")}</p>
                   <h1>
                     {clubName} <span style={{ color: "#64748b" }}>vs</span>{" "}
                     {selectedMatch.opponent || t("pages.matchDay.opponentUndefined")}
@@ -529,20 +529,20 @@ function MatchDay({
             </section>
 
             <section className="print-grid two">
-              <PrintBox title="Campo" value={matchVenue || t("pages.matchDay.fieldUndefined")} />
-              <PrintBox title="Raduno" value={[convocationDetails.meetingTime, convocationDetails.meetingPlace].filter(Boolean).join(" · ") || t("pages.matchDay.checklistToBeDefined")} />
-              <PrintBox title="Spogliatoio" value={convocationDetails.lockerRoom || t("pages.matchDay.checklistToBeDefined")} />
-              <PrintBox title="Kit gara" value={convocationDetails.kit || t("pages.matchDay.checklistToBeDefined")} />
+              <PrintBox title={t("pages.matchDay.printBoxField")} value={matchVenue || t("pages.matchDay.fieldUndefined")} />
+              <PrintBox title={t("pages.matchDay.printBoxMeetingPoint")} value={[convocationDetails.meetingTime, convocationDetails.meetingPlace].filter(Boolean).join(" · ") || t("pages.matchDay.checklistToBeDefined")} />
+              <PrintBox title={t("pages.matchDay.printBoxLockerRoom")} value={convocationDetails.lockerRoom || t("pages.matchDay.checklistToBeDefined")} />
+              <PrintBox title={t("pages.matchDay.printBoxKit")} value={convocationDetails.kit || t("pages.matchDay.checklistToBeDefined")} />
             </section>
 
             <section className="print-section">
               <h2>{t("pages.matchDay.startersTitle")}</h2>
-              <PlayerPrintTable players={starterPlayers} lineup={lineup} empty={t("pages.matchDay.noStarters")} />
+              <PlayerPrintTable players={starterPlayers} lineup={lineup} empty={t("pages.matchDay.noStarters")} t={t} />
             </section>
 
             <section className="print-section">
               <h2>{t("pages.matchDay.benchTitle")}</h2>
-              <PlayerPrintTable players={benchPlayers} lineup={lineup} empty={t("pages.matchDay.noBench")} />
+              <PlayerPrintTable players={benchPlayers} lineup={lineup} empty={t("pages.matchDay.noBench")} t={t} />
             </section>
 
             {opponentScouting.lineup.length > 0 && (
@@ -581,14 +581,14 @@ function MatchDay({
             </section>
 
             <section className="print-grid two">
-              <PrintBox title="Firma allenatore" value=" " />
-              <PrintBox title="Firma dirigente" value=" " />
+              <PrintBox title={t("pages.matchDay.signatureCoach")} value=" " />
+              <PrintBox title={t("pages.matchDay.signatureDirector")} value=" " />
             </section>
           </article>
         </section>
       </div>
 
-      <div style={matchDayStyles.printArea}>
+      <div className="no-print" style={matchDayStyles.printArea}>
         <AppCard>
           <div style={matchDayStyles.matchHeader}>
             <TeamMark
@@ -1165,7 +1165,7 @@ function PrintBox({ title, value }) {
   );
 }
 
-function PlayerPrintTable({ players, lineup, empty }) {
+function PlayerPrintTable({ players, lineup, empty, t }) {
   if (!players.length) {
     return (
       <div className="print-box">
@@ -1179,11 +1179,11 @@ function PlayerPrintTable({ players, lineup, empty }) {
     <table>
       <thead>
         <tr>
-          <th>N.</th>
-          <th>Maglia</th>
-          <th>Giocatore</th>
-          <th>Ruolo</th>
-          <th>Note</th>
+          <th>{t("pages.matchDay.printTableNumber")}</th>
+          <th>{t("pages.matchDay.printTableShirt")}</th>
+          <th>{t("pages.matchDay.printTablePlayer")}</th>
+          <th>{t("pages.matchDay.printTableRole")}</th>
+          <th>{t("pages.matchDay.printTableNotes")}</th>
         </tr>
       </thead>
       <tbody>
@@ -1198,7 +1198,7 @@ function PlayerPrintTable({ players, lineup, empty }) {
               <td>#{player.shirtNumber || "-"}</td>
               <td>{displayName}</td>
               <td>{role}</td>
-              <td>{isCaptain ? "Capitano" : player.status || "-"}</td>
+              <td>{isCaptain ? t("pages.matchDay.playerTableCaptain") : player.status || "-"}</td>
             </tr>
           );
         })}

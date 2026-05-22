@@ -436,6 +436,7 @@ function App() {
                       players={players}
                       sessions={sessions}
                       setStaffTasks={setStaffTasks}
+                      appSettings={previewAppSettings}
                     />
                   </FeatureGate>)
                 }
@@ -451,6 +452,7 @@ function App() {
                       players={players}
                       sessions={sessions}
                       setStaffTasks={setStaffTasks}
+                      appSettings={previewAppSettings}
                     />
                   </FeatureGate>)
                 }
@@ -720,6 +722,7 @@ function App() {
                     sessions={sessions}
                     setSessions={setSessions}
                     players={players}
+                    appSettings={previewAppSettings}
                   />)
                 }
               />

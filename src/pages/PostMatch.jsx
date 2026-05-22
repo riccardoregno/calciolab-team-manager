@@ -6,7 +6,7 @@ import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
 import { styles } from "../styles/index.js";
-import { createId, formatDate } from "../utils/helpers";
+import { createId, formatDate, normalizeAppSettings } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { getObjectiveStatusMeta } from "../constants/objectiveStatus";
 
@@ -37,11 +37,13 @@ const clipAudiences = [
 ];
 
 export default function PostMatch({
-  matches = [], setMatches, players = [], sessions = [], setStaffTasks }) {
+  matches = [], setMatches, players = [], sessions = [], setStaffTasks, appSettings = {} }) {
 
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+  const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
+  const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
 
   // Se c'è un ID in URL usa quello; altrimenti cade sull'ultima partita giocata
   const match = id
@@ -269,7 +271,7 @@ export default function PostMatch({
           <div>
             <Badge tone="orange">{t("pages.postMatch.reportBadge")}</Badge>
             <h2 style={{ margin: "10px 0 4px", lineHeight: 1.15 }}>
-              {match.title || `CalcioLab vs ${match.opponent}`}
+              {match.title || `${clubName} vs ${match.opponent}`}
             </h2>
             <p style={s.muted}>{subtitle}</p>
           </div>
@@ -394,13 +396,13 @@ export default function PostMatch({
             <header className="print-header">
               <div>
                 <p>{t("pages.postMatch.printEyebrow")}</p>
-                <h1>{match.title || `CalcioLab vs ${match.opponent || t("pages.postMatch.defaultOpponent")}`}</h1>
+                <h1>{match.title || `${clubName} vs ${match.opponent || t("pages.postMatch.defaultOpponent")}`}</h1>
               </div>
               <div className="print-meta">
                 <span>{formatDate(match.date)}</span>
                 {match.location && <span>{match.location}</span>}
                 {match.result && <span>{match.result}</span>}
-                <span>CalcioLab</span>
+                <span>{clubName}</span>
               </div>
             </header>
 
@@ -494,7 +496,7 @@ export default function PostMatch({
 
             <footer style={s.printFooter}>
               <span>{t("pages.postMatch.printFooter")}</span>
-              <strong>CalcioLab</strong>
+              <strong>{clubName}</strong>
             </footer>
           </article>
         </section>
@@ -667,7 +669,7 @@ function VideoAnalysisPanel({ clips, players, onChange, onAppendReport, reportNo
     const summary = clips
       .map((clip) => {
         const player = players.find((item) => String(item.id) === String(clip.playerId));
-        return `${clip.minute ? `${clip.minute}' ` : ""}${clip.category} · ${clip.phase}${player ? ` · ${player.name}` : ""}: ${clip.note || clip.tags || clip.url || "clip da rivedere"}`;
+        return `${clip.minute ? `${clip.minute}' ` : ""}${clip.category} · ${clip.phase}${player ? ` · ${player.name}` : ""}: ${clip.note || clip.tags || clip.url || t("pages.postMatch.clipFallbackReview")}`;
       })
       .join("\n");
     onAppendReport([reportNotes, summary].filter(Boolean).join("\n\n"));

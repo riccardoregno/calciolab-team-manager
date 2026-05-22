@@ -6,10 +6,12 @@ function AppCard({
   subtitle,
   rightContent,
   noPadding = false,
+  className = "",
   style = {},
 }) {
   return (
     <div
+      className={className}
       style={{
         ...styles.sectionCard,
         padding: noPadding ? 0 : styles.sectionCard.padding,

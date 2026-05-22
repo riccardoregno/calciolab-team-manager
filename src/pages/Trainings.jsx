@@ -12,19 +12,21 @@ import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 import { styles } from "../styles/index.js";
-import { createId, formatDate, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
+import { createId, formatDate, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
 import { useIsMobile } from "../hooks/useIsMobile";
 
 function Trainings({
-  exercises, sessions, setSessions, players = [] }) {
+  exercises, sessions, setSessions, players = [], appSettings = {} }) {
 
   const { t } = useTranslation();
   const isMobile = useIsMobile(760);
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast, ToastContainer } = useToast();
+  const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
+  const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
   const [confirmState, setConfirmState] = useState(null);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
@@ -263,7 +265,7 @@ function Trainings({
                     <span>{formatDate(form.date)}</span>
                     <span>{form.theme}</span>
                     <span>{form.matchDayDistance}</span>
-                    <span>CalcioLab</span>
+                    <span>{clubName}</span>
                   </div>
                 </header>
 
@@ -343,7 +345,7 @@ function Trainings({
                 </section>
 
                 <footer style={trainingStyles.printFooter}>
-                  {t("pages.trainings.printFooter")} · {formatDate(new Date().toISOString())}
+                  {t("pages.trainings.printFooter", { clubName })} · {formatDate(new Date().toISOString())}
                 </footer>
               </article>
             </section>

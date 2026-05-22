@@ -379,6 +379,19 @@ textarea:focus-visible {
 }
 
 @media print {
+  @page {
+    size: A4;
+    margin: 18mm;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-area ~ * {
+    display: none !important;
+  }
+
   body * {
     visibility: hidden;
   }
@@ -395,7 +408,7 @@ textarea:focus-visible {
     width: 100%;
     background: white;
     color: black;
-    padding: 22mm;
+    padding: 0;
     border-radius: 0;
     min-height: auto;
   }
@@ -430,6 +443,11 @@ textarea:focus-visible {
   .print-template {
     font-family: Arial, sans-serif;
     font-size: 11px;
+    min-height: 0 !important;
+  }
+
+  .print-area th {
+    background: #e2e8f0 !important;
   }
 
   .print-header h1 {

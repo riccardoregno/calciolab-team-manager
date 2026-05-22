@@ -602,7 +602,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
                 <div style={s.printBrand}>
                   <TeamLogo logo={clubLogo} logoSize={clubLogoSize} name={clubName} />
                   <div>
-                    <p>Foglio convocazione</p>
+                    <p>{t("pages.matchConvocation.printSheet")}</p>
                     <h1>
                       {clubName} <span style={{ color: "#64748b" }}>vs</span> {match.opponent || "Avversario"}
                     </h1>
@@ -619,35 +619,35 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
               </div>
 
               <section className="print-kpis">
-                <PrintKpi label="Convocati" value={`${count}/${MAX_PLAYERS}`} />
-                <PrintKpi label="Portieri" value={selectedRoleCounts.Portiere || 0} />
-                <PrintKpi label="Difensori" value={selectedRoleCounts.Difensore || 0} />
-                <PrintKpi label="Centro/attacco" value={(selectedRoleCounts.Centrocampista || 0) + (selectedRoleCounts.Attaccante || 0)} />
+                <PrintKpi label={t("pages.matchConvocation.printCalled")} value={`${count}/${MAX_PLAYERS}`} />
+                <PrintKpi label={t("pages.matchConvocation.printGoalkeepers")} value={selectedRoleCounts.Portiere || 0} />
+                <PrintKpi label={t("pages.matchConvocation.printDefenders")} value={selectedRoleCounts.Difensore || 0} />
+                <PrintKpi label={t("pages.matchConvocation.printMidAttack")} value={(selectedRoleCounts.Centrocampista || 0) + (selectedRoleCounts.Attaccante || 0)} />
               </section>
 
               <section className="print-grid two">
                 <div className="print-box">
-                  <span>Raduno</span>
+                  <span>{t("pages.matchConvocation.printMeeting")}</span>
                   <p>{meetingInfo || "Da definire"}</p>
                 </div>
                 <div className="print-box">
-                  <span>Campo</span>
+                  <span>{t("pages.matchConvocation.printField")}</span>
                   <p>{sheetVenue || "Da definire"}</p>
                 </div>
                 <div className="print-box">
-                  <span>Indirizzo campo</span>
+                  <span>{t("pages.matchConvocation.printAddress")}</span>
                   <p>{venueParts.address || "Da definire"}</p>
                 </div>
                 <div className="print-box">
-                  <span>Superficie</span>
+                  <span>{t("pages.matchConvocation.printSurface")}</span>
                   <p>{venueParts.surface || "Da definire"}</p>
                 </div>
                 <div className="print-box">
-                  <span>Spogliatoio</span>
+                  <span>{t("pages.matchConvocation.printLockerRoom")}</span>
                   <p>{details.lockerRoom || "Da definire"}</p>
                 </div>
                 <div className="print-box">
-                  <span>Kit gara</span>
+                  <span>{t("pages.matchConvocation.printKit")}</span>
                   <p>{details.kit || "Da definire"}</p>
                 </div>
               </section>
@@ -656,19 +656,19 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
                 <section className="print-grid two">
                   {details.staffContact && (
                     <div className="print-box">
-                      <span>Contatto staff</span>
+                      <span>{t("pages.matchConvocation.printStaffContact")}</span>
                       <p>{details.staffContact}</p>
                     </div>
                   )}
                   {details.message && (
                     <div className="print-box">
-                      <span>Comunicazione ai convocati</span>
+                      <span>{t("pages.matchConvocation.printMessage")}</span>
                       <p>{details.message}</p>
                     </div>
                   )}
                   {notes && (
                     <div className="print-box">
-                      <span>Note</span>
+                      <span>{t("pages.matchConvocation.printNotes")}</span>
                       <p>{notes}</p>
                     </div>
                   )}
@@ -676,7 +676,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
               )}
 
               <section className="print-section">
-                <h2>Lista convocati</h2>
+                <h2>{t("pages.matchConvocation.printRoster")}</h2>
                 <div style={s.printRosterGroups}>
                   {Object.entries(convocatiByRole).map(([role, rolePlayers]) => (
                     <div key={role} style={s.printRosterGroup}>
@@ -684,10 +684,10 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
                       <table>
                         <thead>
                           <tr>
-                            <th>N.</th>
-                            <th>Maglia</th>
-                            <th>Giocatore</th>
-                            <th>Stato</th>
+                            <th>{t("pages.matchConvocation.printNumber")}</th>
+                            <th>{t("pages.matchConvocation.printShirt")}</th>
+                            <th>{t("pages.matchConvocation.printPlayer")}</th>
+                            <th>{t("pages.matchConvocation.printStatus")}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -699,7 +699,7 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
                                 <td>{index + 1}</td>
                                 <td>#{player.shirtNumber || "—"}</td>
                                 <td>{displayName}</td>
-                                <td>{player.status || "Disponibile"}</td>
+                                <td>{player.status || t("pages.matchConvocation.statusAvailable")}</td>
                               </tr>
                             );
                           })}
@@ -712,20 +712,20 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
 
               <section className="print-grid two">
                 <div className="print-box">
-                  <span>Firma staff</span>
+                  <span>{t("pages.matchConvocation.printStaffSignature")}</span>
                   <p style={s.signatureLine} />
                 </div>
                 <div className="print-box">
-                  <span>Comunicata il</span>
+                  <span>{t("pages.matchConvocation.printPublishedAt")}</span>
                   <p>{published && existing.publishedAt ? formatDate(existing.publishedAt) : "Da pubblicare"}</p>
                 </div>
                 <div className="print-box">
-                  <span>Controllo pre-gara</span>
-                  <p>Documenti · materiale gara · distinta · palloni · kit portiere</p>
+                  <span>{t("pages.matchConvocation.printPreMatchCheck")}</span>
+                  <p>{t("pages.matchConvocation.printPreMatchCheckText")}</p>
                 </div>
                 <div className="print-box">
-                  <span>Note logistiche</span>
-                  <p>{details.staffContact ? `Referente: ${details.staffContact}` : "Referente staff da indicare"}</p>
+                  <span>{t("pages.matchConvocation.printLogisticsNotes")}</span>
+                  <p>{details.staffContact ? t("pages.matchConvocation.printReferent", { value: details.staffContact }) : t("pages.matchConvocation.printReferentFallback")}</p>
                 </div>
               </section>
             </article>
