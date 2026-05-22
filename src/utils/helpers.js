@@ -624,7 +624,7 @@ export function normalizeAppSettings(settings = {}){
     communications: (settings.communications || []).map(normalizeComm),
     developmentPreviewPlan: settings.developmentPreviewPlan || "",
     developmentPreviewRole: settings.developmentPreviewRole || "",
-    promoCodes: (settings.promoCodes || []).map(normalizePromoCode),
+    promoCodes: mergePromoCodes(settings.promoCodes || []),
     redeemedPromo: settings.redeemedPromo || null,  // { code, plan, redeemedAt }
   };
 }
@@ -655,6 +655,31 @@ export function normalizeMember(member = {}){
     // VIP — granted via permanent promo code or manually by owner
     vip: Boolean(member.vip),
   };
+}
+
+const defaultPromoCodes = [
+  {
+    id: "promo-calciolab100",
+    code: "CALCIOLAB100",
+    plan: "club",
+    permanent: true,
+    maxUses: 0,
+    uses: 0,
+    createdAt: "2026-05-22T00:00:00.000Z",
+    expiresAt: "",
+    note: "Accesso gratuito riservato a famiglia, amici stretti e test interni.",
+  },
+];
+
+function mergePromoCodes(codes = []) {
+  const normalized = codes.map(normalizePromoCode);
+  const existing = new Set(normalized.map((item) => item.code));
+  return [
+    ...normalized,
+    ...defaultPromoCodes
+      .filter((item) => !existing.has(item.code))
+      .map(normalizePromoCode),
+  ];
 }
 
 export function normalizePromoCode(code = {}) {
