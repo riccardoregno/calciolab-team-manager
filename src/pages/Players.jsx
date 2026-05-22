@@ -152,7 +152,8 @@ function Players({ players, setPlayers }) {
       firstName:   form.firstName.trim(),
       lastName:    form.lastName.trim(),
       role:        form.role        || "",
-      shirtNumber: form.shirtNumber || "",
+      birthDate:   form.birthDate   || "",
+      shirtNumber: "",
       status:      form.status      || "Disponibile",
       gruppo:      form.gruppo      || "prima",
       photo:       form.photo       || "",
@@ -324,10 +325,12 @@ function Players({ players, setPlayers }) {
             />
 
             <input
-              placeholder={t("pages.players.number")}
-              value={form.shirtNumber}
+              type="date"
+              aria-label={t("pages.players.birthDate")}
+              title={t("pages.players.birthDate")}
+              value={form.birthDate || ""}
               onChange={(e) =>
-                setForm({ ...form, shirtNumber: e.target.value })
+                setForm({ ...form, birthDate: e.target.value })
               }
               style={styles.input}
             />

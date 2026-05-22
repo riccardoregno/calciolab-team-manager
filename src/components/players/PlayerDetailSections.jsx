@@ -2,20 +2,29 @@ import AppCard from "../ui/AppCard";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
 
+import { useTranslation } from "../../i18n";
 import { styles } from "../../styles/index.js";
-import { formatShortDate, getPhysicalReference } from "../../utils/helpers";
+import { formatShortDate, getPhysicalReference, parsePlayerBirthDate } from "../../utils/helpers";
 
 const PLAYER_TABS = [
-  { key: "cartella", label: "Cartella" },
-  { key: "profilo", label: "Profilo" },
-  { key: "statistiche", label: "Statistiche" },
-  { key: "video", label: "Video" },
-  { key: "fisico", label: "Stato fisico" },
-  { key: "medico", label: "Storico medico" },
-  { key: "sviluppo", label: "Sviluppo" },
+  { key: "cartella",    labelKey: "pages.playerDetail.tabs.cartella" },
+  { key: "profilo",     labelKey: "pages.playerDetail.tabs.profilo" },
+  { key: "statistiche", labelKey: "pages.playerDetail.tabs.statistiche" },
+  { key: "video",       labelKey: "pages.playerDetail.tabs.video" },
+  { key: "fisico",      labelKey: "pages.playerDetail.tabs.fisico" },
+  { key: "medico",      labelKey: "pages.playerDetail.tabs.medico" },
+  { key: "sviluppo",    labelKey: "pages.playerDetail.tabs.sviluppo" },
 ];
 
+function formatBirthDateDisplay(raw) {
+  if (!raw) return "-";
+  const d = parsePlayerBirthDate(raw);
+  if (!d) return raw;
+  return d.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 export function PlayerSidebar({ form, editing, onImageUpload, summary }) {
+  const { t } = useTranslation();
   return (
     <>
       <AppCard>
@@ -27,11 +36,11 @@ export function PlayerSidebar({ form, editing, onImageUpload, summary }) {
           )}
 
           <h2 style={{ marginBottom: 6 }}>{form.name}</h2>
-          <p style={{ color: "#94a3b8" }}>{form.role || "Ruolo"}</p>
+          <p style={{ color: "#94a3b8" }}>{form.role || t("pages.playerDetail.sidebar.roleEmpty")}</p>
 
           <div style={sectionStyles.badgeRow}>
             <Badge tone="blue">#{form.shirtNumber || "-"}</Badge>
-            <Badge tone={getStatusTone(form.status)}>{form.status || "Disponibile"}</Badge>
+            <Badge tone={getStatusTone(form.status)}>{form.status || t("pages.playerDetail.statusField.available")}</Badge>
           </div>
 
           {editing && (
@@ -48,7 +57,7 @@ export function PlayerSidebar({ form, editing, onImageUpload, summary }) {
       </AppCard>
 
       <AppCard>
-        <h3 style={{ marginTop: 0 }}>Alert individuali</h3>
+        <h3 style={{ marginTop: 0 }}>{t("pages.playerDetail.sidebar.alertTitle")}</h3>
         {summary.alerts.length ? (
           <div style={sectionStyles.alertList}>
             {summary.alerts.map((alert) => (
@@ -56,7 +65,7 @@ export function PlayerSidebar({ form, editing, onImageUpload, summary }) {
             ))}
           </div>
         ) : (
-          <p style={sectionStyles.muted}>Nessun alert prioritario.</p>
+          <p style={sectionStyles.muted}>{t("pages.playerDetail.sidebar.noAlerts")}</p>
         )}
       </AppCard>
     </>
@@ -64,6 +73,7 @@ export function PlayerSidebar({ form, editing, onImageUpload, summary }) {
 }
 
 export function PlayerTabs({ activeTab, onChange }) {
+  const { t } = useTranslation();
   return (
     <div style={sectionStyles.tabRow}>
       {PLAYER_TABS.map((tab) => (
@@ -76,7 +86,7 @@ export function PlayerTabs({ activeTab, onChange }) {
             ...(activeTab === tab.key ? sectionStyles.tabButtonActive : {}),
           }}
         >
-          {tab.label}
+          {t(tab.labelKey)}
         </button>
       ))}
     </div>
@@ -84,48 +94,57 @@ export function PlayerTabs({ activeTab, onChange }) {
 }
 
 export function PlayerKpiStrip({ summary }) {
+  const { t } = useTranslation();
   return (
     <div style={sectionStyles.kpiGrid}>
-      <MiniKpi label="Presenze" value={summary.stats.presences} />
-      <MiniKpi label="Minuti" value={summary.stats.minutes} />
-      <MiniKpi label="Gol" value={summary.stats.goals} />
-      <MiniKpi label="Assist" value={summary.stats.assists} />
-      <MiniKpi label="RPE medio" value={summary.stats.avgRpe || "-"} />
-      <MiniKpi label="Carico" value={summary.stats.load || "-"} />
+      <MiniKpi label={t("pages.playerDetail.kpi.presences")} value={summary.stats.presences} />
+      <MiniKpi label={t("pages.playerDetail.kpi.minutes")}   value={summary.stats.minutes} />
+      <MiniKpi label={t("pages.playerDetail.kpi.goals")}     value={summary.stats.goals} />
+      <MiniKpi label={t("pages.playerDetail.kpi.assists")}   value={summary.stats.assists} />
+      <MiniKpi label={t("pages.playerDetail.kpi.avgRpe")}    value={summary.stats.avgRpe || "-"} />
+      <MiniKpi label={t("pages.playerDetail.kpi.load")}      value={summary.stats.load || "-"} />
     </div>
   );
 }
 
 export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSave, onFieldChange }) {
+  const { t } = useTranslation();
   return (
     <AppCard>
       <div style={sectionStyles.cardHeader}>
         <div>
-          <h3 style={{ margin: 0 }}>Informazioni giocatore</h3>
-          <p style={sectionStyles.cardSubtitle}>Database tecnico e anagrafico</p>
+          <h3 style={{ margin: 0 }}>{t("pages.playerDetail.profile.title")}</h3>
+          <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.profile.subtitle")}</p>
         </div>
 
         <div style={{ display: "flex", gap: 10 }}>
           {editing ? (
             <>
-              <Button variant="ghost" onClick={onCancel}>Annulla</Button>
-              <Button onClick={onSave}>Salva</Button>
+              <Button variant="ghost" onClick={onCancel}>{t("pages.playerDetail.profile.cancel")}</Button>
+              <Button onClick={onSave}>{t("pages.playerDetail.profile.save")}</Button>
             </>
           ) : (
-            <Button onClick={() => onEdit(player)}>Modifica</Button>
+            <Button onClick={() => onEdit(player)}>{t("pages.playerDetail.profile.edit")}</Button>
           )}
         </div>
       </div>
 
       <div style={sectionStyles.formGrid}>
-        <Field label="Nome" value={form.name} editing={editing} onChange={(value) => onFieldChange("name", value)} />
-        <Field label="Ruolo" value={form.role} editing={editing} onChange={(value) => onFieldChange("role", value)} />
-        <Field label="Numero maglia" value={form.shirtNumber} editing={editing} onChange={(value) => onFieldChange("shirtNumber", value)} />
-        <Field label="Piede" value={form.foot} editing={editing} onChange={(value) => onFieldChange("foot", value)} />
-        <Field label="Altezza" value={form.height} editing={editing} onChange={(value) => onFieldChange("height", value)} />
-        <Field label="Peso" value={form.weight} editing={editing} onChange={(value) => onFieldChange("weight", value)} />
-        <Field label="Nazionalità" value={form.nationality} editing={editing} onChange={(value) => onFieldChange("nationality", value)} />
-        <Field label="Data nascita" type="date" value={form.birthDate} editing={editing} onChange={(value) => onFieldChange("birthDate", value)} />
+        <Field label={t("pages.playerDetail.profile.fieldName")}        value={form.name}        editing={editing} onChange={(v) => onFieldChange("name", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldRole")}        value={form.role}        editing={editing} onChange={(v) => onFieldChange("role", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldShirt")}       value={form.shirtNumber} editing={editing} onChange={(v) => onFieldChange("shirtNumber", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldFoot")}        value={form.foot}        editing={editing} onChange={(v) => onFieldChange("foot", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldHeight")}      value={form.height}      editing={editing} onChange={(v) => onFieldChange("height", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldWeight")}      value={form.weight}      editing={editing} onChange={(v) => onFieldChange("weight", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldNationality")} value={form.nationality} editing={editing} onChange={(v) => onFieldChange("nationality", v)} />
+        <Field
+          label={t("pages.playerDetail.profile.fieldBirthDate")}
+          type="date"
+          value={form.birthDate}
+          displayValue={formatBirthDateDisplay(form.birthDate)}
+          editing={editing}
+          onChange={(v) => onFieldChange("birthDate", v)}
+        />
       </div>
     </AppCard>
   );
@@ -139,6 +158,7 @@ export function PlayerTechnicalOverview({
   preventionRecommendations,
   onGoToTab,
 }) {
+  const { t } = useTranslation();
   const availabilityScore = getAvailabilityScore(player, activeInjuries);
   const workloadTone = summary.stats.load > 900 ? "orange" : summary.stats.load > 0 ? "green" : "blue";
   const readinessTone = availabilityScore >= 80 ? "green" : availabilityScore >= 50 ? "orange" : "red";
@@ -147,12 +167,14 @@ export function PlayerTechnicalOverview({
 
   const priorities = [
     player.status && player.status !== "Disponibile"
-      ? `Gestire status: ${player.status}${player.expectedReturn ? `, rientro ${player.expectedReturn}` : ""}`
+      ? player.expectedReturn
+        ? t("pages.playerDetail.priorities.manageStatusWithReturn", { status: player.status, return: player.expectedReturn })
+        : t("pages.playerDetail.priorities.manageStatus", { status: player.status })
       : "",
-    summary.stats.load > 900 ? "Monitorare carico recente alto" : "",
-    !latestTest ? "Programmare un test fisico di riferimento" : "",
-    !player.weeklyGoal ? "Definire obiettivo settimanale individuale" : "",
-    preventionRecommendations.length ? "Applicare scheda prevenzione consigliata" : "",
+    summary.stats.load > 900 ? t("pages.playerDetail.priorities.highLoad") : "",
+    !latestTest ? t("pages.playerDetail.priorities.scheduleTest") : "",
+    !player.weeklyGoal ? t("pages.playerDetail.priorities.setWeeklyGoal") : "",
+    preventionRecommendations.length ? t("pages.playerDetail.priorities.applyPrevention") : "",
   ].filter(Boolean);
 
   return (
@@ -160,11 +182,9 @@ export function PlayerTechnicalOverview({
       <AppCard>
         <div style={sectionStyles.overviewHead}>
           <div>
-            <p style={sectionStyles.eyebrow}>Cartella tecnica</p>
-            <h3 style={sectionStyles.overviewTitle}>Sintesi staff</h3>
-            <p style={sectionStyles.cardSubtitle}>
-              Stato, rendimento recente, carico e priorita operative del giocatore.
-            </p>
+            <p style={sectionStyles.eyebrow}>{t("pages.playerDetail.overview.eyebrow")}</p>
+            <h3 style={sectionStyles.overviewTitle}>{t("pages.playerDetail.overview.title")}</h3>
+            <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.overview.subtitle")}</p>
           </div>
           <div style={sectionStyles.readinessBox}>
             <strong>{availabilityScore}%</strong>
@@ -173,18 +193,18 @@ export function PlayerTechnicalOverview({
         </div>
 
         <div style={sectionStyles.overviewKpis}>
-          <MiniStatus label="Disponibilita" value={player.status || "Disponibile"} tone={readinessTone} />
-          <MiniStatus label="Carico" value={summary.stats.load || "-"} tone={workloadTone} />
-          <MiniStatus label="Minuti" value={summary.stats.minutes || "-"} tone="blue" />
-          <MiniStatus label="Ultimo test" value={latestTest?.date ? formatShortDate(latestTest.date) : "-"} tone={latestTest ? "green" : "orange"} />
+          <MiniStatus label={t("pages.playerDetail.overview.availability")} value={player.status || t("pages.playerDetail.statusField.available")} tone={readinessTone} />
+          <MiniStatus label={t("pages.playerDetail.overview.load")}    value={summary.stats.load || "-"} tone={workloadTone} />
+          <MiniStatus label={t("pages.playerDetail.overview.minutes")} value={summary.stats.minutes || "-"} tone="blue" />
+          <MiniStatus label={t("pages.playerDetail.overview.lastTest")} value={latestTest?.date ? formatShortDate(latestTest.date) : "-"} tone={latestTest ? "green" : "orange"} />
         </div>
       </AppCard>
 
       <AppCard>
         <div style={sectionStyles.cardHeader}>
           <div>
-            <h3 style={{ margin: 0 }}>Priorita staff</h3>
-            <p style={sectionStyles.cardSubtitle}>Cosa guardare prima della prossima seduta</p>
+            <h3 style={{ margin: 0 }}>{t("pages.playerDetail.overview.staffPriorities")}</h3>
+            <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.overview.staffPrioritiesSubtitle")}</p>
           </div>
           <Badge tone={priorities.length ? "orange" : "green"}>{priorities.length || "Ok"}</Badge>
         </div>
@@ -193,32 +213,32 @@ export function PlayerTechnicalOverview({
             {priorities.map((item) => <span key={item}>{item}</span>)}
           </div>
         ) : (
-          <p style={sectionStyles.muted}>Nessuna priorita critica registrata.</p>
+          <p style={sectionStyles.muted}>{t("pages.playerDetail.overview.noPriorities")}</p>
         )}
       </AppCard>
 
       <AppCard>
         <div style={sectionStyles.cardHeader}>
           <div>
-            <h3 style={{ margin: 0 }}>Obiettivi individuali</h3>
-            <p style={sectionStyles.cardSubtitle}>Focus tecnico e comportamentale</p>
+            <h3 style={{ margin: 0 }}>{t("pages.playerDetail.overview.individualGoals")}</h3>
+            <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.overview.goalsSubtitle")}</p>
           </div>
-          <Button variant="ghost" onClick={() => onGoToTab("sviluppo")}>Apri sviluppo</Button>
+          <Button variant="ghost" onClick={() => onGoToTab("sviluppo")}>{t("pages.playerDetail.overview.openDevelopment")}</Button>
         </div>
         <div style={sectionStyles.objectiveGrid}>
-          <ReadOnlyText label="Punti di forza" value={player.strengths} />
-          <ReadOnlyText label="Da migliorare" value={player.improvements} />
-          <ReadOnlyText label="Obiettivo settimanale" value={player.weeklyGoal} />
+          <ReadOnlyText label={t("pages.playerDetail.overview.strengths")}    value={player.strengths} />
+          <ReadOnlyText label={t("pages.playerDetail.overview.improvements")} value={player.improvements} />
+          <ReadOnlyText label={t("pages.playerDetail.overview.weeklyGoal")}   value={player.weeklyGoal} />
         </div>
       </AppCard>
 
       <AppCard>
         <div style={sectionStyles.cardHeader}>
           <div>
-            <h3 style={{ margin: 0 }}>Trend recente</h3>
-            <p style={sectionStyles.cardSubtitle}>Ultimi eventi registrati</p>
+            <h3 style={{ margin: 0 }}>{t("pages.playerDetail.overview.recentTrend")}</h3>
+            <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.overview.recentEvents")}</p>
           </div>
-          <Button variant="ghost" onClick={() => onGoToTab("statistiche")}>Dettaglio</Button>
+          <Button variant="ghost" onClick={() => onGoToTab("statistiche")}>{t("pages.playerDetail.overview.detailButton")}</Button>
         </div>
         {latestEvent ? (
           <div style={sectionStyles.list}>
@@ -231,26 +251,26 @@ export function PlayerTechnicalOverview({
             ))}
           </div>
         ) : (
-          <p style={sectionStyles.muted}>Nessun evento recente registrato.</p>
+          <p style={sectionStyles.muted}>{t("pages.playerDetail.overview.noRecentEvents")}</p>
         )}
       </AppCard>
 
       <AppCard>
         <div style={sectionStyles.cardHeader}>
           <div>
-            <h3 style={{ margin: 0 }}>Medico e prevenzione</h3>
-            <p style={sectionStyles.cardSubtitle}>Storico, alert e prevenzione ricadute</p>
+            <h3 style={{ margin: 0 }}>{t("pages.playerDetail.overview.medicalTitle")}</h3>
+            <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.overview.medicalSubtitle")}</p>
           </div>
-          <Button variant="ghost" onClick={() => onGoToTab("medico")}>Apri medico</Button>
+          <Button variant="ghost" onClick={() => onGoToTab("medico")}>{t("pages.playerDetail.overview.openMedical")}</Button>
         </div>
         <div style={sectionStyles.overviewKpis}>
-          <MiniStatus label="Infortuni attivi" value={activeInjuries.length} tone={activeInjuries.length ? "red" : "green"} />
-          <MiniStatus label="Storico" value={injuryHistory.length} tone="blue" />
-          <MiniStatus label="Prevenzione" value={preventionRecommendations.length || "-"} tone={preventionRecommendations.length ? "orange" : "green"} />
+          <MiniStatus label={t("pages.playerDetail.overview.activeInjuries")} value={activeInjuries.length} tone={activeInjuries.length ? "red" : "green"} />
+          <MiniStatus label={t("pages.playerDetail.overview.history")}    value={injuryHistory.length} tone="blue" />
+          <MiniStatus label={t("pages.playerDetail.overview.prevention")} value={preventionRecommendations.length || "-"} tone={preventionRecommendations.length ? "orange" : "green"} />
         </div>
         {preventionRecommendations[0] && (
           <p style={{ ...sectionStyles.muted, marginTop: 12 }}>
-            Scheda suggerita: {preventionRecommendations[0].title}
+            {t("pages.playerDetail.overview.preventionSuggested", { title: preventionRecommendations[0].title })}
           </p>
         )}
       </AppCard>
@@ -259,6 +279,7 @@ export function PlayerTechnicalOverview({
 }
 
 export function PlayerDevelopmentTab({ form, editing, summary, videoClips = [], onCreateStaffTask, onFieldChange }) {
+  const { t } = useTranslation();
   const actionCount = [
     form.weeklyGoal,
     form.thirtyDayGoal,
@@ -272,59 +293,57 @@ export function PlayerDevelopmentTab({ form, editing, summary, videoClips = [], 
       <AppCard>
         <div style={sectionStyles.cardHeader}>
           <div>
-            <p style={sectionStyles.eyebrow}>Individual development plan</p>
-            <h3 style={{ margin: 0 }}>Piano di sviluppo</h3>
-            <p style={sectionStyles.cardSubtitle}>
-              Obiettivi, azioni in campo, clip da rivedere e metriche di controllo.
-            </p>
+            <p style={sectionStyles.eyebrow}>{t("pages.playerDetail.development.eyebrow")}</p>
+            <h3 style={{ margin: 0 }}>{t("pages.playerDetail.development.title")}</h3>
+            <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.development.subtitle")}</p>
           </div>
           <Badge tone={actionCount >= 4 ? "green" : "orange"}>{actionCount}/5</Badge>
         </div>
 
         <div style={sectionStyles.developmentKpis}>
-          <MiniStatus label="Minuti" value={summary.stats.minutes || "-"} tone="blue" />
-          <MiniStatus label="RPE medio" value={summary.stats.avgRpe || "-"} tone="orange" />
-          <MiniStatus label="Clip" value={videoClips.length} tone={videoClips.length ? "purple" : "blue"} />
-          <MiniStatus label="Carico" value={summary.stats.load || "-"} tone="green" />
+          <MiniStatus label={t("pages.playerDetail.kpi.minutes")} value={summary.stats.minutes || "-"} tone="blue" />
+          <MiniStatus label={t("pages.playerDetail.kpi.avgRpe")}  value={summary.stats.avgRpe || "-"} tone="orange" />
+          <MiniStatus label={t("pages.playerDetail.development.clip")} value={videoClips.length} tone={videoClips.length ? "purple" : "blue"} />
+          <MiniStatus label={t("pages.playerDetail.kpi.load")}    value={summary.stats.load || "-"} tone="green" />
         </div>
       </AppCard>
 
       <AppCard>
-        <h3 style={{ marginTop: 0 }}>Profilo tecnico</h3>
+        <h3 style={{ marginTop: 0 }}>{t("pages.playerDetail.development.technicalProfile")}</h3>
         <div style={{ display: "grid", gap: 14 }}>
-          <TextAreaField label="Punti di forza" value={form.strengths} editing={editing} onChange={(value) => onFieldChange("strengths", value)} />
-          <TextAreaField label="Da migliorare" value={form.improvements} editing={editing} onChange={(value) => onFieldChange("improvements", value)} />
-          <TextAreaField label="Focus sviluppo" value={form.developmentFocus} editing={editing} onChange={(value) => onFieldChange("developmentFocus", value)} />
+          <TextAreaField label={t("pages.playerDetail.overview.strengths")}          value={form.strengths}        editing={editing} onChange={(v) => onFieldChange("strengths", v)} />
+          <TextAreaField label={t("pages.playerDetail.overview.improvements")}       value={form.improvements}     editing={editing} onChange={(v) => onFieldChange("improvements", v)} />
+          <TextAreaField label={t("pages.playerDetail.development.developmentFocus")} value={form.developmentFocus} editing={editing} onChange={(v) => onFieldChange("developmentFocus", v)} />
         </div>
       </AppCard>
 
       <AppCard>
         <div style={sectionStyles.cardHeader}>
           <div>
-            <h3 style={{ margin: 0 }}>Obiettivi e azioni</h3>
-            <p style={sectionStyles.cardSubtitle}>Trasforma il piano individuale in lavoro assegnato allo staff</p>
+            <h3 style={{ margin: 0 }}>{t("pages.playerDetail.development.goalsTitle")}</h3>
+            <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.development.goalsSubtitle")}</p>
           </div>
           {onCreateStaffTask && (
             <Button variant="ghost" onClick={onCreateStaffTask}>
-              Crea azione staff
+              {t("pages.playerDetail.development.createStaffAction")}
             </Button>
           )}
         </div>
         <div style={{ display: "grid", gap: 14 }}>
-          <TextAreaField label="Obiettivo settimanale" value={form.weeklyGoal} editing={editing} onChange={(value) => onFieldChange("weeklyGoal", value)} />
-          <TextAreaField label="Obiettivo 30 giorni" value={form.thirtyDayGoal} editing={editing} onChange={(value) => onFieldChange("thirtyDayGoal", value)} />
-          <TextAreaField label="Azioni in allenamento" value={form.trainingActions} editing={editing} onChange={(value) => onFieldChange("trainingActions", value)} />
-          <TextAreaField label="Metriche di controllo" value={form.successMetrics} editing={editing} onChange={(value) => onFieldChange("successMetrics", value)} />
+          <TextAreaField label={t("pages.playerDetail.development.weeklyGoal")}     value={form.weeklyGoal}      editing={editing} onChange={(v) => onFieldChange("weeklyGoal", v)} />
+          <TextAreaField label={t("pages.playerDetail.development.thirtyDayGoal")}  value={form.thirtyDayGoal}   editing={editing} onChange={(v) => onFieldChange("thirtyDayGoal", v)} />
+          <TextAreaField label={t("pages.playerDetail.development.trainingActions")} value={form.trainingActions} editing={editing} onChange={(v) => onFieldChange("trainingActions", v)} />
+          <TextAreaField label={t("pages.playerDetail.development.successMetrics")} value={form.successMetrics}  editing={editing} onChange={(v) => onFieldChange("successMetrics", v)} />
         </div>
       </AppCard>
 
       <AppCard>
         <div style={sectionStyles.cardHeader}>
           <div>
-            <h3 style={{ margin: 0 }}>Video e feedback</h3>
-            <p style={sectionStyles.cardSubtitle}>Clip utili da rivedere nel percorso individuale</p>
+            <h3 style={{ margin: 0 }}>{t("pages.playerDetail.development.videoTitle")}</h3>
+            <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.development.videoSubtitle")}</p>
           </div>
-          <Badge tone={videoClips.length ? "blue" : "orange"}>{videoClips.length} clip</Badge>
+          <Badge tone={videoClips.length ? "blue" : "orange"}>{videoClips.length} {t("pages.playerDetail.development.clip")}</Badge>
         </div>
 
         {videoClips.length ? (
@@ -335,20 +354,20 @@ export function PlayerDevelopmentTab({ form, editing, summary, videoClips = [], 
                   <Badge tone="orange">{clip.minute ? `${clip.minute}'` : "Video"}</Badge>
                   <span>{formatShortDate(clip.matchDate)} · {clip.category}</span>
                 </div>
-                <strong>{clip.phase || "Fase non indicata"}</strong>
-                <p>{clip.note || clip.tags || "Clip da rivedere."}</p>
+                <strong>{clip.phase || t("pages.playerDetail.development.noPhase")}</strong>
+                <p>{clip.note || clip.tags || t("pages.playerDetail.development.clipFallback")}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p style={sectionStyles.muted}>Nessuna clip collegata al giocatore.</p>
+          <p style={sectionStyles.muted}>{t("pages.playerDetail.development.noClips")}</p>
         )}
 
         <div style={{ marginTop: 14 }}>
-          <TextAreaField label="Note video review" value={form.videoReviewNotes} editing={editing} onChange={(value) => onFieldChange("videoReviewNotes", value)} />
+          <TextAreaField label={t("pages.playerDetail.development.videoNotes")}    value={form.videoReviewNotes} editing={editing} onChange={(v) => onFieldChange("videoReviewNotes", v)} />
         </div>
         <div style={{ marginTop: 14 }}>
-          <TextAreaField label="Feedback staff" value={form.coachFeedback} editing={editing} onChange={(value) => onFieldChange("coachFeedback", value)} />
+          <TextAreaField label={t("pages.playerDetail.development.coachFeedback")} value={form.coachFeedback}    editing={editing} onChange={(v) => onFieldChange("coachFeedback", v)} />
         </div>
       </AppCard>
     </div>
@@ -356,20 +375,21 @@ export function PlayerDevelopmentTab({ form, editing, summary, videoClips = [], 
 }
 
 export function PlayerPhysicalTab({ form, editing, latestTests, onFieldChange }) {
+  const { t } = useTranslation();
   return (
     <>
       <AppCard>
-        <h3 style={{ marginTop: 0 }}>Stato fisico</h3>
+        <h3 style={{ marginTop: 0 }}>{t("pages.playerDetail.physical.title")}</h3>
         <div style={sectionStyles.formGrid}>
-          <StatusField value={form.status} editing={editing} onChange={(value) => onFieldChange("status", value)} />
-          <Field label="Problema fisico" value={form.injuryType} editing={editing} onChange={(value) => onFieldChange("injuryType", value)} />
-          <Field label="Lavoro differenziato" value={form.differentiatedType} editing={editing} onChange={(value) => onFieldChange("differentiatedType", value)} />
-          <Field label="Rientro previsto" value={form.expectedReturn} editing={editing} onChange={(value) => onFieldChange("expectedReturn", value)} />
+          <StatusField value={form.status} editing={editing} onChange={(v) => onFieldChange("status", v)} />
+          <Field label={t("pages.playerDetail.physical.fieldInjuryType")}    value={form.injuryType}         editing={editing} onChange={(v) => onFieldChange("injuryType", v)} />
+          <Field label={t("pages.playerDetail.physical.fieldDifferentiated")} value={form.differentiatedType} editing={editing} onChange={(v) => onFieldChange("differentiatedType", v)} />
+          <Field label={t("pages.playerDetail.physical.fieldExpectedReturn")} value={form.expectedReturn}     editing={editing} onChange={(v) => onFieldChange("expectedReturn", v)} />
         </div>
       </AppCard>
 
       <AppCard>
-        <h3 style={{ marginTop: 0 }}>Test fisici recenti</h3>
+        <h3 style={{ marginTop: 0 }}>{t("pages.playerDetail.physical.testTitle")}</h3>
         {latestTests.length ? (
           <div style={sectionStyles.list}>
             {latestTests.map((test) => {
@@ -378,13 +398,13 @@ export function PlayerPhysicalTab({ form, editing, latestTests, onFieldChange })
                 <div key={test.id} style={sectionStyles.listItem}>
                   <Badge tone="blue">{formatShortDate(test.date)}</Badge>
                   <strong>{reference.group} · MAS {reference.mas || "-"}</strong>
-                  <span>Gacon {test.gaconLevel || "-"} · 10m {test.sprint10m || "-"} · salto {test.jumpCm || "-"}</span>
+                  <span>Gacon {test.gaconLevel || "-"} · 10m {test.sprint10m || "-"} · {t("pages.playerDetail.physical.jumpLabel")} {test.jumpCm || "-"}</span>
                 </div>
               );
             })}
           </div>
         ) : (
-          <p style={sectionStyles.muted}>Nessun test registrato.</p>
+          <p style={sectionStyles.muted}>{t("pages.playerDetail.physical.noTests")}</p>
         )}
       </AppCard>
     </>
@@ -404,36 +424,39 @@ export function PlayerMedicalTab({
   onAddMedicalNote,
   onMarkRecovered,
 }) {
+  const { t } = useTranslation();
   return (
     <AppCard>
       <div style={sectionStyles.cardHeader}>
         <div>
-          <h3 style={{ margin: 0 }}>Storico medico</h3>
-          <p style={sectionStyles.cardSubtitle}>Infortuni, rientri, sedute saltate e lavoro differenziato</p>
+          <h3 style={{ margin: 0 }}>{t("pages.playerDetail.medical.title")}</h3>
+          <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.medical.subtitle")}</p>
         </div>
         <Badge tone={activeInjuries.length ? "red" : "green"}>
-          {activeInjuries.length ? `${activeInjuries.length} attivi` : "Nessun attivo"}
+          {activeInjuries.length
+            ? t("pages.playerDetail.medical.activeCount", { count: activeInjuries.length })
+            : t("pages.playerDetail.medical.noneActive")}
         </Badge>
       </div>
 
       <div style={sectionStyles.quickActions}>
-        <Button variant="ghost" onClick={onCreateDifferentiatedWork}>Crea lavoro differenziato</Button>
-        <Button variant="ghost" onClick={onAddMedicalNote}>Aggiungi nota</Button>
-        <Button variant="ghost" onClick={onMarkRecovered} disabled={!activeInjuries.length}>Segna rientro</Button>
+        <Button variant="ghost" onClick={onCreateDifferentiatedWork}>{t("pages.playerDetail.medical.createDifferentiated")}</Button>
+        <Button variant="ghost" onClick={onAddMedicalNote}>{t("pages.playerDetail.medical.addNote")}</Button>
+        <Button variant="ghost" onClick={onMarkRecovered} disabled={!activeInjuries.length}>{t("pages.playerDetail.medical.markRecovered")}</Button>
       </div>
 
       <div style={sectionStyles.medicalKpiGrid}>
-        <MiniKpi label="Totale infortuni" value={injuryHistory.length} />
-        <MiniKpi label="Rientrati" value={pastInjuries.length} />
-        <MiniKpi label="Giorni out" value={totalDaysOut} />
-        <MiniKpi label="Sedute perse" value={totalSessionsMissed} />
-        <MiniKpi label="Partite perse" value={totalMatchesMissed} />
+        <MiniKpi label={t("pages.playerDetail.medical.totalInjuries")}  value={injuryHistory.length} />
+        <MiniKpi label={t("pages.playerDetail.medical.recovered")}      value={pastInjuries.length} />
+        <MiniKpi label={t("pages.playerDetail.medical.daysOut")}        value={totalDaysOut} />
+        <MiniKpi label={t("pages.playerDetail.medical.sessionsMissed")} value={totalSessionsMissed} />
+        <MiniKpi label={t("pages.playerDetail.medical.matchesMissed")}  value={totalMatchesMissed} />
       </div>
 
       <div style={sectionStyles.preventionBox}>
         <div style={sectionStyles.preventionHeader}>
-          <strong>Prevenzione consigliata</strong>
-          <Badge tone="blue">{preventionRecommendations.length} schede</Badge>
+          <strong>{t("pages.playerDetail.medical.preventionTitle")}</strong>
+          <Badge tone="blue">{t("pages.playerDetail.medical.preventionCount", { count: preventionRecommendations.length })}</Badge>
         </div>
         {preventionRecommendations.length ? (
           <div style={sectionStyles.preventionGrid}>
@@ -450,13 +473,13 @@ export function PlayerMedicalTab({
             ))}
           </div>
         ) : (
-          <p style={sectionStyles.muted}>Nessuna scheda suggerita: aggiungi uno storico medico per generare indicazioni mirate.</p>
+          <p style={sectionStyles.muted}>{t("pages.playerDetail.medical.noPreventionSheets")}</p>
         )}
       </div>
 
       {generalInjuryNotes && (
         <div style={sectionStyles.generalNotes}>
-          <strong>Note generali</strong>
+          <strong>{t("pages.playerDetail.medical.generalNotes")}</strong>
           <p>{generalInjuryNotes}</p>
         </div>
       )}
@@ -467,19 +490,21 @@ export function PlayerMedicalTab({
             <div key={injury.id || `${injury.startDate}-${injury.injuryType}-${index}`} style={sectionStyles.injuryItem}>
               <div style={sectionStyles.injuryItemTop}>
                 <div>
-                  <strong style={sectionStyles.injuryTitle}>{injury.injuryType || "Infortunio"}</strong>
+                  <strong style={sectionStyles.injuryTitle}>{injury.injuryType || t("pages.playerDetail.medical.injuryFallback")}</strong>
                   <p style={sectionStyles.injuryDates}>
-                    {injury.startDate || "Data non inserita"} → {injury.endDate || injury.expectedReturn || "in corso"}
+                    {injury.startDate || t("pages.playerDetail.medical.dateNotSet")} → {injury.endDate || injury.expectedReturn || t("pages.playerDetail.medical.inProgress")}
                   </p>
                 </div>
-                <Badge tone={injury.endDate ? "green" : "red"}>{injury.endDate ? "Rientrato" : "Attivo"}</Badge>
+                <Badge tone={injury.endDate ? "green" : "red"}>
+                  {injury.endDate ? t("pages.playerDetail.medical.statusRecovered") : t("pages.playerDetail.medical.statusActive")}
+                </Badge>
               </div>
 
               <div style={sectionStyles.injuryMeta}>
-                {injury.daysOut != null && <span>{injury.daysOut} giorni fuori</span>}
-                {injury.sessionsMissed != null && <span>{injury.sessionsMissed} sedute saltate</span>}
-                {injury.matchesMissed != null && <span>{injury.matchesMissed} partite saltate</span>}
-                {injury.differentiatedType && <span>Lavoro: {injury.differentiatedType}</span>}
+                {injury.daysOut != null && <span>{t("pages.playerDetail.medical.daysOutCount", { count: injury.daysOut })}</span>}
+                {injury.sessionsMissed != null && <span>{t("pages.playerDetail.medical.sessionsMissedCount", { count: injury.sessionsMissed })}</span>}
+                {injury.matchesMissed != null && <span>{t("pages.playerDetail.medical.matchesMissedCount", { count: injury.matchesMissed })}</span>}
+                {injury.differentiatedType && <span>{t("pages.playerDetail.medical.differentiatedWork", { type: injury.differentiatedType })}</span>}
               </div>
 
               {injury.notes && <p style={sectionStyles.injuryNotes}>{injury.notes}</p>}
@@ -487,36 +512,38 @@ export function PlayerMedicalTab({
           ))}
         </div>
       ) : (
-        <p style={sectionStyles.muted}>Nessun infortunio registrato per questo giocatore.</p>
+        <p style={sectionStyles.muted}>{t("pages.playerDetail.medical.noInjuries")}</p>
       )}
     </AppCard>
   );
 }
 
 export function PlayerStatsTab({ summary }) {
+  const { t } = useTranslation();
   return (
     <AppCard>
-      <h3 style={{ marginTop: 0 }}>Storico recente</h3>
+      <h3 style={{ marginTop: 0 }}>{t("pages.playerDetail.stats.title")}</h3>
       {summary.recentEvents.length ? (
         <div style={sectionStyles.list}>
           {summary.recentEvents.map(({ event, data }) => (
             <div key={`${event.type}-${event.id}`} style={sectionStyles.listItem}>
               <Badge tone={event.type === "Partita" ? "orange" : "green"}>{event.type}</Badge>
               <strong>{event.title}</strong>
-              <span>{formatShortDate(event.date)} · {data.status} · {data.minutes || 0} min · {data.goals || 0} gol · {data.assists || 0} assist</span>
+              <span>{formatShortDate(event.date)} · {data.status} · {data.minutes || 0} min · {data.goals || 0} {t("pages.playerDetail.kpi.goals").toLowerCase()} · {data.assists || 0} {t("pages.playerDetail.kpi.assists").toLowerCase()}</span>
             </div>
           ))}
         </div>
       ) : (
-        <p style={sectionStyles.muted}>Nessun evento registrato.</p>
+        <p style={sectionStyles.muted}>{t("pages.playerDetail.stats.noEvents")}</p>
       )}
     </AppCard>
   );
 }
 
 export function PlayerVideoTab({ clips }) {
+  const { t } = useTranslation();
   const grouped = clips.reduce((acc, clip) => {
-    const key = clip.category || "Altro";
+    const key = clip.category || t("common.other");
     acc[key] = acc[key] || [];
     acc[key].push(clip);
     return acc;
@@ -526,10 +553,10 @@ export function PlayerVideoTab({ clips }) {
     <AppCard>
       <div style={sectionStyles.cardHeader}>
         <div>
-          <h3 style={{ margin: 0 }}>Video individuale</h3>
-          <p style={sectionStyles.cardSubtitle}>Clip taggate da post gara, correzioni e buone giocate.</p>
+          <h3 style={{ margin: 0 }}>{t("pages.playerDetail.video.title")}</h3>
+          <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.video.subtitle")}</p>
         </div>
-        <Badge tone={clips.length ? "blue" : "orange"}>{clips.length} clip</Badge>
+        <Badge tone={clips.length ? "blue" : "orange"}>{clips.length} {t("pages.playerDetail.development.clip").toLowerCase()}</Badge>
       </div>
 
       {clips.length ? (
@@ -547,14 +574,14 @@ export function PlayerVideoTab({ clips }) {
                       <Badge tone="orange">{clip.minute ? `${clip.minute}'` : "Video"}</Badge>
                       <span>{formatShortDate(clip.matchDate)} · {clip.matchTitle}</span>
                     </div>
-                    <strong>{clip.phase || "Fase non indicata"}</strong>
-                    <p>{clip.note || clip.tags || "Nessuna nota tecnica inserita."}</p>
+                    <strong>{clip.phase || t("pages.playerDetail.video.noPhase")}</strong>
+                    <p>{clip.note || clip.tags || t("pages.playerDetail.video.noTechNote")}</p>
                     <div style={sectionStyles.videoMeta}>
                       {clip.tags && <span>{clip.tags}</span>}
                       {clip.audience && <span>{clip.audience}</span>}
                       {clip.url && (
                         <a href={clip.url} target="_blank" rel="noreferrer">
-                          Apri clip
+                          {t("pages.playerDetail.video.openClip")}
                         </a>
                       )}
                     </div>
@@ -565,13 +592,13 @@ export function PlayerVideoTab({ clips }) {
           ))}
         </div>
       ) : (
-        <p style={sectionStyles.muted}>
-          Nessuna clip collegata. Aggiungi clip da Post Gara selezionando questo giocatore.
-        </p>
+        <p style={sectionStyles.muted}>{t("pages.playerDetail.video.noClips")}</p>
       )}
     </AppCard>
   );
 }
+
+/* ─── Inner helper components ────────────────────────────────── */
 
 function MiniKpi({ label, value }) {
   return (
@@ -609,26 +636,30 @@ function getAvailabilityScore(player, activeInjuries) {
 }
 
 function StatusField({ value, editing, onChange }) {
+  const { t } = useTranslation();
+  const options = [
+    { value: "Disponibile",   label: t("pages.playerDetail.statusField.available") },
+    { value: "Recupero",      label: t("pages.playerDetail.statusField.recovery") },
+    { value: "Differenziato", label: t("pages.playerDetail.statusField.differentiated") },
+    { value: "Infortunato",   label: t("pages.playerDetail.statusField.injured") },
+    { value: "Squalificato",  label: t("pages.playerDetail.statusField.suspended") },
+    { value: "Permesso",      label: t("pages.playerDetail.statusField.absent") },
+  ];
   return (
     <div>
       <FieldLabel>Status</FieldLabel>
       {editing ? (
-        <select value={value || "Disponibile"} onChange={(event) => onChange(event.target.value)} style={styles.input}>
-          <option>Disponibile</option>
-          <option>Recupero</option>
-          <option>Differenziato</option>
-          <option>Infortunato</option>
-          <option>Squalificato</option>
-          <option>Permesso</option>
+        <select value={value || "Disponibile"} onChange={(e) => onChange(e.target.value)} style={styles.input}>
+          {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       ) : (
-        <ReadOnlyBox>{value || "Disponibile"}</ReadOnlyBox>
+        <ReadOnlyBox>{options.find((o) => o.value === value)?.label || value || t("pages.playerDetail.statusField.available")}</ReadOnlyBox>
       )}
     </div>
   );
 }
 
-function Field({ label, value, editing, onChange, type = "text" }) {
+function Field({ label, value, editing, onChange, type = "text", displayValue }) {
   return (
     <div>
       <FieldLabel>{label}</FieldLabel>
@@ -636,11 +667,11 @@ function Field({ label, value, editing, onChange, type = "text" }) {
         <input
           type={type}
           value={value || ""}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(e) => onChange(e.target.value)}
           style={styles.input}
         />
       ) : (
-        <ReadOnlyBox>{value || "-"}</ReadOnlyBox>
+        <ReadOnlyBox>{displayValue !== undefined ? displayValue : (value || "-")}</ReadOnlyBox>
       )}
     </div>
   );
@@ -653,7 +684,7 @@ function TextAreaField({ label, value, editing, onChange }) {
       {editing ? (
         <textarea
           value={value || ""}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(e) => onChange(e.target.value)}
           style={{ ...styles.input, minHeight: 100 }}
         />
       ) : (
@@ -682,16 +713,10 @@ const sectionStyles = {
   sidebarProfile: { display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" },
   avatarImage: { width: 180, height: 180, borderRadius: 28, objectFit: "cover", marginBottom: 18, border: "2px solid rgba(255,255,255,0.08)" },
   avatarFallback: {
-    width: 180,
-    height: 180,
-    borderRadius: 28,
+    width: 180, height: 180, borderRadius: 28,
     background: "linear-gradient(135deg,#2563eb,#38bdf8)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 52,
-    fontWeight: 900,
-    marginBottom: 18,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: 52, fontWeight: 900, marginBottom: 18,
   },
   badgeRow: { display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 12 },
   kpiGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 12 },
@@ -738,16 +763,7 @@ const sectionStyles = {
   alertList: { display: "flex", flexWrap: "wrap", gap: 8 },
   muted: { color: "#94a3b8", margin: 0 },
   injuryTimeline: { display: "grid", gap: 10 },
-  generalNotes: {
-    display: "grid",
-    gap: 6,
-    padding: 14,
-    borderRadius: 14,
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    color: "#cbd5e1",
-    marginBottom: 16,
-  },
+  generalNotes: { display: "grid", gap: 6, padding: 14, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#cbd5e1", marginBottom: 16 },
   injuryItem: { padding: 14, borderRadius: 14, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" },
   injuryItemTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 },
   injuryTitle: { color: "#e2e8f0", fontSize: 14 },

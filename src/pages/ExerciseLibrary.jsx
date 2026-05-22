@@ -301,7 +301,7 @@ export default function ExerciseLibrary({
       {/* ── Tab switcher ──────────────────────────────────────────────────── */}
       <div style={libStyles.tabs}>
         <TabBtn active={tab === "catalogo"} onClick={() => setTab("catalogo")}>
-          📚 Catalogo FP5
+          📚 Catalogo tecnico
         </TabBtn>
         <TabBtn active={tab === "miei"} onClick={() => setTab("miei")}>
           ⭐ I miei esercizi
