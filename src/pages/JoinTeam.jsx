@@ -12,9 +12,12 @@
  */
 import { useEffect, useState } from "react";
 
+const SUPPORT_EMAIL = "support@calciolab.org";
+
 export default function JoinTeam() {
-  const [token, setToken]   = useState("");
-  const [copied, setCopied] = useState(false);
+  const [token, setToken]                 = useState("");
+  const [copied, setCopied]               = useState(false);
+  const [supportCopied, setSupportCopied] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -26,6 +29,20 @@ export default function JoinTeam() {
 
   function goTo(mode) {
     window.location.href = `/?invite_mode=${mode}&token=${token}`;
+  }
+
+  function buildSupportHref() {
+    const subject = encodeURIComponent("Problema link invito CalcioLab");
+    const body = encodeURIComponent(
+      `Ciao, ho problemi ad accedere con questo link invito:\n\nToken: ${token || "non presente"}\nURL: ${window.location.href}`
+    );
+    return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+  }
+
+  function copySupportEmail() {
+    navigator.clipboard?.writeText(SUPPORT_EMAIL);
+    setSupportCopied(true);
+    setTimeout(() => setSupportCopied(false), 2200);
   }
 
   return (
@@ -116,9 +133,16 @@ export default function JoinTeam() {
 
         <p style={s.footer}>
           Hai problemi con il link?{" "}
-          <a href="mailto:support@calciolab.app" style={s.footerLink}>
-            Contatta il supporto
+          <a
+            href={buildSupportHref()}
+            onClick={copySupportEmail}
+            style={s.footerLink}
+            title={`Scrivi a ${SUPPORT_EMAIL}`}
+          >
+            {supportCopied ? "Email copiata" : "Contatta il supporto"}
           </a>
+          <br />
+          <span style={s.supportEmail}>{SUPPORT_EMAIL}</span>
         </p>
       </div>
     </div>
@@ -230,5 +254,6 @@ const s = {
     border: "1px solid rgba(255,255,255,0.06)",
   },
   footer:     { color: "#475569", fontSize: 12, textAlign: "center", margin: 0 },
-  footerLink: { color: "#38bdf8" },
+  footerLink: { color: "#38bdf8", fontWeight: 800 },
+  supportEmail: { display: "inline-block", marginTop: 6, color: "#64748b", fontFamily: "monospace", fontSize: 11 },
 };
