@@ -1466,34 +1466,36 @@ function PromoCodesCard({ appSettings, setAppSettings }) {
     setAppSettings({ ...settings, promoCodes: codes.filter((c) => c.id !== id) });
   }
 
-  function redeemCode(e) {
-    e.preventDefault();
-    setRedeemFeedback(null);
-    const input = redeemInput.trim().toUpperCase();
-    const found = codes.find((c) => c.code === input);
-    if (!found) {
-      setRedeemFeedback({ ok: false, text: "Codice non trovato o non valido." });
-      return;
-    }
+  function validatePromoCode(found) {
+    if (!found) return "Codice non trovato o non valido.";
     if (!found.permanent && found.expiresAt && new Date(found.expiresAt) < new Date()) {
-      setRedeemFeedback({ ok: false, text: "Questo codice è scaduto." });
+      return "Questo codice è scaduto.";
+    }
+    if (found.maxUses > 0 && found.uses >= found.maxUses && redeemed?.code !== found.code) {
+      return "Questo codice ha raggiunto il limite di utilizzi.";
+    }
+    return "";
+  }
+
+  function applyPromoCode(found) {
+    const error = validatePromoCode(found);
+    if (error) {
+      setRedeemFeedback({ ok: false, text: error });
       return;
     }
-    if (found.maxUses > 0 && found.uses >= found.maxUses) {
-      setRedeemFeedback({ ok: false, text: "Questo codice ha raggiunto il limite di utilizzi." });
-      return;
-    }
-    // Mark code as used and apply plan
+
+    const alreadyRedeemed = redeemed?.code === found.code;
     const updatedCodes = codes.map((c) =>
-      c.id === found.id ? { ...c, uses: c.uses + 1 } : c
+      c.id === found.id && !alreadyRedeemed ? { ...c, uses: c.uses + 1 } : c
     );
     const redeemedPromo = {
       code:       found.code,
       plan:       found.plan,
       permanent:  found.permanent,
       expiresAt:  found.permanent ? null : (found.expiresAt || null),
-      redeemedAt: new Date().toISOString(),
+      redeemedAt: alreadyRedeemed ? redeemed.redeemedAt : new Date().toISOString(),
     };
+
     setAppSettings({
       ...settings,
       promoCodes: updatedCodes,
@@ -1506,6 +1508,14 @@ function PromoCodesCard({ appSettings, setAppSettings }) {
     });
     setRedeemFeedback({ ok: true, text: `✓ Codice applicato! Piano ${found.plan.toUpperCase()} attivato.` });
     setRedeemInput("");
+  }
+
+  function redeemCode(e) {
+    e.preventDefault();
+    setRedeemFeedback(null);
+    const input = redeemInput.trim().toUpperCase();
+    const found = codes.find((c) => c.code === input);
+    applyPromoCode(found);
   }
 
   const planColors = { premium: "#38bdf8", club: "#a78bfa" };
@@ -1588,28 +1598,42 @@ function PromoCodesCard({ appSettings, setAppSettings }) {
       {/* Codes list */}
       {codes.length > 0 && (
         <div style={{ display: "grid", gap: 8, marginBottom: redeemed ? 16 : 0 }}>
-          {codes.map((c) => (
-            <div key={c.id} style={promoStyles.codeRow}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                <span style={{ ...promoStyles.codeBadge, color: planColors[c.plan] || "#94a3b8", borderColor: (planColors[c.plan] || "#94a3b8") + "40" }}>
-                  {c.code}
-                </span>
-                <div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                    <Badge tone={c.plan === "club" ? "purple" : "blue"}>{c.plan.toUpperCase()}</Badge>
-                    {c.permanent && <Badge tone="green">Permanente</Badge>}
-                    {c.maxUses > 0 && (
-                      <span style={{ fontSize: 11, color: "#64748b" }}>{c.uses}/{c.maxUses} usi</span>
-                    )}
+          {codes.map((c) => {
+            const isRedeemedCode = redeemed?.code === c.code;
+
+            return (
+              <div key={c.id} style={promoStyles.codeRow}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                  <span style={{ ...promoStyles.codeBadge, color: planColors[c.plan] || "#94a3b8", borderColor: (planColors[c.plan] || "#94a3b8") + "40" }}>
+                    {c.code}
+                  </span>
+                  <div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <Badge tone={c.plan === "club" ? "purple" : "blue"}>{c.plan.toUpperCase()}</Badge>
+                      {c.permanent && <Badge tone="green">Permanente</Badge>}
+                      {isRedeemedCode && <Badge tone="green">Attivo su questo account</Badge>}
+                      {c.maxUses > 0 && (
+                        <span style={{ fontSize: 11, color: "#64748b" }}>{c.uses}/{c.maxUses} usi</span>
+                      )}
+                    </div>
+                    <p style={{ margin: "3px 0 0", fontSize: 12, color: isRedeemedCode ? "#86efac" : "#64748b" }}>
+                      {isRedeemedCode
+                        ? "Questo codice è già stato riscattato e abilita il piano corrente."
+                        : (c.note || "Disponibile, ma non ancora applicato a questo account.")}
+                    </p>
                   </div>
-                  {c.note && <p style={{ margin: "3px 0 0", fontSize: 12, color: "#64748b" }}>{c.note}</p>}
                 </div>
+                {!isRedeemedCode && (
+                  <button type="button" onClick={() => applyPromoCode(c)} style={promoStyles.applyCodeBtn}>
+                    Usa codice
+                  </button>
+                )}
+                <button type="button" onClick={() => deleteCode(c.id)} style={inviteStyles.cancelBtn}>
+                  Elimina
+                </button>
               </div>
-              <button type="button" onClick={() => deleteCode(c.id)} style={inviteStyles.cancelBtn}>
-                Elimina
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -1973,6 +1997,16 @@ const promoStyles = {
     border: "1px solid",
     background: "rgba(255,255,255,0.04)",
     flexShrink: 0,
+  },
+  applyCodeBtn: {
+    border: "1px solid rgba(34,197,94,0.32)",
+    background: "rgba(34,197,94,0.12)",
+    color: "#86efac",
+    borderRadius: 10,
+    padding: "9px 12px",
+    fontWeight: 900,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   },
   redeemedBox: {
     display: "flex",
