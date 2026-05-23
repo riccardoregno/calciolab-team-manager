@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../hooks/useIsMobile";
 
@@ -34,6 +34,19 @@ export default function ClubSettings({
   const [memberForm, setMemberForm] = useState(emptyMember);
   const isMobile = useIsMobile();
   const setup = getSetupProgress({ players, exercises, sessions, matches, appSettings: settings });
+
+  // Auto-save profile after 600ms of inactivity — skip first render
+  const profileMounted = useRef(false);
+  useEffect(() => {
+    if (!profileMounted.current) { profileMounted.current = true; return; }
+    const timer = setTimeout(() => {
+      setAppSettings?.((prev) => {
+        const s = normalizeAppSettings(prev);
+        return { ...s, workspaceProfile: profile };
+      });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function saveProfile() {
     setAppSettings?.({
