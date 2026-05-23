@@ -10,6 +10,7 @@ import FeatureGate from "./components/premium/FeatureGate";
 import RoleGate from "./components/auth/RoleGate";
 import Badge from "./components/ui/Badge";
 import AppCard from "./components/ui/AppCard";
+import Button from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 
 import { useTeamData } from "./hooks/useTeamData";
@@ -229,6 +230,27 @@ function App() {
 
   if (!auth.user) {
     return <Auth />;
+  }
+
+  if (!auth.team && auth.authError) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0f1115", color: "white", display: "grid", placeItems: "center", padding: 24 }}>
+        <AppCard style={{ maxWidth: 520 }}>
+          <h2 style={{ margin: "0 0 8px" }}>Invito non completato</h2>
+          <p style={{ color: "#94a3b8", lineHeight: 1.6, margin: "0 0 16px" }}>
+            {auth.authError}
+          </p>
+          <Button
+            onClick={() => {
+              sessionStorage.removeItem("calciolab_invite_token");
+              window.location.href = "/";
+            }}
+          >
+            Torna all'accesso
+          </Button>
+        </AppCard>
+      </div>
+    );
   }
 
   // Onboarding automatico per nuovi utenti.

@@ -102,6 +102,9 @@ export async function ensureDefaultTeam(user) {
     if (import.meta.env.DEV && inviteError) {
       console.warn("[auth] Invito non applicato:", inviteError.message);
     }
+    if (inviteError) {
+      return { team: null, error: inviteError };
+    }
   }
 
   const teamSelect = "id, name, season, category, subscription_plan, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used";

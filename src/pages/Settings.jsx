@@ -714,6 +714,17 @@ const DEFAULT_WORKSPACE_PROFILE = {
   homeFieldName: "", homeFieldAddress: "", homeFieldSurface: "Erba naturale",
   userRole: "headCoach", seasonGoal: "", currentSeason: "2025/26",
 };
+const INVITE_EXPIRY_DAYS = 14;
+
+function getInviteExpiryDate() {
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
+  return expiresAt.toISOString();
+}
+
+function isInviteExpired(invite) {
+  return Boolean(invite.expiresAt && new Date(invite.expiresAt).getTime() < Date.now());
+}
 
 function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], sessions = [], matches = [] }) {
   const { t } = useTranslation();
@@ -726,6 +737,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
   const [inviteForm, setInviteForm] = useState(() => loadInviteMemberDraft());
   const [showCustomPerms, setShowCustomPerms] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [copiedInviteId, setCopiedInviteId] = useState("");
 
   // Genera (o recupera) il token invito del team
   const inviteToken = settings.inviteToken || null;
@@ -779,6 +791,17 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
     }
   }
 
+  function copyPendingInviteLink(invite) {
+    const token = invite.token || inviteToken || generateInviteToken();
+    const link = getInviteLink(token);
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(link).then(() => {
+        setCopiedInviteId(invite.id);
+        setTimeout(() => setCopiedInviteId(""), 2500);
+      });
+    }
+  }
+
   function sendInvite(e) {
     e.preventDefault();
     if (!inviteForm.email) return;
@@ -792,6 +815,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
       status:      "In attesa",
       token,
       sentAt:      new Date().toISOString(),
+      expiresAt:   getInviteExpiryDate(),
     };
     const currentInvites = settings.pendingInvites || [];
     setAppSettings?.({ ...settings, pendingInvites: [...currentInvites, pending] });
@@ -1066,25 +1090,42 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
               {t("pages.settings.clubPendingInvites", { count: (settings.pendingInvites || []).length })}
             </p>
             <div style={{ display: "grid", gap: 8 }}>
-              {(settings.pendingInvites || []).map((inv) => (
-                <div key={inv.id} style={inviteStyles.inviteRow}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <strong style={{ fontSize: 13 }}>{inv.name || inv.email}</strong>
-                      <Badge tone="orange">{memberRoles[inv.role]?.label || inv.role}</Badge>
-                      <Badge tone="blue">In attesa</Badge>
+              {(settings.pendingInvites || []).map((inv) => {
+                const expired = isInviteExpired(inv);
+                return (
+                  <div key={inv.id} style={inviteStyles.inviteRow}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <strong style={{ fontSize: 13 }}>{inv.name || inv.email}</strong>
+                        <Badge tone="orange">{memberRoles[inv.role]?.label || inv.role}</Badge>
+                        <Badge tone={expired ? "red" : "blue"}>{expired ? "Scaduto" : "In attesa"}</Badge>
+                      </div>
+                      <p style={{ color: "#64748b", margin: "3px 0 0", fontSize: 12 }}>{inv.email}</p>
+                      <p style={{ color: "#475569", margin: "3px 0 0", fontSize: 11 }}>
+                        Inviato {inv.sentAt ? new Date(inv.sentAt).toLocaleDateString("it-IT") : "-"}
+                        {" · "}
+                        Scade {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString("it-IT") : "-"}
+                      </p>
                     </div>
-                    <p style={{ color: "#64748b", margin: "3px 0 0", fontSize: 12 }}>{inv.email}</p>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                      <button
+                        type="button"
+                        onClick={() => copyPendingInviteLink(inv)}
+                        style={inviteStyles.copySmallBtn}
+                      >
+                        {copiedInviteId === inv.id ? "Copiato" : "Copia link"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => cancelInvite(inv.id)}
+                        style={inviteStyles.cancelBtn}
+                      >
+                        {t("pages.settings.clubBtnCancel")}
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => cancelInvite(inv.id)}
-                    style={inviteStyles.cancelBtn}
-                  >
-                    {t("pages.settings.clubBtnCancel")}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -1718,6 +1759,18 @@ const inviteStyles = {
     background: "transparent",
     border: "1px solid rgba(255,255,255,0.1)",
     color: "#64748b",
+    borderRadius: 9,
+    padding: "6px 12px",
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: "pointer",
+    flexShrink: 0,
+    whiteSpace: "nowrap",
+  },
+  copySmallBtn: {
+    background: "rgba(37,99,235,0.12)",
+    border: "1px solid rgba(56,189,248,0.22)",
+    color: "#93c5fd",
     borderRadius: 9,
     padding: "6px 12px",
     fontSize: 12,

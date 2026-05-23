@@ -64,6 +64,16 @@ Deno.serve(async (req) => {
     const pendingInvite = pendingInvites.find((invite) =>
       String(invite.email || "").trim().toLowerCase() === userEmail
     );
+    const hasNamedInvites = pendingInvites.some((invite) => Boolean(String(invite.email || "").trim()));
+
+    if (hasNamedInvites && !pendingInvite) {
+      return json({ error: "Questo invito è riservato a un'altra email" }, 403);
+    }
+
+    if (pendingInvite?.expiresAt && new Date(pendingInvite.expiresAt).getTime() < Date.now()) {
+      return json({ error: "Questo invito è scaduto" }, 410);
+    }
+
     const role = pendingInvite?.role || "assistantCoach";
 
     const { data: existingMembership, error: existingError } = await serviceClient
@@ -125,6 +135,8 @@ Deno.serve(async (req) => {
           email: userEmail,
           role,
           status: "Attivo",
+          invitedAt: pendingInvite?.sentAt || null,
+          acceptedAt: new Date().toISOString(),
           customAreas: pendingInvite?.customAreas || {},
         },
       ];
