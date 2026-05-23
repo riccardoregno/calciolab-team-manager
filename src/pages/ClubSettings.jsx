@@ -34,9 +34,19 @@ export default function ClubSettings({
   const [memberForm, setMemberForm] = useState(emptyMember);
   const isMobile = useIsMobile();
   const setup = getSetupProgress({ players, exercises, sessions, matches, appSettings: settings });
+  const incomingProfileKey = JSON.stringify(settings.workspaceProfile || {});
 
   // Auto-save profile after 600ms of inactivity — skip first render
   const profileMounted = useRef(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setProfile((prev) => {
+      if (hasProfileContent(prev) || !hasProfileContent(settings.workspaceProfile)) return prev;
+      return settings.workspaceProfile;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingProfileKey]);
+
   useEffect(() => {
     if (!profileMounted.current) { profileMounted.current = true; return; }
     const timer = setTimeout(() => {
@@ -214,6 +224,19 @@ function Field({ label, children }) {
       {children}
     </label>
   );
+}
+
+function hasProfileContent(profile = {}) {
+  return [
+    profile.clubName && profile.clubName !== "CalcioLab",
+    profile.teamName,
+    profile.logo,
+    profile.homeFieldName,
+    profile.homeFieldAddress,
+    profile.seasonGoal,
+    profile.currentSeason && profile.currentSeason !== "2025/2026",
+    profile.homeFieldSurface && profile.homeFieldSurface !== "Erba naturale",
+  ].some(Boolean);
 }
 
 const clubStyles = {

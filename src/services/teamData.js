@@ -180,8 +180,9 @@ async function loadTeamTablesState(teamId) {
       staffTasks:    localState.staffTasks    || [],
       // Infortuni restano local-first finché non esiste una tabella Supabase dedicata.
       injuryRecords: localState.injuryRecords || [],
-      // Se la colonna settings esiste e ha dati, usa quelli; altrimenti usa localStorage
-      appSettings: teamRow?.settings || localState.appSettings || {},
+      // Usa settings remoti solo se contengono dati reali. Un JSONB vuoto ({})
+      // non deve cancellare profilo societa', logo e campi salvati in locale.
+      appSettings: resolveAppSettings(teamRow?.settings, localState.appSettings),
     });
 
     saveLocalState(state);
@@ -210,8 +211,11 @@ function hasUserLocalRecords(stateKey, records = []) {
 }
 
 function recoverMissingLocalEntities(state, backupState) {
+  const appSettings = recoverMissingAppSettings(state.appSettings, backupState.appSettings);
+
   return normalizeAppState({
     ...state,
+    appSettings,
     ...Object.fromEntries(
       Object.keys(ENTITY_TABLES).map((stateKey) => {
         const currentRecords = state[stateKey] || [];
@@ -223,6 +227,124 @@ function recoverMissingLocalEntities(state, backupState) {
       })
     ),
   });
+}
+
+function resolveAppSettings(remoteSettings = {}, localSettings = {}) {
+  if (!hasMeaningfulAppSettings(remoteSettings)) {
+    return localSettings || remoteSettings || {};
+  }
+
+  return mergeAppSettings(remoteSettings, localSettings);
+}
+
+function recoverMissingAppSettings(currentSettings = {}, backupSettings = {}) {
+  if (!hasMeaningfulAppSettings(currentSettings) && hasMeaningfulAppSettings(backupSettings)) {
+    return backupSettings;
+  }
+
+  if (
+    !hasMeaningfulWorkspaceProfile(currentSettings.workspaceProfile) &&
+    hasMeaningfulWorkspaceProfile(backupSettings.workspaceProfile)
+  ) {
+    return {
+      ...backupSettings,
+      ...currentSettings,
+      workspaceProfile: backupSettings.workspaceProfile,
+    };
+  }
+
+  return currentSettings;
+}
+
+function mergeAppSettings(remoteSettings = {}, localSettings = {}) {
+  return {
+    ...localSettings,
+    ...remoteSettings,
+    workspaceProfile: mergeWorkspaceProfile(
+      remoteSettings.workspaceProfile || {},
+      localSettings.workspaceProfile || {}
+    ),
+  };
+}
+
+function mergeWorkspaceProfile(remoteProfile = {}, localProfile = {}) {
+  const merged = { ...localProfile, ...remoteProfile };
+  const fieldsToProtect = [
+    "clubName",
+    "teamName",
+    "logo",
+    "homeFieldName",
+    "homeFieldAddress",
+    "seasonGoal",
+    "currentSeason",
+  ];
+
+  fieldsToProtect.forEach((field) => {
+    if (isDefaultProfileValue(field, remoteProfile[field]) && !isDefaultProfileValue(field, localProfile[field])) {
+      merged[field] = localProfile[field];
+    }
+  });
+
+  if (
+    isDefaultProfileValue("homeFieldSurface", remoteProfile.homeFieldSurface) &&
+    !isDefaultProfileValue("homeFieldSurface", localProfile.homeFieldSurface)
+  ) {
+    merged.homeFieldSurface = localProfile.homeFieldSurface;
+  }
+
+  if (!remoteProfile.logoSize && localProfile.logoSize) {
+    merged.logoSize = localProfile.logoSize;
+  }
+
+  return merged;
+}
+
+function hasMeaningfulAppSettings(settings = {}) {
+  if (!settings || typeof settings !== "object") return false;
+  if (hasMeaningfulWorkspaceProfile(settings.workspaceProfile)) return true;
+  if (Array.isArray(settings.members) && settings.members.length > 0) return true;
+  if (Array.isArray(settings.promoCodes) && settings.promoCodes.length > 0) return true;
+  if (settings.redeemedPromo) return true;
+  return Object.keys(settings).some((key) => {
+    if (key === "workspaceProfile") return false;
+    const value = settings[key];
+    if (Array.isArray(value)) return value.length > 0;
+    if (value && typeof value === "object") return Object.keys(value).length > 0;
+    return !isEmptyProfileValue(value);
+  });
+}
+
+function hasMeaningfulWorkspaceProfile(profile = {}) {
+  if (!profile || typeof profile !== "object") return false;
+
+  return [
+    profile.clubName && profile.clubName !== "CalcioLab",
+    profile.teamName,
+    profile.logo,
+    profile.homeFieldName,
+    profile.homeFieldAddress,
+    profile.seasonGoal,
+    profile.currentSeason && profile.currentSeason !== "2025/2026",
+    profile.category && profile.category !== "Prima squadra",
+    profile.homeFieldSurface && profile.homeFieldSurface !== "Erba naturale",
+  ].some(Boolean);
+}
+
+function isEmptyProfileValue(value) {
+  return value === undefined || value === null || String(value).trim() === "";
+}
+
+function isDefaultProfileValue(field, value) {
+  if (isEmptyProfileValue(value)) return true;
+
+  const defaults = {
+    clubName: "CalcioLab",
+    currentSeason: "2025/2026",
+    category: "Prima squadra",
+    homeFieldSurface: "Erba naturale",
+  };
+
+  return defaults[field] ? String(value).trim() === defaults[field] : false;
 }
 
 // ─── Sync singola tabella ──────────────────────────────────────────────────

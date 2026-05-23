@@ -738,12 +738,22 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
   const [showCustomPerms, setShowCustomPerms] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [copiedInviteId, setCopiedInviteId] = useState("");
+  const incomingProfileKey = JSON.stringify(rawProfile);
 
   // Genera (o recupera) il token invito del team
   const inviteToken = settings.inviteToken || null;
 
   // Auto-save profile — skip first render to avoid overwriting with stale initial value
   const profileMounted = useRef(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setProfile((prev) => {
+      if (hasWorkspaceProfileContent(prev) || !hasWorkspaceProfileContent(rawProfile)) return prev;
+      return { ...DEFAULT_WORKSPACE_PROFILE, ...rawProfile };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingProfileKey]);
+
   useEffect(() => {
     if (!profileMounted.current) { profileMounted.current = true; return; }
     const timer = setTimeout(() => {
@@ -1687,6 +1697,19 @@ function ClubField({ label, children }) {
       {children}
     </label>
   );
+}
+
+function hasWorkspaceProfileContent(profile = {}) {
+  return [
+    profile.clubName && profile.clubName !== "CalcioLab",
+    profile.teamName,
+    profile.logo,
+    profile.homeFieldName,
+    profile.homeFieldAddress,
+    profile.seasonGoal,
+    profile.currentSeason && profile.currentSeason !== "2025/2026" && profile.currentSeason !== "2025/26",
+    profile.homeFieldSurface && profile.homeFieldSurface !== "Erba naturale",
+  ].some(Boolean);
 }
 
 function InfoMini({ label, value }) {
