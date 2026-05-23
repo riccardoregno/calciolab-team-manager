@@ -12,11 +12,14 @@ import Badge from "./components/ui/Badge";
 import AppCard from "./components/ui/AppCard";
 import Button from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
+import PWAInstallBanner from "./components/ui/PWAInstallBanner";
 
 import { useTeamData } from "./hooks/useTeamData";
 import { useAuth } from "./hooks/useAuth";
 import { useEventReminders } from "./hooks/useNotifications";
+import { useStaffChat } from "./hooks/useStaffChat";
 import { supabase } from "./lib/supabaseClient";
+import { isNative, isAndroid, hideSplashScreen, setStatusBarDark, onAndroidBack } from "./utils/capacitor";
 import { updateTeamSubscription } from "./services/subscription";
 
 import Auth from "./pages/Auth";
@@ -50,7 +53,10 @@ const PlayerPortal = lazy(() => import("./pages/PlayerPortal"));
 const Sponsors = lazy(() => import("./pages/Sponsors"));
 const ExerciseLibrary = lazy(() => import("./pages/ExerciseLibrary"));
 const AiSessionBuilder = lazy(() => import("./pages/AiSessionBuilder"));
-const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Onboarding  = lazy(() => import("./pages/Onboarding"));
+const StaffChat        = lazy(() => import("./pages/StaffChat"));
+const PlayerComparison = lazy(() => import("./pages/PlayerComparison"));
+const SeasonGoals      = lazy(() => import("./pages/SeasonGoals"));
 
 function LegacyPlayerRedirect() {
   const { id } = useParams();
@@ -99,6 +105,30 @@ function App() {
   const [developmentRolePreview, setDevelopmentRolePreview] = useState(getInitialDevelopmentRolePreview);
   const [remoteSubscription, setRemoteSubscription] = useState(null);
   const [renderStartedAt] = useState(() => Date.now());
+
+  // ── Capacitor lifecycle (solo su iOS/Android) ──────────────────────────────
+  useEffect(() => {
+    if (!isNative) return;
+    // Imposta status bar scura e nascondi splash quando l'app è montata
+    setStatusBarDark();
+    hideSplashScreen();
+
+    // Back button Android: vai indietro nella history oppure minimizza l'app
+    const cleanup = onAndroidBack(async ({ canGoBack }) => {
+      if (canGoBack) {
+        window.history.back();
+      } else {
+        // Minimizza l'app invece di chiuderla
+        try {
+          const { App: CapApp } = await import('@capacitor/app');
+          CapApp.minimizeApp();
+        } catch {}
+      }
+    });
+
+    return () => { cleanup.then?.((fn) => fn?.()); };
+  }, []);
+  // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!auth.team) return;
@@ -213,6 +243,14 @@ function App() {
     matches:  state.matches  || [],
     players:  state.players  || [],
     enabled:  Boolean(previewAppSettings?.notifications?.enabled),
+  });
+
+  // Staff chat — solo per contare i non letti da mostrare nel badge sidebar
+  const { unreadCount: chatUnread } = useStaffChat({
+    teamId:     auth.team?.id,
+    userId:     auth.user?.id,
+    authorName: profile ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() : "Coach",
+    authorRole: auth.team?.role || previewAppSettings?.currentUserRole || "headCoach",
   });
 
   // Pagine pubbliche — accessibili senza autenticazione
@@ -363,7 +401,7 @@ function App() {
     <BrowserRouter>
       <div className="app-shell" style={styles.appShell}>
         <div className="desktop-sidebar">
-          <Sidebar appSettings={previewAppSettings} />
+          <Sidebar appSettings={previewAppSettings} chatUnread={chatUnread} />
         </div>
 
         <main className="app-content" style={styles.content}>
@@ -372,6 +410,8 @@ function App() {
             exercises={exercises}
             sessions={sessions}
             matches={matches}
+            staffTasks={staffTasks}
+            chatUnread={chatUnread}
             profile={profile}
             developmentPlanPreview={developmentPlanPreview}
             onDevelopmentPlanPreviewChange={updateDevelopmentPlanPreview}
@@ -531,6 +571,43 @@ function App() {
                     setStaffTasks={setStaffTasks}
                     players={players}
                     matches={matches}
+                  />)
+                }
+              />
+
+              <Route
+                path="/staff-chat"
+                element={
+                  gate(["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"], <StaffChat
+                    teamId={auth.team?.id}
+                    userId={auth.user?.id}
+                    authorName={profile ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() : "Coach"}
+                    authorRole={auth.team?.role || previewAppSettings?.currentUserRole || "headCoach"}
+                    appSettings={previewAppSettings}
+                  />)
+                }
+              />
+
+              <Route
+                path="/player-compare"
+                element={
+                  gate(coachRoles, <FeatureGate featureKey="statistics" appSettings={previewAppSettings}>
+                    <PlayerComparison
+                      players={players}
+                      sessions={sessions}
+                      matches={matches}
+                      physicalTests={physicalTests}
+                    />
+                  </FeatureGate>)
+                }
+              />
+
+              <Route
+                path="/season-goals"
+                element={
+                  gate(coachRoles, <SeasonGoals
+                    matches={matches}
+                    players={players}
                   />)
                 }
               />
@@ -815,6 +892,7 @@ function App() {
       </div>
 
       <MobileBottomNav />
+      <PWAInstallBanner />
     </BrowserRouter>
   );
 }

@@ -783,6 +783,20 @@ function Trainings({
               icon="📋"
               title={t("pages.trainings.noSavedTitle")}
               text={t("pages.trainings.noSavedText")}
+              action={
+                <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap", justifyContent: "center" }}>
+                  <button
+                    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                    style={{
+                      padding: "9px 20px", borderRadius: 10,
+                      background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)",
+                      color: "#93c5fd", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                    }}
+                  >
+                    ⬆ {t("pages.trainings.scrollToBuilder")}
+                  </button>
+                </div>
+              }
             />
           ) : (
             <div style={{ display: "grid", gap: 14 }}>

@@ -13,8 +13,10 @@ import {
   getPlayerSummary,
   RPE_BY_MATCH_DAY,
 } from "../utils/helpers";
+import { generateSeasonReport } from "../utils/generateSeasonReport";
 
 const exportTypes = [
+  { id: "season",   label: "📊 Report stagione", description: "PDF completo: partite, presenze, statistiche, test fisici" },
   { id: "training", label: "Seduta", description: "Piano campo pronto da stampare" },
   { id: "matchday", label: "Match Day", description: "Distinta, ruoli e scouting avversario" },
   { id: "microcycle", label: "Microciclo", description: "Settimana gara, carichi e alert staff" },
@@ -140,41 +142,51 @@ export default function ExportCenter({
           </div>
         </AppCard>
 
-        <AppCard
-          title={`Anteprima ${activeType.label}`}
-          subtitle="Questa area e' quella che verra' stampata o salvata in PDF."
-          rightContent={<Button variant="ghost" onClick={() => window.print()}>PDF</Button>}
-        >
-          <div className="print-area print-template">
-            {type === "training" && (
-              <TrainingTemplate session={selectedSession} exercises={exercises} />
-            )}
-            {type === "matchday" && (
-              <MatchDayTemplate match={selectedMatch} players={players} />
-            )}
-            {type === "microcycle" && (
-              <MicrocycleTemplate
-                match={selectedMatch}
-                sessions={sessions}
-                matches={matches}
-                players={players}
-                gpsSessions={gpsSessions}
-              />
-            )}
-            {type === "postmatch" && (
-              <PostMatchTemplate match={selectedMatch} players={players} />
-            )}
-            {type === "player" && (
-              <PlayerTemplate
-                player={selectedPlayer}
-                sessions={sessions}
-                matches={matches}
-                physicalTests={physicalTests}
-                appSettings={appSettings}
-              />
-            )}
-          </div>
-        </AppCard>
+        {type === "season" ? (
+          <SeasonReportPanel
+            players={players}
+            sessions={sessions}
+            matches={matches}
+            physicalTests={physicalTests}
+            appSettings={appSettings}
+          />
+        ) : (
+          <AppCard
+            title={`Anteprima ${activeType.label}`}
+            subtitle="Questa area e' quella che verra' stampata o salvata in PDF."
+            rightContent={<Button variant="ghost" onClick={() => window.print()}>PDF</Button>}
+          >
+            <div className="print-area print-template">
+              {type === "training" && (
+                <TrainingTemplate session={selectedSession} exercises={exercises} />
+              )}
+              {type === "matchday" && (
+                <MatchDayTemplate match={selectedMatch} players={players} />
+              )}
+              {type === "microcycle" && (
+                <MicrocycleTemplate
+                  match={selectedMatch}
+                  sessions={sessions}
+                  matches={matches}
+                  players={players}
+                  gpsSessions={gpsSessions}
+                />
+              )}
+              {type === "postmatch" && (
+                <PostMatchTemplate match={selectedMatch} players={players} />
+              )}
+              {type === "player" && (
+                <PlayerTemplate
+                  player={selectedPlayer}
+                  sessions={sessions}
+                  matches={matches}
+                  physicalTests={physicalTests}
+                  appSettings={appSettings}
+                />
+              )}
+            </div>
+          </AppCard>
+        )}
       </div>
     </div>
   );
@@ -712,6 +724,99 @@ function RosterList({ title, players, roles, captainId }) {
         <p>Nessun giocatore selezionato.</p>
       )}
     </div>
+  );
+}
+
+// ─── Season Report Panel ────────────────────────────────────────────────────
+function SeasonReportPanel({ players, sessions, matches, physicalTests, appSettings }) {
+  const [generating, setGenerating] = useState(false);
+  const teamName = appSettings?.workspaceProfile?.clubName || "La tua squadra";
+
+  const played   = matches.filter((m) => m.goalsScored !== undefined || m.goals_scored !== undefined);
+  const wins     = played.filter((m) => Number(m.goalsScored ?? m.goals_scored ?? 0) > Number(m.goalsConceded ?? m.goals_conceded ?? 0)).length;
+  const draws    = played.filter((m) => Number(m.goalsScored ?? m.goals_scored ?? 0) === Number(m.goalsConceded ?? m.goals_conceded ?? 0)).length;
+  const losses   = played.length - wins - draws;
+
+  async function handleDownload() {
+    setGenerating(true);
+    try {
+      generateSeasonReport({ players, sessions, matches, physicalTests, appSettings });
+    } finally {
+      setTimeout(() => setGenerating(false), 800);
+    }
+  }
+
+  const kpis = [
+    { label: "Partite",     value: matches.length },
+    { label: "Vittorie",    value: wins },
+    { label: "Pareggi",     value: draws },
+    { label: "Sconfitte",   value: losses },
+    { label: "Allenamenti", value: sessions.length },
+    { label: "Giocatori",   value: players.length },
+  ];
+
+  return (
+    <AppCard
+      title="📊 Report stagione"
+      subtitle={`Documento PDF completo di ${teamName} — partite, presenze, statistiche e test fisici.`}
+    >
+      {/* KPI strip */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
+        {kpis.map((k) => (
+          <div
+            key={k.label}
+            style={{
+              background: "rgba(37,99,235,0.08)",
+              border: "1px solid rgba(37,99,235,0.2)",
+              borderRadius: 12,
+              padding: "12px 14px",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#60a5fa" }}>{k.value}</div>
+            <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, marginTop: 2 }}>{k.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sections list */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+        {[
+          { icon: "📋", label: "Riepilogo stagione",         desc: "Punti, gol, clean sheet, partite e allenamenti" },
+          { icon: "⚽", label: "Calendario partite",         desc: "Tutte le gare con risultato e esito" },
+          { icon: "📅", label: "Presenze allenamenti",       desc: "Tabella presenze % per ogni giocatore" },
+          { icon: "📈", label: "Statistiche giocatori",      desc: "Gol, assist, minutaggio per gara" },
+          ...(physicalTests.length > 0 ? [{ icon: "⏱️", label: "Test fisici", desc: "Ultimi risultati Gacon / Yo-Yo per giocatore" }] : []),
+        ].map((s) => (
+          <div
+            key={s.label}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "10px 14px",
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: 10,
+            }}
+          >
+            <span style={{ fontSize: 18 }}>{s.icon}</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: "#e2e8f0" }}>{s.label}</div>
+              <div style={{ fontSize: 11, color: "#64748b" }}>{s.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Button
+        onClick={handleDownload}
+        disabled={generating}
+        style={{ width: "100%", justifyContent: "center", fontSize: 15, padding: "13px 0" }}
+      >
+        {generating ? "⏳ Generazione in corso..." : "⬇️ Scarica Report PDF"}
+      </Button>
+    </AppCard>
   );
 }
 

@@ -1,9 +1,79 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => ({
+  // base './' per Capacitor (asset con path relativi), '/' per web/Vercel
+  base: mode === 'mobile' ? './' : '/',
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'prompt',        // chiede all'utente prima di aggiornare
+      includeAssets: ['favicon.svg', 'pwa-192.svg', 'pwa-512.svg'],
+      manifest: {
+        name: 'CalcioLab — Coach Platform',
+        short_name: 'CalcioLab',
+        description: 'Gestione squadra di calcio: rosa, allenamenti, partite, statistiche e molto altro.',
+        theme_color: '#0f172a',
+        background_color: '#0f172a',
+        display: 'standalone',
+        scope: '/',
+        start_url: '/',
+        orientation: 'portrait-primary',
+        icons: [
+          {
+            src: 'pwa-192.svg',
+            sizes: '192x192',
+            type: 'image/svg+xml',
+            purpose: 'any',
+          },
+          {
+            src: 'pwa-512.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
+        ],
+      },
+      workbox: {
+        // Cache-first per tutti gli asset statici (JS/CSS/font/immagini)
+        globPatterns: ['**/*.{js,css,html,ico,svg,png,woff2}'],
+        // Dimensione massima file in cache: 5MB (catalogo esercizi è ~700KB)
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        runtimeCaching: [
+          // Supabase API → network-first, fallback cache 1h
+          {
+            urlPattern: ({ url }) => url.hostname.endsWith('.supabase.co'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-api',
+              networkTimeoutSeconds: 10,
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60, // 1 ora
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          // Google Fonts (se aggiunte in futuro)
+          {
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts',
+              expiration: { maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
+      devOptions: {
+        // Abilita service worker anche in dev (per testare)
+        enabled: false,
+      },
+    }),
+  ],
   build: {
     chunkSizeWarningLimit: 900,
     rollupOptions: {
@@ -30,4 +100,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

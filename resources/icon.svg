@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Sfondo con angoli arrotondati -->
+  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+
+  <!-- Sottile bordo luminoso -->
+  <rect width="1024" height="1024" rx="220" fill="none"
+        stroke="rgba(168,85,247,0.18)" stroke-width="3"/>
+
+  <!-- Bagliore viola centrale -->
+  <ellipse cx="512" cy="512" rx="320" ry="280"
+           fill="rgba(139,92,246,0.08)"/>
+
+  <!-- Fulmine CalcioLab — scala 19× dal viewBox originale (0 0 48 48), centrato -->
+  <g transform="translate(194, 186) scale(13.25)">
+    <path fill="url(#bolt)"
+          d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937
+             a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788
+             l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237
+             c-.92 0-1.456-1.04-.92-1.788L10.013.474
+             c.214-.297.556-.474.92-.474h28.894
+             c.92 0 1.456 1.04.92 1.788l-7.48 10.471
+             c-1.07 1.498 0 3.579 1.842 3.579h11.377
+             c.943 0 1.473 1.088.89 1.83L25.947 44.94z"/>
+  </g>
+</svg>

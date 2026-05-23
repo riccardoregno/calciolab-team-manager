@@ -261,6 +261,18 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
           icon="🏟️"
           title={t("pages.matches.noMatchesTitle")}
           text={t("pages.matches.noMatchesText")}
+          action={
+            <button
+              onClick={openNewMatch}
+              style={{
+                marginTop: 12, padding: "9px 20px", borderRadius: 10,
+                background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)",
+                color: "#93c5fd", fontSize: 13, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              + {t("pages.matches.newMatch")}
+            </button>
+          }
         />
       ) : (
         <div

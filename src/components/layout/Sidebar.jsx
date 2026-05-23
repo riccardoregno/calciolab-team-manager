@@ -21,6 +21,7 @@ const menuGroups = [
     titleKey: "navigation.groups.team",
     items: [
       { to: "/players", labelKey: "navigation.items.roster", icon: "👥", roles: coachRoles },
+      { to: "/player-compare", labelKey: "navigation.items.playerCompare", icon: "⚡", featureKey: "statistics", roles: coachRoles },
       { to: "/availability", labelKey: "navigation.items.availability", icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
       { to: "/physical-tests", labelKey: "navigation.items.physicalTests", icon: "⏱️", featureKey: "physicalTests", roles: physicalRoles },
       { to: "/physical-workouts", labelKey: "navigation.items.physicalWorkouts", icon: "🏃", featureKey: "physicalWorkouts", roles: physicalRoles },
@@ -50,7 +51,9 @@ const menuGroups = [
     titleKey: "navigation.groups.system",
     items: [
       { to: "/statistics", labelKey: "navigation.items.statistics", icon: "📊", roles: coachRoles },
+      { to: "/season-goals", labelKey: "navigation.items.seasonGoals", icon: "🎯", roles: coachRoles },
       { to: "/staff-tasks", labelKey: "navigation.items.staffTasks", icon: "✅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
+      { to: "/staff-chat", labelKey: "navigation.items.staffChat", icon: "💬", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
       { to: "/exports", labelKey: "navigation.items.exports", icon: "🖨️", featureKey: "exports", roles: managementRoles },
       { to: "/premium", labelKey: "navigation.items.premium", icon: "💎", roles: managementRoles },
       { to: "/coach-settings", labelKey: "navigation.items.coach", icon: "🎛️", roles: physicalRoles },
@@ -67,7 +70,7 @@ const menuGroups = [
   },
 ];
 
-export default function Sidebar({ appSettings = {} }) {
+export default function Sidebar({ appSettings = {}, chatUnread = 0 }) {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const currentRole = getCurrentUserRole(appSettings);
@@ -159,6 +162,7 @@ export default function Sidebar({ appSettings = {} }) {
                     collapsed={collapsed}
                     locked={Boolean(item.featureKey && !isFeatureUnlocked(item.featureKey, appSettings))}
                     label={t(item.labelKey)}
+                    badge={item.to === "/staff-chat" && chatUnread > 0 ? chatUnread : 0}
                   />
                 ))}
               </div>
@@ -180,7 +184,7 @@ export default function Sidebar({ appSettings = {} }) {
   );
 }
 
-function SidebarLink({ item, collapsed, locked, label }) {
+function SidebarLink({ item, collapsed, locked, label, badge = 0 }) {
   return (
     <NavLink
       to={item.to}
@@ -197,11 +201,20 @@ function SidebarLink({ item, collapsed, locked, label }) {
         padding: collapsed ? "12px 0" : "11px 13px",
         justifyContent: collapsed ? "center" : "flex-start",
         boxShadow: isActive ? "0 10px 25px rgba(37,99,235,0.35)" : "none",
+        position: "relative",
       })}
     >
-      <span style={{ fontSize: 18 }}>{item.icon}</span>
+      <span style={{ fontSize: 18, position: "relative" }}>
+        {item.icon}
+        {badge > 0 && collapsed && (
+          <span style={sidebarStyles.badgeDot} />
+        )}
+      </span>
       {!collapsed && <span style={sidebarStyles.linkLabel}>{label}</span>}
       {!collapsed && locked && <span style={sidebarStyles.lockPill}>🔒</span>}
+      {!collapsed && badge > 0 && (
+        <span style={sidebarStyles.badge}>{badge > 99 ? "99+" : badge}</span>
+      )}
     </NavLink>
   );
 }
@@ -265,6 +278,31 @@ const sidebarStyles = {
     color: "#cbd5e1",
     fontSize: 13,
     lineHeight: 1.45,
+  },
+  badge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    background: "#ef4444",
+    color: "white",
+    fontSize: 11,
+    fontWeight: 900,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "0 5px",
+    lineHeight: 1,
+  },
+  badgeDot: {
+    position: "absolute",
+    top: -2,
+    right: -4,
+    width: 8,
+    height: 8,
+    borderRadius: "50%",
+    background: "#ef4444",
+    border: "2px solid #0f172a",
+    display: "block",
   },
   footerCollapsed: {
     width: 44,

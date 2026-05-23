@@ -1,5 +1,15 @@
 import { useMemo, useState } from "react";
 import { useTabState } from "../hooks/useTabState";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
@@ -188,6 +198,27 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
   const { t } = useTranslation();
   const [openDay, setOpenDay] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [activeEvent, setActiveEvent] = useState(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 6 } }),
+  );
+
+  function handleDragStart({ active }) {
+    const ev = events.find((e) => String(e.id) === String(active.id));
+    setActiveEvent(ev || null);
+  }
+
+  function handleDragEnd({ active, over }) {
+    setActiveEvent(null);
+    if (!over) return;
+    const newDate = over.id;
+    const ev = events.find((e) => String(e.id) === String(active.id));
+    if (ev && ev.date !== newDate) {
+      onEditEvent?.(ev, { date: newDate });
+    }
+  }
   const today = new Date();
   const todayKey = today.toISOString().slice(0, 10);
   const month = useMemo(() => {
@@ -271,136 +302,146 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
         ))}
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, minmax(90px, 1fr))",
-          gap: 10,
-          overflowX: "auto",
-        }}
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
       >
-        {month.cells.map((cell) => {
-          if (cell.empty) {
-            return <div key={cell.key} />;
-          }
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(7, minmax(90px, 1fr))",
+            gap: 10,
+            overflowX: "auto",
+          }}
+        >
+          {month.cells.map((cell) => {
+            if (cell.empty) {
+              return <div key={cell.key} />;
+            }
 
-          const isOpen = openDay === cell.dateKey;
-          const isToday = cell.dateKey === todayKey;
-          return (
-            <div
-              key={cell.dateKey}
-              style={{
-                minHeight: 110,
-                borderRadius: 12,
-                padding: 10,
-                background: isOpen
-                  ? "rgba(56,189,248,0.06)"
-                  : isToday
-                  ? "rgba(59,130,246,0.12)"
-                  : "rgba(255,255,255,0.04)",
-                border: isOpen
-                  ? "1px solid rgba(56,189,248,0.25)"
-                  : isToday
-                  ? "2px solid #3b82f6"
-                  : "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              {/* Header cella: data + azioni (se 1 solo evento) + pulsante aggiunta */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 3 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1 }}>
-                  <strong style={{ fontSize: 13 }}>{String(cell.day).padStart(2, "0")}</strong>
-                  {isToday && (
-                    <span style={{ fontSize: 10, fontWeight: 800, color: "#3b82f6", background: "rgba(59,130,246,0.18)", borderRadius: 6, padding: "1px 5px", lineHeight: 1.5 }}>
-                      {t("pages.calendar.today")}
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-                  {/* Bottoni modifica/elimina nel header solo se c'è esattamente 1 evento */}
-                  {cell.events.length === 1 && (
-                    <>
-                      <button
-                        onClick={() => setEditingEvent(cell.events[0])}
-                        style={wv.addBtnSmall}
-                        title="Modifica evento"
-                      >✏️</button>
-                      <button
-                        onClick={() => onDeleteEvent?.(cell.events[0])}
-                        style={{ ...wv.addBtnSmall, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}
-                        title="Elimina evento"
-                      >🗑️</button>
-                    </>
-                  )}
-                  {onQuickCreate && (
-                    <button
-                      onClick={() => setOpenDay(isOpen ? null : cell.dateKey)}
-                      style={wv.addBtnSmall}
-                      title="Aggiungi evento"
-                    >
-                      {isOpen ? "×" : "+"}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {isOpen && (
-                <QuickAddForm
-                  date={cell.dateKey}
-                  compact
-                  onSave={(data) => { onQuickCreate(data); setOpenDay(null); }}
-                  onCancel={() => setOpenDay(null)}
-                />
-              )}
-
-              <div style={{ display: "grid", gap: 5, marginTop: 6 }}>
-                {cell.events.map((event) => (
-                  <div
-                    key={`${event.type}-${event.id}`}
-                    style={{
-                      borderRadius: 8,
-                      padding: "5px 7px",
-                      background:
-                        String(selectedId) === String(event.id)
-                          ? "rgba(56,189,248,0.24)"
-                          : event.type === "Partita"
-                          ? "rgba(251,146,60,0.18)"
-                          : event.type === "Altro"
-                          ? "rgba(56,189,248,0.14)"
-                          : "rgba(34,197,94,0.14)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                      <button
-                        type="button"
-                        onClick={() => onSelect(event.id)}
-                        style={{ flex: 1, cursor: "pointer", fontSize: 11, fontWeight: 700, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", border: "none", background: "transparent", padding: 0, textAlign: "left", minHeight: 0 }}
-                      >
-                        {event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}{" "}{event.title}
-                      </button>
-                    {/* Bottoni per-chip solo quando ci sono più eventi nella cella */}
-                    {cell.events.length > 1 && (
+            const isOpen = openDay === cell.dateKey;
+            const isToday = cell.dateKey === todayKey;
+            return (
+              <DroppableDay
+                key={cell.dateKey}
+                dateKey={cell.dateKey}
+                style={{
+                  minHeight: 110,
+                  borderRadius: 12,
+                  padding: 10,
+                  background: isOpen
+                    ? "rgba(56,189,248,0.06)"
+                    : isToday
+                    ? "rgba(59,130,246,0.12)"
+                    : "rgba(255,255,255,0.04)",
+                  border: isOpen
+                    ? "1px solid rgba(56,189,248,0.25)"
+                    : isToday
+                    ? "2px solid #3b82f6"
+                    : "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                {/* Header cella */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 3 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1 }}>
+                    <strong style={{ fontSize: 13 }}>{String(cell.day).padStart(2, "0")}</strong>
+                    {isToday && (
+                      <span style={{ fontSize: 10, fontWeight: 800, color: "#3b82f6", background: "rgba(59,130,246,0.18)", borderRadius: 6, padding: "1px 5px", lineHeight: 1.5 }}>
+                        {t("pages.calendar.today")}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+                    {cell.events.length === 1 && (
                       <>
                         <button
-                          onClick={() => setEditingEvent(event)}
-                          style={{ ...wv.iconBtn, width: 18, height: 18, fontSize: 9, flexShrink: 0 }}
-                          title="Modifica"
+                          onClick={() => setEditingEvent(cell.events[0])}
+                          style={wv.addBtnSmall}
+                          title="Modifica evento"
                         >✏️</button>
                         <button
-                          onClick={() => onDeleteEvent?.(event)}
-                          style={{ ...wv.iconBtn, width: 18, height: 18, fontSize: 9, flexShrink: 0, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}
-                          title="Elimina"
+                          onClick={() => onDeleteEvent?.(cell.events[0])}
+                          style={{ ...wv.addBtnSmall, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}
+                          title="Elimina evento"
                         >🗑️</button>
                       </>
                     )}
+                    {onQuickCreate && (
+                      <button
+                        onClick={() => setOpenDay(isOpen ? null : cell.dateKey)}
+                        style={wv.addBtnSmall}
+                        title="Aggiungi evento"
+                      >
+                        {isOpen ? "×" : "+"}
+                      </button>
+                    )}
                   </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                </div>
+
+                {isOpen && (
+                  <QuickAddForm
+                    date={cell.dateKey}
+                    compact
+                    onSave={(data) => { onQuickCreate(data); setOpenDay(null); }}
+                    onCancel={() => setOpenDay(null)}
+                  />
+                )}
+
+                <div style={{ display: "grid", gap: 5, marginTop: 6 }}>
+                  {cell.events.map((event) => (
+                    <DraggableEvent key={`${event.type}-${event.id}`} event={event}>
+                      <div
+                        style={{
+                          borderRadius: 8,
+                          padding: "5px 7px",
+                          background:
+                            String(selectedId) === String(event.id)
+                              ? "rgba(56,189,248,0.24)"
+                              : event.type === "Partita"
+                              ? "rgba(251,146,60,0.18)"
+                              : event.type === "Altro"
+                              ? "rgba(56,189,248,0.14)"
+                              : "rgba(34,197,94,0.14)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => onSelect(event.id)}
+                          style={{ flex: 1, cursor: "pointer", fontSize: 11, fontWeight: 700, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", border: "none", background: "transparent", padding: 0, textAlign: "left", minHeight: 0 }}
+                        >
+                          {event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}{" "}{event.title}
+                        </button>
+                        {cell.events.length > 1 && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }}
+                              style={{ ...wv.iconBtn, width: 18, height: 18, fontSize: 9, flexShrink: 0 }}
+                              title="Modifica"
+                            >✏️</button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }}
+                              style={{ ...wv.iconBtn, width: 18, height: 18, fontSize: 9, flexShrink: 0, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}
+                              title="Elimina"
+                            >🗑️</button>
+                          </>
+                        )}
+                      </div>
+                    </DraggableEvent>
+                  ))}
+                </div>
+              </DroppableDay>
+            );
+          })}
+        </div>
+
+        <DragOverlay dropAnimation={null}>
+          {activeEvent ? <DragPreviewChip event={activeEvent} /> : null}
+        </DragOverlay>
+      </DndContext>
 
       {editingEvent && (
         <EventEditModal
@@ -424,6 +465,27 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
   const [offset, setOffset] = useState(0);
   const [openDay, setOpenDay] = useState(null); // dateKey del giorno con form aperto
   const [editingEvent, setEditingEvent] = useState(null);
+  const [activeEvent, setActiveEvent] = useState(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 6 } }),
+  );
+
+  function handleDragStart({ active }) {
+    const ev = events.find((e) => String(e.id) === String(active.id));
+    setActiveEvent(ev || null);
+  }
+
+  function handleDragEnd({ active, over }) {
+    setActiveEvent(null);
+    if (!over) return;
+    const newDate = over.id;
+    const ev = events.find((e) => String(e.id) === String(active.id));
+    if (ev && ev.date !== newDate) {
+      onEditEvent?.(ev, { date: newDate });
+    }
+  }
 
   const week         = buildWeek(offset);
   const weekStart    = week[0].date;
@@ -470,108 +532,120 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
         <WeekKpi label={t("pages.calendar.kpiRisk")} value={availability.injured.length + availability.limited.length} tone="red" sub={t("pages.calendar.kpiRiskSub")} />
       </div>
 
-      {/* Griglia giorni */}
-      <div style={wv.grid}>
-        {week.map((day, index) => {
-          const dayEvents  = weekEvents.filter((e) => e.date === day.key);
-          const isToday    = day.date.getTime() === today.getTime();
-          const isPast     = day.date < today;
-          const isOpen     = openDay === day.key;
+      {/* Griglia giorni — DnD */}
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div style={wv.grid}>
+          {week.map((day, index) => {
+            const dayEvents  = weekEvents.filter((e) => e.date === day.key);
+            const isToday    = day.date.getTime() === today.getTime();
+            const isPast     = day.date < today;
+            const isOpen     = openDay === day.key;
 
-          return (
-            <div
-              key={day.key}
-              style={{
-                ...wv.dayCard,
-                ...(isToday ? wv.dayCardToday : {}),
-                ...(isPast  ? wv.dayCardPast  : {}),
-                ...(isOpen  ? wv.dayCardOpen  : {}),
-              }}
-            >
-              {/* Header giorno */}
-              <div style={wv.dayHeader}>
-                <div>
-                  <p style={{ margin: 0, fontWeight: 900, fontSize: 13, color: isToday ? "#38bdf8" : "#94a3b8", textTransform: "uppercase" }}>
-                    {t(weekDayKeys[index])}
-                  </p>
-                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>
-                    {formatShortDate(day.key)}
-                  </p>
+            return (
+              <DroppableDay
+                key={day.key}
+                dateKey={day.key}
+                style={{
+                  ...wv.dayCard,
+                  ...(isToday ? wv.dayCardToday : {}),
+                  ...(isPast  ? wv.dayCardPast  : {}),
+                  ...(isOpen  ? wv.dayCardOpen  : {}),
+                }}
+              >
+                {/* Header giorno */}
+                <div style={wv.dayHeader}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 900, fontSize: 13, color: isToday ? "#38bdf8" : "#94a3b8", textTransform: "uppercase" }}>
+                      {t(weekDayKeys[index])}
+                    </p>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>
+                      {formatShortDate(day.key)}
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                    <Badge tone={dayEvents.length ? (isToday ? "blue" : "green") : "purple"}>
+                      {dayEvents.length || "Off"}
+                    </Badge>
+                    {onQuickCreate && (
+                      <button
+                        onClick={() => setOpenDay(isOpen ? null : day.key)}
+                        style={wv.addBtn}
+                        title="Aggiungi evento"
+                      >
+                        {isOpen ? "×" : "+"}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                  <Badge tone={dayEvents.length ? (isToday ? "blue" : "green") : "purple"}>
-                    {dayEvents.length || "Off"}
-                  </Badge>
-                  {onQuickCreate && (
-                    <button
-                      onClick={() => setOpenDay(isOpen ? null : day.key)}
-                      style={wv.addBtn}
-                      title="Aggiungi evento"
-                    >
-                      {isOpen ? "×" : "+"}
-                    </button>
-                  )}
-                </div>
-              </div>
 
-              {/* Mini-form inline */}
-              {isOpen && (
-                <QuickAddForm
-                  date={day.key}
-                  onSave={(data) => {
-                    onQuickCreate(data);
-                    setOpenDay(null);
-                  }}
-                  onCancel={() => setOpenDay(null)}
-                />
-              )}
+                {/* Mini-form inline */}
+                {isOpen && (
+                  <QuickAddForm
+                    date={day.key}
+                    onSave={(data) => {
+                      onQuickCreate(data);
+                      setOpenDay(null);
+                    }}
+                    onCancel={() => setOpenDay(null)}
+                  />
+                )}
 
-              {/* Lista eventi */}
-              <div style={wv.eventList}>
-                {dayEvents.length ? (
-                  dayEvents.map((event) => (
-                    <div
-                      key={`${event.type}-${event.id}`}
-                      style={{
-                        ...wv.event,
-                        borderLeftColor: event.type === "Partita" ? "#fb923c" : event.type === "Altro" ? "#38bdf8" : "#22c55e",
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
-                        <Badge tone={event.type === "Partita" ? "orange" : event.type === "Altro" ? "blue" : "green"}>
-                          {t(EVENT_TYPES.find(et => et.value === event.type)?.labelKey ?? "pages.calendar.typeTraining")}
-                        </Badge>
-                        <div style={{ display: "flex", gap: 3 }}>
-                          <button
-                            onClick={() => setEditingEvent(event)}
-                            style={wv.iconBtn}
-                            title="Modifica evento"
-                          >✏️</button>
-                          <button
-                            onClick={() => onDeleteEvent?.(event)}
-                            style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}
-                            title="Elimina evento"
-                          >🗑️</button>
+                {/* Lista eventi */}
+                <div style={wv.eventList}>
+                  {dayEvents.length ? (
+                    dayEvents.map((event) => (
+                      <DraggableEvent key={`${event.type}-${event.id}`} event={event}>
+                        <div
+                          style={{
+                            ...wv.event,
+                            borderLeftColor: event.type === "Partita" ? "#fb923c" : event.type === "Altro" ? "#38bdf8" : "#22c55e",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
+                            <Badge tone={event.type === "Partita" ? "orange" : event.type === "Altro" ? "blue" : "green"}>
+                              {t(EVENT_TYPES.find(et => et.value === event.type)?.labelKey ?? "pages.calendar.typeTraining")}
+                            </Badge>
+                            <div style={{ display: "flex", gap: 3 }}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }}
+                                style={wv.iconBtn}
+                                title="Modifica evento"
+                              >✏️</button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }}
+                                style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}
+                                title="Elimina evento"
+                              >🗑️</button>
+                            </div>
+                          </div>
+                          <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 13 }}>
+                            {event.title}
+                          </p>
+                          {(event.theme || event.opponent || event.objective || event.notes) && (
+                            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
+                              {event.theme || event.opponent || event.objective || event.notes}
+                            </p>
+                          )}
                         </div>
-                      </div>
-                      <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 13 }}>
-                        {event.title}
-                      </p>
-                      {(event.theme || event.opponent || event.objective || event.notes) && (
-                        <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
-                          {event.theme || event.opponent || event.objective || event.notes}
-                        </p>
-                      )}
-                    </div>
-                  ))
-                ) : !isOpen ? (
-                  <p style={wv.muted}>{t("pages.calendar.dayRest")}</p>
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                      </DraggableEvent>
+                    ))
+                  ) : !isOpen ? (
+                    <p style={wv.muted}>{t("pages.calendar.dayRest")}</p>
+                  ) : null}
+                </div>
+              </DroppableDay>
+            );
+          })}
+        </div>
+
+        <DragOverlay dropAnimation={null}>
+          {activeEvent ? <DragPreviewChip event={activeEvent} /> : null}
+        </DragOverlay>
+      </DndContext>
 
       {/* Alert staff */}
       <AppCard>
@@ -996,6 +1070,89 @@ function toDateKey(date) {
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+// ─────────────────────────────────────────────
+// DnD — Draggable event wrapper
+// ─────────────────────────────────────────────
+function DraggableEvent({ event, children }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: String(event.id),
+    data: { event },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: transform
+          ? `translate(${transform.x}px, ${transform.y}px)`
+          : undefined,
+        opacity: isDragging ? 0.35 : 1,
+        cursor: isDragging ? "grabbing" : "grab",
+        touchAction: "none",
+        zIndex: isDragging ? 999 : "auto",
+        position: isDragging ? "relative" : undefined,
+      }}
+      {...listeners}
+      {...attributes}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// DnD — Droppable day cell wrapper
+// ─────────────────────────────────────────────
+function DroppableDay({ dateKey, style, children }) {
+  const { isOver, setNodeRef } = useDroppable({ id: dateKey });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        ...style,
+        outline: isOver ? "2px solid rgba(56,189,248,0.7)" : undefined,
+        transition: "outline 0.1s",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// DnD — Drag overlay preview chip
+// ─────────────────────────────────────────────
+function DragPreviewChip({ event }) {
+  const { t } = useTranslation();
+  return (
+    <div
+      style={{
+        padding: "8px 10px",
+        borderRadius: 10,
+        background: event.type === "Partita"
+          ? "rgba(251,146,60,0.35)"
+          : event.type === "Altro"
+          ? "rgba(56,189,248,0.35)"
+          : "rgba(34,197,94,0.35)",
+        border: `2px solid ${event.type === "Partita" ? "#fb923c" : event.type === "Altro" ? "#38bdf8" : "#22c55e"}`,
+        boxShadow: "0 8px 30px rgba(0,0,0,0.45)",
+        fontWeight: 700,
+        fontSize: 13,
+        color: "white",
+        maxWidth: 200,
+        cursor: "grabbing",
+        backdropFilter: "blur(8px)",
+      }}
+    >
+      <Badge tone={event.type === "Partita" ? "orange" : event.type === "Altro" ? "blue" : "green"}>
+        {t(EVENT_TYPES.find((et) => et.value === event.type)?.labelKey ?? "pages.calendar.typeTraining")}
+      </Badge>
+      <p style={{ margin: "4px 0 0" }}>{event.title}</p>
+    </div>
+  );
 }
 
 export default Calendar;

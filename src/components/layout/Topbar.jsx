@@ -6,12 +6,15 @@ import { styles } from "../../styles/index.js";
 import DevelopmentPlanSwitcher from "./DevelopmentPlanSwitcher";
 import DevelopmentRoleSwitcher from "./DevelopmentRoleSwitcher";
 import LanguageSelector from "./LanguageSelector";
+import { useInAppNotifications } from "../../hooks/useInAppNotifications";
 
 export default function Topbar({
   players = [],
   exercises = [],
   sessions = [],
   matches = [],
+  staffTasks = [],
+  chatUnread = 0,
   profile = null,
   developmentPlanPreview = "club",
   onDevelopmentPlanPreviewChange,
@@ -23,6 +26,10 @@ export default function Topbar({
   const [openNotifications, setOpenNotifications] = useState(false);
   const [openProfileMobile, setOpenProfileMobile] = useState(false);
   const [openProfileDesktop, setOpenProfileDesktop] = useState(false);
+
+  const { notifications, unreadCount, isRead, markAllRead, markRead } = useInAppNotifications({
+    players, sessions, matches, staffTasks, chatUnread,
+  });
 
   const firstName = profile?.first_name || "Coach";
   const lastName = profile?.last_name || "";
@@ -78,41 +85,6 @@ export default function Topbar({
     return [...playerResults, ...exerciseResults, ...sessionResults, ...matchResults].slice(0, 8);
   }, [search, players, exercises, sessions, matches, t]);
 
-  const notifications = useMemo(() => {
-    const today = new Date();
-
-    const upcomingSessions = sessions
-      .filter((s) => s.date && new Date(s.date) >= today)
-      .slice(0, 2)
-      .map((s) => ({
-        id: `session-note-${s.id}`,
-        title: s.title || t("topbar.notificationsText.upcomingSession"),
-        text: s.date || t("topbar.resultMeta.undefinedDate"),
-        to: "/trainings",
-      }));
-
-    const upcomingMatches = matches
-      .filter((m) => m.date && new Date(m.date) >= today)
-      .slice(0, 2)
-      .map((m) => ({
-        id: `match-note-${m.id}`,
-        title: t("topbar.notificationsText.matchVs", { opponent: m.opponent || t("topbar.notificationsText.opponent") }),
-        text: m.date || t("topbar.resultMeta.undefinedDate"),
-        to: "/matches",
-      }));
-
-    const injuredPlayers = players
-      .filter((p) => p.status === "Infortunato")
-      .slice(0, 2)
-      .map((p) => ({
-        id: `injury-note-${p.id}`,
-        title: t("topbar.notificationsText.injuredPlayer", { name: p.name }),
-        text: p.injury || t("topbar.notificationsText.checkPhysicalStatus"),
-        to: `/players/${p.id}`,
-      }));
-
-    return [...upcomingSessions, ...upcomingMatches, ...injuredPlayers].slice(0, 5);
-  }, [sessions, matches, players, t]);
 
   function renderProfileMenu(extraStyle = {}, onClose = () => {}) {
     return (
@@ -261,14 +233,45 @@ export default function Topbar({
             onClick={() => setOpenNotifications(!openNotifications)}
           >
             🔔
-            {notifications.length > 0 && <span style={styles.topbarNotificationDot} />}
+            {unreadCount > 0 && (
+              <span style={{
+                ...styles.topbarNotificationDot,
+                width: "auto",
+                minWidth: 16,
+                height: 16,
+                borderRadius: 8,
+                padding: "0 4px",
+                fontSize: 10,
+                fontWeight: 900,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                lineHeight: 1,
+              }}>
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </button>
 
           {openNotifications && (
-            <div style={styles.topbarNotificationsPanel}>
-              <div style={styles.topbarNotificationsHeader}>
+            <div style={{ ...styles.topbarNotificationsPanel, width: 320, maxHeight: 420, overflowY: "auto" }}>
+              <div style={{ ...styles.topbarNotificationsHeader, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <strong>{t("topbar.activityCenter")}</strong>
-                <span>{notifications.length}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {unreadCount > 0 && (
+                    <span style={{ background: "#ef4444", color: "white", borderRadius: 8, padding: "1px 7px", fontSize: 11, fontWeight: 900 }}>
+                      {unreadCount}
+                    </span>
+                  )}
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={markAllRead}
+                      style={{ background: "none", border: "none", color: "#38bdf8", cursor: "pointer", fontSize: 11, fontWeight: 700, padding: 0 }}
+                    >
+                      ✓ Leggi tutto
+                    </button>
+                  )}
+                </div>
               </div>
 
               {notifications.length > 0 ? (
@@ -276,11 +279,31 @@ export default function Topbar({
                   <Link
                     key={item.id}
                     to={item.to}
-                    style={styles.topbarNotificationItem}
-                    onClick={() => setOpenNotifications(false)}
+                    style={{
+                      ...styles.topbarNotificationItem,
+                      opacity: isRead(item.id) ? 0.5 : 1,
+                      borderLeft: isRead(item.id)
+                        ? "3px solid transparent"
+                        : item.type === "injury"   ? "3px solid #ef4444"
+                        : item.type === "match"    ? "3px solid #fb923c"
+                        : item.type === "task"     ? "3px solid #eab308"
+                        : item.type === "chat"     ? "3px solid #60a5fa"
+                        : "3px solid #22c55e",
+                    }}
+                    onClick={() => { markRead(item.id); setOpenNotifications(false); }}
                   >
-                    <strong>{item.title}</strong>
-                    <span>{item.text}</span>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <span style={{ fontSize: 18, lineHeight: 1.2 }}>{item.icon}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <strong style={{ display: "block", fontSize: 13, color: isRead(item.id) ? "#64748b" : "#e2e8f0" }}>
+                          {item.title}
+                        </strong>
+                        <span style={{ fontSize: 11, color: "#64748b" }}>{item.text}</span>
+                      </div>
+                      {!isRead(item.id) && (
+                        <span style={{ width: 7, height: 7, minWidth: 7, borderRadius: "50%", background: "#3b82f6", marginTop: 5, marginLeft: "auto" }} />
+                      )}
+                    </div>
                   </Link>
                 ))
               ) : (

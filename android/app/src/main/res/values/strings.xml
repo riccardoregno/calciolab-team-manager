@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CalcioLab</string>
+    <string name="title_activity_main">CalcioLab</string>
+    <string name="package_name">it.calciolab.coach</string>
+    <string name="custom_url_scheme">it.calciolab.coach</string>
+</resources>

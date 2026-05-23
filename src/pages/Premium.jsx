@@ -93,6 +93,10 @@ const UPDATE_VIP_URL =
   import.meta.env.VITE_UPDATE_VIP_URL ||
   "https://sglevvqhlzpllrjrgbod.functions.supabase.co/update-vip";
 
+const BILLING_PORTAL_URL =
+  import.meta.env.VITE_STRIPE_BILLING_PORTAL_URL ||
+  "https://sglevvqhlzpllrjrgbod.functions.supabase.co/billing-portal";
+
 const STRIPE_PRICE_IDS = {
   premium: {
     monthly: import.meta.env.VITE_STRIPE_PRICE_PREMIUM_MONTHLY || "",
@@ -193,6 +197,29 @@ export default function Premium({
       window.location.assign(data.url);
     } catch (error) {
       setCheckoutError(error?.message || "Errore durante l'avvio del checkout.");
+      setPendingPlan(null);
+    }
+  }
+
+  async function openBillingPortal() {
+    setCheckoutError("");
+    setBillingMessage("");
+    setPendingPlan("billing-portal");
+    try {
+      const headers = await getFunctionHeaders();
+      const response = await fetch(BILLING_PORTAL_URL, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          teamId:    auth.team?.id,
+          returnUrl: `${window.location.origin}/premium`,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.url) throw new Error(data.error || "Portale non disponibile.");
+      window.location.assign(data.url);
+    } catch (error) {
+      setCheckoutError(error?.message || "Errore apertura portale.");
       setPendingPlan(null);
     }
   }
@@ -594,18 +621,35 @@ export default function Premium({
                         Piano corrente attivo
                       </p>
                       {hasActiveSubscription && (
-                        <button
-                          type="button"
-                          style={{
-                            ...ps.trialBtn,
-                            opacity: pendingPlan !== null ? 0.55 : 1,
-                            cursor: pendingPlan !== null ? "not-allowed" : "pointer",
-                          }}
-                          onClick={cancelSubscription}
-                          disabled={pendingPlan !== null}
-                        >
-                          {pendingPlan === "cancel-subscription" ? "Attendere…" : "Disdici abbonamento"}
-                        </button>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                          <button
+                            type="button"
+                            style={{
+                              padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                              cursor: pendingPlan !== null ? "not-allowed" : "pointer",
+                              opacity: pendingPlan !== null ? 0.55 : 1,
+                              background: "rgba(96,165,250,0.12)",
+                              border: "1px solid rgba(96,165,250,0.35)",
+                              color: "#93c5fd",
+                            }}
+                            onClick={openBillingPortal}
+                            disabled={pendingPlan !== null}
+                          >
+                            {pendingPlan === "billing-portal" ? "Attendere…" : "🧾 Gestisci abbonamento"}
+                          </button>
+                          <button
+                            type="button"
+                            style={{
+                              ...ps.trialBtn,
+                              opacity: pendingPlan !== null ? 0.55 : 1,
+                              cursor: pendingPlan !== null ? "not-allowed" : "pointer",
+                            }}
+                            onClick={cancelSubscription}
+                            disabled={pendingPlan !== null}
+                          >
+                            {pendingPlan === "cancel-subscription" ? "Attendere…" : "Disdici abbonamento"}
+                          </button>
+                        </div>
                       )}
                     </>
                   )}

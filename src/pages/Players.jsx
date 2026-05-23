@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "../i18n";
 
 import PageHeader from "../components/ui/PageHeader";
@@ -12,6 +12,7 @@ import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 import PlayerCard from "../components/players/PlayerCard";
+import ImportPlayersModal from "../components/players/ImportPlayersModal";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
@@ -56,7 +57,13 @@ function Players({ players, setPlayers }) {
 
   const { showToast, ToastContainer } = useToast();
   const [confirmState, setConfirmState] = useState(null);
+  const [showImport, setShowImport] = useState(false);
   const [search, setSearch] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterStatus, setFilterStatus] = useState("tutti");
+  const [filterRole, setFilterRole] = useState("tutti");
+  const [filterFoot, setFilterFoot] = useState("tutti");
+  const [filterAge, setFilterAge] = useState("tutti");
   const [gruppoFilter, setGruppoFilter] = useState(urlGruppo);
 
   const [form, setForm] = useState(() => loadNewPlayerDraft(getEmptyPlayerForm(urlGruppo)));
@@ -80,6 +87,25 @@ function Players({ players, setPlayers }) {
   const presentGroups = [...new Set(players.map((p) => p.gruppo || "prima"))];
   const showTabs = presentGroups.length > 1 || presentGroups.some((g) => g !== "prima");
 
+  // Ruoli unici nella rosa (ordinati alfabeticamente)
+  const uniqueRoles = [...new Set(players.map((p) => p.role || "").filter(Boolean))].sort();
+
+  // Calcolo età da data di nascita
+  function calcAge(birthDate) {
+    if (!birthDate) return null;
+    const birth = new Date(birthDate);
+    if (isNaN(birth)) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+  }
+
+  const activeFilterCount = [filterStatus, filterRole, filterFoot, filterAge].filter(
+    (f) => f !== "tutti"
+  ).length;
+
   const filteredPlayers = players.filter((player) => {
     const matchesSearch = `${player.first_name || player.firstName || ""} ${
       player.last_name || player.lastName || ""
@@ -87,7 +113,20 @@ function Players({ players, setPlayers }) {
       .toLowerCase()
       .includes(search.toLowerCase());
     const matchesGroup = gruppoFilter === "tutti" || (player.gruppo || "prima") === gruppoFilter;
-    return matchesSearch && matchesGroup;
+    const matchesStatus =
+      filterStatus === "tutti" || (player.status || "Disponibile") === filterStatus;
+    const matchesRole = filterRole === "tutti" || (player.role || "") === filterRole;
+    const matchesFoot =
+      filterFoot === "tutti" ||
+      (player.foot || player.preferredFoot || "").toLowerCase() === filterFoot.toLowerCase();
+    const age = calcAge(player.birthDate);
+    const matchesAge =
+      filterAge === "tutti" ||
+      (filterAge === "u18" && age !== null && age < 18) ||
+      (filterAge === "18-23" && age !== null && age >= 18 && age <= 23) ||
+      (filterAge === "24-30" && age !== null && age >= 24 && age <= 30) ||
+      (filterAge === "o30" && age !== null && age > 30);
+    return matchesSearch && matchesGroup && matchesStatus && matchesRole && matchesFoot && matchesAge;
   });
 
   // Contatori per gruppo
@@ -192,10 +231,50 @@ function Players({ players, setPlayers }) {
     <div style={styles.page}>
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <ToastContainer />
+
+      {showImport && (
+        <ImportPlayersModal
+          onClose={() => setShowImport(false)}
+          onImport={(newPlayers) => {
+            setPlayers((prev) => [...prev, ...newPlayers]);
+            showToast(
+              t("pages.importPlayers.successToast", { count: newPlayers.length }),
+              "ok"
+            );
+            setShowImport(false);
+          }}
+        />
+      )}
       <PageHeader
         title={t("pages.players.title")}
         subtitle={t("pages.players.subtitle")}
-        action={<Button onClick={openNewPlayerModal}>{t("pages.players.newPlayer")}</Button>}
+        action={
+          <div style={{ display: "flex", gap: 8 }}>
+            <Link
+              to="/player-compare"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "8px 14px", borderRadius: 12,
+                background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.35)",
+                color: "#c4b5fd", fontWeight: 800, fontSize: 13, textDecoration: "none",
+              }}
+            >
+              ⚡ {t("navigation.items.playerCompare")}
+            </Link>
+            <button
+              onClick={() => setShowImport(true)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "8px 14px", borderRadius: 12,
+                background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.35)",
+                color: "#6ee7b7", fontWeight: 800, fontSize: 13, cursor: "pointer",
+              }}
+            >
+              📥 {t("pages.importPlayers.btnLabel")}
+            </button>
+            <Button onClick={openNewPlayerModal}>{t("pages.players.newPlayer")}</Button>
+          </div>
+        }
       />
 
       {birthdayPlayers.length > 0 && (
@@ -241,8 +320,157 @@ function Players({ players, setPlayers }) {
               onChange={setSearch}
               placeholder={t("pages.players.searchPlaceholder")}
             />
+            {/* Filtri toggle */}
+            <button
+              onClick={() => setShowFilters((v) => !v)}
+              style={{
+                marginTop: 8,
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "7px 13px", borderRadius: 10,
+                background: activeFilterCount > 0 ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)",
+                border: activeFilterCount > 0 ? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.1)",
+                color: activeFilterCount > 0 ? "#93c5fd" : "#94a3b8",
+                fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              🔍 {t("pages.players.filters")}
+              {activeFilterCount > 0 && (
+                <span style={{
+                  background: "#3b82f6", color: "#fff",
+                  borderRadius: 999, fontSize: 11, fontWeight: 900,
+                  padding: "1px 7px", lineHeight: 1.6,
+                }}>
+                  {activeFilterCount}
+                </span>
+              )}
+              <span style={{ fontSize: 10, opacity: 0.7 }}>{showFilters ? "▲" : "▼"}</span>
+            </button>
           </div>
         </div>
+
+        {/* Pannello filtri avanzati */}
+        {showFilters && (
+          <div style={{
+            marginTop: 14, padding: "14px 16px",
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 12,
+            display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start",
+          }}>
+            {/* Stato */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+                {t("pages.players.filterStatus")}
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {[
+                  { val: "tutti", label: t("pages.players.all"), color: null },
+                  { val: "Disponibile", label: t("pages.players.statusAvailable"), color: "#22c55e" },
+                  { val: "Infortunato", label: t("pages.players.statusInjured"), color: "#f87171" },
+                  { val: "Squalificato", label: t("pages.players.statusSuspended"), color: "#fb923c" },
+                ].map(({ val, label, color }) => (
+                  <button key={val} onClick={() => setFilterStatus(val)} style={{
+                    padding: "5px 11px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    cursor: "pointer",
+                    background: filterStatus === val
+                      ? (color ? `${color}22` : "rgba(255,255,255,0.1)")
+                      : "rgba(255,255,255,0.04)",
+                    border: filterStatus === val
+                      ? `1px solid ${color || "rgba(255,255,255,0.3)"}`
+                      : "1px solid rgba(255,255,255,0.07)",
+                    color: filterStatus === val ? (color || "#e2e8f0") : "#94a3b8",
+                  }}>{label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Ruolo */}
+            {uniqueRoles.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+                  {t("pages.players.filterRole")}
+                </div>
+                <select
+                  value={filterRole}
+                  onChange={(e) => setFilterRole(e.target.value)}
+                  style={{
+                    padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    background: filterRole !== "tutti" ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.06)",
+                    border: filterRole !== "tutti" ? "1px solid rgba(96,165,250,0.35)" : "1px solid rgba(255,255,255,0.1)",
+                    color: filterRole !== "tutti" ? "#93c5fd" : "#94a3b8",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="tutti">{t("pages.players.all")}</option>
+                  {uniqueRoles.map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Piede */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+                {t("pages.players.filterFoot")}
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {[
+                  { val: "tutti", label: t("pages.players.all") },
+                  { val: "destro", label: t("pages.players.footRight") },
+                  { val: "sinistro", label: t("pages.players.footLeft") },
+                  { val: "entrambi", label: t("pages.players.footBoth") },
+                ].map(({ val, label }) => (
+                  <button key={val} onClick={() => setFilterFoot(val)} style={{
+                    padding: "5px 11px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    cursor: "pointer",
+                    background: filterFoot === val ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.04)",
+                    border: filterFoot === val ? "1px solid rgba(167,139,250,0.4)" : "1px solid rgba(255,255,255,0.07)",
+                    color: filterFoot === val ? "#c4b5fd" : "#94a3b8",
+                  }}>{label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Età */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+                {t("pages.players.filterAge")}
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {[
+                  { val: "tutti", label: t("pages.players.all") },
+                  { val: "u18", label: "Under 18" },
+                  { val: "18-23", label: "18-23" },
+                  { val: "24-30", label: "24-30" },
+                  { val: "o30", label: "Over 30" },
+                ].map(({ val, label }) => (
+                  <button key={val} onClick={() => setFilterAge(val)} style={{
+                    padding: "5px 11px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    cursor: "pointer",
+                    background: filterAge === val ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)",
+                    border: filterAge === val ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.07)",
+                    color: filterAge === val ? "#fcd34d" : "#94a3b8",
+                  }}>{label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Reset */}
+            {activeFilterCount > 0 && (
+              <button
+                onClick={() => { setFilterStatus("tutti"); setFilterRole("tutti"); setFilterFoot("tutti"); setFilterAge("tutti"); }}
+                style={{
+                  alignSelf: "flex-end", padding: "5px 13px", borderRadius: 8,
+                  background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
+                  color: "#f87171", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                ✕ {t("pages.players.resetFilters")}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Tab filtro gruppo — visibili solo se ci sono più gruppi */}
         {showTabs && (
@@ -268,9 +496,48 @@ function Players({ players, setPlayers }) {
 
       {filteredPlayers.length === 0 ? (
         <EmptyState
-          icon="⚽"
-          title={t("pages.players.noPlayersFound")}
-          text={t("pages.players.noPlayersText")}
+          icon={activeFilterCount > 0 || search ? "🔍" : "⚽"}
+          title={
+            activeFilterCount > 0 || search
+              ? t("pages.players.noFilterResults")
+              : t("pages.players.noPlayersFound")
+          }
+          text={
+            activeFilterCount > 0 || search
+              ? t("pages.players.noFilterResultsText")
+              : t("pages.players.noPlayersText")
+          }
+          action={
+            (activeFilterCount > 0 || search) ? (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setFilterStatus("tutti");
+                  setFilterRole("tutti");
+                  setFilterFoot("tutti");
+                  setFilterAge("tutti");
+                }}
+                style={{
+                  marginTop: 12, padding: "8px 18px", borderRadius: 10,
+                  background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)",
+                  color: "#93c5fd", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                ✕ {t("pages.players.resetFilters")}
+              </button>
+            ) : (
+              <button
+                onClick={openNewPlayerModal}
+                style={{
+                  marginTop: 12, padding: "8px 18px", borderRadius: 10,
+                  background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)",
+                  color: "#93c5fd", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                + {t("pages.players.newPlayer")}
+              </button>
+            )
+          }
         />
       ) : (
         <div
