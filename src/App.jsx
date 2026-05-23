@@ -15,6 +15,7 @@ import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 
 import { useTeamData } from "./hooks/useTeamData";
 import { useAuth } from "./hooks/useAuth";
+import { useEventReminders } from "./hooks/useNotifications";
 import { supabase } from "./lib/supabaseClient";
 import { updateTeamSubscription } from "./services/subscription";
 
@@ -205,6 +206,14 @@ function App() {
     loadProfile();
     return () => { active = false; };
   }, [auth.user]);
+
+  // Wire automatic event reminders (fires on load + every hour when notifications are enabled)
+  useEventReminders({
+    sessions: state.sessions || [],
+    matches:  state.matches  || [],
+    players:  state.players  || [],
+    enabled:  Boolean(previewAppSettings?.notifications?.enabled),
+  });
 
   // Pagine pubbliche — accessibili senza autenticazione
   const _path = typeof window !== "undefined" ? window.location.pathname : "";

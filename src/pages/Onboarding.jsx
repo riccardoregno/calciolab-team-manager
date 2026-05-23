@@ -48,6 +48,15 @@ const MODULE_OPTIONS = [
 // Labels resolved at render time via t() inside the component — see stepLabels below
 const STEP_COUNT = 3;
 
+const QUICKSTART_ACTIONS = [
+  { key: "players",   icon: "👥", path: "/players",                      plan: "free"    },
+  { key: "trainings", icon: "📋", path: "/trainings",                    plan: "free"    },
+  { key: "matches",   icon: "⚽", path: "/matches",                      plan: "free"    },
+  { key: "club",      icon: "🏟️", path: "/settings?tab=club",           plan: "free"    },
+  { key: "physical",  icon: "🏃", path: "/physical-tests",               plan: "premium" },
+  { key: "invite",    icon: "👋", path: "/settings?tab=club&modal=invite-member", plan: "free" },
+];
+
 function recommendPlan(modules) {
   if (modules.some((m) => ["portal", "sponsors"].includes(m))) return "club";
   if (modules.some((m) => ["matchDay", "physical", "ai"].includes(m))) return "premium";
@@ -68,6 +77,7 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
   ];
 
   const [step, setStep]         = useState(1);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [saving, setSaving]     = useState(false);
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== "undefined" && window.innerWidth < 700
@@ -101,24 +111,12 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
     setForm({ ...form, modules });
   }
 
-  async function complete() {
+  // Step 1: saves wizard data, shows the success screen (onboarding NOT yet marked done)
+  async function preComplete() {
     setSaving(true);
     try {
-      // Salva nome società + flag onboarding su Supabase teams (se disponibile)
-      // Il flag server-side è la fonte di verità: previene il bypass via localStorage
-      if (team?.id) {
-        await supabase
-          .from("teams")
-          .update({
-            ...(form.clubName?.trim() ? { name: form.clubName.trim() } : {}),
-            onboarding_completed: true,
-          })
-          .eq("id", team.id);
-      }
-
       setAppSettings?.({
         ...settings,
-        onboarding: { completed: true, completedAt: new Date().toISOString(), currentStep: 3 },
         workspaceProfile: {
           ...form,
           recommendedPlan: recommendPlan(form.modules),
@@ -130,10 +128,31 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
             : settings.subscription.plan,
         },
       });
-
-      navigate("/");
+      setShowSuccess(true);
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Step 2: marks onboarding done on Supabase + local, then navigates
+  async function finalize(path = "/") {
+    try {
+      if (team?.id) {
+        await supabase
+          .from("teams")
+          .update({
+            ...(form.clubName?.trim() ? { name: form.clubName.trim() } : {}),
+            onboarding_completed: true,
+          })
+          .eq("id", team.id);
+      }
+      setAppSettings?.((prev) => ({
+        ...normalizeAppSettings(prev),
+        onboarding: { completed: true, completedAt: new Date().toISOString(), currentStep: 3 },
+      }));
+      navigate(path);
+    } catch {
+      navigate(path);
     }
   }
 
@@ -189,14 +208,17 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
 
       {/* ── Contenuto step ── */}
       <main style={isMobile ? ob.mainMobile : ob.main}>
-        {step === 1 && (
+        {!showSuccess && step === 1 && (
           <Step1 form={form} setForm={setForm} onNext={() => setStep(2)} isMobile={isMobile} />
         )}
-        {step === 2 && (
+        {!showSuccess && step === 2 && (
           <Step2 form={form} setForm={setForm} onBack={() => setStep(1)} onNext={() => setStep(3)} isMobile={isMobile} />
         )}
-        {step === 3 && (
-          <Step3 form={form} toggleModule={toggleModule} onBack={() => setStep(2)} onComplete={complete} saving={saving} isMobile={isMobile} />
+        {!showSuccess && step === 3 && (
+          <Step3 form={form} toggleModule={toggleModule} onBack={() => setStep(2)} onComplete={preComplete} saving={saving} isMobile={isMobile} />
+        )}
+        {showSuccess && (
+          <SuccessScreen form={form} onNavigate={finalize} isMobile={isMobile} />
         )}
       </main>
     </div>
@@ -507,6 +529,74 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
 }
 
 // ─────────────────────────────────────────────
+// Step 4 — Success / Quick-start
+// ─────────────────────────────────────────────
+function SuccessScreen({ form, onNavigate, isMobile }) {
+  const { t } = useTranslation();
+  const clubName  = form.clubName  || t("pages.onboarding.success.defaultClub");
+  const modules   = form.modules   || [];
+
+  const actions = QUICKSTART_ACTIONS.filter((a) => {
+    // Always show free actions; show premium/physical only if selected
+    if (a.key === "physical") return modules.includes("physical");
+    return true;
+  });
+
+  return (
+    <div style={ob.stepContent}>
+      {/* Hero */}
+      <div style={ob.successHero}>
+        <div style={ob.successCheck}>✓</div>
+        <h1 style={{ margin: "20px 0 8px", fontSize: isMobile ? 26 : 34, fontWeight: 900 }}>
+          {t("pages.onboarding.success.title", { club: clubName })}
+        </h1>
+        <p style={{ margin: 0, color: "#64748b", fontSize: 15, lineHeight: 1.6, maxWidth: 480 }}>
+          {t("pages.onboarding.success.subtitle")}
+        </p>
+      </div>
+
+      {/* Action cards */}
+      <p style={{ ...ob.sectionLabel, marginBottom: 14 }}>
+        {t("pages.onboarding.success.nextStepsLabel")}
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 32 }}>
+        {actions.map((action, i) => (
+          <button
+            key={action.key}
+            onClick={() => onNavigate(action.path)}
+            style={{
+              ...ob.quickCard,
+              ...(i === 0 ? ob.quickCardPrimary : {}),
+            }}
+          >
+            <span style={ob.quickCardIcon}>{action.icon}</span>
+            <div style={{ textAlign: "left", flex: 1 }}>
+              <strong style={{ display: "block", fontSize: 14, color: i === 0 ? "#fff" : "#e2e8f0" }}>
+                {t(`pages.onboarding.success.actions.${action.key}.title`)}
+              </strong>
+              <span style={{ fontSize: 12, color: i === 0 ? "rgba(255,255,255,0.65)" : "#64748b" }}>
+                {t(`pages.onboarding.success.actions.${action.key}.desc`)}
+              </span>
+            </div>
+            <span style={{ color: i === 0 ? "rgba(255,255,255,0.7)" : "#475569", fontSize: 16 }}>→</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Footer CTA */}
+      <div style={{ ...ob.actions, justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <button onClick={() => onNavigate("/")} style={ob.backBtn}>
+          {t("pages.onboarding.success.dashboard")}
+        </button>
+        <button onClick={() => onNavigate("/players")} style={ob.completeBtn}>
+          {t("pages.onboarding.success.startRoster")} →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // UI helpers
 // ─────────────────────────────────────────────
 function Section({ label, children }) {
@@ -712,6 +802,35 @@ const ob = {
     gap: 16, padding: "18px 22px", borderRadius: 18, marginBottom: 32,
     flexWrap: "wrap",
   },
+  /* Success screen */
+  successHero: {
+    textAlign: "center",
+    padding: "32px 0 36px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  },
+  successCheck: {
+    width: 72, height: 72, borderRadius: "50%",
+    background: "linear-gradient(135deg,#059669,#047857)",
+    display: "grid", placeItems: "center",
+    fontSize: 32, fontWeight: 900, color: "white",
+    boxShadow: "0 12px 32px rgba(5,150,105,0.4)",
+  },
+  quickCard: {
+    display: "flex", alignItems: "center", gap: 14,
+    padding: "14px 16px", borderRadius: 14,
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    cursor: "pointer", color: "white", textAlign: "left",
+    transition: "all 0.15s ease",
+  },
+  quickCardPrimary: {
+    background: "linear-gradient(135deg,rgba(37,99,235,0.35),rgba(29,78,216,0.35))",
+    border: "1px solid rgba(96,165,250,0.4)",
+    boxShadow: "0 4px 20px rgba(37,99,235,0.2)",
+  },
+  quickCardIcon: { fontSize: 22, flexShrink: 0, width: 36, textAlign: "center" },
   /* Actions */
   actions: {
     display: "flex", gap: 12, alignItems: "center",

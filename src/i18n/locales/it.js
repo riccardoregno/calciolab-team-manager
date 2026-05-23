@@ -1010,6 +1010,22 @@ export const it = {
       planLabelClub: "Club",
       btnConfiguring: "Configurazione in corso…",
       btnStart: "Inizia a lavorare 🚀",
+      success: {
+        title:          "{{club}} è pronto! 🎉",
+        defaultClub:    "Il tuo workspace",
+        subtitle:       "Il workspace è configurato. Completa i passaggi qui sotto per essere operativo in pochi minuti.",
+        nextStepsLabel: "Da dove vuoi partire?",
+        dashboard:      "Vai alla dashboard",
+        startRoster:    "Aggiungi la rosa",
+        actions: {
+          players:   { title: "Inserisci la rosa",          desc: "Aggiungi i tuoi giocatori e i loro profili" },
+          trainings: { title: "Crea la prima seduta",       desc: "Pianifica il primo allenamento" },
+          matches:   { title: "Inserisci le partite",       desc: "Carica il calendario gare della stagione" },
+          club:      { title: "Completa il profilo società",desc: "Logo, campo di casa e informazioni club" },
+          physical:  { title: "Test fisici",                desc: "Registra Gacon e Yo-Yo per generare i lavori" },
+          invite:    { title: "Invita lo staff",            desc: "Aggiungi collaboratori al workspace" },
+        },
+      },
     },
     settings: {
       title: "Impostazioni",
