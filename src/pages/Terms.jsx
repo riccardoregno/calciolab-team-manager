@@ -20,7 +20,7 @@ export default function Terms() {
         <Section title="1. Definizioni">
           <p>
             <strong>"Piattaforma"</strong> indica il servizio software CalcioLab, accessibile via web all'indirizzo
-            calciolab.app e relative applicazioni. <strong>"Utente"</strong> indica qualsiasi persona fisica o
+            calciolab.org e relative applicazioni. <strong>"Utente"</strong> indica qualsiasi persona fisica o
             giuridica che crea un account e utilizza la Piattaforma. <strong>"Workspace"</strong> indica l'ambiente
             condiviso di gestione della squadra, che può essere usato da più utenti con ruoli differenti.
           </p>
@@ -119,8 +119,8 @@ export default function Terms() {
 
         <Section title="11. Contatti">
           <p>
-            Per domande sui presenti Termini: <a href="mailto:legal@calciolab.app" style={s.link}>legal@calciolab.app</a><br />
-            Per supporto tecnico: <a href="mailto:support@calciolab.app" style={s.link}>support@calciolab.app</a>
+            Per domande sui presenti Termini: <a href="mailto:legal@calciolab.org" style={s.link}>legal@calciolab.org</a><br />
+            Per supporto tecnico: <a href="mailto:support@calciolab.org" style={s.link}>support@calciolab.org</a>
           </p>
         </Section>
 

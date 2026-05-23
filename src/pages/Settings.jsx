@@ -799,7 +799,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
   }
 
   function getInviteLink(token) {
-    const base = typeof window !== "undefined" ? window.location.origin : "https://calciolab.app";
+    const base = typeof window !== "undefined" ? window.location.origin : "https://app.calciolab.org";
     return `${base}/join?token=${token}`;
   }
 
