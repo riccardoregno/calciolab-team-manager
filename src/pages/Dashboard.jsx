@@ -112,6 +112,7 @@ function Dashboard({
 
   const [playerStatsMap, setPlayerStatsMap] = useState({});
   const [showPersonalize, setShowPersonalize] = useState(false);
+  const [promoCheckedAt] = useState(() => Date.now());
   const isMobile = useIsMobile();
 
   const settings = normalizeAppSettings(appSettings);
@@ -133,6 +134,20 @@ function Dashboard({
     appSettings: settings,
   });
   const billing = getBillingStatus(settings);
+  const redeemedPromo = settings.redeemedPromo;
+  const promoAccessActive = Boolean(
+    redeemedPromo?.plan &&
+    redeemedPromo.plan !== "free" &&
+    (
+      redeemedPromo.permanent === true ||
+      (redeemedPromo.expiresAt && new Date(redeemedPromo.expiresAt).getTime() > promoCheckedAt)
+    )
+  );
+  const showBillingPrompt = !promoAccessActive && (
+    billing.trialActive ||
+    billing.trialExpired ||
+    billing.billingStatus === "free"
+  );
 
   useEffect(() => {
     if (!auth.team?.id) return;
@@ -904,9 +919,7 @@ function Dashboard({
       )}
 
       {/* Sezioni fisse non-draggable */}
-      {(billing.trialActive ||
-        billing.trialExpired ||
-        billing.billingStatus === "free") && (
+      {showBillingPrompt && (
         <AppCard style={{ marginBottom: 18 }}>
           <div
             style={{
