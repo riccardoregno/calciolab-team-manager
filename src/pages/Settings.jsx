@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { Eye, EyeOff } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -741,6 +741,19 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
 
   // Genera (o recupera) il token invito del team
   const inviteToken = settings.inviteToken || null;
+
+  // Auto-save profile — skip first render to avoid overwriting with stale initial value
+  const profileMounted = useRef(false);
+  useEffect(() => {
+    if (!profileMounted.current) { profileMounted.current = true; return; }
+    const timer = setTimeout(() => {
+      setAppSettings?.((prev) => {
+        const s = normalizeAppSettings(prev);
+        return { ...s, workspaceProfile: profile };
+      });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!inviteModal) return;
