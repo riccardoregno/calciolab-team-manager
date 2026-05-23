@@ -107,7 +107,7 @@ export async function ensureDefaultTeam(user) {
     }
   }
 
-  const teamSelect = "id, name, season, category, subscription_plan, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used";
+  const teamSelect = "id, name, season, category, subscription_plan, subscription_status, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used, stripe_customer_id, stripe_subscription_id, onboarding_completed";
 
   const { data: memberships, error: membershipError } = await supabase
     .from("team_members")
