@@ -16,6 +16,7 @@ const ENTITY_TABLES = {
   matches:       "matches",
   physicalTests: "physical_tests",
 };
+const STORAGE_BACKUP_KEY = `${STORAGE_KEY}:backup`;
 
 // FIX #7: regex che ammette solo caratteri sicuri negli ID usati nelle query Supabase.
 // Previene injection nella lista passata a .not("id","in", rawString).
@@ -37,8 +38,14 @@ export function getInitialState() {
 export function loadLocalState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return getInitialState();
-    return normalizeAppState(JSON.parse(saved));
+    const backup = localStorage.getItem(STORAGE_BACKUP_KEY);
+    if (!saved) return backup ? normalizeAppState(JSON.parse(backup)) : getInitialState();
+
+    const state = normalizeAppState(JSON.parse(saved));
+    if (!backup) return state;
+
+    const backupState = normalizeAppState(JSON.parse(backup));
+    return recoverMissingLocalEntities(state, backupState);
   } catch (error) {
     if (import.meta.env.DEV) console.error("Errore caricamento dati locali:", error);
     return getInitialState();
@@ -47,6 +54,10 @@ export function loadLocalState() {
 
 export function saveLocalState(state) {
   try {
+    const previous = localStorage.getItem(STORAGE_KEY);
+    if (previous) {
+      localStorage.setItem(STORAGE_BACKUP_KEY, previous);
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeAppState(state)));
   } catch (error) {
     if (import.meta.env.DEV) console.error("Errore salvataggio localStorage:", error);
@@ -144,8 +155,23 @@ async function loadTeamTablesState(teamId) {
       .eq("id", teamId)
       .maybeSingle();
 
-    const entityState = Object.fromEntries(entries);
     const localState = loadLocalState();
+    const remoteEntityState = Object.fromEntries(entries);
+    const entityState = Object.fromEntries(
+      Object.keys(ENTITY_TABLES).map((stateKey) => {
+        const remoteRecords = remoteEntityState[stateKey] || [];
+        const localRecords = localState[stateKey] || [];
+
+        // Protezione perdita dati: se Supabase risponde vuoto ma il browser ha dati,
+        // non sovrascriviamo la sorgente locale. Succede facilmente dopo primo login,
+        // cambio team o sync remoto non ancora completato.
+        if (remoteRecords.length === 0 && hasUserLocalRecords(stateKey, localRecords)) {
+          return [stateKey, localRecords];
+        }
+
+        return [stateKey, remoteRecords];
+      })
+    );
     const state = normalizeAppState({
       ...entityState,
       // GPS & Load resta local-first finché non esiste una tabella Supabase dedicata.
@@ -166,6 +192,37 @@ async function loadTeamTablesState(teamId) {
     }
     return { state: loadLocalState(), source: "local", error };
   }
+}
+
+function hasUserLocalRecords(stateKey, records = []) {
+  if (!Array.isArray(records) || records.length === 0) return false;
+
+  if (stateKey === "players") {
+    return records.some((record) => record.id !== "player-initial-1");
+  }
+
+  if (stateKey === "exercises") {
+    const initialIds = new Set(initialExercises.map((item) => item.id));
+    return records.some((record) => !initialIds.has(record.id));
+  }
+
+  return records.length > 0;
+}
+
+function recoverMissingLocalEntities(state, backupState) {
+  return normalizeAppState({
+    ...state,
+    ...Object.fromEntries(
+      Object.keys(ENTITY_TABLES).map((stateKey) => {
+        const currentRecords = state[stateKey] || [];
+        const backupRecords = backupState[stateKey] || [];
+        if (currentRecords.length === 0 && hasUserLocalRecords(stateKey, backupRecords)) {
+          return [stateKey, backupRecords];
+        }
+        return [stateKey, currentRecords];
+      })
+    ),
+  });
 }
 
 // ─── Sync singola tabella ──────────────────────────────────────────────────
