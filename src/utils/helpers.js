@@ -737,6 +737,9 @@ export function getEffectivePlanId(settings = {}){
   }
 
   const normalized = normalizeAppSettings(settings);
+  const promoPlan = getActiveRedeemedPromoPlan(normalized);
+  if (promoPlan) return promoPlan;
+
   const subscription = normalized.subscription;
 
   if (subscription.billingStatus === "trialing" && isTrialActive(normalized)) {
@@ -751,9 +754,20 @@ export function getEffectivePlanId(settings = {}){
 }
 
 export function isTrialActive(settings = {}){
-  const subscription = normalizeAppSettings(settings).subscription;
+  const normalized = normalizeAppSettings(settings);
+  if (getActiveRedeemedPromoPlan(normalized)) return false;
+
+  const subscription = normalized.subscription;
   if (subscription.billingStatus !== "trialing" || !subscription.trialEndsAt) return false;
   return new Date(subscription.trialEndsAt).getTime() >= Date.now();
+}
+
+function getActiveRedeemedPromoPlan(settings = {}) {
+  const promo = settings.redeemedPromo;
+  if (!promo?.plan || promo.plan === "free") return "";
+  if (promo.permanent === true) return promo.plan;
+  if (!promo.expiresAt) return "";
+  return new Date(promo.expiresAt).getTime() > Date.now() ? promo.plan : "";
 }
 
 export function getTrialDaysLeft(settings = {}){
