@@ -98,14 +98,20 @@ function getOpenPostMatchCorrections(sessions = [], matches = []) {
 }
 
 function Dashboard({
-  players = [],
-  exercises = [],
-  sessions = [],
-  matches = [],
-  physicalTests = [],
+  players: rawPlayers = [],
+  exercises: rawExercises = [],
+  sessions: rawSessions = [],
+  matches: rawMatches = [],
+  physicalTests: rawPhysicalTests = [],
   appSettings = {},
   setAppSettings,
 }) {
+  const players = useMemo(() => Array.isArray(rawPlayers) ? rawPlayers : [], [rawPlayers]);
+  const exercises = useMemo(() => Array.isArray(rawExercises) ? rawExercises : [], [rawExercises]);
+  const sessions = useMemo(() => Array.isArray(rawSessions) ? rawSessions : [], [rawSessions]);
+  const matches = useMemo(() => Array.isArray(rawMatches) ? rawMatches : [], [rawMatches]);
+  const physicalTests = useMemo(() => Array.isArray(rawPhysicalTests) ? rawPhysicalTests : [], [rawPhysicalTests]);
+
   const { t } = useTranslation();
   const navigate = useNavigate();
   const auth = useAuth();
@@ -231,7 +237,10 @@ function Dashboard({
     ...baseCoachAlerts,
   ];
 
-  const sectionOrder = settings.dashboardSectionOrder ?? DEFAULT_SECTION_ORDER;
+  const sectionOrder = Array.isArray(settings.dashboardSectionOrder)
+    ? settings.dashboardSectionOrder.filter((key) => DASHBOARD_SECTION_KEYS.includes(key))
+    : DEFAULT_SECTION_ORDER;
+  const safeSectionOrder = sectionOrder.length ? sectionOrder : DEFAULT_SECTION_ORDER;
 
   function updateSectionOrder(newOrder) {
     setAppSettings?.({ ...settings, dashboardSectionOrder: newOrder });
@@ -240,10 +249,10 @@ function Dashboard({
   function handleSectionDragEnd(event) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = sectionOrder.indexOf(String(active.id));
-    const newIndex = sectionOrder.indexOf(String(over.id));
+    const oldIndex = safeSectionOrder.indexOf(String(active.id));
+    const newIndex = safeSectionOrder.indexOf(String(over.id));
     if (oldIndex < 0 || newIndex < 0) return;
-    updateSectionOrder(arrayMove([...sectionOrder], oldIndex, newIndex));
+    updateSectionOrder(arrayMove([...safeSectionOrder], oldIndex, newIndex));
   }
 
   function toggleWidget(key) {
@@ -1039,9 +1048,17 @@ function Dashboard({
 
       {/* Sezioni draggable */}
       <DndContext onDragEnd={handleSectionDragEnd} collisionDetection={closestCenter}>
-        <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
-          {sectionOrder.map((id) => {
-            const content = renderSectionContent(id);
+        <SortableContext items={safeSectionOrder} strategy={verticalListSortingStrategy}>
+          {safeSectionOrder.map((id) => {
+            let content;
+            try {
+              content = renderSectionContent(id);
+            } catch (error) {
+              if (import.meta.env.DEV) {
+                console.error(`[Dashboard] Errore sezione "${id}":`, error);
+              }
+              return null;
+            }
             if (!content) return null;
             return (
               <SortableSection key={id} id={id}>
