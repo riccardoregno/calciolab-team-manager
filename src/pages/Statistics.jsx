@@ -344,7 +344,7 @@ function Statistics({
 
       {/* ── Grafici ── */}
       <Suspense fallback={<div style={s.chartFallback}>{t("pages.statistics.loadingCharts")}</div>}>
-        <StatisticsCharts stats={stats} history={history} selectedPlayer={selectedPlayer} />
+        <StatisticsCharts stats={stats} history={history} selectedPlayer={selectedPlayer} events={filteredEvents} players={players} />
       </Suspense>
 
       {/* ── Filtri ── */}
