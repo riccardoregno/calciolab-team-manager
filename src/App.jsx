@@ -13,6 +13,7 @@ import AppCard from "./components/ui/AppCard";
 import Button from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import PWAInstallBanner from "./components/ui/PWAInstallBanner";
+import PushBanner from "./components/ui/PushBanner";
 
 import { useTeamData } from "./hooks/useTeamData";
 import { useAuth } from "./hooks/useAuth";
@@ -21,6 +22,7 @@ import { useStaffChat } from "./hooks/useStaffChat";
 import { supabase } from "./lib/supabaseClient";
 import { isNative, isAndroid, hideSplashScreen, setStatusBarDark, onAndroidBack } from "./utils/capacitor";
 import { updateTeamSubscription } from "./services/subscription";
+import { usePushNotifications } from "./hooks/usePushNotifications";
 
 import Auth from "./pages/Auth";
 
@@ -243,6 +245,13 @@ function App() {
     matches:  state.matches  || [],
     players:  state.players  || [],
     enabled:  Boolean(previewAppSettings?.notifications?.enabled),
+  });
+
+  // Push notifications — registra token dispositivo su iOS/Android
+  usePushNotifications({
+    userId: auth.user?.id  || null,
+    teamId: auth.team?.id  || null,
+    enabled: Boolean(previewAppSettings?.notifications?.push !== false),
   });
 
   // Staff chat — solo per contare i non letti da mostrare nel badge sidebar
@@ -893,6 +902,13 @@ function App() {
 
       <MobileBottomNav />
       <PWAInstallBanner />
+      <PushBanner />
+      <style>{`
+        @keyframes pushSlideIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+      `}</style>
     </BrowserRouter>
   );
 }
