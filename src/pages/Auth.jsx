@@ -40,16 +40,18 @@ function Auth() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  /* Legge ?invite_mode=register|login dall'URL e imposta la modalità di accesso */
+  /* Legge ?invite_mode=register|login o ?mode=register|login dall'URL */
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const inviteMode = params.get("invite_mode");
+    const modeParam  = params.get("mode");
+    const resolved   = inviteMode || modeParam;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (inviteMode === "register") setMode("register");
-    else if (inviteMode === "login") setMode("login");
+    if (resolved === "register") setMode("register");
+    else if (resolved === "login") setMode("login");
     // Pulisce i parametri dall'URL senza ricaricare la pagina
-    if (inviteMode) {
+    if (resolved) {
       const clean = window.location.pathname;
       window.history.replaceState({}, "", clean);
     }

@@ -92,12 +92,22 @@ export default function Landing() {
   const navigate = useNavigate();
   const [billingPeriod, setBillingPeriod] = useState("monthly");
   const [openFaq, setOpenFaq] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   function goToLogin()  { navigate("/login"); }
   function goToSignup() { navigate("/login?mode=register"); }
 
   return (
     <div style={l.root}>
+      <style>{`
+        .lnd-nav-links, .lnd-nav-ctas { display: flex; }
+        .lnd-hamburger { display: none; }
+        @media (max-width: 768px) {
+          .lnd-nav-links, .lnd-nav-ctas { display: none !important; }
+          .lnd-hamburger { display: flex !important; }
+        }
+      `}</style>
+
       {/* ── Navbar ── */}
       <header style={l.nav}>
         <div style={l.navInner}>
@@ -105,16 +115,43 @@ export default function Landing() {
             <div style={l.logoBolt}>⚡</div>
             <span style={l.logoText}>CalcioLab</span>
           </div>
-          <nav style={l.navLinks}>
+
+          {/* Desktop links */}
+          <nav style={l.navLinks} className="lnd-nav-links">
             <a href="#features" style={l.navLink}>Funzioni</a>
             <a href="#pricing" style={l.navLink}>Prezzi</a>
             <a href="#faq" style={l.navLink}>FAQ</a>
           </nav>
-          <div style={l.navCtas}>
+
+          {/* Desktop CTA */}
+          <div style={l.navCtas} className="lnd-nav-ctas">
             <button style={l.btnNavLogin} onClick={goToLogin}>Accedi</button>
             <button style={l.btnNavSignup} onClick={goToSignup}>Inizia gratis →</button>
           </div>
+
+          {/* Mobile hamburger */}
+          <button
+            style={l.hamburger}
+            className="lnd-hamburger"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            aria-label="Menu"
+          >
+            {mobileMenuOpen ? "✕" : "☰"}
+          </button>
         </div>
+
+        {/* Mobile dropdown */}
+        {mobileMenuOpen && (
+          <div style={l.mobileMenu}>
+            <a href="#features" style={l.mobileMenuLink} onClick={() => setMobileMenuOpen(false)}>Funzioni</a>
+            <a href="#pricing" style={l.mobileMenuLink} onClick={() => setMobileMenuOpen(false)}>Prezzi</a>
+            <a href="#faq" style={l.mobileMenuLink} onClick={() => setMobileMenuOpen(false)}>FAQ</a>
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              <button style={{ ...l.btnNavLogin, width: "100%", textAlign: "center" }} onClick={() => { goToLogin(); setMobileMenuOpen(false); }}>Accedi</button>
+              <button style={{ ...l.btnNavSignup, width: "100%", textAlign: "center" }} onClick={() => { goToSignup(); setMobileMenuOpen(false); }}>Inizia gratis →</button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* ── Hero ── */}
@@ -451,6 +488,43 @@ const l = {
     border: "none", color: "white", borderRadius: 10, padding: "8px 18px",
     fontSize: 13, fontWeight: 800, cursor: "pointer",
     boxShadow: "0 4px 16px rgba(37,99,235,0.35)",
+  },
+
+  /* Mobile menu */
+  hamburger: {
+    /* visible only on mobile — toggled via .lnd-hamburger CSS class */
+    marginLeft: "auto",
+    background: "transparent",
+    border: "1px solid rgba(255,255,255,0.15)",
+    color: "white",
+    fontSize: 20,
+    lineHeight: 1,
+    cursor: "pointer",
+    borderRadius: 10,
+    padding: "6px 12px",
+    flexShrink: 0,
+  },
+  mobileMenu: {
+    position: "absolute",
+    top: 64,
+    left: 0,
+    right: 0,
+    background: "rgba(8,11,18,0.97)",
+    backdropFilter: "blur(20px)",
+    borderBottom: "1px solid rgba(255,255,255,0.07)",
+    padding: "16px 24px 20px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    zIndex: 200,
+  },
+  mobileMenuLink: {
+    color: "#94a3b8",
+    fontSize: 16,
+    fontWeight: 700,
+    textDecoration: "none",
+    padding: "10px 0",
+    borderBottom: "1px solid rgba(255,255,255,0.05)",
   },
 
   /* Hero */
