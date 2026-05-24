@@ -25,6 +25,7 @@ import { updateTeamSubscription } from "./services/subscription";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 
 import Auth from "./pages/Auth";
+const Landing = lazy(() => import("./pages/Landing"));
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Players = lazy(() => import("./pages/Players"));
@@ -285,6 +286,16 @@ function App() {
   }
 
   if (!auth.user) {
+    // Landing pubblica su "/" — Auth su "/login" o con query mode=register
+    if (_path === "/" || _path === "") {
+      return (
+        <BrowserRouter>
+          <Suspense fallback={null}>
+            <Landing />
+          </Suspense>
+        </BrowserRouter>
+      );
+    }
     return <Auth />;
   }
 
