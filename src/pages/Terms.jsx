@@ -1,20 +1,26 @@
 /**
  * Termini di Servizio — CalcioLab
- * Versione 1.0 — aggiornata al 2025
+ * Versione 1.1 — aggiornata al 24 maggio 2026
  * ⚠️ Testo placeholder: far revisionare da un legale prima del go-live
  */
+import { useNavigate } from "react-router-dom";
+
 export default function Terms() {
+  const navigate = useNavigate();
   return (
     <div style={s.page}>
+      <header style={s.navbar}>
+        <button style={s.logoBtn} onClick={() => navigate("/")}>
+          <div style={s.logoBolt}>⚡</div>
+          <strong style={{ fontSize: 16, color: "white", fontWeight: 900 }}>CalcioLab</strong>
+        </button>
+        <button style={s.backBtn} onClick={() => navigate("/")}>← Torna alla home</button>
+      </header>
       <div style={s.container}>
         <div style={s.header}>
-          <div style={s.logoRow}>
-            <div style={s.brandMark}>CL</div>
-            <strong style={{ fontSize: 18, color: "white" }}>CalcioLab</strong>
-          </div>
+          <span style={s.eyebrow}>Legale</span>
           <h1 style={s.title}>Termini di Servizio</h1>
-          <p style={s.meta}>Versione 1.0 · Aggiornata al 1 gennaio 2025</p>
-          <a href="/" style={s.backLink}>← Torna al login</a>
+          <p style={s.meta}>Versione 1.1 · Aggiornata al 24 maggio 2026</p>
         </div>
 
         <Section title="1. Definizioni">
@@ -119,17 +125,17 @@ export default function Terms() {
 
         <Section title="11. Contatti">
           <p>
-            Per domande sui presenti Termini: <a href="mailto:legal@calciolab.org" style={s.link}>legal@calciolab.org</a><br />
-            Per supporto tecnico: <a href="mailto:support@calciolab.org" style={s.link}>support@calciolab.org</a>
+            Per domande sui presenti Termini: <a href="mailto:info@calciolab.it" style={s.link}>info@calciolab.it</a><br />
+            Per supporto tecnico: <a href="mailto:info@calciolab.it" style={s.link}>info@calciolab.it</a>
           </p>
         </Section>
 
         <div style={s.footer}>
-          <p>CalcioLab · P.IVA IT00000000000 · Via Esempio 1, 00000 Città (IT)</p>
+          <p>© {new Date().getFullYear()} CalcioLab — Tutti i diritti riservati</p>
           <p style={{ marginTop: 4 }}>
             <a href="/privacy" style={s.footerLink}>Privacy Policy</a>
             {" · "}
-            <a href="/" style={s.footerLink}>Torna al login</a>
+            <a href="/" style={s.footerLink}>Torna alla home</a>
           </p>
         </div>
       </div>
@@ -149,10 +155,31 @@ function Section({ title, children }) {
 const s = {
   page: {
     minHeight: "100vh",
-    background: "#0f1115",
+    background: "#080b12",
     color: "white",
     fontFamily: "Inter, Arial, sans-serif",
     padding: "0 0 60px",
+  },
+  navbar: {
+    position: "sticky", top: 0, zIndex: 100,
+    background: "rgba(8,11,18,0.92)", backdropFilter: "blur(16px)",
+    borderBottom: "1px solid rgba(255,255,255,0.07)",
+    padding: "0 24px", height: 60,
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+  },
+  logoBtn: {
+    display: "flex", alignItems: "center", gap: 10,
+    background: "none", border: "none", cursor: "pointer", padding: 0,
+  },
+  logoBolt: {
+    width: 30, height: 30,
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
+    borderRadius: 8, display: "grid", placeItems: "center", fontSize: 14,
+  },
+  backBtn: {
+    background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
+    color: "#64748b", fontSize: 13, fontWeight: 700,
+    borderRadius: 10, padding: "6px 14px", cursor: "pointer",
   },
   container: { maxWidth: 780, margin: "0 auto", padding: "0 24px" },
   header: {
@@ -160,18 +187,13 @@ const s = {
     borderBottom: "1px solid rgba(255,255,255,0.08)",
     marginBottom: 36,
   },
-  logoRow: {
-    display: "flex", alignItems: "center", gap: 12, marginBottom: 28,
+  eyebrow: {
+    display: "inline-block", fontSize: 11, fontWeight: 900,
+    textTransform: "uppercase", letterSpacing: 1.5,
+    color: "#38bdf8", marginBottom: 12,
   },
-  brandMark: {
-    width: 38, height: 38, display: "grid", placeItems: "center",
-    borderRadius: 11, background: "rgba(255,255,255,0.1)",
-    border: "1px solid rgba(255,255,255,0.15)",
-    color: "#e0f2fe", fontWeight: 900, fontSize: 14, flexShrink: 0,
-  },
-  title:    { fontSize: 36, fontWeight: 900, margin: "0 0 8px", lineHeight: 1.1 },
-  meta:     { color: "#64748b", fontSize: 13, margin: "0 0 20px" },
-  backLink: { color: "#38bdf8", fontSize: 13, textDecoration: "none", fontWeight: 700 },
+  title:    { fontSize: "clamp(28px,5vw,42px)", fontWeight: 900, margin: "0 0 8px", lineHeight: 1.1 },
+  meta:     { color: "#64748b", fontSize: 13, margin: 0 },
   section:  { marginBottom: 36 },
   sectionTitle: {
     fontSize: 18, fontWeight: 900, margin: "0 0 14px",

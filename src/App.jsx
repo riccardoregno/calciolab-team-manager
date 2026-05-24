@@ -265,8 +265,8 @@ function App() {
 
   // Pagine pubbliche — accessibili senza autenticazione
   const _path = typeof window !== "undefined" ? window.location.pathname : "";
-  if (_path === "/terms")                  return <Suspense fallback={null}><Terms /></Suspense>;
-  if (_path === "/privacy")                return <Suspense fallback={null}><Privacy /></Suspense>;
+  if (_path === "/terms")                  return <BrowserRouter><Suspense fallback={null}><Terms /></Suspense></BrowserRouter>;
+  if (_path === "/privacy")                return <BrowserRouter><Suspense fallback={null}><Privacy /></Suspense></BrowserRouter>;
   if (_path.startsWith("/join"))           return <Suspense fallback={null}><JoinTeam /></Suspense>;
   if (_path.startsWith("/reset-password")) return <Suspense fallback={null}><ResetPassword /></Suspense>;
 
