@@ -45,6 +45,7 @@ const PLANS = [
     id: "premium",
     name: "Premium Coach",
     price: "14,90",
+    yearlyTotal: "149",
     priceNote: "o 3 rate da € 4,97 senza interessi",
     color: "#1d4ed8",
     colorEnd: "#1e40af",
@@ -64,6 +65,7 @@ const PLANS = [
     id: "club",
     name: "Club",
     price: "49,90",
+    yearlyTotal: "449",
     priceNote: "o 3 rate da € 16,63 senza interessi",
     color: "#15803d",
     colorEnd: "#166534",
@@ -325,15 +327,19 @@ export default function Premium({
     setPendingPlan(null);
   }
 
-  const yearlyDiscount = 20; // %
-
   function displayPrice(plan) {
     if (plan.price === "0") return "Gratis";
-    const n = parseFloat(plan.price.replace(",", "."));
-    if (activePeriod === "yearly") {
-      return `€ ${(n * 12 * (1 - yearlyDiscount / 100) / 12).toFixed(2).replace(".", ",")}`;
-    }
     return `€ ${plan.price}`;
+  }
+
+  /** Returns { total, monthlyEq, discountPct } for yearly plans, null otherwise */
+  function getYearlyMeta(plan) {
+    if (activePeriod !== "yearly" || !plan.yearlyTotal) return null;
+    const total   = parseFloat(plan.yearlyTotal.replace(",", "."));
+    const monthly = parseFloat(plan.price.replace(",", "."));
+    const monthlyEq   = (total / 12).toFixed(2).replace(".", ",");
+    const discountPct = Math.round((1 - total / (monthly * 12)) * 100);
+    return { total: `€ ${plan.yearlyTotal}`, monthlyEq: `€ ${monthlyEq}`, discountPct };
   }
 
   return (
@@ -476,7 +482,7 @@ export default function Premium({
           style={{ ...ps.periodBtn, ...(activePeriod === "yearly" ? ps.periodBtnActive : {}) }}
         >
           Annuale
-          <span style={ps.discountChip}>–{yearlyDiscount}%</span>
+          <span style={ps.discountChip}>fino al –25%</span>
         </button>
       </div>
 
@@ -519,16 +525,34 @@ export default function Premium({
                   )}
                 </div>
 
-                <div style={ps.priceBlock}>
-                  <strong style={ps.priceAmount}>{displayPrice(plan)}</strong>
-                  {plan.price !== "0" && (
-                    <span style={ps.pricePer}>/ mese</span>
-                  )}
-                </div>
-
-                {plan.price !== "0" && (
-                  <p style={ps.priceNote}>{plan.priceNote}</p>
-                )}
+                {(() => {
+                  const yearlyMeta = getYearlyMeta(plan);
+                  if (yearlyMeta) {
+                    return (
+                      <>
+                        <div style={ps.priceBlock}>
+                          <strong style={ps.priceAmount}>{yearlyMeta.total}</strong>
+                          <span style={ps.pricePer}>/ anno</span>
+                          <span style={{ ...ps.discountChipInline }}>–{yearlyMeta.discountPct}%</span>
+                        </div>
+                        <p style={ps.priceMonthlyEq}>≈ {yearlyMeta.monthlyEq} / mese</p>
+                      </>
+                    );
+                  }
+                  return (
+                    <>
+                      <div style={ps.priceBlock}>
+                        <strong style={ps.priceAmount}>{displayPrice(plan)}</strong>
+                        {plan.price !== "0" && (
+                          <span style={ps.pricePer}>/ mese</span>
+                        )}
+                      </div>
+                      {plan.price !== "0" && (
+                        <p style={ps.priceNote}>{plan.priceNote}</p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Body */}
@@ -891,6 +915,24 @@ const ps = {
     opacity: 0.7,
     lineHeight: 1.4,
     fontWeight: 600,
+  },
+  priceMonthlyEq: {
+    margin: "4px 0 0",
+    fontSize: 13,
+    fontWeight: 700,
+    color: "rgba(255,255,255,0.65)",
+    lineHeight: 1.4,
+  },
+  discountChipInline: {
+    background: "rgba(34,197,94,0.22)",
+    color: "#86efac",
+    fontSize: 11,
+    fontWeight: 900,
+    padding: "3px 8px",
+    borderRadius: 999,
+    lineHeight: 1.4,
+    alignSelf: "center",
+    marginLeft: 4,
   },
   planBody: {
     flex: 1,
