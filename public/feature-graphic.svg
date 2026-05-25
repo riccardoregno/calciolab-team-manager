@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#080b12"/>
+      <stop offset="100%" stop-color="#0d1525"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#a78bfa"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="30%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#2563eb" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#2563eb" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="80%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="500" fill="url(#bg)"/>
+  <rect width="1024" height="500" fill="url(#glow)"/>
+  <rect width="1024" height="500" fill="url(#glow2)"/>
+
+  <!-- Subtle grid -->
+  <g stroke="rgba(255,255,255,0.025)" stroke-width="1">
+    <line x1="0" y1="166" x2="1024" y2="166"/>
+    <line x1="0" y1="332" x2="1024" y2="332"/>
+    <line x1="341" y1="0" x2="341" y2="500"/>
+    <line x1="682" y1="0" x2="682" y2="500"/>
+  </g>
+
+  <!-- ── LEFT: Brand ── -->
+  <!-- Logo bolt -->
+  <rect x="60" y="140" width="56" height="56" rx="14" fill="url(#bolt)"/>
+  <text x="88" y="180" text-anchor="middle" font-size="28">⚡</text>
+
+  <!-- CalcioLab -->
+  <text x="130" y="180" font-family="Inter,Arial,sans-serif" font-size="36" font-weight="900" fill="white">CalcioLab</text>
+
+  <!-- Badge -->
+  <rect x="60" y="215" width="210" height="28" rx="14" fill="rgba(37,99,235,0.18)" stroke="rgba(96,165,250,0.35)" stroke-width="1"/>
+  <text x="165" y="234" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="700" fill="#93c5fd" letter-spacing="1">⚽  PER ALLENATORI DI CALCIO</text>
+
+  <!-- Headline -->
+  <text x="60" y="300" font-family="Inter,Arial,sans-serif" font-size="38" font-weight="900" fill="white">Gestisci la tua</text>
+  <text x="60" y="348" font-family="Inter,Arial,sans-serif" font-size="38" font-weight="900" fill="url(#accent)">squadra. Ovunque.</text>
+
+  <!-- Subline -->
+  <text x="60" y="390" font-family="Inter,Arial,sans-serif" font-size="15" fill="#64748b">Rosa · Allenamenti · Match Day · Statistiche</text>
+
+  <!-- CTA -->
+  <rect x="60" y="415" width="176" height="44" rx="12" fill="url(#green)"/>
+  <text x="148" y="443" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="800" fill="white">Gratis per iniziare →</text>
+
+  <!-- ── RIGHT: Mock phone UI ── -->
+  <!-- Phone frame -->
+  <rect x="520" y="30" width="234" height="440" rx="28" fill="#0d1220" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>
+  <!-- Notch -->
+  <rect x="596" y="30" width="82" height="24" rx="0" fill="#0d1220"/>
+  <rect x="608" y="34" width="58" height="16" rx="8" fill="rgba(255,255,255,0.06)"/>
+  <!-- Status line -->
+  <rect x="520" y="54" width="234" height="1" fill="rgba(255,255,255,0.06)"/>
+
+  <!-- App header bar -->
+  <rect x="520" y="55" width="234" height="40" rx="0" fill="rgba(255,255,255,0.03)"/>
+  <text x="537" y="81" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="900" fill="white">Dashboard</text>
+  <rect x="704" y="65" width="36" height="20" rx="10" fill="rgba(37,99,235,0.25)" stroke="rgba(96,165,250,0.3)" stroke-width="1"/>
+  <text x="722" y="79" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="8" font-weight="700" fill="#93c5fd">⚡</text>
+
+  <!-- KPI row -->
+  <g transform="translate(530, 108)">
+    <rect x="0" y="0" width="48" height="52" rx="10" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+    <text x="24" y="20" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="7" fill="#475569">GIOCATORI</text>
+    <text x="24" y="42" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="900" fill="#38bdf8">24</text>
+
+    <rect x="56" y="0" width="48" height="52" rx="10" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+    <text x="80" y="20" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="7" fill="#475569">PARTITE</text>
+    <text x="80" y="42" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="900" fill="#4ade80">18</text>
+
+    <rect x="112" y="0" width="48" height="52" rx="10" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+    <text x="136" y="20" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="7" fill="#475569">PRESENZE</text>
+    <text x="136" y="42" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="900" fill="#fbbf24">87%</text>
+  </g>
+
+  <!-- Chart -->
+  <rect x="530" y="172" width="214" height="90" rx="10" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+  <text x="542" y="189" font-family="Inter,Arial,sans-serif" font-size="8" font-weight="700" fill="#475569" letter-spacing="0.5">ANDAMENTO</text>
+  <g transform="translate(534, 198)">
+    <rect x="0"   y="38" width="16" height="22" rx="3" fill="rgba(56,189,248,0.35)"/>
+    <rect x="20"  y="25" width="16" height="35" rx="3" fill="rgba(56,189,248,0.45)"/>
+    <rect x="40"  y="30" width="16" height="30" rx="3" fill="rgba(56,189,248,0.5)"/>
+    <rect x="60"  y="15" width="16" height="45" rx="3" fill="rgba(56,189,248,0.6)"/>
+    <rect x="80"  y="20" width="16" height="40" rx="3" fill="rgba(56,189,248,0.65)"/>
+    <rect x="100" y="8"  width="16" height="52" rx="3" fill="rgba(56,189,248,0.75)"/>
+    <rect x="120" y="12" width="16" height="48" rx="3" fill="rgba(56,189,248,0.8)"/>
+    <rect x="140" y="4"  width="16" height="56" rx="3" fill="rgba(56,189,248,0.9)"/>
+    <rect x="160" y="0"  width="16" height="60" rx="3" fill="rgba(56,189,248,1.0)"/>
+  </g>
+
+  <!-- Training next -->
+  <rect x="530" y="274" width="214" height="68" rx="10" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+  <rect x="530" y="274" width="4" height="68" rx="2" fill="#2563eb"/>
+  <text x="542" y="292" font-family="Inter,Arial,sans-serif" font-size="8" font-weight="700" fill="#475569">PROSSIMO ALLENAMENTO</text>
+  <text x="542" y="310" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="800" fill="white">Giovedì · 18:30</text>
+  <text x="542" y="326" font-family="Inter,Arial,sans-serif" font-size="10" fill="#64748b">Tecnica + possesso · 21 convocati</text>
+  <rect x="542" y="334" width="186" height="6" rx="3" fill="rgba(255,255,255,0.06)"/>
+  <rect x="542" y="334" width="162" height="6" rx="3" fill="url(#green)"/>
+
+  <!-- Players list -->
+  <rect x="530" y="354" width="214" height="100" rx="10" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+  <text x="542" y="372" font-family="Inter,Arial,sans-serif" font-size="8" font-weight="700" fill="#475569">ROSA</text>
+  <text x="542" y="392" font-family="Inter,Arial,sans-serif" font-size="11" fill="#94a3b8">Bianchi M. — ATT</text>
+  <text x="726" y="392" text-anchor="end" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" fill="#4ade80">Disp.</text>
+  <line x1="542" y1="399" x2="726" y2="399" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  <text x="542" y="416" font-family="Inter,Arial,sans-serif" font-size="11" fill="#94a3b8">Rossi F. — CC</text>
+  <text x="726" y="416" text-anchor="end" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" fill="#fbbf24">Indis.</text>
+  <line x1="542" y1="423" x2="726" y2="423" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  <text x="542" y="440" font-family="Inter,Arial,sans-serif" font-size="11" fill="#94a3b8">Verdi L. — DC</text>
+  <text x="726" y="440" text-anchor="end" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700" fill="#4ade80">Disp.</text>
+
+  <!-- Bottom accent line on phone -->
+  <rect x="520" y="458" width="234" height="5" rx="0" fill="url(#bolt)"/>
+  <rect x="520" y="463" width="234" height="7" rx="0" fill="rgba(0,0,0,0)"/>
+
+  <!-- ── Feature icons strip ── -->
+  <g transform="translate(808, 80)">
+    <!-- Icon cards -->
+    <rect x="0"  y="0"   width="68" height="68" rx="16" fill="rgba(37,99,235,0.12)" stroke="rgba(96,165,250,0.2)" stroke-width="1"/>
+    <text x="34" y="32"  text-anchor="middle" font-size="22">👥</text>
+    <text x="34" y="52"  text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="9" font-weight="700" fill="#94a3b8">Rosa</text>
+    <text x="34" y="63"  text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="8" fill="#475569">Giocatori</text>
+
+    <rect x="80" y="0"   width="68" height="68" rx="16" fill="rgba(167,139,250,0.12)" stroke="rgba(167,139,250,0.2)" stroke-width="1"/>
+    <text x="114" y="32" text-anchor="middle" font-size="22">📋</text>
+    <text x="114" y="52" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="9" font-weight="700" fill="#94a3b8">Training</text>
+    <text x="114" y="63" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="8" fill="#475569">Sedute</text>
+
+    <rect x="0"  y="80"  width="68" height="68" rx="16" fill="rgba(34,197,94,0.12)" stroke="rgba(34,197,94,0.2)" stroke-width="1"/>
+    <text x="34" y="112" text-anchor="middle" font-size="22">⚽</text>
+    <text x="34" y="132" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="9" font-weight="700" fill="#94a3b8">Match Day</text>
+    <text x="34" y="143" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="8" fill="#475569">Gare</text>
+
+    <rect x="80" y="80"  width="68" height="68" rx="16" fill="rgba(251,191,36,0.12)" stroke="rgba(251,191,36,0.2)" stroke-width="1"/>
+    <text x="114" y="112" text-anchor="middle" font-size="22">📊</text>
+    <text x="114" y="132" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="9" font-weight="700" fill="#94a3b8">Stats</text>
+    <text x="114" y="143" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="8" fill="#475569">Grafici</text>
+
+    <rect x="0"  y="160" width="68" height="68" rx="16" fill="rgba(239,68,68,0.12)" stroke="rgba(239,68,68,0.2)" stroke-width="1"/>
+    <text x="34" y="192" text-anchor="middle" font-size="22">🏃</text>
+    <text x="34" y="212" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="9" font-weight="700" fill="#94a3b8">Fisico</text>
+    <text x="34" y="223" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="8" fill="#475569">Test</text>
+
+    <rect x="80" y="160" width="68" height="68" rx="16" fill="rgba(56,189,248,0.12)" stroke="rgba(56,189,248,0.2)" stroke-width="1"/>
+    <text x="114" y="192" text-anchor="middle" font-size="22">✨</text>
+    <text x="114" y="212" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="9" font-weight="700" fill="#94a3b8">AI Builder</text>
+    <text x="114" y="223" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="8" fill="#475569">Sedute AI</text>
+
+    <rect x="0"  y="240" width="68" height="68" rx="16" fill="rgba(124,58,237,0.12)" stroke="rgba(124,58,237,0.2)" stroke-width="1"/>
+    <text x="34" y="272" text-anchor="middle" font-size="22">🎯</text>
+    <text x="34" y="292" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="9" font-weight="700" fill="#94a3b8">Obiettivi</text>
+    <text x="34" y="303" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="8" fill="#475569">Stagione</text>
+
+    <rect x="80" y="240" width="68" height="68" rx="16" fill="rgba(20,184,166,0.12)" stroke="rgba(20,184,166,0.2)" stroke-width="1"/>
+    <text x="114" y="272" text-anchor="middle" font-size="22">🤝</text>
+    <text x="114" y="292" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="9" font-weight="700" fill="#94a3b8">Staff</text>
+    <text x="114" y="303" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="8" fill="#475569">Multi-utente</text>
+  </g>
+
+  <!-- "Gratis per iniziare" bottom strip -->
+  <rect x="0" y="468" width="1024" height="32" fill="rgba(37,99,235,0.08)" stroke="rgba(37,99,235,0.15)" stroke-width="0"/>
+  <text x="512" y="489" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700" fill="#64748b">
+    🆓 Piano Starter gratuito per sempre · 14 giorni di trial premium · Nessuna carta richiesta
+  </text>
+</svg>
