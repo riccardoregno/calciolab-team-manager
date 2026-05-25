@@ -29,7 +29,7 @@ select cron.schedule(
   '0 8 * * *',                 -- every day at 08:00 UTC
   $$
   select net.http_post(
-    url     := 'https://<PROJECT_REF>.supabase.co/functions/v1/check-trials',
+    url     := 'https://sglevvqhlzpllrjrgbod.supabase.co/functions/v1/check-trials',
     headers := json_build_object(
                  'Content-Type',      'application/json',
                  'x-internal-secret', current_setting('app.check_trials_secret', true)
