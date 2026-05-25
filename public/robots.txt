@@ -1,0 +1,34 @@
+User-agent: *
+
+# Allow public pages
+Allow: /$
+Allow: /login
+Allow: /signup
+Allow: /privacy
+Allow: /terms
+Allow: /offline.html
+
+# Block all authenticated app pages
+Disallow: /dashboard
+Disallow: /players
+Disallow: /training
+Disallow: /trainings
+Disallow: /sessions
+Disallow: /matches
+Disallow: /statistics
+Disallow: /settings
+Disallow: /premium
+Disallow: /onboarding
+Disallow: /staff
+Disallow: /physical
+Disallow: /season-goals
+Disallow: /set-plays
+Disallow: /tactical
+Disallow: /gps
+Disallow: /export
+Disallow: /vip
+
+# Block API and well-known assets
+Disallow: /.well-known/
+
+Sitemap: https://calciolab.it/sitemap.xml
