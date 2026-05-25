@@ -193,6 +193,7 @@ async function handleSubscriptionUpdated(subscription: Record<string, unknown>) 
 async function handleSubscriptionDeleted(subscription: Record<string, unknown>) {
   const metadata = subscription["metadata"] as Record<string, string> | undefined;
   const subscriptionId = subscription["id"] as string | undefined;
+  const planId = metadata?.plan || "premium";
   const teamId = metadata?.team_id || await findTeamIdBySubscription(subscriptionId);
 
   if (!teamId) throw new Error("team_id mancante nella subscription cancellata");
@@ -208,6 +209,17 @@ async function handleSubscriptionDeleted(subscription: Record<string, unknown>) 
     .eq("id", teamId);
 
   if (error) throw error;
+
+  // Email conferma cancellazione (fire-and-forget)
+  const ownerInfo = await getTeamOwnerInfo(teamId);
+  if (ownerInfo.email) {
+    await sendTransactionalEmail({
+      type: "subscription_canceled",
+      to: ownerInfo.email,
+      firstName: ownerInfo.firstName,
+      canceledPlanName: PLAN_LABELS[planId] || planId,
+    });
+  }
 }
 
 async function handlePaymentFailed(invoice: Record<string, unknown>) {

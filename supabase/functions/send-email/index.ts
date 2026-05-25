@@ -4,7 +4,7 @@
  *
  * Body:
  * {
- *   type: "welcome" | "subscription_activated" | "trial_expiring" | "payment_failed" | "custom",
+ *   type: "welcome" | "subscription_activated" | "subscription_canceled" | "trial_expiring" | "payment_failed" | "custom",
  *   to: string,
  *   firstName?: string,
  *   planName?: string,        // "Premium Coach" | "Club"
@@ -165,6 +165,34 @@ function templateTrialExpiring(
   return { subject, html };
 }
 
+/* ── Template: Subscription canceled ────────────── */
+function templateSubscriptionCanceled(firstName = "Coach", planName = "Premium Coach") {
+  const subject = `Il tuo piano ${planName} è stato cancellato`;
+  const html = baseLayout(`
+    ${h1("Abbonamento cancellato 📋")}
+    ${p(`Ciao ${firstName}, il tuo piano <strong style="color:white;">${planName}</strong> è stato cancellato.`)}
+    ${p("Il tuo account è tornato al piano Starter gratuito. I tuoi dati (rosa, allenamenti, partite) sono stati conservati e rimangono accessibili.")}
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+      <tr>
+        <td style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px;">
+          <p style="margin:0 0 8px;font-size:13px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Piano Starter — Sempre gratuito</p>
+          <p style="margin:0;font-size:14px;color:#94a3b8;line-height:1.7;">
+            ✓ Rosa completa e disponibilità<br>
+            ✓ Calendario stagionale<br>
+            ✓ Sedute base e libreria esercizi<br>
+            ✓ Lavagna tattica interattiva
+          </p>
+        </td>
+      </tr>
+    </table>
+    ${p("Se hai cambiato idea, puoi riattivare un piano Premium o Club in qualsiasi momento.")}
+    ${btnPrimary("Riattiva abbonamento →", `${APP_URL}/premium`)}
+    ${divider()}
+    ${p("Hai avuto problemi o hai una domanda? Scrivici a <a href=\"mailto:info@calciolab.it\">info@calciolab.it</a>.")}
+  `, `Il piano ${planName} è stato cancellato — il piano Starter è attivo`);
+  return { subject, html };
+}
+
 /* ── Template: Payment failed ────────────────────── */
 function templatePaymentFailed(firstName = "Coach", manageUrl = `${APP_URL}/premium`) {
   const subject = "⚠️ Problema con il tuo pagamento CalcioLab";
@@ -202,6 +230,7 @@ Deno.serve(async (req: Request) => {
     to: string;
     firstName?: string;
     planName?: string;
+    canceledPlanName?: string;
     trialEndsAt?: string;
     daysLeft?: number;
     upgradeUrl?: string;
@@ -228,6 +257,9 @@ Deno.serve(async (req: Request) => {
       break;
     case "trial_expiring":
       ({ subject, html } = templateTrialExpiring(body.firstName, body.planName, body.daysLeft ?? 3, body.upgradeUrl));
+      break;
+    case "subscription_canceled":
+      ({ subject, html } = templateSubscriptionCanceled(body.firstName, body.canceledPlanName || body.planName));
       break;
     case "payment_failed":
       ({ subject, html } = templatePaymentFailed(body.firstName, body.manageUrl));

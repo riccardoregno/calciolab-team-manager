@@ -14,6 +14,7 @@ import Button from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import PWAInstallBanner from "./components/ui/PWAInstallBanner";
 import PushBanner from "./components/ui/PushBanner";
+import BillingBanner from "./components/ui/BillingBanner";
 
 import { useTeamData } from "./hooks/useTeamData";
 import { useAuth } from "./hooks/useAuth";
@@ -439,6 +440,9 @@ function App() {
             developmentRolePreview={developmentRolePreview}
             onDevelopmentRolePreviewChange={updateDevelopmentRolePreview}
           />
+
+          {/* Banner globale trial / billing — visibile su tutte le pagine */}
+          <BillingBanner appSettings={previewAppSettings} />
 
           <div style={styles.storageStatus}>
             <Badge tone={storageSource === "supabase" ? "green" : "orange"}>
