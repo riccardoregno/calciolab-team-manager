@@ -70,6 +70,7 @@ const SetPlays = lazy(() => import("./pages/SetPlays"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const developmentPreviewStorageKey = "calciolab_plan_preview";
 const developmentPreviewPlans = ["free", "premium", "club"];
@@ -905,6 +906,9 @@ function App() {
                   />)
                 }
               />
+
+              {/* Catch-all → 404 */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
           </ErrorBoundary>

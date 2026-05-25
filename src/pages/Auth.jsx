@@ -181,6 +181,23 @@ function Auth() {
 
           // Il token viene pulito solo dopo l'accettazione backend dell'invito.
           // Con conferma email attiva, l'utente potrebbe completare il join al login successivo.
+
+          // Invia email di benvenuto (fire-and-forget, non blocca la UI)
+          fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY || "",
+              },
+              body: JSON.stringify({
+                type: "welcome",
+                to: email,
+                firstName,
+              }),
+            }
+          ).catch(() => {}); // silenzioso — la registrazione va avanti anche se fallisce
         }
 
         setFeedback({ type: "ok", text: t("pages.auth.registrationComplete") });

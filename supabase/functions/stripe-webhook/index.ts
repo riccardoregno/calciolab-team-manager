@@ -6,6 +6,43 @@ const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+const PLAN_LABELS: Record<string, string> = {
+  premium: "Premium Coach",
+  club: "Club",
+};
+
+/** Invia email transazionale via send-email Edge Function (fire-and-forget) */
+async function sendTransactionalEmail(payload: Record<string, unknown>) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return;
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch { /* fire-and-forget */ }
+}
+
+/** Recupera email e first_name di un utente dal team owner */
+async function getTeamOwnerInfo(teamId: string): Promise<{ email?: string; firstName?: string }> {
+  if (!supabase) return {};
+  try {
+    // team_members con role=owner → profiles
+    const { data } = await supabase
+      .from("team_members")
+      .select("user_id, profiles:profiles(email, first_name)")
+      .eq("team_id", teamId)
+      .eq("role", "owner")
+      .limit(1)
+      .maybeSingle();
+    const profile = (data as Record<string, unknown> | null)?.profiles as Record<string, string> | undefined;
+    return { email: profile?.email, firstName: profile?.first_name };
+  } catch { return {}; }
+}
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
@@ -77,6 +114,10 @@ Deno.serve(async (req: Request) => {
     await handleSubscriptionDeleted(event.data.object);
   }
 
+  if (event.type === "invoice.payment_failed") {
+    await handlePaymentFailed(event.data.object);
+  }
+
   return new Response(JSON.stringify({ received: true }), {
     headers: { ...CORS, "Content-Type": "application/json" },
   });
@@ -109,6 +150,18 @@ async function handleCheckoutCompleted(eventId: string, session: Record<string, 
 
   if (error) throw error;
   await assignVipPointsFromCheckout({ teamId, eventId, sessionId, planId });
+
+  // Email conferma abbonamento (fire-and-forget)
+  const ownerInfo = await getTeamOwnerInfo(teamId);
+  if (ownerInfo.email) {
+    await sendTransactionalEmail({
+      type: "subscription_activated",
+      to: ownerInfo.email,
+      firstName: ownerInfo.firstName,
+      planName: PLAN_LABELS[planId] || planId,
+      manageUrl: `${SUPABASE_URL?.replace(".supabase.co", "")}…`, // overridden below
+    });
+  }
 
   return { duplicate: false };
 }
@@ -155,6 +208,21 @@ async function handleSubscriptionDeleted(subscription: Record<string, unknown>) 
     .eq("id", teamId);
 
   if (error) throw error;
+}
+
+async function handlePaymentFailed(invoice: Record<string, unknown>) {
+  const subscriptionId = invoice["subscription"] as string | undefined;
+  const teamId = await findTeamIdBySubscription(subscriptionId);
+  if (!teamId) return;
+  const ownerInfo = await getTeamOwnerInfo(teamId);
+  if (ownerInfo.email) {
+    await sendTransactionalEmail({
+      type: "payment_failed",
+      to: ownerInfo.email,
+      firstName: ownerInfo.firstName,
+      manageUrl: "https://calciolab.it/premium",
+    });
+  }
 }
 
 async function findTeamIdBySubscription(subscriptionId?: string) {
