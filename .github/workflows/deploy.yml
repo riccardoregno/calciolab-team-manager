@@ -1,0 +1,64 @@
+name: Deploy to Vercel
+
+# Triggered automatically when CI passes on main, or manually via GitHub UI
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy (Production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # On automatic trigger: only deploy if CI succeeded
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # workflow_run doesn't expose the SHA automatically — pin to it
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL:                    ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY:               ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_STRIPE_PRICE_PREMIUM_MONTHLY:    ${{ secrets.VITE_STRIPE_PRICE_PREMIUM_MONTHLY }}
+          VITE_STRIPE_PRICE_PREMIUM_YEARLY:     ${{ secrets.VITE_STRIPE_PRICE_PREMIUM_YEARLY }}
+          VITE_STRIPE_PRICE_CLUB_MONTHLY:       ${{ secrets.VITE_STRIPE_PRICE_CLUB_MONTHLY }}
+          VITE_STRIPE_PRICE_CLUB_YEARLY:        ${{ secrets.VITE_STRIPE_PRICE_CLUB_YEARLY }}
+          VITE_STRIPE_CHECKOUT_URL:             ${{ secrets.VITE_STRIPE_CHECKOUT_URL }}
+          VITE_STRIPE_CANCEL_SUBSCRIPTION_URL:  ${{ secrets.VITE_STRIPE_CANCEL_SUBSCRIPTION_URL }}
+          VITE_STRIPE_BILLING_PORTAL_URL:       ${{ secrets.VITE_STRIPE_BILLING_PORTAL_URL }}
+          VITE_UPDATE_VIP_URL:                  ${{ secrets.VITE_UPDATE_VIP_URL }}
+          VITE_ACCEPT_TEAM_INVITE_URL:          ${{ secrets.VITE_ACCEPT_TEAM_INVITE_URL }}
+          VITE_UNLOCK_PREMIUM:                  "false"
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token:      ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id:     ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args:       '--prod'
+          working-directory: .
