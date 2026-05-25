@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390">
+<title>CalcioLab — Allenamento</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 390px; min-height: 844px;
+    background: #080b12;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    color: #f0f4ff; overflow-x: hidden;
+  }
+  .status-bar { height: 44px; background: #080b12; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; font-size: 15px; font-weight: 600; }
+  .topbar { height: 56px; background: #0d1117; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; padding: 0 20px; gap: 10px; }
+  .back-btn { font-size: 22px; cursor: pointer; color: #3b82f6; }
+  .topbar-title { font-size: 18px; font-weight: 700; flex: 1; }
+  .topbar-action { font-size: 13px; color: #3b82f6; font-weight: 600; }
+
+  .content { padding: 16px; }
+
+  /* Session header */
+  .session-header {
+    background: linear-gradient(135deg, rgba(37,99,235,0.2), rgba(124,58,237,0.15));
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 16px; padding: 18px; margin-bottom: 16px;
+  }
+  .session-date { font-size: 12px; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+  .session-title { font-size: 19px; font-weight: 700; margin-bottom: 12px; }
+  .session-meta { display: flex; gap: 16px; }
+  .session-meta-item { display: flex; align-items: center; gap: 5px; font-size: 13px; color: #9ca3af; }
+  .session-meta-item strong { color: #e2e8f0; }
+
+  /* Presenze */
+  .attendance-row {
+    background: #0d1117; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.07);
+    padding: 14px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .att-label { flex: 1; font-size: 14px; font-weight: 600; }
+  .att-sub { font-size: 12px; color: #6b7280; }
+  .att-progress-wrap { flex: 1; }
+  .att-progress-bar { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+  .att-progress-fill { height: 100%; background: linear-gradient(90deg, #22c55e, #16a34a); border-radius: 3px; }
+  .att-count { font-size: 20px; font-weight: 800; color: #22c55e; }
+
+  /* Section */
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .section-title { font-size: 15px; font-weight: 600; }
+  .section-action { font-size: 13px; color: #3b82f6; }
+
+  /* Exercise card */
+  .exercise-card {
+    background: #0d1117; border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.07);
+    padding: 14px; margin-bottom: 10px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .ex-num {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .ex-num.warm  { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .ex-num.tact  { background: rgba(37,99,235,0.15);  color: #60a5fa; }
+  .ex-num.phys  { background: rgba(239,68,68,0.12);  color: #f87171; }
+  .ex-num.cool  { background: rgba(34,197,94,0.12);  color: #4ade80; }
+  .ex-info { flex: 1; }
+  .ex-title { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+  .ex-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+  .ex-tag {
+    font-size: 10px; border-radius: 5px; padding: 2px 7px;
+    background: rgba(255,255,255,0.06); color: #9ca3af;
+    font-weight: 500;
+  }
+  .ex-duration { font-size: 12px; color: #6b7280; }
+  .ex-duration strong { color: #e2e8f0; }
+  .ex-expand { font-size: 18px; color: #4b5563; flex-shrink: 0; align-self: center; }
+
+  /* AI Banner */
+  .ai-banner {
+    background: linear-gradient(135deg, rgba(168,85,247,0.18), rgba(59,130,246,0.12));
+    border: 1px solid rgba(168,85,247,0.25);
+    border-radius: 14px; padding: 14px;
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  }
+  .ai-icon { font-size: 28px; flex-shrink: 0; }
+  .ai-text { flex: 1; }
+  .ai-title { font-size: 14px; font-weight: 700; color: #e2e8f0; }
+  .ai-sub { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+  .ai-btn {
+    background: rgba(168,85,247,0.2); border: 1px solid rgba(168,85,247,0.3);
+    color: #c084fc; font-size: 12px; font-weight: 600;
+    border-radius: 8px; padding: 6px 12px; flex-shrink: 0;
+  }
+
+  .bottom-nav { position: fixed; bottom: 0; left: 0; width: 390px; height: 80px; background: #0d1117; border-top: 1px solid rgba(255,255,255,0.07); display: flex; align-items: flex-start; padding-top: 10px; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: #4b5563; }
+  .nav-item.active { color: #3b82f6; }
+  .nav-icon { font-size: 20px; }
+</style>
+</head>
+<body>
+
+<div class="status-bar">
+  <span>9:41</span>
+  <div style="display:flex;gap:6px;align-items:center">
+    <svg width="17" height="12" viewBox="0 0 17 12" fill="none"><rect x="0" y="3" width="3" height="9" rx="1" fill="#fff" opacity=".4"/><rect x="4.5" y="2" width="3" height="10" rx="1" fill="#fff" opacity=".6"/><rect x="9" y="0.5" width="3" height="11.5" rx="1" fill="#fff" opacity=".8"/><rect x="13.5" y="0.5" width="3" height="11.5" rx="1" fill="#fff"/></svg>
+    <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="#fff" stroke-opacity=".35"/><rect x="2" y="2" width="17" height="8" rx="2" fill="#fff"/><path d="M23 4.5V7.5C23.8 7.2 24.5 6.4 24.5 6C24.5 5.6 23.8 4.8 23 4.5Z" fill="#fff" opacity=".4"/></svg>
+  </div>
+</div>
+
+<div class="topbar">
+  <span class="back-btn">‹</span>
+  <span class="topbar-title">📋 Allenamento</span>
+  <span class="topbar-action">Salva</span>
+</div>
+
+<div class="content">
+
+  <!-- Session header -->
+  <div class="session-header">
+    <div class="session-date">📅 Martedì 27 Maggio 2026</div>
+    <div class="session-title">Lavoro tattico + finalizzazione</div>
+    <div class="session-meta">
+      <div class="session-meta-item">⏱ <strong>90 min</strong></div>
+      <div class="session-meta-item">👥 <strong>17 presenti</strong></div>
+      <div class="session-meta-item">📍 <strong>Campo B</strong></div>
+    </div>
+  </div>
+
+  <!-- AI Banner -->
+  <div class="ai-banner">
+    <div class="ai-icon">✨</div>
+    <div class="ai-text">
+      <div class="ai-title">AI Session Builder</div>
+      <div class="ai-sub">Genera seduta personalizzata in secondi</div>
+    </div>
+    <div class="ai-btn">Genera →</div>
+  </div>
+
+  <!-- Presenze -->
+  <div class="attendance-row">
+    <div>
+      <div class="att-label">Presenze</div>
+      <div class="att-sub">17 / 20 giocatori</div>
+    </div>
+    <div class="att-progress-wrap">
+      <div class="att-progress-bar">
+        <div class="att-progress-fill" style="width:85%"></div>
+      </div>
+    </div>
+    <div class="att-count">85%</div>
+  </div>
+
+  <!-- Esercizi -->
+  <div class="section-header">
+    <span class="section-title">Esercizi · 4</span>
+    <span class="section-action">+ Aggiungi</span>
+  </div>
+
+  <div class="exercise-card">
+    <div class="ex-num warm">1</div>
+    <div class="ex-info">
+      <div class="ex-title">Riscaldamento attivo</div>
+      <div class="ex-tags">
+        <span class="ex-tag">Mobilità</span>
+        <span class="ex-tag">Fisico</span>
+      </div>
+      <div class="ex-duration">⏱ <strong>15 min</strong> · Intensità bassa</div>
+    </div>
+    <div class="ex-expand">›</div>
+  </div>
+
+  <div class="exercise-card" style="border-color: rgba(37,99,235,0.25)">
+    <div class="ex-num tact">2</div>
+    <div class="ex-info">
+      <div class="ex-title">Possesso palla 5 vs 5</div>
+      <div class="ex-tags">
+        <span class="ex-tag">Tattico</span>
+        <span class="ex-tag">Possesso</span>
+        <span class="ex-tag">Pressione</span>
+      </div>
+      <div class="ex-duration">⏱ <strong>25 min</strong> · Intensità media</div>
+    </div>
+    <div class="ex-expand">›</div>
+  </div>
+
+  <div class="exercise-card">
+    <div class="ex-num phys">3</div>
+    <div class="ex-info">
+      <div class="ex-title">Partitella 8 vs 8</div>
+      <div class="ex-tags">
+        <span class="ex-tag">Gioco</span>
+        <span class="ex-tag">Finalizzazione</span>
+      </div>
+      <div class="ex-duration">⏱ <strong>40 min</strong> · Intensità alta</div>
+    </div>
+    <div class="ex-expand">›</div>
+  </div>
+
+  <div class="exercise-card">
+    <div class="ex-num cool">4</div>
+    <div class="ex-info">
+      <div class="ex-title">Defaticamento e stretching</div>
+      <div class="ex-tags">
+        <span class="ex-tag">Recovery</span>
+      </div>
+      <div class="ex-duration">⏱ <strong>10 min</strong> · Intensità bassa</div>
+    </div>
+    <div class="ex-expand">›</div>
+  </div>
+
+  <div style="height:90px"></div>
+</div>
+
+<div class="bottom-nav">
+  <div class="nav-item"><span class="nav-icon">🏠</span><span>Home</span></div>
+  <div class="nav-item"><span class="nav-icon">👥</span><span>Rosa</span></div>
+  <div class="nav-item active"><span class="nav-icon">📋</span><span>Training</span></div>
+  <div class="nav-item"><span class="nav-icon">⚽</span><span>Match</span></div>
+  <div class="nav-item"><span class="nav-icon">📊</span><span>Stats</span></div>
+</div>
+
+</body>
+</html>

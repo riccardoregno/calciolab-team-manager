@@ -146,13 +146,19 @@ function templateSubscriptionActivated(firstName = "Coach", planName = "Premium 
 }
 
 /* ── Template: Trial expiring ────────────────────── */
-function templateTrialExpiring(firstName = "Coach", planName = "Premium Coach", daysLeft = 3) {
+function templateTrialExpiring(
+  firstName = "Coach",
+  planName  = "Premium Coach",
+  daysLeft  = 3,
+  upgradeUrl = `${APP_URL}/premium`,
+) {
   const subject = `Il tuo trial ${planName} scade tra ${daysLeft} ${daysLeft === 1 ? "giorno" : "giorni"}`;
+  const urgencyColor = daysLeft <= 1 ? "#ef4444" : "#f59e0b";
   const html = baseLayout(`
-    ${h1(`Il tuo trial scade tra ${daysLeft} ${daysLeft === 1 ? "giorno" : "giorni"} ⏰`)}
+    ${h1(`Il tuo trial scade tra <span style="color:${urgencyColor}">${daysLeft} ${daysLeft === 1 ? "giorno" : "giorni"}</span> ⏰`)}
     ${p(`Ciao ${firstName}, il tuo periodo di prova gratuito del piano <strong style="color:white;">${planName}</strong> sta per terminare.`)}
-    ${p("Per continuare ad usare tutte le funzionalità avanzate, attiva il tuo abbonamento.")}
-    ${btnPrimary("Gestisci abbonamento →", `${APP_URL}/premium`)}
+    ${p("Per continuare ad usare tutte le funzionalità avanzate, attiva il tuo abbonamento. Non perdere i dati già inseriti.")}
+    ${btnPrimary("Attiva abbonamento →", upgradeUrl)}
     ${divider()}
     ${p("Se non attivi il piano, il tuo account tornerà automaticamente al piano Starter gratuito. I tuoi dati non andranno persi.")}
   `, `Il tuo trial scade tra ${daysLeft} giorni`);
@@ -198,6 +204,7 @@ Deno.serve(async (req: Request) => {
     planName?: string;
     trialEndsAt?: string;
     daysLeft?: number;
+    upgradeUrl?: string;
     manageUrl?: string;
     subject?: string;
     html?: string;
@@ -220,7 +227,7 @@ Deno.serve(async (req: Request) => {
       ({ subject, html } = templateSubscriptionActivated(body.firstName, body.planName, body.manageUrl));
       break;
     case "trial_expiring":
-      ({ subject, html } = templateTrialExpiring(body.firstName, body.planName, body.daysLeft ?? 3));
+      ({ subject, html } = templateTrialExpiring(body.firstName, body.planName, body.daysLeft ?? 3, body.upgradeUrl));
       break;
     case "payment_failed":
       ({ subject, html } = templatePaymentFailed(body.firstName, body.manageUrl));

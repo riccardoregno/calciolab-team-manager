@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390">
+<title>CalcioLab — Statistiche</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 390px; min-height: 844px;
+    background: #080b12;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    color: #f0f4ff; overflow-x: hidden;
+  }
+  .status-bar { height: 44px; background: #080b12; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; font-size: 15px; font-weight: 600; }
+  .topbar { height: 56px; background: #0d1117; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; padding: 0 20px; }
+  .topbar-title { font-size: 18px; font-weight: 700; }
+
+  .content { padding: 16px 16px 90px; }
+
+  /* Period filter */
+  .period-row { display: flex; gap: 8px; margin-bottom: 20px; }
+  .period-btn { flex: 1; text-align: center; padding: 8px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+  .period-btn.active { background: #2563eb; color: #fff; }
+  .period-btn.inactive { background: rgba(255,255,255,0.06); color: #6b7280; }
+
+  /* Big stats */
+  .big-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .big-stat {
+    background: #0d1117; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.07);
+    padding: 14px 10px; text-align: center;
+  }
+  .big-stat-val { font-size: 26px; font-weight: 800; line-height: 1; }
+  .big-stat-lbl { font-size: 10px; color: #6b7280; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  /* Chart cards */
+  .chart-card {
+    background: #0d1117; border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.07);
+    padding: 16px; margin-bottom: 14px;
+  }
+  .chart-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .chart-title { font-size: 14px; font-weight: 600; color: #e2e8f0; }
+  .chart-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+  .chart-badge { font-size: 11px; color: #22c55e; font-weight: 600; background: rgba(34,197,94,0.1); padding: 3px 8px; border-radius: 6px; }
+
+  /* Line chart simulation */
+  .line-chart { height: 80px; position: relative; margin-bottom: 4px; }
+  .line-chart svg { width: 100%; height: 100%; }
+
+  /* Bar chart horizontal */
+  .hbar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .hbar-name { font-size: 13px; font-weight: 600; color: #e2e8f0; width: 90px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hbar-track { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+  .hbar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #2563eb, #7c3aed); }
+  .hbar-val { font-size: 13px; font-weight: 700; color: #f0f4ff; width: 20px; text-align: right; }
+
+  /* Donut chart simulation */
+  .donut-wrap { display: flex; align-items: center; gap: 20px; }
+  .donut-svg { flex-shrink: 0; }
+  .donut-legend { flex: 1; }
+  .donut-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .donut-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .donut-lbl { font-size: 12px; color: #9ca3af; flex: 1; }
+  .donut-pct { font-size: 12px; font-weight: 700; color: #e2e8f0; }
+
+  /* Gol vs subiti */
+  .compare-bars { display: flex; gap: 14px; align-items: flex-end; height: 100px; }
+  .cbar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .cbar-label { font-size: 10px; color: #6b7280; }
+  .cbar-val { font-size: 13px; font-weight: 700; }
+  .cbar { width: 100%; border-radius: 5px 5px 0 0; }
+
+  .bottom-nav { position: fixed; bottom: 0; left: 0; width: 390px; height: 80px; background: #0d1117; border-top: 1px solid rgba(255,255,255,0.07); display: flex; align-items: flex-start; padding-top: 10px; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: #4b5563; }
+  .nav-item.active { color: #3b82f6; }
+  .nav-icon { font-size: 20px; }
+</style>
+</head>
+<body>
+
+<div class="status-bar">
+  <span>9:41</span>
+  <div style="display:flex;gap:6px;align-items:center">
+    <svg width="17" height="12" viewBox="0 0 17 12" fill="none"><rect x="0" y="3" width="3" height="9" rx="1" fill="#fff" opacity=".4"/><rect x="4.5" y="2" width="3" height="10" rx="1" fill="#fff" opacity=".6"/><rect x="9" y="0.5" width="3" height="11.5" rx="1" fill="#fff" opacity=".8"/><rect x="13.5" y="0.5" width="3" height="11.5" rx="1" fill="#fff"/></svg>
+    <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="#fff" stroke-opacity=".35"/><rect x="2" y="2" width="17" height="8" rx="2" fill="#fff"/><path d="M23 4.5V7.5C23.8 7.2 24.5 6.4 24.5 6C24.5 5.6 23.8 4.8 23 4.5Z" fill="#fff" opacity=".4"/></svg>
+  </div>
+</div>
+
+<div class="topbar">
+  <span class="topbar-title">📊 Statistiche</span>
+</div>
+
+<div class="content">
+
+  <!-- Period filter -->
+  <div class="period-row">
+    <div class="period-btn inactive">7G</div>
+    <div class="period-btn inactive">1M</div>
+    <div class="period-btn active">Stagione</div>
+    <div class="period-btn inactive">Tutte</div>
+  </div>
+
+  <!-- Big stats -->
+  <div class="big-stats">
+    <div class="big-stat">
+      <div class="big-stat-val" style="color:#22c55e">12</div>
+      <div class="big-stat-lbl">Vittorie</div>
+    </div>
+    <div class="big-stat">
+      <div class="big-stat-val" style="color:#f59e0b">3</div>
+      <div class="big-stat-lbl">Pareggi</div>
+    </div>
+    <div class="big-stat">
+      <div class="big-stat-val" style="color:#ef4444">3</div>
+      <div class="big-stat-lbl">Sconfitte</div>
+    </div>
+    <div class="big-stat">
+      <div class="big-stat-val" style="color:#f0f4ff">41</div>
+      <div class="big-stat-lbl">Gol fatti</div>
+    </div>
+    <div class="big-stat">
+      <div class="big-stat-val" style="color:#f0f4ff">18</div>
+      <div class="big-stat-lbl">Gol sub.</div>
+    </div>
+    <div class="big-stat">
+      <div class="big-stat-val" style="color:#60a5fa">67%</div>
+      <div class="big-stat-lbl">Vittorie %</div>
+    </div>
+  </div>
+
+  <!-- Andamento punti -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">Punti accumulati</div>
+        <div class="chart-sub">39 pt su 18 partite</div>
+      </div>
+      <div class="chart-badge">↑ +7 vs mese scorso</div>
+    </div>
+    <div class="line-chart">
+      <svg viewBox="0 0 320 80" preserveAspectRatio="none">
+        <!-- Area fill -->
+        <defs>
+          <linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#2563eb" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#2563eb" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,72 L18,68 L36,65 L54,58 L72,52 L90,48 L108,43 L126,38 L144,42 L162,35 L180,28 L198,22 L216,18 L234,12 L252,8 L270,5 L288,3 L320,3 L320,80 L0,80 Z"
+              fill="url(#lg1)"/>
+        <path d="M0,72 L18,68 L36,65 L54,58 L72,52 L90,48 L108,43 L126,38 L144,42 L162,35 L180,28 L198,22 L216,18 L234,12 L252,8 L270,5 L288,3 L320,3"
+              fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- Dots -->
+        <circle cx="320" cy="3" r="4" fill="#2563eb"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Top marcatori -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">Top marcatori</div>
+        <div class="chart-sub">Stagione 2025/26</div>
+      </div>
+    </div>
+
+    <div class="hbar-row">
+      <div class="hbar-name">Mancini P.</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:90%"></div></div>
+      <div class="hbar-val">12</div>
+    </div>
+    <div class="hbar-row">
+      <div class="hbar-name">Serra G.</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:65%;background:linear-gradient(90deg,#7c3aed,#a855f7)"></div></div>
+      <div class="hbar-val">8</div>
+    </div>
+    <div class="hbar-row">
+      <div class="hbar-name">Gentile A.</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:50%;background:linear-gradient(90deg,#0891b2,#06b6d4)"></div></div>
+      <div class="hbar-val">6</div>
+    </div>
+    <div class="hbar-row">
+      <div class="hbar-name">Ricci L.</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:38%;background:linear-gradient(90deg,#059669,#10b981)"></div></div>
+      <div class="hbar-val">5</div>
+    </div>
+    <div class="hbar-row">
+      <div class="hbar-name">Fontana D.</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:28%;background:linear-gradient(90deg,#dc2626,#ef4444)"></div></div>
+      <div class="hbar-val">3</div>
+    </div>
+  </div>
+
+  <!-- Distribuzione ruoli + gol -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+    <div class="chart-card" style="margin-bottom:0">
+      <div class="chart-title" style="font-size:13px;margin-bottom:12px">Ruoli rosa</div>
+      <div class="donut-wrap">
+        <svg class="donut-svg" width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="10"/>
+          <!-- POR 9% -->
+          <circle cx="32" cy="32" r="24" fill="none" stroke="#f59e0b" stroke-width="10"
+            stroke-dasharray="13.6 137" stroke-dashoffset="0" transform="rotate(-90 32 32)"/>
+          <!-- ATT 23% -->
+          <circle cx="32" cy="32" r="24" fill="none" stroke="#ef4444" stroke-width="10"
+            stroke-dasharray="34.6 115" stroke-dashoffset="-13.6" transform="rotate(-90 32 32)"/>
+          <!-- CC 32% -->
+          <circle cx="32" cy="32" r="24" fill="none" stroke="#2563eb" stroke-width="10"
+            stroke-dasharray="48.1 101" stroke-dashoffset="-48.2" transform="rotate(-90 32 32)"/>
+          <!-- DF 36% -->
+          <circle cx="32" cy="32" r="24" fill="none" stroke="#22c55e" stroke-width="10"
+            stroke-dasharray="54 96" stroke-dashoffset="-96.3" transform="rotate(-90 32 32)"/>
+          <text x="32" y="36" text-anchor="middle" fill="#f0f4ff" font-size="11" font-weight="700">22</text>
+        </svg>
+        <div class="donut-legend">
+          <div class="donut-item"><div class="donut-dot" style="background:#22c55e"></div><div class="donut-lbl">Dif.</div><div class="donut-pct">36%</div></div>
+          <div class="donut-item"><div class="donut-dot" style="background:#2563eb"></div><div class="donut-lbl">Cen.</div><div class="donut-pct">32%</div></div>
+          <div class="donut-item"><div class="donut-dot" style="background:#ef4444"></div><div class="donut-lbl">Att.</div><div class="donut-pct">23%</div></div>
+          <div class="donut-item"><div class="donut-dot" style="background:#f59e0b"></div><div class="donut-lbl">Por.</div><div class="donut-pct">9%</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:0">
+      <div class="chart-title" style="font-size:13px;margin-bottom:12px">Gol fatti/sub.</div>
+      <div class="compare-bars">
+        <div class="cbar-wrap">
+          <div class="cbar-val" style="color:#22c55e">41</div>
+          <div class="cbar" style="height:80px;background:linear-gradient(180deg,#22c55e,#16a34a)"></div>
+          <div class="cbar-label">Fatti</div>
+        </div>
+        <div class="cbar-wrap">
+          <div class="cbar-val" style="color:#ef4444">18</div>
+          <div class="cbar" style="height:35px;background:linear-gradient(180deg,#ef4444,#dc2626)"></div>
+          <div class="cbar-label">Subiti</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="bottom-nav">
+  <div class="nav-item"><span class="nav-icon">🏠</span><span>Home</span></div>
+  <div class="nav-item"><span class="nav-icon">👥</span><span>Rosa</span></div>
+  <div class="nav-item"><span class="nav-icon">📋</span><span>Training</span></div>
+  <div class="nav-item"><span class="nav-icon">⚽</span><span>Match</span></div>
+  <div class="nav-item active"><span class="nav-icon">📊</span><span>Stats</span></div>
+</div>
+
+</body>
+</html>
