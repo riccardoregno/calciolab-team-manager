@@ -16,6 +16,14 @@
  * }
  */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { checkRateLimit, rateLimitedResponse } from "../_shared/rateLimit.ts";
+
+// Rate limit: max 15 email per utente ogni 10 minuti (protezione spam inviti)
+const EMAIL_RL_MAX = 15;
+const EMAIL_RL_WINDOW_MS = 10 * 60 * 1000; // 10 min
+
+// Regex per validazione email minima (RFC 5321 semplificato)
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const RESEND_API_KEY    = Deno.env.get("RESEND_API_KEY") ?? "";
 const FROM_EMAIL        = Deno.env.get("EMAIL_FROM") ?? "CalcioLab <noreply@calciolab.it>";
@@ -217,10 +225,26 @@ Deno.serve(async (req: Request) => {
   const internalSec   = req.headers.get("x-internal-secret") ?? "";
   const isServiceRole = SUPABASE_SERVICE_ROLE_KEY && authHeader === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
   const isInternal    = INTERNAL_SECRET && internalSec === INTERNAL_SECRET;
-  const isAnon        = authHeader.startsWith("Bearer "); // qualsiasi JWT — per chiamate frontend autenticate
+  // JWT generico (utente autenticato dal frontend) — solo per tipi non-critical
+  const isAnon        = !isServiceRole && !isInternal && authHeader.startsWith("Bearer ");
 
   if (!isServiceRole && !isInternal && !isAnon) {
     return json({ error: "Non autorizzato" }, 401);
+  }
+
+  // ── Rate limiting per chiamate frontend (non service role / internal) ──────
+  if (isAnon) {
+    // Estrae un identificatore dall'IP + token (opaco, non reversibile)
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || req.headers.get("cf-connecting-ip")
+      || "unknown";
+    // Usa solo i primi 20 char del token per chiave (privacy)
+    const tokenHint = authHeader.slice(7, 27);
+    const rlKey = `send-email:${ip}:${tokenHint}`;
+
+    if (!checkRateLimit(rlKey, EMAIL_RL_MAX, EMAIL_RL_WINDOW_MS)) {
+      return rateLimitedResponse(rlKey, CORS);
+    }
   }
 
   if (!RESEND_API_KEY) return json({ error: "RESEND_API_KEY non configurata" }, 500);
@@ -244,6 +268,23 @@ Deno.serve(async (req: Request) => {
   const { type, to } = body;
   if (!to)   return json({ error: "to è obbligatorio" }, 400);
   if (!type) return json({ error: "type è obbligatorio" }, 400);
+
+  // ── Validazione email destinatario ────────────────────────────────────────
+  if (!EMAIL_RE.test(String(to))) {
+    return json({ error: "Indirizzo email non valido" }, 400);
+  }
+
+  // ── Il tipo "custom" richiede service role o internal secret ──────────────
+  // (un utente anonimo non può iniettare HTML arbitrario nel sistema email)
+  if (type === "custom" && isAnon) {
+    return json({ error: "Il tipo 'custom' richiede autenticazione server-side" }, 403);
+  }
+
+  // ── Limita i tipi permessi agli utenti anonimi ─────────────────────────────
+  const ANON_ALLOWED_TYPES = ["welcome", "trial_expiring"];
+  if (isAnon && !ANON_ALLOWED_TYPES.includes(type)) {
+    return json({ error: `Tipo '${type}' non permesso dalle chiamate frontend` }, 403);
+  }
 
   let subject: string;
   let html: string;

@@ -37,8 +37,14 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
+        // Pagina offline custom servita quando la rete non è disponibile
+        navigateFallback: '/offline.html',
+        // Escludi la pagina offline dal fallback normale (solo per navigazione, non asset)
+        navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
         // Cache-first per tutti gli asset statici (JS/CSS/font/immagini)
         globPatterns: ['**/*.{js,css,html,ico,svg,png,woff2}'],
+        // Includi la pagina offline nel precache
+        additionalManifestEntries: [{ url: '/offline.html', revision: null }],
         // Dimensione massima file in cache: 5MB (catalogo esercizi è ~700KB)
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
