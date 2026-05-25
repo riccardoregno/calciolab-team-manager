@@ -15,7 +15,10 @@
     "cap:android": "npx cap open android",
     "deploy:ios": "npm run build:mobile && npx cap sync ios",
     "deploy:android": "npm run build:mobile && npx cap sync android",
-    "gen:icons": "node scripts/gen-icons.mjs"
+    "gen:icons": "node scripts/gen-icons.mjs",
+    "release:android": "npm run build:mobile && npx cap sync android && cd android && ./gradlew bundleRelease",
+    "release:android:apk": "npm run build:mobile && npx cap sync android && cd android && ./gradlew assembleRelease",
+    "release:ios": "npm run build:mobile && npx cap sync ios && xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -archivePath ios/App/CalcioLab.xcarchive archive"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",

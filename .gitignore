@@ -27,3 +27,8 @@ eslint-report.txt
 .env
 .claude/
 .env*
+
+# Android signing (NEVER commit)
+android/keystore.properties
+android/*.jks
+android/*.keystore

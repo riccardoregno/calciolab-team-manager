@@ -1,5 +1,14 @@
 apply plugin: 'com.android.application'
 
+// ── Signing config from keystore.properties (git-ignored) ──────────
+// Copy keystore.properties.example → keystore.properties and fill in values.
+// In CI, set env vars: KEY_ALIAS, KEY_PASSWORD, STORE_FILE, STORE_PASSWORD
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "it.calciolab.coach"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,17 +16,38 @@ android {
         applicationId "it.calciolab.coach"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 2          // ← incrementa ad ogni release su Play Store
+        versionName "1.1.0"    // ← versione visibile agli utenti
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
-    buildTypes {
+
+    signingConfigs {
         release {
+            def alias    = keystoreProperties['keyAlias']    ?: System.getenv('KEY_ALIAS')
+            def keyPass  = keystoreProperties['keyPassword'] ?: System.getenv('KEY_PASSWORD')
+            def store    = keystoreProperties['storeFile']   ?: System.getenv('STORE_FILE')
+            def storePass= keystoreProperties['storePassword'] ?: System.getenv('STORE_PASSWORD')
+            if (alias && keyPass && store && storePass) {
+                keyAlias        alias
+                keyPassword     keyPass
+                storeFile       file(store)
+                storePassword   storePass
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            signingConfig signingConfigs.release
+            // Capacitor/WebView apps: minify JS non serve (già bundled),
+            // ProGuard può rompere le reflection native. Lasciar false.
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

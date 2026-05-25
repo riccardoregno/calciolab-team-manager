@@ -46,7 +46,14 @@ const MODULE_OPTIONS = [
 ];
 
 // Labels resolved at render time via t() inside the component — see stepLabels below
-const STEP_COUNT = 3;
+const STEP_COUNT = 4;
+
+const INVITE_ROLES = [
+  { id: "assistantCoach",  label: "Assistente allenatore" },
+  { id: "athleticTrainer", label: "Preparatore atletico"  },
+  { id: "director",        label: "Dirigente"             },
+  { id: "headCoach",       label: "Head Coach"            },
+];
 
 const QUICKSTART_ACTIONS = [
   { key: "players",   icon: "👥", path: "/players",                      plan: "free"    },
@@ -74,11 +81,13 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
     t("pages.onboarding.whoCareYou"),
     t("pages.onboarding.yourClub"),
     t("pages.onboarding.tools"),
+    "Invita il team",
   ];
 
   const [step, setStep]         = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
   const [saving, setSaving]     = useState(false);
+  const [inviteToken, setInviteToken] = useState(null);
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== "undefined" && window.innerWidth < 700
   );
@@ -103,6 +112,20 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
+
+  // Carica il token invito dal team quando si arriva allo step 4
+  useEffect(() => {
+    if (step !== 4 || !team?.id || inviteToken !== null) return;
+    supabase
+      .from("teams")
+      .select("settings")
+      .eq("id", team.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setInviteToken(data?.settings?.inviteToken || "");
+      })
+      .catch(() => setInviteToken(""));
+  }, [step, team?.id, inviteToken]);
 
   function toggleModule(id) {
     const modules = form.modules.includes(id)
@@ -215,7 +238,17 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
           <Step2 form={form} setForm={setForm} onBack={() => setStep(1)} onNext={() => setStep(3)} isMobile={isMobile} />
         )}
         {!showSuccess && step === 3 && (
-          <Step3 form={form} toggleModule={toggleModule} onBack={() => setStep(2)} onComplete={preComplete} saving={saving} isMobile={isMobile} />
+          <Step3 form={form} toggleModule={toggleModule} onBack={() => setStep(2)} onComplete={() => setStep(4)} saving={saving} isMobile={isMobile} />
+        )}
+        {!showSuccess && step === 4 && (
+          <Step4
+            form={form}
+            team={team}
+            inviteToken={inviteToken}
+            onBack={() => setStep(3)}
+            onComplete={preComplete}
+            isMobile={isMobile}
+          />
         )}
         {showSuccess && (
           <SuccessScreen form={form} onNavigate={finalize} isMobile={isMobile} />
@@ -529,7 +562,272 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
 }
 
 // ─────────────────────────────────────────────
-// Step 4 — Success / Quick-start
+// Step 4 — Invita il tuo staff
+// ─────────────────────────────────────────────
+function Step4({ form, team, inviteToken, onBack, onComplete, isMobile }) {
+  const [emails, setEmails]         = useState([]);
+  const [inputEmail, setInputEmail] = useState("");
+  const [inputRole, setInputRole]   = useState("assistantCoach");
+  const [copied, setCopied]         = useState(false);
+  const [sending, setSending]       = useState(false);
+  const [sentCount, setSentCount]   = useState(0);
+
+  const inviteUrl = inviteToken
+    ? `${window.location.origin}/join?token=${inviteToken}`
+    : null;
+
+  async function copyLink() {
+    if (!inviteUrl) return;
+    try { await navigator.clipboard.writeText(inviteUrl); } catch { /* fallback */ }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2200);
+  }
+
+  function addEmail() {
+    const v = inputEmail.trim().toLowerCase();
+    if (!v.includes("@") || emails.find((e) => e.email === v)) return;
+    setEmails([...emails, { email: v, role: inputRole }]);
+    setInputEmail("");
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === "Enter") { e.preventDefault(); addEmail(); }
+  }
+
+  async function sendInvites() {
+    if (!emails.length) { onComplete(); return; }
+    setSending(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token || "";
+
+      await Promise.allSettled(
+        emails.map((inv) =>
+          fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${accessToken}`,
+              "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY || "",
+            },
+            body: JSON.stringify({
+              type: "custom",
+              to: inv.email,
+              subject: `${form.clubName || "Il tuo coach"} ti invita su CalcioLab`,
+              html: buildInviteEmailHtml({
+                clubName: form.clubName || "CalcioLab",
+                inviteUrl,
+                role: INVITE_ROLES.find((r) => r.id === inv.role)?.label || inv.role,
+              }),
+            }),
+          }).catch(() => {})
+        )
+      );
+      setSentCount(emails.length);
+    } finally {
+      setSending(false);
+      setTimeout(() => onComplete(), 1400);
+    }
+  }
+
+  const tokenLoading = inviteToken === null;
+
+  return (
+    <div style={ob.stepContent}>
+      <div style={ob.stepHeader}>
+        {!isMobile && <span style={ob.stepBadge}>Passo 4 di {STEP_COUNT}</span>}
+        <h1 style={isMobile ? { ...ob.stepTitle, fontSize: 24 } : ob.stepTitle}>
+          Invita il tuo staff 👋
+        </h1>
+        <p style={ob.stepSubtitle}>
+          Condividi il link di invito con assistenti, preparatori e dirigenti. Potrai farlo anche dopo.
+        </p>
+      </div>
+
+      {/* ── Invite link ── */}
+      <div style={{ marginBottom: 28 }}>
+        <p style={ob.sectionLabel}>Link di invito</p>
+        <div style={{
+          display: "flex", gap: 10, alignItems: "center",
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: 14, padding: "12px 16px",
+          flexWrap: "wrap",
+        }}>
+          <code style={{
+            flex: 1, fontSize: 12, color: "#64748b",
+            wordBreak: "break-all", minWidth: 0,
+          }}>
+            {tokenLoading ? "Caricamento…" : inviteUrl || "Link non disponibile — completa prima il profilo"}
+          </code>
+          <button
+            onClick={copyLink}
+            disabled={!inviteUrl || tokenLoading}
+            style={{
+              ...ob.nextBtn,
+              padding: "8px 18px", fontSize: 13,
+              background: copied
+                ? "linear-gradient(135deg,#059669,#047857)"
+                : "linear-gradient(135deg,#2563eb,#1d4ed8)",
+              opacity: !inviteUrl ? 0.4 : 1,
+              cursor: !inviteUrl ? "not-allowed" : "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {copied ? "✓ Copiato!" : "Copia link"}
+          </button>
+        </div>
+        <p style={{ margin: "8px 0 0", fontSize: 12, color: "#334155" }}>
+          Chi riceve il link può unirsi direttamente alla tua squadra.
+        </p>
+      </div>
+
+      {/* ── Email invites ── */}
+      <div style={{ marginBottom: 24 }}>
+        <p style={ob.sectionLabel}>Oppure invia via email</p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          <input
+            style={{ ...ob.input, flex: "1 1 200px" }}
+            type="email"
+            placeholder="email@staff.it"
+            value={inputEmail}
+            onChange={(e) => setInputEmail(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <select
+            style={{ ...ob.input, flex: "0 0 auto", minWidth: 160, cursor: "pointer" }}
+            value={inputRole}
+            onChange={(e) => setInputRole(e.target.value)}
+          >
+            {INVITE_ROLES.map((r) => (
+              <option key={r.id} value={r.id}>{r.label}</option>
+            ))}
+          </select>
+          <button
+            onClick={addEmail}
+            style={{
+              ...ob.nextBtn,
+              padding: "10px 18px", fontSize: 13, whiteSpace: "nowrap",
+            }}
+          >
+            + Aggiungi
+          </button>
+        </div>
+
+        {/* Lista email */}
+        {emails.length > 0 && (
+          <div style={{ display: "grid", gap: 6 }}>
+            {emails.map((inv) => (
+              <div key={inv.email} style={{
+                display: "flex", alignItems: "center", gap: 10,
+                background: "rgba(37,99,235,0.08)",
+                border: "1px solid rgba(96,165,250,0.2)",
+                borderRadius: 10, padding: "8px 14px",
+              }}>
+                <span style={{ fontSize: 13, color: "#93c5fd", flex: 1 }}>{inv.email}</span>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, color: "#64748b",
+                  background: "rgba(255,255,255,0.07)", borderRadius: 99,
+                  padding: "2px 8px",
+                }}>
+                  {INVITE_ROLES.find((r) => r.id === inv.role)?.label || inv.role}
+                </span>
+                <button
+                  onClick={() => setEmails(emails.filter((e) => e.email !== inv.email))}
+                  style={{
+                    background: "none", border: "none", color: "#475569",
+                    cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0,
+                  }}
+                >✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Sent feedback ── */}
+      {sentCount > 0 && (
+        <div style={{
+          background: "rgba(5,150,105,0.1)", border: "1px solid rgba(52,211,153,0.3)",
+          borderRadius: 14, padding: "14px 18px", marginBottom: 20,
+          display: "flex", alignItems: "center", gap: 10,
+        }}>
+          <span style={{ fontSize: 20 }}>✓</span>
+          <span style={{ color: "#6ee7b7", fontSize: 14, fontWeight: 700 }}>
+            {sentCount} {sentCount === 1 ? "invito inviato" : "inviti inviati"} con successo!
+          </span>
+        </div>
+      )}
+
+      <div style={ob.actions}>
+        <BackBtn onClick={onBack} />
+        <button
+          onClick={() => onComplete()}
+          style={{ ...ob.backBtn, color: "#64748b" }}
+        >
+          Salta per ora →
+        </button>
+        {emails.length > 0 && (
+          <button
+            onClick={sendInvites}
+            disabled={sending}
+            style={{
+              ...ob.nextBtn,
+              opacity: sending ? 0.6 : 1,
+              cursor: sending ? "not-allowed" : "pointer",
+            }}
+          >
+            {sending ? "Invio…" : `Invia ${emails.length} invito${emails.length > 1 ? "i" : ""} →`}
+          </button>
+        )}
+        {emails.length === 0 && (
+          <button onClick={() => onComplete()} style={ob.nextBtn}>
+            Continua →
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function buildInviteEmailHtml({ clubName, inviteUrl, role }) {
+  return `<!DOCTYPE html>
+<html lang="it"><head><meta charset="UTF-8">
+<style>body{margin:0;padding:0;background:#080b12;font-family:Inter,Arial,sans-serif;color:#e2e8f0;}</style>
+</head><body>
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#080b12;padding:40px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;">
+<tr><td style="padding:0 0 24px;">
+  <table cellpadding="0" cellspacing="0"><tr>
+    <td style="width:30px;height:30px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:8px;text-align:center;vertical-align:middle;"><span style="font-size:16px;">⚡</span></td>
+    <td style="padding-left:10px;font-size:16px;font-weight:900;color:white;">CalcioLab</td>
+  </tr></table>
+</td></tr>
+<tr><td style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:32px 36px;">
+  <h1 style="margin:0 0 14px;font-size:24px;font-weight:900;color:white;">Sei stato invitato! 🎉</h1>
+  <p style="margin:0 0 12px;font-size:15px;color:#94a3b8;line-height:1.7;">
+    <strong style="color:#e2e8f0;">${clubName}</strong> ti ha invitato a collaborare su CalcioLab come <strong style="color:#e2e8f0;">${role}</strong>.
+  </p>
+  <p style="margin:0 0 24px;font-size:15px;color:#94a3b8;line-height:1.7;">
+    CalcioLab è la piattaforma per gestire la squadra: rosa, allenamenti, match day e statistiche — tutto in un posto.
+  </p>
+  ${inviteUrl ? `<a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:white;font-size:15px;font-weight:800;padding:14px 32px;border-radius:12px;text-decoration:none;">Accetta l'invito →</a>` : ""}
+  <hr style="border:none;border-top:1px solid rgba(255,255,255,0.07);margin:24px 0;">
+  <p style="margin:0;font-size:12px;color:#475569;">
+    Se non hai richiesto questo invito, puoi ignorare questa email.
+  </p>
+</td></tr>
+<tr><td style="padding:20px 0;text-align:center;">
+  <p style="margin:0;font-size:12px;color:#334155;">© ${new Date().getFullYear()} CalcioLab</p>
+</td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+// ─────────────────────────────────────────────
+// Step 5 — Success / Quick-start
 // ─────────────────────────────────────────────
 function SuccessScreen({ form, onNavigate, isMobile }) {
   const { t } = useTranslation();
