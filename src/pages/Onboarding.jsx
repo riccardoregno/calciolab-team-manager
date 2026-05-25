@@ -564,7 +564,7 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
 // ─────────────────────────────────────────────
 // Step 4 — Invita il tuo staff
 // ─────────────────────────────────────────────
-function Step4({ form, team, inviteToken, onBack, onComplete, isMobile }) {
+function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile }) {
   const [emails, setEmails]         = useState([]);
   const [inputEmail, setInputEmail] = useState("");
   const [inputRole, setInputRole]   = useState("assistantCoach");

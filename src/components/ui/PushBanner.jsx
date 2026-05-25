@@ -3,13 +3,13 @@
  * Mostra un toast in-app quando arriva una push notification in foreground.
  * Auto-dismiss dopo 4 secondi, dismissable manualmente.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isNative } from "../../utils/capacitor";
 
 export default function PushBanner() {
   const [notification, setNotification] = useState(null);
   const [visible, setVisible] = useState(false);
-  const timerRef = { current: null };
+  const timerRef = useRef(null);
 
   useEffect(() => {
     if (!isNative) return;

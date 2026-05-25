@@ -9,16 +9,21 @@ import { isNative } from "../../utils/capacitor";
  */
 export default function PWAInstallBanner() {
   const { t } = useTranslation();
-  // Non mostrare il banner se si sta già girando come app nativa Capacitor
-  if (isNative) return null;
+  // Hooks must be called unconditionally — early return happens after
   const [installPrompt, setInstallPrompt] = useState(null);
-  const [dismissed, setDismissed] = useState(false);
+  // Read dismiss flag synchronously via initializer — avoids setState-in-effect
+  const [dismissed, setDismissed] = useState(
+    () => Boolean(sessionStorage.getItem("calciolab_pwa_dismissed"))
+  );
   const [isIOS, setIsIOS] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
 
+  // All hooks must be above any early return (rules of hooks)
   useEffect(() => {
+    if (isNative) return; // guard inside effect, not as early return
     // Già installata come PWA?
     if (window.matchMedia("(display-mode: standalone)").matches) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsInstalled(true);
       return;
     }
@@ -37,11 +42,8 @@ export default function PWAInstallBanner() {
     return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
   }, []);
 
-  // Controlla se già dismissato in questa sessione
-  useEffect(() => {
-    const key = "calciolab_pwa_dismissed";
-    if (sessionStorage.getItem(key)) setDismissed(true);
-  }, []);
+  // Non mostrare il banner se si sta già girando come app nativa Capacitor
+  if (isNative) return null;
 
   async function handleInstall() {
     if (!installPrompt) return;

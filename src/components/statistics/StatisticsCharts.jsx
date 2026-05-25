@@ -144,12 +144,14 @@ export default function StatisticsCharts({ stats, history, selectedPlayer, event
     .filter((e) => e.type === "Partita" && e.date)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  let cumulativePoints = 0;
-  const seasonTrend = matchEvents.map((m, i) => {
+  const seasonTrend = matchEvents.reduce((acc, m, i) => {
     const { outcome, goalsFor, goalsAgainst } = parseResult(m.result);
     const pts = outcome === "W" ? 3 : outcome === "D" ? 1 : outcome === "L" ? 0 : null;
-    if (pts !== null) cumulativePoints += pts;
-    return {
+    const prev = acc[i - 1];
+    const cumulativePoints = pts !== null
+      ? (prev?.cumPts ?? 0) + pts
+      : (prev?.cumPts ?? 0);
+    acc.push({
       match: i + 1,
       label: m.opponent ? String(m.opponent).slice(0, 10) : `G${i + 1}`,
       outcome,
@@ -157,8 +159,9 @@ export default function StatisticsCharts({ stats, history, selectedPlayer, event
       cumPts: pts !== null ? cumulativePoints : null,
       goalsFor,
       goalsAgainst,
-    };
-  });
+    });
+    return acc;
+  }, []);
 
   const hasMatchData = seasonTrend.some((m) => m.outcome !== null);
   const hasGoalData  = seasonTrend.some((m) => m.goalsFor > 0 || m.goalsAgainst > 0);

@@ -72,7 +72,7 @@ function normalizeDate(raw) {
   // già ISO
   if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
   // DD/MM/YYYY o DD.MM.YYYY
-  const dmY = raw.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})$/);
+  const dmY = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
   if (dmY) return `${dmY[3]}-${dmY[2].padStart(2, "0")}-${dmY[1].padStart(2, "0")}`;
   // MM/DD/YYYY
   const mdY = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);

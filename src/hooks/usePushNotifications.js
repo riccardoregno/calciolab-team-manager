@@ -59,6 +59,7 @@ export function usePushNotifications({ userId, teamId, enabled = true }) {
     if (!userId) {
       unregisterPushNotifications();
       registered.current = false;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus("idle");
     }
   }, [userId]);

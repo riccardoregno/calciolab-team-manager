@@ -51,6 +51,7 @@ export function useStaffChat({ teamId, userId, authorName = "", authorRole = "he
 
   // --- Caricamento iniziale ---
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!supported) { setLoading(false); return; }
 
     let active = true;

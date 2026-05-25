@@ -8,23 +8,28 @@
  * Dismissabile per sessione (tranne past_due che è sempre visibile).
  * Va inserito subito dopo il Topbar, prima delle Routes.
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getBillingStatus } from "../../utils/helpers";
 
 const STORAGE_KEY = "calciolab_billing_banner_dismissed";
 const TRIAL_WARN_DAYS = 7; // mostra il banner trial da X giorni in poi
 
+/** Renders text containing <strong>…</strong> tags as React elements */
+function renderBold(text) {
+  const parts = text.split(/(<strong>.*?<\/strong>)/g);
+  return parts.map((part, i) => {
+    const m = part.match(/^<strong>(.*?)<\/strong>$/);
+    return m ? <strong key={i}>{m[1]}</strong> : part;
+  });
+}
+
 export default function BillingBanner({ appSettings }) {
   const navigate = useNavigate();
-  const [dismissed, setDismissed] = useState(false);
-
-  // Legge eventuale dismiss salvato in sessionStorage
-  useEffect(() => {
-    if (sessionStorage.getItem(STORAGE_KEY) === "1") {
-      setDismissed(true);
-    }
-  }, []);
+  // Read dismiss flag synchronously via initializer — avoids setState-in-effect
+  const [dismissed, setDismissed] = useState(
+    () => sessionStorage.getItem(STORAGE_KEY) === "1"
+  );
 
   if (!appSettings) return null;
 
@@ -118,11 +123,9 @@ export default function BillingBanner({ appSettings }) {
 
       <span style={{ fontSize: 16, flexShrink: 0 }}>{config.icon}</span>
 
-      <span
-        style={{ flex: 1, fontSize: 13, color: "#cbd5e1", lineHeight: 1.4 }}
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: config.text }}
-      />
+      <span style={{ flex: 1, fontSize: 13, color: "#cbd5e1", lineHeight: 1.4 }}>
+        {renderBold(config.text)}
+      </span>
 
       <button
         type="button"

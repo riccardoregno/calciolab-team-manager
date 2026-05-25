@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint · Test · Build · Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── Security ─────────────────────────────────────────────────────────────
+      - name: Audit production dependencies
+        # Check only prod deps — devDep vulns are managed via package.json overrides
+        run: npm audit --audit-level=high --omit=dev
+
+      # ── Quality ──────────────────────────────────────────────────────────────
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      # ── Build ─────────────────────────────────────────────────────────────────
+      - name: Build (web)
+        run: npm run build
+        env:
+          # Vite needs these to be present at build time (can be dummy values in CI
+          # if the build doesn't actually call Supabase — adjust if you add
+          # build-time env usage)
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder' }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-web
+          path: dist/
+          retention-days: 3

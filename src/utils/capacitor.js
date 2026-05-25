@@ -34,7 +34,7 @@ export async function hideSplashScreen() {
   try {
     const { SplashScreen } = await import('@capacitor/splash-screen');
     await SplashScreen.hide();
-  } catch {}
+  } catch { /* no-op — Capacitor API unavailable on this platform */ }
 }
 
 /** Imposta lo stile della status bar */
@@ -46,7 +46,7 @@ export async function setStatusBarDark() {
     if (isAndroid) {
       await StatusBar.setBackgroundColor({ color: '#0f172a' });
     }
-  } catch {}
+  } catch { /* no-op — Capacitor API unavailable on this platform */ }
 }
 
 /** Feedback aptico leggero (tap) */
@@ -55,7 +55,7 @@ export async function hapticLight() {
   try {
     const { Haptics, ImpactStyle } = await import('@capacitor/haptics');
     await Haptics.impact({ style: ImpactStyle.Light });
-  } catch {}
+  } catch { /* no-op — Capacitor API unavailable on this platform */ }
 }
 
 /** Feedback aptico medio (azione importante) */
@@ -64,7 +64,7 @@ export async function hapticMedium() {
   try {
     const { Haptics, ImpactStyle } = await import('@capacitor/haptics');
     await Haptics.impact({ style: ImpactStyle.Medium });
-  } catch {}
+  } catch { /* no-op — Capacitor API unavailable on this platform */ }
 }
 
 /** Registra listener sul tasto Back di Android */

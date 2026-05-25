@@ -102,7 +102,7 @@ export async function unregisterPushNotifications() {
     const { PushNotifications } = await import("@capacitor/push-notifications");
     await PushNotifications.removeAllListeners();
     _registered = false;
-  } catch {}
+  } catch { /* no-op — best effort cleanup */ }
 }
 
 /** Elimina il token push dell'utente da Supabase (logout) */
@@ -114,7 +114,7 @@ export async function deletePushToken({ userId, teamId }) {
       .delete()
       .eq("user_id", userId)
       .eq("team_id", teamId);
-  } catch {}
+  } catch { /* no-op — best effort cleanup */ }
 }
 
 function getPlatform() {

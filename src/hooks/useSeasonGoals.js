@@ -20,7 +20,7 @@ function load() {
 function save(data) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {}
+  } catch { /* no-op — localStorage unavailable (private mode or quota exceeded) */ }
 }
 
 export function useSeasonGoals() {

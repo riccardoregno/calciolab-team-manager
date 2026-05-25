@@ -22,7 +22,7 @@ import { useAuth } from "./hooks/useAuth";
 import { useEventReminders } from "./hooks/useNotifications";
 import { useStaffChat } from "./hooks/useStaffChat";
 import { supabase } from "./lib/supabaseClient";
-import { isNative, isAndroid, hideSplashScreen, setStatusBarDark, onAndroidBack } from "./utils/capacitor";
+import { isNative, hideSplashScreen, setStatusBarDark, onAndroidBack } from "./utils/capacitor";
 import { updateTeamSubscription } from "./services/subscription";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 
@@ -128,7 +128,7 @@ function App() {
         try {
           const { App: CapApp } = await import('@capacitor/app');
           CapApp.minimizeApp();
-        } catch {}
+        } catch { /* no-op — minimizeApp not available on all platforms */ }
       }
     });
 

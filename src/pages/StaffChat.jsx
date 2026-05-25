@@ -67,7 +67,7 @@ function groupByDate(messages) {
   return groups;
 }
 
-export default function StaffChat({ teamId, userId, authorName, authorRole, appSettings }) {
+export default function StaffChat({ teamId, userId, authorName, authorRole }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 

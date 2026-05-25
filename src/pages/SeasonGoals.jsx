@@ -261,7 +261,7 @@ export default function SeasonGoals({ matches = [], players = [] }) {
   const { showToast, ToastContainer } = useToast();
   const {
     teamGoals, playerGoals,
-    addTeamGoal, updateTeamGoal, deleteTeamGoal,
+    addTeamGoal, deleteTeamGoal,
     addPlayerGoal, updatePlayerGoal, deletePlayerGoal,
   } = useSeasonGoals();
 
@@ -363,7 +363,6 @@ export default function SeasonGoals({ matches = [], players = [] }) {
                 ? (getAutoValue(goal.type, stats) ?? 0)
                 : 0;
               const pct = goal.target > 0 ? Math.round((current / goal.target) * 100) : 0;
-              const tpl = TEAM_GOAL_TEMPLATES.find((t) => t.type === goal.type);
               const label = goal.type === "custom"
                 ? goal.label
                 : t(`pages.seasonGoals.goalTypes.${goal.type}`);
