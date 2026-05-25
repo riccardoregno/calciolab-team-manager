@@ -37,15 +37,17 @@
 --   • Can be used in future policies instead of the raw subquery
 
 CREATE OR REPLACE FUNCTION public.get_my_team_ids()
-RETURNS SETOF uuid
+RETURNS uuid[]
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
 AS $$
-  SELECT team_id
-  FROM   public.team_members
-  WHERE  user_id = auth.uid();
+  SELECT ARRAY(
+    SELECT team_id
+    FROM   public.team_members
+    WHERE  user_id = auth.uid()
+  );
 $$;
 
 -- Only authenticated users should call this
