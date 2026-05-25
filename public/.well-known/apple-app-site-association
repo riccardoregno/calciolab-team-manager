@@ -1,0 +1,31 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["REPLACE_APPLE_TEAM_ID.it.calciolab.coach"],
+        "components": [
+          {
+            "/": "/premium*",
+            "comment": "Pagine billing e upgrade"
+          },
+          {
+            "/": "/join*",
+            "comment": "Inviti team staff"
+          },
+          {
+            "/": "/reset-password*",
+            "comment": "Reset password"
+          },
+          {
+            "/": "/*",
+            "comment": "Tutte le altre route autenticate"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["REPLACE_APPLE_TEAM_ID.it.calciolab.coach"]
+  }
+}

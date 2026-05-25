@@ -18,6 +18,25 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Android App Links: i link https://calciolab.it/* aprono l'app -->
+            <!-- Richiede public/.well-known/assetlinks.json con SHA-256 del keystore -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="calciolab.it" />
+            </intent-filter>
+
+            <!-- Custom URI scheme come fallback: calciolab:// -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="calciolab" />
+            </intent-filter>
         </activity>
 
         <provider

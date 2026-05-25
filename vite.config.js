@@ -76,25 +76,59 @@ export default defineConfig(({ mode }) => ({
   ],
   build: {
     chunkSizeWarningLimit: 900,
+    // Source maps in produzione — disabilitare per build store finale (privacy)
+    sourcemap: false,
     rollupOptions: {
       output: {
+        // Nomi file deterministici per migliore caching HTTP
+        chunkFileNames:  'assets/[name]-[hash].js',
+        entryFileNames:  'assets/[name]-[hash].js',
+        assetFileNames:  'assets/[name]-[hash][extname]',
         manualChunks(id) {
+          // ── Dati statici pesanti ──────────────────────────────────────────
           if (id.includes('src/data/eserciziarioFp5.js')) {
-            return 'catalogo-fp5'
+            return 'catalogo-fp5';
           }
 
-          if (id.includes('node_modules')) {
-            if (id.includes('@supabase')) {
-              return 'vendor-supabase'
-            }
+          if (!id.includes('node_modules')) return;
 
-            if (
-              id.includes('react') ||
-              id.includes('react-dom') ||
-              id.includes('react-router')
-            ) {
-              return 'vendor-react'
-            }
+          // ── Supabase ──────────────────────────────────────────────────────
+          if (id.includes('@supabase')) {
+            return 'vendor-supabase';
+          }
+
+          // ── React core ────────────────────────────────────────────────────
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/react-router')
+          ) {
+            return 'vendor-react';
+          }
+
+          // ── Grafici (recharts) ─────────────────────────────────────────────
+          if (id.includes('recharts') || id.includes('d3-') || id.includes('victory')) {
+            return 'vendor-charts';
+          }
+
+          // ── PDF (jspdf) ───────────────────────────────────────────────────
+          if (id.includes('jspdf') || id.includes('html2canvas')) {
+            return 'vendor-pdf';
+          }
+
+          // ── Drag & Drop ───────────────────────────────────────────────────
+          if (id.includes('@dnd-kit')) {
+            return 'vendor-dnd';
+          }
+
+          // ── Icone ─────────────────────────────────────────────────────────
+          if (id.includes('lucide-react')) {
+            return 'vendor-icons';
+          }
+
+          // ── Capacitor ────────────────────────────────────────────────────
+          if (id.includes('@capacitor')) {
+            return 'vendor-capacitor';
           }
         },
       },

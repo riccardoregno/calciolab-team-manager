@@ -15,6 +15,7 @@ import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import PWAInstallBanner from "./components/ui/PWAInstallBanner";
 import PushBanner from "./components/ui/PushBanner";
 import BillingBanner from "./components/ui/BillingBanner";
+import DeepLinkHandler from "./components/utils/DeepLinkHandler";
 
 import { useTeamData } from "./hooks/useTeamData";
 import { useAuth } from "./hooks/useAuth";
@@ -918,6 +919,9 @@ function App() {
           </ErrorBoundary>
         </main>
       </div>
+
+      {/* Deep link handler — intercetta Universal Links / App Links su iOS/Android */}
+      <DeepLinkHandler />
 
       <MobileBottomNav />
       <PWAInstallBanner />

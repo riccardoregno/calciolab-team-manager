@@ -8,6 +8,16 @@ const config: CapacitorConfig = {
     // Usa HTTPS su Android per garantire compatibilità con Supabase e cookie
     androidScheme: 'https',
   },
+
+  // ── Deep linking ──────────────────────────────────────────────────────────────
+  // Android App Links: intent-filter in AndroidManifest.xml + assetlinks.json
+  // iOS Universal Links: Associated Domains capability in Xcode
+  //   1. Xcode → Signing & Capabilities → + Capability → Associated Domains
+  //   2. Aggiungi: applinks:calciolab.it
+  //   3. Sostituisci REPLACE_APPLE_TEAM_ID in public/.well-known/apple-app-site-association
+  //   4. Per SHA-256 Android: keytool -list -v -keystore android/calciolab-release.jks
+  // ─────────────────────────────────────────────────────────────────────────────
+
   plugins: {
     SplashScreen: {
       launchShowDuration: 1800,
