@@ -326,7 +326,7 @@ function Trainings({
                       </thead>
                       <tbody>
                         {selectedExercises.map((item, index) => (
-                          <tr key={`${item.exerciseId}-${index}`}>
+                          <tr key={item.id || item.exerciseId || index}>
                             <td>{index + 1}</td>
                             <td>
                               <strong>{item.title}</strong>

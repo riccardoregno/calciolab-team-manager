@@ -9,6 +9,7 @@ import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
+import { SkeletonStatCard } from "../components/ui/Skeleton";
 import { useAuth } from "../hooks/useAuth";
 import { loadAllPlayerStats } from "../services/playerProfile";
 import { useTranslation } from "../i18n";
@@ -117,6 +118,8 @@ function Dashboard({
   const auth = useAuth();
 
   const [playerStatsMap, setPlayerStatsMap] = useState({});
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState(null);
   const [showPersonalize, setShowPersonalize] = useState(false);
   const [promoCheckedAt] = useState(() => Date.now());
   const isMobile = useIsMobile();
@@ -157,10 +160,17 @@ function Dashboard({
 
   useEffect(() => {
     if (!auth.team?.id) return;
-
-    loadAllPlayerStats(auth.team.id).then(({ data }) => {
+    let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStatsLoading(true);
+    setStatsError(null);
+    loadAllPlayerStats(auth.team.id).then(({ data, error }) => {
+      if (!active) return;
+      if (error) setStatsError(error.message || "Errore caricamento statistiche");
       setPlayerStatsMap(data || {});
+      setStatsLoading(false);
     });
+    return () => { active = false; };
   }, [auth.team?.id]);
 
   const playerStats = useMemo(() => {
@@ -350,6 +360,11 @@ function Dashboard({
         if (!widgets.kpis) return null;
         return (
           <div>
+            {statsError && (
+              <div style={{ marginBottom: 12, padding: "8px 14px", borderRadius: 10, background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", fontSize: 13 }}>
+                ⚠️ {statsError} — le statistiche potrebbero non essere aggiornate
+              </div>
+            )}
             <div
               style={{
                 display: "grid",
@@ -358,34 +373,45 @@ function Dashboard({
                 marginBottom: 24,
               }}
             >
-              <KpiCard
-                label={t("pages.dashboard.teamPlayers")}
-                value={players.length}
-                icon="👥"
-                note={`${availablePlayers} ${t("pages.dashboard.available")}`}
-              />
-              <KpiCard
-                label={t("pages.dashboard.teamGoals")}
-                value={totalGoals}
-                icon="⚽"
-                note={realTopScorer?.goals ? `Top: ${realTopScorer.name}` : t("pages.dashboard.noGoals")}
-              />
-              <KpiCard
-                label={t("pages.dashboard.teamAssists")}
-                value={totalAssists}
-                icon="🅰️"
-                note={
-                  realTopAssistman?.assists
-                    ? `Top: ${realTopAssistman.name}`
-                    : t("pages.dashboard.noAssists")
-                }
-              />
-              <KpiCard
-                label={t("pages.dashboard.totalMinutes")}
-                value={totalMinutes}
-                icon="⏱️"
-                note={realTopMinutes?.minutes ? `Top: ${realTopMinutes.name}` : t("pages.dashboard.noMinutes")}
-              />
+              {statsLoading ? (
+                <>
+                  <SkeletonStatCard />
+                  <SkeletonStatCard />
+                  <SkeletonStatCard />
+                  <SkeletonStatCard />
+                </>
+              ) : (
+                <>
+                  <KpiCard
+                    label={t("pages.dashboard.teamPlayers")}
+                    value={players.length}
+                    icon="👥"
+                    note={`${availablePlayers} ${t("pages.dashboard.available")}`}
+                  />
+                  <KpiCard
+                    label={t("pages.dashboard.teamGoals")}
+                    value={totalGoals}
+                    icon="⚽"
+                    note={realTopScorer?.goals ? `Top: ${realTopScorer.name}` : t("pages.dashboard.noGoals")}
+                  />
+                  <KpiCard
+                    label={t("pages.dashboard.teamAssists")}
+                    value={totalAssists}
+                    icon="🅰️"
+                    note={
+                      realTopAssistman?.assists
+                        ? `Top: ${realTopAssistman.name}`
+                        : t("pages.dashboard.noAssists")
+                    }
+                  />
+                  <KpiCard
+                    label={t("pages.dashboard.totalMinutes")}
+                    value={totalMinutes}
+                    icon="⏱️"
+                    note={realTopMinutes?.minutes ? `Top: ${realTopMinutes.name}` : t("pages.dashboard.noMinutes")}
+                  />
+                </>
+              )}
             </div>
 
             {seasonRecord.played > 0 && (

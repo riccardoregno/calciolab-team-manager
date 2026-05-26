@@ -6,6 +6,7 @@ import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
+import { SkeletonList } from "../components/ui/Skeleton";
 
 import { formatDate, normalizeAppSettings } from "../utils/helpers";
 import { styles } from "../styles/index.js";
@@ -29,6 +30,7 @@ function Statistics({
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [playerStatsMap, setPlayerStatsMap] = useState({});
+  const [statsLoading, setStatsLoading] = useState(false);
   const [playerMatchesDB, setPlayerMatchesDB] = useState([]);
   const [sortBy, setSortBy] = useState("goals");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -127,6 +129,7 @@ function Statistics({
       setStatsSource("local");
       return;
     }
+    setStatsLoading(true);
     loadAllPlayerStats(auth.team.id, activeSeason).then(({ data, error }) => {
       if (error || !data || Object.keys(data).length === 0) {
         setStatsSource("local");
@@ -135,6 +138,7 @@ function Statistics({
         setStatsSource("supabase");
         setPlayerStatsMap(data);
       }
+      setStatsLoading(false);
     });
   }, [auth.team?.id, activeSeason]);
 
@@ -644,8 +648,15 @@ function Statistics({
             <span>{stats.length === 1 ? t("pages.statistics.playersShown", { count: stats.length }) : t("pages.statistics.playersShownPlural", { count: stats.length })}</span>
           </div>
 
+          {/* Skeleton durante il caricamento statistiche */}
+          {statsLoading ? (
+            <div style={{ padding: "8px 0" }}>
+              <SkeletonList rows={6} cols={4} />
+            </div>
+          ) : null}
+
           {/* Tabella desktop / card mobile-tablet */}
-          {isNarrow ? (
+          {!statsLoading && (isNarrow ? (
             <div style={s.mobileCardsGrid}>
               {stats.length === 0 && (
                 <div style={s.emptyTable}>
@@ -898,7 +909,7 @@ function Statistics({
               })}
             </div>
           </div>
-          )}
+          ))}
         </AppCard>
         </div>
 
