@@ -201,6 +201,28 @@ function templateSubscriptionCanceled(firstName = "Coach", planName = "Premium C
   return { subject, html };
 }
 
+/* ── Template: Team invite ───────────────────────── */
+function templateTeamInvite(
+  inviterName = "Il tuo coach",
+  teamName    = "CalcioLab",
+  roleName    = "Membro dello staff",
+  inviteUrl   = APP_URL,
+) {
+  const subject = `${inviterName} ti invita in ${teamName} su CalcioLab`;
+  const html = baseLayout(`
+    ${h1(`Sei stato invitato in <span style="color:#60a5fa;">${teamName}</span>! 🏆`)}
+    ${p(`<strong style="color:white;">${inviterName}</strong> ti ha invitato a unirti alla squadra <strong style="color:white;">${teamName}</strong> su CalcioLab come <strong style="color:white;">${roleName}</strong>.`)}
+    ${p("CalcioLab è la piattaforma completa per la gestione di squadre di calcio: allenamenti, partite, statistiche, tattiche e molto altro.")}
+    ${btnPrimary("Accetta l'invito →", inviteUrl)}
+    ${divider()}
+    ${p("Se non riesci a cliccare il bottone, copia e incolla questo link nel browser:")}
+    <p style="margin:0;font-size:12px;color:#475569;word-break:break-all;">${inviteUrl}</p>
+    ${divider()}
+    ${p("Se non aspettavi questo invito, puoi ignorare questa email.")}
+  `, `${inviterName} ti invita in ${teamName} — accetta l'invito`);
+  return { subject, html };
+}
+
 /* ── Template: Payment failed ────────────────────── */
 function templatePaymentFailed(firstName = "Coach", manageUrl = `${APP_URL}/premium`) {
   const subject = "⚠️ Problema con il tuo pagamento CalcioLab";
@@ -261,6 +283,11 @@ Deno.serve(async (req: Request) => {
     manageUrl?: string;
     subject?: string;
     html?: string;
+    // team_invite
+    inviterName?: string;
+    teamName?: string;
+    roleName?: string;
+    inviteUrl?: string;
   };
   try { body = await req.json(); }
   catch { return json({ error: "Body JSON non valido" }, 400); }
@@ -281,7 +308,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── Limita i tipi permessi agli utenti anonimi ─────────────────────────────
-  const ANON_ALLOWED_TYPES = ["welcome", "trial_expiring"];
+  const ANON_ALLOWED_TYPES = ["welcome", "trial_expiring", "team_invite"];
   if (isAnon && !ANON_ALLOWED_TYPES.includes(type)) {
     return json({ error: `Tipo '${type}' non permesso dalle chiamate frontend` }, 403);
   }
@@ -301,6 +328,9 @@ Deno.serve(async (req: Request) => {
       break;
     case "subscription_canceled":
       ({ subject, html } = templateSubscriptionCanceled(body.firstName, body.canceledPlanName || body.planName));
+      break;
+    case "team_invite":
+      ({ subject, html } = templateTeamInvite(body.inviterName, body.teamName, body.roleName, body.inviteUrl));
       break;
     case "payment_failed":
       ({ subject, html } = templatePaymentFailed(body.firstName, body.manageUrl));

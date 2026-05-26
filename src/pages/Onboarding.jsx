@@ -601,6 +601,10 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token || "";
 
+      const inviterName = sessionData?.session?.user?.user_metadata?.first_name
+        || sessionData?.session?.user?.email
+        || form.clubName
+        || "Il tuo coach";
       await Promise.allSettled(
         emails.map((inv) =>
           fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
@@ -611,14 +615,12 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
               "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY || "",
             },
             body: JSON.stringify({
-              type: "custom",
-              to: inv.email,
-              subject: `${form.clubName || "Il tuo coach"} ti invita su CalcioLab`,
-              html: buildInviteEmailHtml({
-                clubName: form.clubName || "CalcioLab",
-                inviteUrl,
-                role: INVITE_ROLES.find((r) => r.id === inv.role)?.label || inv.role,
-              }),
+              type:        "team_invite",
+              to:          inv.email,
+              inviterName,
+              teamName:    form.clubName || "CalcioLab",
+              roleName:    INVITE_ROLES.find((r) => r.id === inv.role)?.label || inv.role,
+              inviteUrl,
             }),
           }).catch(() => {})
         )
@@ -790,41 +792,6 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
   );
 }
 
-function buildInviteEmailHtml({ clubName, inviteUrl, role }) {
-  return `<!DOCTYPE html>
-<html lang="it"><head><meta charset="UTF-8">
-<style>body{margin:0;padding:0;background:#080b12;font-family:Inter,Arial,sans-serif;color:#e2e8f0;}</style>
-</head><body>
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#080b12;padding:40px 0;">
-<tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;">
-<tr><td style="padding:0 0 24px;">
-  <table cellpadding="0" cellspacing="0"><tr>
-    <td style="width:30px;height:30px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:8px;text-align:center;vertical-align:middle;"><span style="font-size:16px;">⚡</span></td>
-    <td style="padding-left:10px;font-size:16px;font-weight:900;color:white;">CalcioLab</td>
-  </tr></table>
-</td></tr>
-<tr><td style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:32px 36px;">
-  <h1 style="margin:0 0 14px;font-size:24px;font-weight:900;color:white;">Sei stato invitato! 🎉</h1>
-  <p style="margin:0 0 12px;font-size:15px;color:#94a3b8;line-height:1.7;">
-    <strong style="color:#e2e8f0;">${clubName}</strong> ti ha invitato a collaborare su CalcioLab come <strong style="color:#e2e8f0;">${role}</strong>.
-  </p>
-  <p style="margin:0 0 24px;font-size:15px;color:#94a3b8;line-height:1.7;">
-    CalcioLab è la piattaforma per gestire la squadra: rosa, allenamenti, match day e statistiche — tutto in un posto.
-  </p>
-  ${inviteUrl ? `<a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:white;font-size:15px;font-weight:800;padding:14px 32px;border-radius:12px;text-decoration:none;">Accetta l'invito →</a>` : ""}
-  <hr style="border:none;border-top:1px solid rgba(255,255,255,0.07);margin:24px 0;">
-  <p style="margin:0;font-size:12px;color:#475569;">
-    Se non hai richiesto questo invito, puoi ignorare questa email.
-  </p>
-</td></tr>
-<tr><td style="padding:20px 0;text-align:center;">
-  <p style="margin:0;font-size:12px;color:#334155;">© ${new Date().getFullYear()} CalcioLab</p>
-</td></tr>
-</table>
-</td></tr></table>
-</body></html>`;
-}
 
 // ─────────────────────────────────────────────
 // Step 5 — Success / Quick-start

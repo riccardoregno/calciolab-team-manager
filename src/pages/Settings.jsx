@@ -846,7 +846,36 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
     setShowCustomPerms(false);
     clearInviteMemberDraft();
     closeInviteModal();
-    // TODO go-live: chiamare Edge Function che invia l'email con il link
+
+    // Invia email di invito (fire-and-forget — non blocca la UI)
+    const inviteUrl = getInviteLink(token);
+    const teamName  = profile.teamName || profile.clubName || "CalcioLab";
+    const roleName  = memberRoles?.find?.((r) => r.id === inviteForm.role)?.label || inviteForm.role || "Membro dello staff";
+    supabase.auth.getSession().then(({ data: sessionData }) => {
+      const accessToken = sessionData?.session?.access_token || "";
+      const inviterName = sessionData?.session?.user?.user_metadata?.first_name
+        || sessionData?.session?.user?.email
+        || "Il tuo coach";
+      fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":  "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+            "apikey":        import.meta.env.VITE_SUPABASE_ANON_KEY || "",
+          },
+          body: JSON.stringify({
+            type:        "team_invite",
+            to:          inviteForm.email,
+            inviterName,
+            teamName,
+            roleName,
+            inviteUrl,
+          }),
+        }
+      ).catch(() => {}); // silenzioso — l'invito è già salvato anche se l'email fallisce
+    });
   }
 
   function cancelInvite(id) {
