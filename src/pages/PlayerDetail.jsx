@@ -5,6 +5,7 @@ import { useTabState } from "../hooks/useTabState";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
+import { useToast } from "../components/ui/Toast";
 
 import {
   PlayerDevelopmentTab,
@@ -44,6 +45,7 @@ function PlayerDetail({
     [players, id]
   );
 
+  const { showToast, ToastContainer } = useToast();
   const [editing, setEditing] = useState(false);
   const [editBaseUpdatedAt, setEditBaseUpdatedAt] = useState(null);
   const [activeTab, setActiveTab] = useTabState("tab", "cartella");
@@ -133,6 +135,7 @@ function PlayerDetail({
     setPlayers((prev) => prev.map((item) => String(item.id) === String(id) ? stamped : item));
     setEditing(false);
     setEditBaseUpdatedAt(stamped._updatedAt);
+    showToast(t("pages.playerDetail.playerSaved"), "ok");
   }
 
   function forceSavePlayer() {
@@ -438,6 +441,8 @@ function PlayerDetail({
           </div>
         </Modal>
       )}
+
+      <ToastContainer />
     </div>
   );
 }

@@ -35,6 +35,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
   const [form, setForm] = useState(() => loadMatchDraft(`${MATCH_DRAFT_KEY}:new`, emptyMatch(clubLogo)));
   const [importSummary, setImportSummary] = useState(null);
   const [importPreview, setImportPreview] = useState(null);
+  const savingRef = useRef(false);
 
   useEffect(() => {
     if (!openModal) {
@@ -84,10 +85,12 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
   }
 
   function saveMatch() {
+    if (savingRef.current) return;
     if (!form.opponent.trim()) {
       showToast(t("pages.matches.missingOpponent"), "warn");
       return;
     }
+    savingRef.current = true;
 
     const payload = {
       ...form,
@@ -107,6 +110,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
     setForm(emptyMatch(clubLogo));
     closeMatchModal();
     showToast(editingId ? t("pages.matches.matchUpdated") : t("pages.matches.matchSaved"), "ok");
+    setTimeout(() => { savingRef.current = false; }, 500);
   }
 
   function editMatch(match) {
