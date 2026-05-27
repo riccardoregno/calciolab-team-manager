@@ -196,6 +196,7 @@ function Players({ players, setPlayers }) {
       status:      form.status      || "Disponibile",
       gruppo:      form.gruppo      || "prima",
       photo:       form.photo       || "",
+      photoSize:   Number(form.photoSize || 100),
       ratings:     {},
       injuries:    [],
     };
@@ -636,21 +637,44 @@ function Players({ players, setPlayers }) {
             <div
               style={{
                 marginTop: 20,
-                display: "flex",
-                justifyContent: "center",
+                display: "grid",
+                justifyItems: "center",
+                gap: 12,
               }}
             >
-              <img
-                src={form.photo}
-                alt="preview"
+              <div
                 style={{
                   width: 120,
                   height: 120,
                   borderRadius: 24,
-                  objectFit: "cover",
+                  overflow: "hidden",
                   border: "2px solid rgba(255,255,255,0.12)",
+                  background: "rgba(15,23,42,0.72)",
+                  display: "grid",
+                  placeItems: "center",
                 }}
-              />
+              >
+                <img
+                  src={form.photo}
+                  alt="preview"
+                  style={{
+                    width: `${Number(form.photoSize || 100)}%`,
+                    height: `${Number(form.photoSize || 100)}%`,
+                    objectFit: "cover",
+                  }}
+                />
+              </div>
+              <label style={{ width: "min(320px, 100%)", display: "grid", gap: 6, color: "#94a3b8", fontSize: 12, fontWeight: 800, textTransform: "uppercase" }}>
+                Dimensione foto {Number(form.photoSize || 100)}%
+                <input
+                  type="range"
+                  min="60"
+                  max="180"
+                  step="5"
+                  value={Number(form.photoSize || 100)}
+                  onChange={(e) => setForm({ ...form, photoSize: Number(e.target.value) })}
+                />
+              </label>
             </div>
           )}
 

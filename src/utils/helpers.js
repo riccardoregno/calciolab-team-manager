@@ -99,6 +99,8 @@ export function normalizePlayer(player){
     coachFeedback: player.coachFeedback || "",
     ratings: player.ratings || {},
     gruppo: player.gruppo || "prima",
+    photo: player.photo || "",
+    photoSize: Math.min(180, Math.max(60, Number(player.photoSize || 100))),
     injuries: Array.isArray(player.injuries) ? player.injuries : [],
   };
 }

@@ -23,14 +23,24 @@ function formatBirthDateDisplay(raw) {
   return d.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-export function PlayerSidebar({ form, editing, onImageUpload, summary }) {
+export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange, summary }) {
   const { t } = useTranslation();
+  const photoSize = Math.min(180, Math.max(60, Number(form.photoSize || 100)));
   return (
     <>
       <AppCard>
         <div style={sectionStyles.sidebarProfile}>
           {form.photo ? (
-            <img src={form.photo} alt={form.name} style={sectionStyles.avatarImage} />
+            <div style={sectionStyles.avatarFrame}>
+              <img
+                src={form.photo}
+                alt={form.name}
+                style={{
+                  ...sectionStyles.avatarImage,
+                  transform: `scale(${photoSize / 100})`,
+                }}
+              />
+            </div>
           ) : (
             <div style={sectionStyles.avatarFallback}>{form.name?.[0] || "P"}</div>
           )}
@@ -51,6 +61,19 @@ export function PlayerSidebar({ form, editing, onImageUpload, summary }) {
                 onChange={(event) => onImageUpload(event.target.files[0])}
                 style={styles.input}
               />
+              {form.photo && (
+                <label style={sectionStyles.photoSizeControl}>
+                  Dimensione foto {photoSize}%
+                  <input
+                    type="range"
+                    min="60"
+                    max="180"
+                    step="5"
+                    value={photoSize}
+                    onChange={(event) => onPhotoSizeChange(Number(event.target.value))}
+                  />
+                </label>
+              )}
             </div>
           )}
         </div>
@@ -711,12 +734,32 @@ function getStatusTone(status) {
 
 const sectionStyles = {
   sidebarProfile: { display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" },
-  avatarImage: { width: 180, height: 180, borderRadius: 28, objectFit: "cover", marginBottom: 18, border: "2px solid rgba(255,255,255,0.08)" },
+  avatarFrame: {
+    width: 180,
+    height: 180,
+    borderRadius: 28,
+    overflow: "hidden",
+    marginBottom: 18,
+    border: "2px solid rgba(255,255,255,0.08)",
+    background: "rgba(15,23,42,0.72)",
+    display: "grid",
+    placeItems: "center",
+  },
+  avatarImage: { width: "100%", height: "100%", objectFit: "cover" },
   avatarFallback: {
     width: 180, height: 180, borderRadius: 28,
     background: "linear-gradient(135deg,#2563eb,#38bdf8)",
     display: "flex", alignItems: "center", justifyContent: "center",
     fontSize: 52, fontWeight: 900, marginBottom: 18,
+  },
+  photoSizeControl: {
+    display: "grid",
+    gap: 6,
+    marginTop: 12,
+    color: "#94a3b8",
+    fontSize: 12,
+    fontWeight: 800,
+    textTransform: "uppercase",
   },
   badgeRow: { display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 12 },
   kpiGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 12 },

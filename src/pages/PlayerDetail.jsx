@@ -320,6 +320,7 @@ function PlayerDetail({
             form={form}
             editing={editing}
             onImageUpload={handleImageUpload}
+            onPhotoSizeChange={(value) => updateField("photoSize", value)}
             summary={summary}
           />
         </div>

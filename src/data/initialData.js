@@ -33,6 +33,7 @@ export function emptyPlayer() {
     videoLink: "",
     notes: "",
     photo: "",
+    photoSize: 100,
     ratings: { ...emptyRatings },
   };
 }
