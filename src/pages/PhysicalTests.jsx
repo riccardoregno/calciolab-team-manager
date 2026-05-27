@@ -12,6 +12,7 @@ import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { createId, formatShortDate, getPhysicalReference } from "../utils/helpers";
 import { useAppSettings } from "../hooks/useAppSettings";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
 
 const GROUP_TONE = { "Gruppo A": "green", "Gruppo B": "blue", "Gruppo C": "orange", "Gruppo D": "red", "Da testare": "purple" };
@@ -48,7 +49,7 @@ function clearPhysicalTestDraft(id = "new") {
 function calcBMI(weight, height) {
   const w = parseFloat(weight);
   const h = parseFloat(height) / 100;
-  if (!w || !h || isNaN(w) || isNaN(h) || h <= 0) return null;
+  if (!w || w <= 0 || !h || isNaN(w) || isNaN(h) || h <= 0) return null;
   return parseFloat((w / (h * h)).toFixed(1));
 }
 
@@ -239,6 +240,7 @@ export default function PhysicalTests({
   players = [], physicalTests = [], setPhysicalTests, appSettings }) {
 
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { showToast, ToastContainer } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -334,10 +336,27 @@ export default function PhysicalTests({
       showToast(t("pages.physicalTests.noPlayerToast"), "warn");
       return;
     }
+    if (!f.date) {
+      showToast(t("pages.physicalTests.noDateToast"), "warn");
+      return;
+    }
+    // Reject negative numeric values (browser min=0 can be bypassed programmatically)
+    for (const m of METRICS) {
+      const raw = f[m.key];
+      if (raw !== "" && raw !== undefined && raw !== null) {
+        const val = parseFloat(raw);
+        if (!isNaN(val) && val < 0) {
+          showToast(t("pages.physicalTests.negativeValueToast"), "warn");
+          return;
+        }
+      }
+    }
     if (modal.mode === "edit") {
       setPhysicalTests((prevTests) => prevTests.map((t) => t.id === modal.testId ? { ...f, id: modal.testId } : t));
+      showToast(t("pages.physicalTests.testUpdated"), "ok");
     } else {
       setPhysicalTests((prevTests) => [...prevTests, { ...f, id: createId("pt") }]);
+      showToast(t("pages.physicalTests.testSaved"), "ok");
     }
     clearPhysicalTestDraft(modal.testId || f.playerId || "new");
     closeModal();
@@ -518,7 +537,7 @@ export default function PhysicalTests({
                     )}
 
                     {/* Griglia metriche */}
-                    <div style={pt.metricsGrid}>
+                    <div style={{ ...pt.metricsGrid, gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)" }}>
                       {METRICS.map((metric) => {
                         const val     = latest?.[metric.key];
                         const prevVal = previous?.[metric.key];

@@ -81,7 +81,7 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
     t("pages.onboarding.whoCareYou"),
     t("pages.onboarding.yourClub"),
     t("pages.onboarding.tools"),
-    "Invita il team",
+    t("pages.onboarding.inviteTeam"),
   ];
 
   const [step, setStep]         = useState(1);
@@ -89,7 +89,7 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
   const [saving, setSaving]     = useState(false);
   const [inviteToken, setInviteToken] = useState(null);
   const [isMobile, setIsMobile] = useState(
-    () => typeof window !== "undefined" && window.innerWidth < 700
+    () => typeof window !== "undefined" && window.innerWidth < 760
   );
 
   const [form, setForm] = useState({
@@ -107,7 +107,7 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(max-width: 700px)");
+    const mq = window.matchMedia("(max-width: 760px)");
     const handler = (e) => setIsMobile(e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
@@ -297,8 +297,8 @@ function Step1({ form, setForm, onNext, isMobile }) {
             <SelectCard
               key={role.id}
               icon={role.icon}
-              label={role.label}
-              desc={role.desc}
+              label={t(`pages.onboarding.staffRole_${role.id}`)}
+              desc={t(`pages.onboarding.staffRoleDesc_${role.id}`)}
               active={form.userRole === role.id}
               onClick={() => setForm({ ...form, userRole: role.id })}
             />
@@ -308,14 +308,14 @@ function Step1({ form, setForm, onNext, isMobile }) {
 
       <Section label={t("pages.onboarding.yourTeamQuestion")}>
         <div style={ob.cardGrid}>
-          {TEAM_LEVELS.map((t) => (
+          {TEAM_LEVELS.map((lv) => (
             <SelectCard
-              key={t.id}
-              icon={t.icon}
-              label={t.label}
-              desc={t.desc}
-              active={form.teamLevel === t.id}
-              onClick={() => setForm({ ...form, teamLevel: t.id, managesJuniores: false })}
+              key={lv.id}
+              icon={lv.icon}
+              label={t(`pages.onboarding.teamLevel_${lv.id}`)}
+              desc={t(`pages.onboarding.teamLevelDesc_${lv.id}`)}
+              active={form.teamLevel === lv.id}
+              onClick={() => setForm({ ...form, teamLevel: lv.id, managesJuniores: false })}
             />
           ))}
         </div>
@@ -440,7 +440,7 @@ function Step2({ form, setForm, onBack, onNext, isMobile }) {
                 <span style={{ fontSize: 20, fontWeight: 900, color: active ? "#60a5fa" : "#e2e8f0", fontFamily: "monospace" }}>
                   {f.label}
                 </span>
-                <span style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{f.desc}</span>
+                <span style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{t(`pages.onboarding.formationDesc_${f.id.replace(/-/g, "_")}`)}</span>
                 {active && (
                   <div style={{
                     position: "absolute", top: 8, right: 8,
@@ -510,8 +510,8 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
                 </span>
               </div>
               <div style={{ flex: 1, textAlign: "left" }}>
-                <strong style={{ fontSize: 14, color: "#e2e8f0", display: "block" }}>{mod.label}</strong>
-                <span style={{ fontSize: 12, color: "#64748b" }}>{mod.desc}</span>
+                <strong style={{ fontSize: 14, color: "#e2e8f0", display: "block" }}>{t(`pages.onboarding.module_${mod.id}`)}</strong>
+                <span style={{ fontSize: 12, color: "#64748b" }}>{t(`pages.onboarding.moduleDesc_${mod.id}`)}</span>
               </div>
               <div style={{
                 width: 20, height: 20, borderRadius: 6, flexShrink: 0,
@@ -565,6 +565,7 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
 // Step 4 — Invita il tuo staff
 // ─────────────────────────────────────────────
 function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile }) {
+  const { t } = useTranslation();
   const [emails, setEmails]         = useState([]);
   const [inputEmail, setInputEmail] = useState("");
   const [inputRole, setInputRole]   = useState("assistantCoach");
@@ -604,7 +605,7 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
       const inviterName = sessionData?.session?.user?.user_metadata?.first_name
         || sessionData?.session?.user?.email
         || form.clubName
-        || "Il tuo coach";
+        || t("pages.onboarding.yourCoach");
       await Promise.allSettled(
         emails.map((inv) =>
           fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
@@ -637,18 +638,18 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
   return (
     <div style={ob.stepContent}>
       <div style={ob.stepHeader}>
-        {!isMobile && <span style={ob.stepBadge}>Passo 4 di {STEP_COUNT}</span>}
+        {!isMobile && <span style={ob.stepBadge}>{t("pages.onboarding.step", { current: 4, total: STEP_COUNT })}</span>}
         <h1 style={isMobile ? { ...ob.stepTitle, fontSize: 24 } : ob.stepTitle}>
-          Invita il tuo staff 👋
+          {t("pages.onboarding.step4Title")}
         </h1>
         <p style={ob.stepSubtitle}>
-          Condividi il link di invito con assistenti, preparatori e dirigenti. Potrai farlo anche dopo.
+          {t("pages.onboarding.step4Subtitle")}
         </p>
       </div>
 
       {/* ── Invite link ── */}
       <div style={{ marginBottom: 28 }}>
-        <p style={ob.sectionLabel}>Link di invito</p>
+        <p style={ob.sectionLabel}>{t("pages.onboarding.inviteLinkLabel")}</p>
         <div style={{
           display: "flex", gap: 10, alignItems: "center",
           background: "rgba(255,255,255,0.04)",
@@ -660,7 +661,7 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
             flex: 1, fontSize: 12, color: "#64748b",
             wordBreak: "break-all", minWidth: 0,
           }}>
-            {tokenLoading ? "Caricamento…" : inviteUrl || "Link non disponibile — completa prima il profilo"}
+            {tokenLoading ? t("pages.onboarding.inviteLinkLoading") : inviteUrl || t("pages.onboarding.inviteLinkUnavailable")}
           </code>
           <button
             onClick={copyLink}
@@ -676,17 +677,17 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
               whiteSpace: "nowrap",
             }}
           >
-            {copied ? "✓ Copiato!" : "Copia link"}
+            {copied ? t("pages.onboarding.inviteCopied") : t("pages.onboarding.inviteCopyLink")}
           </button>
         </div>
         <p style={{ margin: "8px 0 0", fontSize: 12, color: "#334155" }}>
-          Chi riceve il link può unirsi direttamente alla tua squadra.
+          {t("pages.onboarding.inviteLinkNote")}
         </p>
       </div>
 
       {/* ── Email invites ── */}
       <div style={{ marginBottom: 24 }}>
-        <p style={ob.sectionLabel}>Oppure invia via email</p>
+        <p style={ob.sectionLabel}>{t("pages.onboarding.inviteByEmail")}</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
           <input
             style={{ ...ob.input, flex: "1 1 200px" }}
@@ -702,7 +703,7 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
             onChange={(e) => setInputRole(e.target.value)}
           >
             {INVITE_ROLES.map((r) => (
-              <option key={r.id} value={r.id}>{r.label}</option>
+              <option key={r.id} value={r.id}>{t(`pages.onboarding.inviteRole_${r.id}`)}</option>
             ))}
           </select>
           <button
@@ -712,7 +713,7 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
               padding: "10px 18px", fontSize: 13, whiteSpace: "nowrap",
             }}
           >
-            + Aggiungi
+            {t("pages.onboarding.inviteAdd")}
           </button>
         </div>
 
@@ -732,7 +733,7 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
                   background: "rgba(255,255,255,0.07)", borderRadius: 99,
                   padding: "2px 8px",
                 }}>
-                  {INVITE_ROLES.find((r) => r.id === inv.role)?.label || inv.role}
+                  {INVITE_ROLES.some((r) => r.id === inv.role) ? t(`pages.onboarding.inviteRole_${inv.role}`) : inv.role}
                 </span>
                 <button
                   onClick={() => setEmails(emails.filter((e) => e.email !== inv.email))}
@@ -756,7 +757,7 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
         }}>
           <span style={{ fontSize: 20 }}>✓</span>
           <span style={{ color: "#6ee7b7", fontSize: 14, fontWeight: 700 }}>
-            {sentCount} {sentCount === 1 ? "invito inviato" : "inviti inviati"} con successo!
+            {sentCount === 1 ? t("pages.onboarding.inviteSentOne", { count: sentCount }) : t("pages.onboarding.inviteSentMany", { count: sentCount })}
           </span>
         </div>
       )}
@@ -767,7 +768,7 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
           onClick={() => onComplete()}
           style={{ ...ob.backBtn, color: "#64748b" }}
         >
-          Salta per ora →
+          {t("pages.onboarding.inviteSkip")}
         </button>
         {emails.length > 0 && (
           <button
@@ -779,12 +780,12 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
               cursor: sending ? "not-allowed" : "pointer",
             }}
           >
-            {sending ? "Invio…" : `Invia ${emails.length} invito${emails.length > 1 ? "i" : ""} →`}
+            {sending ? t("pages.onboarding.inviteSending") : emails.length === 1 ? t("pages.onboarding.inviteSendOne", { count: emails.length }) : t("pages.onboarding.inviteSendMany", { count: emails.length })}
           </button>
         )}
         {emails.length === 0 && (
           <button onClick={() => onComplete()} style={ob.nextBtn}>
-            Continua →
+            {t("pages.onboarding.inviteContinue")}
           </button>
         )}
       </div>

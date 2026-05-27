@@ -451,12 +451,14 @@ function App() {
                 ? t("common.loadingData")
                 : storageSource === "supabase"
                 ? `Sync ${auth.team?.name || "Supabase"}`
+                : storageSource === "partial"
+                ? "Sync parziale"
                 : t("common.localSave")}
             </Badge>
 
             {storageError && (
               <span style={styles.storageStatusText}>
-                {t("common.supabaseUnavailable")}
+                {storageSource === "partial" ? storageError : t("common.supabaseUnavailable")}
               </span>
             )}
           </div>

@@ -15,13 +15,13 @@ import {
 } from "../utils/helpers";
 import { generateSeasonReport } from "../utils/generateSeasonReport";
 
-const exportTypes = [
-  { id: "season",   label: "📊 Report stagione", description: "PDF completo: partite, presenze, statistiche, test fisici" },
-  { id: "training", label: "Seduta", description: "Piano campo pronto da stampare" },
-  { id: "matchday", label: "Match Day", description: "Distinta, ruoli e scouting avversario" },
-  { id: "microcycle", label: "Microciclo", description: "Settimana gara, carichi e alert staff" },
-  { id: "postmatch", label: "Post gara", description: "Report tecnico e focus settimana" },
-  { id: "player", label: "Scheda giocatore", description: "Dati individuali, test e carico" },
+const EXPORT_TYPE_KEYS = [
+  { id: "season",    labelKey: "pages.exportCenter.typeSeason",    descKey: "pages.exportCenter.typeSeasonDesc" },
+  { id: "training",  labelKey: "pages.exportCenter.typeTraining",  descKey: "pages.exportCenter.typeTrainingDesc" },
+  { id: "matchday",  labelKey: "pages.exportCenter.typeMatchday",  descKey: "pages.exportCenter.typeMatchdayDesc" },
+  { id: "microcycle",labelKey: "pages.exportCenter.typeMicrocycle",descKey: "pages.exportCenter.typeMicrocycleDesc" },
+  { id: "postmatch", labelKey: "pages.exportCenter.typePostmatch", descKey: "pages.exportCenter.typePostmatchDesc" },
+  { id: "player",    labelKey: "pages.exportCenter.typePlayer",    descKey: "pages.exportCenter.typePlayerDesc" },
 ];
 
 export default function ExportCenter({
@@ -35,6 +35,12 @@ export default function ExportCenter({
 }) {
   const { t } = useTranslation();
   const [type, setType] = useState("training");
+
+  const exportTypes = EXPORT_TYPE_KEYS.map((item) => ({
+    id: item.id,
+    label: t(item.labelKey),
+    description: t(item.descKey),
+  }));
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
@@ -63,16 +69,16 @@ export default function ExportCenter({
     <div style={pageStyles.page}>
       <PageHeader
         title={t("pages.exportCenter.title")}
-        subtitle="Template professionali per consegnare sedute, gara, report e schede giocatore in PDF."
+        subtitle={t("pages.exportCenter.subtitle")}
         action={
           <Button onClick={() => window.print()}>
-            Stampa / salva PDF
+            {t("pages.exportCenter.printBtn")}
           </Button>
         }
       />
 
       <div className="export-workspace" style={{ ...pageStyles.workspace, gridTemplateColumns: isMobile ? "1fr" : "360px 1fr" }}>
-        <AppCard title="Contenuto" subtitle="Scegli cosa preparare per staff, giocatori o archivio.">
+        <AppCard title={t("pages.exportCenter.contentTitle")} subtitle={t("pages.exportCenter.contentSubtitle")}>
           <div style={pageStyles.typeGrid}>
             {exportTypes.map((item) => (
               <button
@@ -93,7 +99,7 @@ export default function ExportCenter({
 
           <div style={pageStyles.controls}>
             {(type === "training") && (
-              <Field label="Seduta">
+              <Field label={t("pages.exportCenter.fieldSession")}>
                 <select
                   value={effectiveSessionId}
                   onChange={(event) => setSelectedSessionId(event.target.value)}
@@ -109,7 +115,7 @@ export default function ExportCenter({
             )}
 
             {(type === "matchday" || type === "postmatch" || type === "microcycle") && (
-              <Field label="Partita">
+              <Field label={t("pages.exportCenter.fieldMatch")}>
                 <select
                   value={effectiveMatchId}
                   onChange={(event) => setSelectedMatchId(event.target.value)}
@@ -125,7 +131,7 @@ export default function ExportCenter({
             )}
 
             {type === "player" && (
-              <Field label="Giocatore">
+              <Field label={t("pages.exportCenter.fieldPlayer")}>
                 <select
                   value={effectivePlayerId}
                   onChange={(event) => setSelectedPlayerId(event.target.value)}
@@ -152,9 +158,9 @@ export default function ExportCenter({
           />
         ) : (
           <AppCard
-            title={`Anteprima ${activeType.label}`}
-            subtitle="Questa area e' quella che verra' stampata o salvata in PDF."
-            rightContent={<Button variant="ghost" onClick={() => window.print()}>PDF</Button>}
+            title={t("pages.exportCenter.previewTitle", { label: activeType.label })}
+            subtitle={t("pages.exportCenter.previewSubtitle")}
+            rightContent={<Button variant="ghost" onClick={() => window.print()}>{t("pages.exportCenter.pdfBtn")}</Button>}
           >
             <div className="print-area print-template">
               {type === "training" && (

@@ -62,6 +62,7 @@ export default function StaffTasks({
   const { showToast, ToastContainer } = useToast();
   const isMobile = useIsMobile(760);
   const [form, setForm] = useState(emptyForm);
+  const [formErrors, setFormErrors] = useState({});
   const [statusFilter, setStatusFilter] = useState("all");
   const [ownerFilter, setOwnerFilter] = useState("all");
   const [weekAnchor, setWeekAnchor] = useState(() => getTodayKey());
@@ -132,9 +133,11 @@ export default function StaffTasks({
   function saveTask() {
     const title = form.title.trim();
     if (!title) {
+      setFormErrors({ title: true });
       showToast(t("pages.staffTasks.toastTitleRequired"), "warn");
       return;
     }
+    setFormErrors({});
 
     const task = {
       id: createId("task"),
@@ -199,11 +202,12 @@ export default function StaffTasks({
             <label style={st.label}>
               {t("pages.staffTasks.fieldTitle")}
               <input
-                style={st.input}
+                style={{ ...st.input, ...(formErrors.title ? st.inputError : {}) }}
                 value={form.title}
-                onChange={(e) => updateForm("title", e.target.value)}
+                onChange={(e) => { updateForm("title", e.target.value); if (formErrors.title) setFormErrors({}); }}
                 placeholder={t("pages.staffTasks.fieldTitlePlaceholder")}
               />
+              {formErrors.title && <span style={st.errorMsg}>{t("pages.staffTasks.toastTitleRequired")}</span>}
             </label>
 
             <label style={st.label}>
@@ -269,7 +273,7 @@ export default function StaffTasks({
 
           <div style={st.actions}>
             <Button onClick={saveTask}>{t("pages.staffTasks.btnCreate")}</Button>
-            <Button variant="ghost" onClick={() => setForm(emptyForm)}>{t("pages.staffTasks.btnClear")}</Button>
+            <Button variant="ghost" onClick={() => { setForm(emptyForm); setFormErrors({}); }}>{t("pages.staffTasks.btnClear")}</Button>
           </div>
         </AppCard>
 
@@ -520,6 +524,8 @@ function toDateKey(date) {
 }
 
 const st = {
+  inputError: { border: "1px solid #f87171", boxShadow: "0 0 0 2px rgba(248,113,113,0.15)" },
+  errorMsg:   { display: "block", marginTop: 4, fontSize: 11, fontWeight: 700, color: "#f87171" },
   statsGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",

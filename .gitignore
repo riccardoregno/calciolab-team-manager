@@ -32,3 +32,5 @@ eslint-report.txt
 android/keystore.properties
 android/*.jks
 android/*.keystore
+
+.vercel

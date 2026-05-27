@@ -590,7 +590,7 @@ function MatchDay({
 
       <div className="no-print" style={matchDayStyles.printArea}>
         <AppCard>
-          <div style={matchDayStyles.matchHeader}>
+          <div style={{ ...matchDayStyles.matchHeader, gridTemplateColumns: isMobile ? "1fr" : "160px 1fr 160px" }}>
             <TeamMark
               logo={selectedMatch.homeLogo || clubLogo}
               logoSize={clubLogoSize}

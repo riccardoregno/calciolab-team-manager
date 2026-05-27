@@ -66,20 +66,20 @@ const widgetLabelKeys = {
 
 /* ─── Permission areas for custom access overrides ─────────── */
 const PERMISSION_AREAS = [
-  { key: "players",    label: "Rosa",         icon: "👥" },
-  { key: "sessions",   label: "Allenamenti",  icon: "📋" },
-  { key: "matches",    label: "Partite",      icon: "⚽" },
-  { key: "physical",   label: "Test fisici",  icon: "📊" },
-  { key: "statistics", label: "Statistiche",  icon: "📈" },
-  { key: "setPlays",   label: "Schemi",       icon: "🎯" },
-  { key: "calendar",   label: "Calendario",   icon: "📅" },
+  { key: "players",    icon: "👥" },
+  { key: "sessions",   icon: "📋" },
+  { key: "matches",    icon: "⚽" },
+  { key: "physical",   icon: "📊" },
+  { key: "statistics", icon: "📈" },
+  { key: "setPlays",   icon: "🎯" },
+  { key: "calendar",   icon: "📅" },
 ];
 
-const AREA_ACCESS_LABELS = {
-  role:   "Ruolo",
-  view:   "Solo lettura",
-  manage: "Lett. + scrittura",
-  none:   "Nessun accesso",
+const AREA_ACCESS_LABEL_KEYS = {
+  role:   "pages.settings.accessRole",
+  view:   "pages.settings.accessView",
+  manage: "pages.settings.accessManage",
+  none:   "pages.settings.accessNone",
 };
 
 /* ─── main component ────────────────────────────────────────── */
@@ -1304,21 +1304,21 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                   onClick={() => setShowCustomPerms((v) => !v)}
                   style={inviteStyles.expandBtn}
                 >
-                  <span>🔧 Personalizza accessi per area</span>
+                  <span>{t("pages.settings.permCustomizeBtn")}</span>
                   <span style={{ fontSize: 10, opacity: 0.6 }}>{showCustomPerms ? "▲" : "▼"}</span>
                 </button>
 
                 {showCustomPerms && (
                   <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
                     <p style={{ margin: "0 0 6px", fontSize: 11, color: "#64748b", lineHeight: 1.4 }}>
-                      Imposta un accesso specifico per ogni area. <strong style={{ color: "#93c5fd" }}>Basato sul ruolo</strong> usa i permessi predefiniti del ruolo scelto.
+                      {t("pages.settings.permHint")} <strong style={{ color: "#93c5fd" }}>{t("pages.settings.permHintRole")}</strong> {t("pages.settings.permHintSuffix")}
                     </p>
                     {PERMISSION_AREAS.map((area) => {
                       const val = inviteForm.customAreas[area.key] || "role";
                       return (
                         <div key={area.key} style={inviteStyles.permRow}>
                           <span style={{ fontSize: 15, width: 22, textAlign: "center" }}>{area.icon}</span>
-                          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{area.label}</span>
+                          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{t(`pages.settings.permArea_${area.key}`)}</span>
                           <div style={{ display: "flex", gap: 4 }}>
                             {["role", "view", "manage", "none"].map((level) => (
                               <button
@@ -1333,7 +1333,7 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
                                   ...(val === level ? inviteStyles.permBtnActive[level] || inviteStyles.permBtnActiveDefault : {}),
                                 }}
                               >
-                                {AREA_ACCESS_LABELS[level]}
+                                {t(AREA_ACCESS_LABEL_KEYS[level])}
                               </button>
                             ))}
                           </div>

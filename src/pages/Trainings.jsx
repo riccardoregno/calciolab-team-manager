@@ -30,6 +30,7 @@ function Trainings({
   const [confirmState, setConfirmState] = useState(null);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
   const [pickerBlock, setPickerBlock] = useState("Tutti");
 
   // Carica catalogo FP5 in background
@@ -155,10 +156,15 @@ function Trainings({
   }
 
   function saveTraining() {
-    if (!form.title.trim()) {
+    const errors = {};
+    if (!form.title.trim()) errors.title = true;
+    if (!form.date) errors.date = true;
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       showToast(t("pages.trainings.titleRequired"), "warn");
       return;
     }
+    setFormErrors({});
 
     const payload = {
       ...form,
@@ -225,6 +231,7 @@ function Trainings({
   function cancelEdit() {
     setEditingId(null);
     setForm(emptyTraining());
+    setFormErrors({});
   }
 
   return (
@@ -391,9 +398,10 @@ function Trainings({
         <input
           placeholder={t("pages.trainings.titlePlaceholder")}
           value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-          style={styles.input}
+          onChange={(e) => { setForm({ ...form, title: e.target.value }); if (formErrors.title) setFormErrors((p) => ({ ...p, title: false })); }}
+          style={{ ...styles.input, ...(formErrors.title ? trainingStyles.inputError : {}) }}
         />
+        {formErrors.title && <span style={trainingStyles.errorMsg}>{t("pages.trainings.titleRequired")}</span>}
       </label>
 
       <label style={trainingStyles.field}>
@@ -401,9 +409,10 @@ function Trainings({
         <input
           type="date"
           value={form.date}
-          onChange={(e) => setForm({ ...form, date: e.target.value })}
-          style={styles.input}
+          onChange={(e) => { setForm({ ...form, date: e.target.value }); if (formErrors.date) setFormErrors((p) => ({ ...p, date: false })); }}
+          style={{ ...styles.input, ...(formErrors.date ? trainingStyles.inputError : {}) }}
         />
+        {formErrors.date && <span style={trainingStyles.errorMsg}>{t("pages.trainings.dateRequired")}</span>}
       </label>
 
       <label style={trainingStyles.field}>
@@ -1116,6 +1125,8 @@ function BlockBtn({ active, onClick, children, color }) {
 }
 
 const trainingStyles = {
+  inputError: { border: "1px solid #f87171", boxShadow: "0 0 0 2px rgba(248,113,113,0.15)" },
+  errorMsg:   { display: "block", marginTop: 4, fontSize: 11, fontWeight: 700, color: "#f87171" },
   formHero: {
     display: "flex",
     justifyContent: "space-between",

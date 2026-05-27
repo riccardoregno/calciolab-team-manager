@@ -33,6 +33,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
   const modalKeyRef = useRef("");
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(() => loadMatchDraft(`${MATCH_DRAFT_KEY}:new`, emptyMatch(clubLogo)));
+  const [formErrors, setFormErrors] = useState({});
   const [importSummary, setImportSummary] = useState(null);
   const [importPreview, setImportPreview] = useState(null);
   const savingRef = useRef(false);
@@ -86,10 +87,15 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
 
   function saveMatch() {
     if (savingRef.current) return;
-    if (!form.opponent.trim()) {
+    const errors = {};
+    if (!form.opponent.trim()) errors.opponent = true;
+    if (!form.date) errors.date = true;
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       showToast(t("pages.matches.missingOpponent"), "warn");
       return;
     }
+    setFormErrors({});
     savingRef.current = true;
 
     const payload = {
@@ -137,6 +143,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
     const nextSearch = params.toString();
     setEditingId(null);
     setForm(emptyMatch(clubLogo));
+    setFormErrors({});
     navigate(
       { pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : "" },
       { replace: true }
@@ -453,19 +460,25 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
               gap: 14,
             }}
           >
-            <input
-              placeholder={t("pages.matches.opponentPlaceholder")}
-              value={form.opponent}
-              onChange={(e) => setForm({ ...form, opponent: e.target.value })}
-              style={styles.input}
-            />
+            <div>
+              <input
+                placeholder={t("pages.matches.opponentPlaceholder")}
+                value={form.opponent}
+                onChange={(e) => { setForm({ ...form, opponent: e.target.value }); if (formErrors.opponent) setFormErrors((p) => ({ ...p, opponent: false })); }}
+                style={{ ...styles.input, ...(formErrors.opponent ? matchStyles.inputError : {}) }}
+              />
+              {formErrors.opponent && <span style={matchStyles.errorMsg}>{t("pages.matches.missingOpponent")}</span>}
+            </div>
 
-            <input
-              type="date"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-              style={styles.input}
-            />
+            <div>
+              <input
+                type="date"
+                value={form.date}
+                onChange={(e) => { setForm({ ...form, date: e.target.value }); if (formErrors.date) setFormErrors((p) => ({ ...p, date: false })); }}
+                style={{ ...styles.input, ...(formErrors.date ? matchStyles.inputError : {}) }}
+              />
+              {formErrors.date && <span style={matchStyles.errorMsg}>{t("pages.matches.dateRequired")}</span>}
+            </div>
 
             <input
               type="time"
@@ -1004,6 +1017,11 @@ function formatMatchVenue(match) {
     match.venueAddress,
   ].filter(Boolean).join(" · ") || "-";
 }
+
+const matchStyles = {
+  inputError: { border: "1px solid #f87171", boxShadow: "0 0 0 2px rgba(248,113,113,0.15)" },
+  errorMsg:   { display: "block", marginTop: 4, fontSize: 11, fontWeight: 700, color: "#f87171" },
+};
 
 const previewStyles = {
   summaryGrid: {

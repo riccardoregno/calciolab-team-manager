@@ -19,6 +19,18 @@ const INJURY_TYPES = [
   "Malattia / influenza", "Affaticamento", "Altro",
 ];
 
+// label-key map — values stay as Italian (persisted to player data for backward compat)
+const INJURY_TYPE_LABEL_KEYS = {
+  "Muscolare":              "pages.availability.injuryTypeMusc",
+  "Osseo / frattura":       "pages.availability.injuryTypeBone",
+  "Articolare":             "pages.availability.injuryTypeJoint",
+  "Tendineo / legamentoso": "pages.availability.injuryTypeTendon",
+  "Contusione":             "pages.availability.injuryTypeBruise",
+  "Malattia / influenza":   "pages.availability.injuryTypeIllness",
+  "Affaticamento":          "pages.availability.injuryTypeFatigue",
+  "Altro":                  "pages.availability.injuryTypeOther",
+};
+
 const STATUS_OPTIONS = [
   { value: "Infortunato",   labelKey: "pages.availability.statusInjured",       color: "#f87171", bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.3)"  },
   { value: "Recupero",      labelKey: "pages.availability.statusRecovery",      color: "#fb923c", bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.3)"   },
@@ -34,6 +46,14 @@ const DIFFERENTIATED_WORK_TYPES = [
   "Carico ridotto",
 ];
 
+const DIFF_TYPE_LABEL_KEYS = {
+  "Defaticante":                 "pages.availability.diffTypeWarmDown",
+  "Recupero infortunio":         "pages.availability.diffTypeInjRecovery",
+  "Lavoro individuale":          "pages.availability.diffTypeIndividual",
+  "Rientro parziale in gruppo":  "pages.availability.diffTypePartialReturn",
+  "Carico ridotto":              "pages.availability.diffTypeReducedLoad",
+};
+
 const UNAVAILABLE = STATUS_OPTIONS.map((s) => s.value);
 const AVAILABILITY_DRAFT_KEY = "calciolab_availability_draft_v1";
 const AVAILABILITY_MODAL = "medical";
@@ -41,43 +61,43 @@ const RECOVERY_MODAL = "recovery";
 
 const PREVENTION_CARDS = [
   {
-    title: "Distorsione caviglia",
-    tag: "Prevenzione",
+    titleKey: "pages.availability.prev1Title",
+    tagKey:   "pages.availability.prevTagPrevention",
     tone: "#38bdf8",
-    points: [
-      "Propriocezione monopodalica e superfici instabili",
-      "Rinforzo peronei con elastici",
-      "Progressione da statico a cambi direzione",
+    pointKeys: [
+      "pages.availability.prev1p1",
+      "pages.availability.prev1p2",
+      "pages.availability.prev1p3",
     ],
   },
   {
-    title: "Lesione muscolare coscia",
-    tag: "Prevenzione",
+    titleKey: "pages.availability.prev2Title",
+    tagKey:   "pages.availability.prevTagPrevention",
     tone: "#38bdf8",
-    points: [
-      "Nordic Hamstring 2x/settimana",
-      "Monitoraggio spike di carico settimanale",
-      "Rientro sprint progressivo prima del gruppo pieno",
+    pointKeys: [
+      "pages.availability.prev2p1",
+      "pages.availability.prev2p2",
+      "pages.availability.prev2p3",
     ],
   },
   {
-    title: "Pubalgia / adduttori",
-    tag: "Prevenzione",
+    titleKey: "pages.availability.prev3Title",
+    tagKey:   "pages.availability.prevTagPrevention",
     tone: "#38bdf8",
-    points: [
-      "Copenhagen Adduction e core stability",
-      "Riduzione cambi direzione ad alta densità",
-      "Monitoraggio dolore inguinale post-seduta",
+    pointKeys: [
+      "pages.availability.prev3p1",
+      "pages.availability.prev3p2",
+      "pages.availability.prev3p3",
     ],
   },
   {
-    title: "Recidiva muscolare",
-    tag: "Return to Play",
+    titleKey: "pages.availability.prev4Title",
+    tagKey:   "pages.availability.prevTagReturnToPlay",
     tone: "#22c55e",
-    points: [
-      "Progressione 50% → 75% → 100% intensità",
-      "Test funzionali senza dolore prima del contatto",
-      "Controllo carico individuale per 2 settimane",
+    pointKeys: [
+      "pages.availability.prev4p1",
+      "pages.availability.prev4p2",
+      "pages.availability.prev4p3",
     ],
   },
 ];
@@ -400,16 +420,16 @@ export default function Availability({
         </div>
         <div style={av.preventionGrid}>
           {PREVENTION_CARDS.map((card) => (
-            <div key={card.title} style={av.preventionCard}>
+            <div key={card.titleKey} style={av.preventionCard}>
               <div style={av.preventionTop}>
-                <strong style={av.preventionTitle}>{card.title}</strong>
+                <strong style={av.preventionTitle}>{t(card.titleKey)}</strong>
                 <span style={{ ...av.preventionTag, color: card.tone, borderColor: `${card.tone}55`, background: `${card.tone}18` }}>
-                  {card.tag}
+                  {t(card.tagKey)}
                 </span>
               </div>
               <ul style={av.preventionList}>
-                {card.points.map((point) => (
-                  <li key={point}>{point}</li>
+                {card.pointKeys.map((key) => (
+                  <li key={key}>{t(key)}</li>
                 ))}
               </ul>
             </div>
@@ -629,7 +649,9 @@ export default function Availability({
               <label style={av.fieldLabel}>{t("pages.availability.fieldInjuryType")}</label>
               <select value={form.injuryType} onChange={(e) => setForm({ ...form, injuryType: e.target.value })} style={styles.input}>
                 <option value="">{t("pages.availability.selectType")}</option>
-                {INJURY_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                {INJURY_TYPES.map((type) => (
+                  <option key={type} value={type}>{INJURY_TYPE_LABEL_KEYS[type] ? t(INJURY_TYPE_LABEL_KEYS[type]) : type}</option>
+                ))}
               </select>
             </div>
 
@@ -642,7 +664,7 @@ export default function Availability({
                   style={styles.input}
                 >
                   {DIFFERENTIATED_WORK_TYPES.map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type} value={type}>{DIFF_TYPE_LABEL_KEYS[type] ? t(DIFF_TYPE_LABEL_KEYS[type]) : type}</option>
                   ))}
                 </select>
               </div>

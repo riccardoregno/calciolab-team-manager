@@ -8,6 +8,7 @@ import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
 import SearchBar from "../components/ui/SearchBar";
 import { formatShortDate } from "../utils/helpers";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
 
 function normalizeText(value) {
@@ -75,6 +76,7 @@ export default function Opponents({
   matches = [] }) {
 
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [selectedName, setSelectedName] = useState("");
@@ -139,7 +141,7 @@ export default function Opponents({
         </div>
       </AppCard>
 
-      <div style={os.layout}>
+      <div style={{ ...os.layout, gridTemplateColumns: isMobile ? "1fr" : "minmax(240px, 320px) minmax(0, 1fr)" }}>
         <div style={os.list}>
           {filtered.map((opponent) => (
             <button

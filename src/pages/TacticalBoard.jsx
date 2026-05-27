@@ -9,6 +9,7 @@ import { ArrowRight, Move, Pause, Play, Plus, Undo2 } from "lucide-react";
 import { emptyExercise } from "../data/initialData";
 import { createId } from "../utils/helpers";
 import { useTranslation } from "../i18n";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 // ─── Persistenza localStorage ─────────────────────────────────────────────────
 const STORAGE_KEY = "calciolab_tactical_board_v1";
@@ -542,6 +543,7 @@ export default function TacticalBoard({
   players = [], setExercises }) {
 
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const navigate   = useNavigate();
   const location   = useLocation();
   const { showToast, ToastContainer } = useToast();
@@ -581,6 +583,9 @@ export default function TacticalBoard({
   const [exModalOpen, setExModalOpen] = useState(!!editingExerciseId);
   const [exName,      setExName]      = useState(() => loadExerciseDraftName(editingExerciseName ?? ""));
   const [exFeedback,  setExFeedback]  = useState(null); // { ok: bool, text: string }
+
+  // ── Undo stack (session-only, non persiste) ───────────────────────────────────
+  const [undoStack, setUndoStack] = useState([]);
 
   const availablePlayers = players.length ? players : fallbackPlayers;
 
@@ -713,8 +718,27 @@ export default function TacticalBoard({
   const selectedShape = getSelectedShape(lines, selectedItem);
   const selectedObject = getSelectedObject(boardObjects, selectedItem);
 
+  // ── Undo helpers ─────────────────────────────────────────────────────────────
+  function pushHistory(currentLines, currentObjects, currentPlayers) {
+    setUndoStack((prev) => [
+      ...prev.slice(-49),
+      { lines: currentLines, boardObjects: currentObjects, boardPlayers: currentPlayers },
+    ]);
+  }
+
+  function handleUndo() {
+    if (undoStack.length === 0) return;
+    const snapshot = undoStack[undoStack.length - 1];
+    setLines(snapshot.lines);
+    setBoardObjects(snapshot.boardObjects);
+    setBoardPlayers(snapshot.boardPlayers);
+    setSelectedItem(null);
+    setUndoStack((prev) => prev.slice(0, -1));
+  }
+
   function deleteSelectedItem() {
     if (!selectedItem) return;
+    pushHistory(lines, boardObjects, boardPlayers);
 
     if (selectedItem.kind === "shape") {
       setLines((prev) => prev.filter((shape) => shape.id !== selectedItem.id));
@@ -752,6 +776,8 @@ export default function TacticalBoard({
     const rect = board.getBoundingClientRect();
     const dx = (delta.x / rect.width) * 100;
     const dy = (delta.y / rect.height) * 100;
+
+    pushHistory(lines, boardObjects, boardPlayers);
 
     if (String(active.id).startsWith("obj-")) {
       setBoardObjects((prev) =>
@@ -796,6 +822,14 @@ export default function TacticalBoard({
     const point = getBoardCoordinates(event);
     if (!point) return;
 
+    // Capture pointer on the board so handleBoardMouseMove/Up receive all events
+    // during a handle drag (scale / rotate / endpoint), even if cursor leaves board bounds
+    const board = document.getElementById("tactical-board-field");
+    if (board && event.pointerId != null) {
+      try { board.setPointerCapture(event.pointerId); } catch { /* ignore */ }
+    }
+
+    pushHistory(lines, boardObjects, boardPlayers);
     setSelectedItem({ kind: payload.kind, id: payload.id });
     setEditDrag({
       ...payload,
@@ -895,13 +929,17 @@ export default function TacticalBoard({
     const point = getBoardCoordinates(event);
     if (!point) return;
 
-    // Capture pointer so drag continues even if the finger/cursor leaves the element
-    event.currentTarget.setPointerCapture(event.pointerId);
-
     const onToken = event.target.closest?.("[data-board-token]");
+
+    // Only capture pointer when drawing/stamping on empty board area.
+    // DnD items (data-board-token) and edit handles manage their own capture.
+    if (!onToken) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
 
     if (activeTool.startsWith("stamp-")) {
       if (onToken) return;
+      pushHistory(lines, boardObjects, boardPlayers);
       const type = activeTool.replace("stamp-", "");
       const nextObject = {
         id: makeShapeId("obj"),
@@ -957,6 +995,7 @@ export default function TacticalBoard({
       return;
     }
 
+    pushHistory(lines, boardObjects, boardPlayers);
     const nextShape = {
       id: makeShapeId("shape"),
       ...drawingLine,
@@ -986,6 +1025,7 @@ export default function TacticalBoard({
   }
 
   function addSizedArea() {
+    pushHistory(lines, boardObjects, boardPlayers);
     const normalizedSize = normalizeAreaSize(areaSize);
     const widthPct = Math.min(96, (normalizedSize.width / FIELD_REFERENCE_SIZE.width) * 100);
     const heightPct = Math.min(96, (normalizedSize.length / FIELD_REFERENCE_SIZE.length) * 100);
@@ -1174,7 +1214,7 @@ export default function TacticalBoard({
       : exName.trim();
 
     if (!editingExerciseId && !name) {
-      setExFeedback({ ok: false, text: "Inserisci il nome dell'esercizio." });
+      setExFeedback({ ok: false, text: t("pages.tacticalBoard.exerciseNameRequired") });
       return;
     }
 
@@ -1397,25 +1437,25 @@ export default function TacticalBoard({
         </div>
       )}
 
-      <div style={boardStyles.layout}>
+      <div style={{ ...boardStyles.layout, gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) 330px" }}>
         <div style={boardStyles.mainColumn}>
           <AppCard>
-            <div style={boardStyles.header}>
+            <div style={{ ...boardStyles.header, flexWrap: "wrap", flexDirection: isMobile ? "column" : "row" }}>
               <div>
                 <div style={boardStyles.kicker}>CALCIOLAB TACTICAL PAD</div>
                 <h2 style={boardStyles.title}>Match Plan</h2>
                 <p style={boardStyles.subtitle}>
-                  Trascina, assegna i giocatori e confronta la struttura della partita.
+                  {t("pages.tacticalBoard.matchPlanSubtitle")}
                 </p>
               </div>
 
               <div style={boardStyles.counters}>
                 <div style={boardStyles.counterBlue}>
-                  <span>Squadra</span>
+                  <span>{t("pages.tacticalBoard.ownTeam")}</span>
                   <strong>{ownCount}</strong>
                 </div>
                 <div style={boardStyles.counterRed}>
-                  <span>Avversari</span>
+                  <span>{t("pages.tacticalBoard.opponents")}</span>
                   <strong>{opponentCount}</strong>
                 </div>
               </div>
@@ -1439,55 +1479,55 @@ export default function TacticalBoard({
                   ))}
                 </select>
               </label>
-              <div style={{ ...boardStyles.actions, marginLeft: "auto" }}>
+              <div style={{ ...boardStyles.actions, marginLeft: isMobile ? 0 : "auto" }}>
                 <button style={boardStyles.secondaryButton} onClick={clearLineup}>{t("pages.tacticalBoard.btnClearLineup")}</button>
                 <button style={boardStyles.primaryButton} onClick={resetBoard}>Reset board</button>
               </div>
             </div>
 
             {/* ── Riga 2: strumenti di disegno ── */}
-            <div style={boardStyles.drawBar}>
+            <div style={{ ...boardStyles.drawBar, padding: isMobile ? "8px" : undefined }}>
               {/* Modalità */}
               <div style={boardStyles.toolGroup}>
-                <ToolButton icon={<Move size={17} />} active={activeTool === "move"} onClick={() => setActiveTool("move")} title="Muovi giocatori" />
+                <ToolButton icon={<Move size={17} />} active={activeTool === "move"} onClick={() => setActiveTool("move")} title={t("pages.tacticalBoard.moveToolTip")} />
                 <ToolButton
                   icon={<svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>}
-                  active={activeTool === "line"} onClick={() => setActiveTool("line")} title="Linea continua"
+                  active={activeTool === "line"} onClick={() => setActiveTool("line")} title={t("pages.tacticalBoard.lineTypeLine")}
                 />
                 <ToolButton
                   icon={<svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="5 3"/></svg>}
-                  active={activeTool === "dashed"} onClick={() => setActiveTool("dashed")} title="Linea tratteggiata (traiettoria)"
+                  active={activeTool === "dashed"} onClick={() => setActiveTool("dashed")} title={t("pages.tacticalBoard.dashedToolTip")}
                 />
-                <ToolButton icon={<ArrowRight size={17} />} active={activeTool === "arrow"} onClick={() => setActiveTool("arrow")} title="Freccia direzionale" />
+                <ToolButton icon={<ArrowRight size={17} />} active={activeTool === "arrow"} onClick={() => setActiveTool("arrow")} title={t("pages.tacticalBoard.arrowToolTip")} />
                 <ToolButton
                   icon={<svg viewBox="0 0 24 18" width="22" height="16"><path d="M2 14 C7 2, 15 2, 22 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>}
-                  active={activeTool === "curve"} onClick={() => setActiveTool("curve")} title="Linea curva"
+                  active={activeTool === "curve"} onClick={() => setActiveTool("curve")} title={t("pages.tacticalBoard.lineTypeCurve")}
                 />
                 <ToolButton
                   icon={<svg viewBox="0 0 24 18" width="22" height="16"><path d="M2 14 C7 2, 15 2, 22 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="4 3"/></svg>}
-                  active={activeTool === "curve-dashed"} onClick={() => setActiveTool("curve-dashed")} title="Linea curva tratteggiata"
+                  active={activeTool === "curve-dashed"} onClick={() => setActiveTool("curve-dashed")} title={t("pages.tacticalBoard.curveDashedToolTip")}
                 />
                 <ToolButton
                   icon={<svg width="20" height="14"><rect x="1" y="1" width="18" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 2"/></svg>}
-                  active={activeTool === "zone"} onClick={() => setActiveTool("zone")} title="Zona (rettangolo evidenziato)"
+                  active={activeTool === "zone"} onClick={() => setActiveTool("zone")} title={t("pages.tacticalBoard.zoneToolTip")}
                 />
               </div>
-              <div style={boardStyles.toolSep} />
+              {!isMobile && <div style={boardStyles.toolSep} />}
               {/* Oggetti campo */}
               <div style={boardStyles.toolGroup}>
                 {[
-                  { key: "ball", title: "Pallone", icon: <svg viewBox="0 0 20 20" width="18" height="18"><circle cx="10" cy="10" r="8" fill="white" stroke="rgba(0,0,0,0.3)" strokeWidth="1.2"/><polygon points="10,4 13.5,8 12,13 8,13 6.5,8" fill="#333" opacity="0.4"/></svg> },
-                  { key: "cone", title: "Cinesino", icon: <svg viewBox="0 0 18 20" width="14" height="17"><polygon points="9,1 17,19 1,19" fill="#f97316"/><ellipse cx="9" cy="19" rx="7" ry="2" fill="#ea580c"/></svg> },
-                  { key: "goal", title: "Porta", icon: <svg viewBox="0 0 28 18" width="22" height="15"><rect x="1" y="1" width="26" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"/></svg> },
-                  { key: "pole", title: "Paletto", icon: <svg viewBox="0 0 10 22" width="9" height="20"><rect x="3" y="0" width="4" height="22" rx="1" fill="currentColor"/><rect x="3" y="0" width="4" height="5" fill="#ef4444"/><rect x="3" y="5" width="4" height="5" fill="white"/><rect x="3" y="10" width="4" height="5" fill="#ef4444"/></svg> },
-                  { key: "hurdle", title: "Ostacolino", icon: <svg viewBox="0 0 26 18" width="22" height="16"><path d="M4 16 V5 H22 V16" fill="none" stroke="#fbbf24" strokeWidth="3" strokeLinecap="round"/><path d="M6 5 H20" stroke="white" strokeWidth="2"/></svg> },
-                  { key: "ring", title: "Cerchio", icon: <svg viewBox="0 0 22 22" width="18" height="18"><circle cx="11" cy="11" r="8" fill="none" stroke="#fbbf24" strokeWidth="3"/></svg> },
-                  { key: "ladder", title: "Speed ladder", icon: <svg viewBox="0 0 26 18" width="23" height="16"><path d="M3 3 H23 M3 15 H23" stroke="currentColor" strokeWidth="2"/><path d="M7 3 V15 M13 3 V15 M19 3 V15" stroke="#fbbf24" strokeWidth="2"/></svg> },
-                ].map(({ key, title, icon }) => (
-                  <ToolButton key={key} icon={icon} active={activeTool === `stamp-${key}`} onClick={() => setActiveTool(`stamp-${key}`)} title={title} />
+                  { key: "ball",   titleKey: "stampBall",   icon: <svg viewBox="0 0 20 20" width="18" height="18"><circle cx="10" cy="10" r="8" fill="white" stroke="rgba(0,0,0,0.3)" strokeWidth="1.2"/><polygon points="10,4 13.5,8 12,13 8,13 6.5,8" fill="#333" opacity="0.4"/></svg> },
+                  { key: "cone",   titleKey: "stampCone",   icon: <svg viewBox="0 0 18 20" width="14" height="17"><polygon points="9,1 17,19 1,19" fill="#f97316"/><ellipse cx="9" cy="19" rx="7" ry="2" fill="#ea580c"/></svg> },
+                  { key: "goal",   titleKey: "stampGoal",   icon: <svg viewBox="0 0 28 18" width="22" height="15"><rect x="1" y="1" width="26" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"/></svg> },
+                  { key: "pole",   titleKey: "stampPole",   icon: <svg viewBox="0 0 10 22" width="9" height="20"><rect x="3" y="0" width="4" height="22" rx="1" fill="currentColor"/><rect x="3" y="0" width="4" height="5" fill="#ef4444"/><rect x="3" y="5" width="4" height="5" fill="white"/><rect x="3" y="10" width="4" height="5" fill="#ef4444"/></svg> },
+                  { key: "hurdle", titleKey: "stampHurdle", icon: <svg viewBox="0 0 26 18" width="22" height="16"><path d="M4 16 V5 H22 V16" fill="none" stroke="#fbbf24" strokeWidth="3" strokeLinecap="round"/><path d="M6 5 H20" stroke="white" strokeWidth="2"/></svg> },
+                  { key: "ring",   titleKey: "stampRing",   icon: <svg viewBox="0 0 22 22" width="18" height="18"><circle cx="11" cy="11" r="8" fill="none" stroke="#fbbf24" strokeWidth="3"/></svg> },
+                  { key: "ladder", titleKey: "stampLadder", icon: <svg viewBox="0 0 26 18" width="23" height="16"><path d="M3 3 H23 M3 15 H23" stroke="currentColor" strokeWidth="2"/><path d="M7 3 V15 M13 3 V15 M19 3 V15" stroke="#fbbf24" strokeWidth="2"/></svg> },
+                ].map(({ key, titleKey, icon }) => (
+                  <ToolButton key={key} icon={icon} active={activeTool === `stamp-${key}`} onClick={() => setActiveTool(`stamp-${key}`)} title={t(`pages.tacticalBoard.${titleKey}`)} />
                 ))}
               </div>
-              <div style={boardStyles.toolSep} />
+              {!isMobile && <div style={boardStyles.toolSep} />}
               {/* Colori */}
               <div style={boardStyles.toolGroup}>
                 {DRAW_COLORS.map((c) => (
@@ -1508,10 +1548,16 @@ export default function TacticalBoard({
                   />
                 ))}
               </div>
-              <div style={boardStyles.toolSep} />
+              {!isMobile && <div style={boardStyles.toolSep} />}
               {/* Undo / Cancella */}
               <div style={boardStyles.toolGroup}>
-                <ToolButton icon={<Undo2 size={17} />} active={false} onClick={() => setLines((p) => p.slice(0, -1))} title="Annulla ultima linea" />
+                <ToolButton
+                  icon={<Undo2 size={17} />}
+                  active={false}
+                  onClick={handleUndo}
+                  title={`${t("pages.tacticalBoard.undo")}${undoStack.length ? ` (${undoStack.length})` : ""}`}
+                  style={undoStack.length === 0 ? { opacity: 0.35, pointerEvents: "none" } : {}}
+                />
               </div>
             </div>
 
@@ -1519,16 +1565,16 @@ export default function TacticalBoard({
               <div style={boardStyles.fieldSizeGroup}>
                 <span>Area</span>
                 <label style={boardStyles.fieldSizeLabel}>
-                  Largh.
+                  {t("pages.tacticalBoard.fieldWidthLabel")}
                   <input style={boardStyles.fieldSizeInput} type="number" value={areaSize.width} min="1" max="60" onChange={(event) => updateAreaSize("width", event.target.value)} />
                 </label>
                 <label style={boardStyles.fieldSizeLabel}>
-                  Lung.
+                  {t("pages.tacticalBoard.fieldLengthLabel")}
                   <input style={boardStyles.fieldSizeInput} type="number" value={areaSize.length} min="1" max="110" onChange={(event) => updateAreaSize("length", event.target.value)} />
                 </label>
-                <small>metri</small>
+                <small>{t("pages.tacticalBoard.meters")}</small>
                 <button type="button" style={boardStyles.frameAddButton} onClick={addSizedArea}>
-                  Inserisci area
+                  {t("pages.tacticalBoard.insertArea")}
                 </button>
               </div>
               <div style={boardStyles.framesGroup}>
@@ -1545,7 +1591,7 @@ export default function TacticalBoard({
                   onClick={updateActiveFrame}
                   disabled={!activeFrameId}
                 >
-                  Aggiorna
+                  {t("pages.tacticalBoard.frameUpdate")}
                 </button>
                 <button
                   type="button"
@@ -1570,7 +1616,7 @@ export default function TacticalBoard({
                   onClick={deleteActiveFrame}
                   disabled={!activeFrameId}
                 >
-                  Elimina frame
+                  {t("pages.tacticalBoard.frameDelete")}
                 </button>
                 <button
                   type="button"
@@ -1582,7 +1628,7 @@ export default function TacticalBoard({
                   onClick={resetFrames}
                   disabled={!boardFrames.length}
                 >
-                  Reset timeline
+                  {t("pages.tacticalBoard.frameReset")}
                 </button>
                 {boardFrames.map((frame, index) => (
                   <button
@@ -1602,12 +1648,12 @@ export default function TacticalBoard({
 
             {(selectedShape || selectedObject) && (
               <div style={boardStyles.editorBar}>
-                <div style={boardStyles.editorMeta}>
-                  <strong>{selectedShape ? "Elemento selezionato" : "Oggetto selezionato"}</strong>
+                <div style={{ ...boardStyles.editorMeta, minWidth: isMobile ? 0 : 220 }}>
+                  <strong>{selectedShape ? t("pages.tacticalBoard.shapeSelectedTitle") : t("pages.tacticalBoard.objectSelectedTitle")}</strong>
                   <span>
                     {selectedShape
-                      ? "Trascina endpoint, angoli o maniglia rotazione. Cambia tipo e colore dalla barra."
-                      : "Trascina l'oggetto, usa le maniglie per scala e rotazione."}
+                      ? t("pages.tacticalBoard.shapeEditHint")
+                      : t("pages.tacticalBoard.objectEditHint")}
                   </span>
                 </div>
                 {selectedShape && (
@@ -1616,18 +1662,18 @@ export default function TacticalBoard({
                     onChange={(event) => updateSelectedShape({ type: event.target.value })}
                     style={boardStyles.editorSelect}
                   >
-                    <option value="line">Linea continua</option>
-                    <option value="dashed">Linea tratteggiata</option>
-                    <option value="arrow">Freccia</option>
-                    <option value="curve">Linea curva</option>
-                    <option value="curve-dashed">Curva tratteggiata</option>
-                    <option value="zone">Zona rettangolare</option>
+                    <option value="line">{t("pages.tacticalBoard.lineTypeLine")}</option>
+                    <option value="dashed">{t("pages.tacticalBoard.lineTypeDashed")}</option>
+                    <option value="arrow">{t("pages.tacticalBoard.lineTypeArrow")}</option>
+                    <option value="curve">{t("pages.tacticalBoard.lineTypeCurve")}</option>
+                    <option value="curve-dashed">{t("pages.tacticalBoard.lineTypeCurveDashed")}</option>
+                    <option value="zone">{t("pages.tacticalBoard.lineTypeZone")}</option>
                   </select>
                 )}
                 {selectedObject && (
-                  <div style={boardStyles.objectControls}>
+                  <div style={{ ...boardStyles.objectControls, gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(150px, 1fr))", minWidth: isMobile ? 0 : 320 }}>
                     <label style={boardStyles.rangeLabel}>
-                      Scala {Number(selectedObject.scale ?? 1).toFixed(1)}x
+                      {t("pages.tacticalBoard.scaleLabel", { value: Number(selectedObject.scale ?? 1).toFixed(1) })}
                       <input
                         type="range"
                         min="0.45"
@@ -1639,7 +1685,7 @@ export default function TacticalBoard({
                       />
                     </label>
                     <label style={boardStyles.rangeLabel}>
-                      Rotazione {Math.round(selectedObject.rotation ?? 0)}°
+                      {t("pages.tacticalBoard.rotationLabel", { value: Math.round(selectedObject.rotation ?? 0) })}
                       <input
                         type="range"
                         min="0"
@@ -1650,10 +1696,34 @@ export default function TacticalBoard({
                         style={boardStyles.rangeInput}
                       />
                     </label>
+                    <label style={{ ...boardStyles.rangeLabel, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <span style={{ whiteSpace: "nowrap", flexShrink: 0 }}>{t("pages.tacticalBoard.objectLabel")}</span>
+                      <input
+                        type="text"
+                        maxLength={8}
+                        value={selectedObject.text ?? ""}
+                        placeholder={t("pages.tacticalBoard.objectLabelPlaceholder")}
+                        onFocus={() => pushHistory(lines, boardObjects, boardPlayers)}
+                        onChange={(e) => updateSelectedObject({ text: e.target.value })}
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          background: "rgba(255,255,255,0.07)",
+                          border: "1px solid rgba(255,255,255,0.15)",
+                          borderRadius: 8,
+                          color: "white",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          padding: "4px 8px",
+                          outline: "none",
+                          letterSpacing: "0.04em",
+                        }}
+                      />
+                    </label>
                   </div>
                 )}
                 <button type="button" style={boardStyles.dangerButton} onClick={deleteSelectedItem}>
-                  Elimina
+                  {t("pages.tacticalBoard.deleteSelected")}
                 </button>
               </div>
             )}
@@ -1661,7 +1731,7 @@ export default function TacticalBoard({
             <DndContext onDragEnd={handleDragEnd}>
   <div
   id="tactical-board-field"
-  style={{ ...boardStyles.field, touchAction: "none" }}
+  style={{ ...boardStyles.field, touchAction: "none", minHeight: isMobile ? 0 : 520 }}
   onPointerDown={handleBoardMouseDown}
   onPointerMove={handleBoardMouseMove}
   onPointerUp={handleBoardMouseUp}
@@ -1882,6 +1952,7 @@ export default function TacticalBoard({
         onSelect={() => setSelectedItem({ kind: "object", id: obj.id })}
         onEditStart={startEditorDrag}
         onRemove={(id) => {
+          pushHistory(lines, boardObjects, boardPlayers);
           setBoardObjects((prev) => prev.filter((o) => o.id !== id));
           setSelectedItem(null);
         }}
@@ -1897,6 +1968,7 @@ export default function TacticalBoard({
         onSelectSlot={setSelectedSlotId}
         onAssignToSlot={assignPlayerToSlot}
         onRemove={(slotPlayer) => {
+          pushHistory(lines, boardObjects, boardPlayers);
           const linkedPlayer = selectedLineup.find(
             (p) => p.id === slotPlayer.realPlayerId
           );
@@ -1909,8 +1981,8 @@ export default function TacticalBoard({
 </DndContext>
 
             <div style={boardStyles.legend}>
-              <span style={boardStyles.legendItem}><i style={boardStyles.dotBlue} />Squadra</span>
-              <span style={boardStyles.legendItem}><i style={boardStyles.dotRed} />Avversari</span>
+              <span style={boardStyles.legendItem}><i style={boardStyles.dotBlue} />{t("pages.tacticalBoard.ownTeam")}</span>
+              <span style={boardStyles.legendItem}><i style={boardStyles.dotRed} />{t("pages.tacticalBoard.opponents")}</span>
             </div>
           </AppCard>
         </div>
@@ -2243,6 +2315,7 @@ function ShapeHandles({ points, onStart }) {
 
 // ─── Oggetto campo draggable ──────────────────────────────────────────────────
 function FieldObject({ obj, activeTool, selected, onSelect, onEditStart, onRemove }) {
+  const { t } = useTranslation();
   const isDraggable = activeTool === "move" || selected;
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: obj.id,
@@ -2253,7 +2326,7 @@ function FieldObject({ obj, activeTool, selected, onSelect, onEditStart, onRemov
     <div
       ref={setNodeRef}
       data-board-token="true"
-      title="Doppio click per rimuovere"
+      title={t("pages.tacticalBoard.playerDoubleClickHint")}
       onClick={(event) => {
         event.stopPropagation();
         onSelect();
@@ -2280,31 +2353,50 @@ function FieldObject({ obj, activeTool, selected, onSelect, onEditStart, onRemov
       }}
     >
       <FieldObjectIcon type={obj.type} />
+      {obj.text ? (
+        <span style={{
+          position: "absolute",
+          bottom: -20,
+          left: "50%",
+          transform: "translateX(-50%)",
+          whiteSpace: "nowrap",
+          fontSize: 12,
+          fontWeight: 800,
+          color: "white",
+          textShadow: "0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.7)",
+          pointerEvents: "none",
+          letterSpacing: "0.04em",
+          lineHeight: 1,
+        }}>
+          {obj.text}
+        </span>
+      ) : null}
       {selected && (
         <>
           <button
             type="button"
             data-board-token="true"
-            title="Elimina"
+            title={t("pages.tacticalBoard.deleteTip")}
+            onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation();
               onRemove(obj.id);
             }}
-            style={{ ...boardStyles.objectHandle, right: -16, top: -16, background: "#ef4444", color: "white", fontSize: 10, fontWeight: 900 }}
+            style={{ ...boardStyles.objectHandle, right: -16, top: -16, background: "#ef4444", color: "white", fontSize: 14, fontWeight: 900 }}
           >
-            x
+            ✕
           </button>
           <button
             type="button"
             data-board-token="true"
-            title="Scala"
+            title={t("pages.tacticalBoard.scaleTip")}
             onPointerDown={(event) => onEditStart(event, { kind: "object", id: obj.id, action: "scale" })}
             style={{ ...boardStyles.objectHandle, right: -14, bottom: -14, cursor: "nwse-resize" }}
           />
           <button
             type="button"
             data-board-token="true"
-            title="Ruota"
+            title={t("pages.tacticalBoard.rotateTip")}
             onPointerDown={(event) => onEditStart(event, { kind: "object", id: obj.id, action: "rotate" })}
             style={{ ...boardStyles.objectHandle, left: "50%", top: -24, transform: "translateX(-50%)", background: "#fbbf24" }}
           />
@@ -2322,6 +2414,7 @@ function DraggablePlayer({
   selectedBenchPlayer,
   onAssignToSlot,
 }) {
+  const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: player.id,
   });
@@ -2372,7 +2465,7 @@ function DraggablePlayer({
         }
       }}
       onDoubleClick={() => isRealPlayer && onRemove(player)}
-      title={isRealPlayer ? "Doppio click per rimuovere" : "Trascina"}
+      title={isRealPlayer ? t("pages.tacticalBoard.playerDoubleClickHint") : t("pages.tacticalBoard.playerDragHint")}
     >
       <TacticalPlayerIcon player={player} isOpponent={isOpponent} isRealPlayer={isRealPlayer} />
       {selectedSlotId === player.id && (
@@ -2399,7 +2492,7 @@ function Note({ title, value, onChange }) {
   );
 }
 
-function ToolButton({ icon, active, onClick, title }) {
+function ToolButton({ icon, active, onClick, title, style: extraStyle }) {
   return (
     <button
       onClick={onClick}
@@ -2419,10 +2512,11 @@ function ToolButton({ icon, active, onClick, title }) {
         alignItems: "center",
         justifyContent: "center",
         cursor: "pointer",
-        transition: "0.2s",
+        transition: "opacity 0.2s, box-shadow 0.2s",
         boxShadow: active
           ? "0 10px 30px rgba(37,99,235,0.35)"
           : "none",
+        ...extraStyle,
       }}
     >
       {icon}

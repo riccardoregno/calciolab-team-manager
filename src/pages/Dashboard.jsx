@@ -166,12 +166,12 @@ function Dashboard({
     setStatsError(null);
     loadAllPlayerStats(auth.team.id).then(({ data, error }) => {
       if (!active) return;
-      if (error) setStatsError(error.message || "Errore caricamento statistiche");
+      if (error) setStatsError(error.message || t("pages.dashboard.statsLoadError"));
       setPlayerStatsMap(data || {});
       setStatsLoading(false);
     });
     return () => { active = false; };
-  }, [auth.team?.id]);
+  }, [auth.team?.id, t]);
 
   const playerStats = useMemo(() => {
     return players.map((player) => {
@@ -317,7 +317,7 @@ function Dashboard({
             {widgets.nextEvent && (
               <AppCard>
                 {nextEvent?.type === "Partita" ? (
-                  <NextMatchCard match={nextEvent} navigate={navigate} />
+                  <NextMatchCard match={nextEvent} navigate={navigate} clubName={settings.workspaceProfile?.clubName || t("common.appName")} />
                 ) : (
                   <>
                     <h3 style={{ marginTop: 0 }}>{t("pages.dashboard.nextEvent")}</h3>
@@ -362,7 +362,7 @@ function Dashboard({
           <div>
             {statsError && (
               <div style={{ marginBottom: 12, padding: "8px 14px", borderRadius: 10, background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", fontSize: 13 }}>
-                ⚠️ {statsError} — le statistiche potrebbero non essere aggiornate
+                ⚠️ {statsError} — {t("pages.dashboard.statsWarning")}
               </div>
             )}
             <div
@@ -589,7 +589,7 @@ function Dashboard({
                     <FocusItem
                       key={`${event.type}-${event.id}-${event.date}`}
                       label={isMatch ? t("common.match") : event.type || t("common.session")}
-                      title={isMatch ? `CalcioLab - ${event.opponent || t("pages.matches.opponentPlaceholder")}` : event.title || t("common.session")}
+                      title={isMatch ? `${settings.workspaceProfile?.clubName || t("common.appName")} - ${event.opponent || t("pages.matches.opponentPlaceholder")}` : event.title || t("common.session")}
                       meta={`${formatDate(event.date)}${event.theme ? ` · ${event.theme}` : ""}`}
                       tone={isMatch ? "orange" : "green"}
                       action={isMatch ? t("pages.dashboard.openMatch") : t("pages.dashboard.openSession")}
@@ -1906,7 +1906,7 @@ const srStyles = {
 };
 
 /* ─── NextMatchCard ─────────────────────────────────────────── */
-function NextMatchCard({ match, navigate }) {
+function NextMatchCard({ match, navigate, clubName }) {
   const { t } = useTranslation();
   const starterCount = (match.lineup?.starterIds || []).length;
   const benchCount   = (match.lineup?.benchIds   || []).length;
@@ -1919,7 +1919,7 @@ function NextMatchCard({ match, navigate }) {
         <div>
           <Badge tone="orange">{t("pages.dashboard.nextMatchLabel")}</Badge>
           <h2 style={{ margin: "10px 0 4px", lineHeight: 1.15 }}>
-            CalcioLab <span style={{ color: "#64748b" }}>vs</span> {match.opponent}
+            {clubName} <span style={{ color: "#64748b" }}>vs</span> {match.opponent}
           </h2>
           <p style={{ color: "#94a3b8", margin: 0 }}>
             {formatDate(match.date)}

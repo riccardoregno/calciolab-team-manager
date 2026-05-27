@@ -33,6 +33,15 @@ const DIFFERENTIATED_TYPES = [
   "Carico ridotto",
 ];
 
+// Display-label lookup — keeps stored Italian values unchanged
+const DIFF_TYPE_LABEL_KEYS = {
+  "Defaticante":                "pages.availability.diffTypeWarmDown",
+  "Recupero infortunio":        "pages.availability.diffTypeInjRecovery",
+  "Lavoro individuale":         "pages.availability.diffTypeIndividual",
+  "Rientro parziale in gruppo": "pages.availability.diffTypePartialReturn",
+  "Carico ridotto":             "pages.availability.diffTypeReducedLoad",
+};
+
 function PlayerDetail({
   players, setPlayers, sessions = [], matches = [], physicalTests = [], setStaffTasks }) {
 
@@ -496,7 +505,9 @@ function MedicalActionForm({ type, value, onChange, onCancel, onSubmit }) {
             style={styles.input}
           >
             {DIFFERENTIATED_TYPES.map((item) => (
-              <option key={item} value={item}>{item}</option>
+              <option key={item} value={item}>
+                {DIFF_TYPE_LABEL_KEYS[item] ? t(DIFF_TYPE_LABEL_KEYS[item]) : item}
+              </option>
             ))}
           </select>
         </label>

@@ -7,6 +7,7 @@ import PageHeader from "../components/ui/PageHeader";
 import { styles } from "../styles/index.js";
 import { createId, normalizeAppSettings, normalizeSponsor } from "../utils/helpers";
 import { useTranslation } from "../i18n";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 const emptySponsor = {
   name: "",
@@ -30,6 +31,7 @@ const packageValues = {
 export default function Sponsors({
   appSettings = {}, setAppSettings }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const settings = normalizeAppSettings(appSettings);
   const hub = settings.sponsorHub;
   const [form, setForm] = useState(emptySponsor);
@@ -91,13 +93,13 @@ export default function Sponsors({
         badge={t("pages.sponsors.badgePlan")}
       />
 
-      <div style={sponsorStyles.kpiGrid}>
+      <div style={{ ...sponsorStyles.kpiGrid, gridTemplateColumns: isMobile ? "1fr" : "repeat(3,minmax(0,1fr))" }}>
         <Kpi label={t("pages.sponsors.kpiActive")} value={activeSponsors.length} />
         <Kpi label={t("pages.sponsors.kpiYearlyValue")} value={`€ ${yearlyValue.toLocaleString("it-IT")}`} />
         <Kpi label={t("pages.sponsors.kpiMainSponsor")} value={mainSponsor?.name || t("pages.sponsors.kpiMainSponsorFallback")} />
       </div>
 
-      <div style={sponsorStyles.grid}>
+      <div style={{ ...sponsorStyles.grid, gridTemplateColumns: isMobile ? "1fr" : "390px 1fr" }}>
         <AppCard title={editingId ? t("pages.sponsors.formTitleEdit") : t("pages.sponsors.formTitleNew")} subtitle={t("pages.sponsors.formSubtitle")}>
           <form onSubmit={submitSponsor} style={sponsorStyles.form}>
             <label style={sponsorStyles.label}>
@@ -110,7 +112,7 @@ export default function Sponsors({
               />
             </label>
 
-            <div style={sponsorStyles.two}>
+            <div style={{ ...sponsorStyles.two, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
               <label style={sponsorStyles.label}>
                 {t("pages.sponsors.fieldPackage")}
                 <select
@@ -212,7 +214,7 @@ export default function Sponsors({
       </div>
 
       <AppCard title={t("pages.sponsors.reportTitle")} subtitle={t("pages.sponsors.reportSubtitle")}>
-        <div style={sponsorStyles.reportGrid}>
+        <div style={{ ...sponsorStyles.reportGrid, gridTemplateColumns: isMobile ? "1fr" : "0.7fr 1.3fr" }}>
           <div style={sponsorStyles.reportBox}>
             <strong>{t("pages.sponsors.assetTitle")}</strong>
             <p>{t("pages.sponsors.assetText")}</p>

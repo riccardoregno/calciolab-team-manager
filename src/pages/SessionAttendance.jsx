@@ -61,9 +61,9 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
     return (
       <div style={s.page}>
         <AppCard>
-          <p style={s.muted}>Seduta non trovata.</p>
+          <p style={s.muted}>{t("pages.sessionAttendance.sessionNotFound")}</p>
           <Button variant="ghost" onClick={() => navigate("/trainings")}>
-            Torna alle sedute
+            {t("pages.sessionAttendance.backToSessions")}
           </Button>
         </AppCard>
       </div>
@@ -106,25 +106,25 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
       <PageHeader
         title={`${t("pages.sessionAttendance.title")} — ${session.title || t("pages.sessionAttendance.defaultSession")}`}
         subtitle={subtitle}
-        badge={`${players.length} giocatori`}
+        badge={t("pages.sessionAttendance.badge", { count: players.length })}
       />
 
       {/* Barra riepilogo + azioni */}
       <AppCard>
         <div style={s.topBar}>
           <div style={s.summary}>
-            <SummaryPill color="#22c55e" icon="✔" label="presenti"    value={presenti} />
-            {assenti     > 0 && <SummaryPill color="#f87171"  icon="✖" label="assenti"     value={assenti} />}
-            {infortunati > 0 && <SummaryPill color="#fb923c"  icon="⚠" label="infortunati" value={infortunati} />}
-            {permesso    > 0 && <SummaryPill color="#38bdf8"  icon="◎" label="permesso"    value={permesso} />}
-            <span style={s.pct}>{pct}% presenza</span>
+            <SummaryPill color="#22c55e" icon="✔" label={t("pages.sessionAttendance.summaryPresenti")}    value={presenti} />
+            {assenti     > 0 && <SummaryPill color="#f87171"  icon="✖" label={t("pages.sessionAttendance.summaryAssenti")}     value={assenti} />}
+            {infortunati > 0 && <SummaryPill color="#fb923c"  icon="⚠" label={t("pages.sessionAttendance.summaryInfortunati")} value={infortunati} />}
+            {permesso    > 0 && <SummaryPill color="#38bdf8"  icon="◎" label={t("pages.sessionAttendance.summaryPermesso")}    value={permesso} />}
+            <span style={s.pct}>{pct}{t("pages.sessionAttendance.summaryPct")}</span>
           </div>
           <div style={s.topActions}>
             <Button variant="ghost" onClick={() => markAll("Presente")}>
-              Tutti presenti
+              {t("pages.sessionAttendance.markAllPresent")}
             </Button>
             <Button variant="ghost" onClick={() => navigate("/trainings")}>
-              Indietro
+              {t("pages.sessionAttendance.back")}
             </Button>
           </div>
         </div>
@@ -132,9 +132,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
 
       {players.length === 0 ? (
         <AppCard>
-          <p style={s.muted}>
-            Nessun giocatore in rosa. Aggiungili dalla sezione Giocatori.
-          </p>
+          <p style={s.muted}>{t("pages.sessionAttendance.noPlayers")}</p>
         </AppCard>
       ) : (
         <AppCard>
@@ -195,7 +193,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                         value={rpe}
                         onChange={(e) => updatePlayer(pid, "rpe", e.target.value)}
                       />
-                      <span style={s.rpeHint}>Carico percepito</span>
+                      <span style={s.rpeHint}>{t("pages.sessionAttendance.rpeHint")}</span>
                     </div>
                   )}
                 </div>

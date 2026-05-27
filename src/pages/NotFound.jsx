@@ -3,8 +3,10 @@
  * Mostrata per qualsiasi route non riconosciuta dall'app.
  */
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "../i18n";
 
 export default function NotFound() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
@@ -28,17 +30,15 @@ export default function NotFound() {
           </div>
 
           <p style={s.code}>404</p>
-          <h1 style={s.title}>Pagina non trovata</h1>
-          <p style={s.subtitle}>
-            Questa pagina è fuori campo — o non è mai esistita, o è stata spostata.
-          </p>
+          <h1 style={s.title}>{t("pages.notFound.title")}</h1>
+          <p style={s.subtitle}>{t("pages.notFound.subtitle")}</p>
 
           <div style={s.actions}>
             <button style={s.btnPrimary} onClick={() => navigate("/")}>
-              Torna alla home →
+              {t("pages.notFound.goHome")}
             </button>
             <button style={s.btnGhost} onClick={() => navigate(-1)}>
-              ← Indietro
+              {t("pages.notFound.goBack")}
             </button>
           </div>
         </div>

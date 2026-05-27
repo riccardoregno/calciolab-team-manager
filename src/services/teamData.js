@@ -15,6 +15,9 @@ const ENTITY_TABLES = {
   sessions:      "sessions",
   matches:       "matches",
   physicalTests: "physical_tests",
+  gpsSessions:   "gps_sessions",
+  staffTasks:    "staff_tasks",
+  injuryRecords: "injury_records",
 };
 const STORAGE_BACKUP_KEY = `${STORAGE_KEY}:backup`;
 
@@ -77,16 +80,27 @@ export async function saveTeamTablesState(state, teamId) {
   try {
     const normalized = normalizeAppState(state);
 
-    await Promise.all(
-      Object.entries(ENTITY_TABLES).map(([stateKey, table]) =>
-        syncEntityTable(table, teamId, normalized[stateKey] || [])
-      )
+    const entityResults = await Promise.allSettled(
+      Object.entries(ENTITY_TABLES).map(async ([stateKey, table]) => {
+        await syncEntityTable(table, teamId, normalized[stateKey] || []);
+        return { key: stateKey, table };
+      })
     );
 
-    // FIX #3: salva appSettings nella colonna `settings` della tabella teams.
-    // Richiede che la colonna esista: ALTER TABLE teams ADD COLUMN IF NOT EXISTS settings JSONB;
-    // Se la colonna non esiste, l'update fallisce silenziosamente (try/catch sopra).
-    await syncAppSettings(teamId, normalized.appSettings || {});
+    // Salva appSettings nella colonna `settings` e setPlays nella colonna `set_plays`.
+    const settingsResults = await Promise.allSettled([
+      syncAppSettings(teamId, normalized.appSettings || {}).then(() => ({ key: "appSettings", table: "teams.settings" })),
+      syncSetPlays(teamId, normalized.setPlays || {}).then(() => ({ key: "setPlays", table: "teams.set_plays" })),
+    ]);
+
+    const failures = collectSyncFailures([...entityResults, ...settingsResults]);
+    if (failures.length > 0) {
+      const error = new Error(`Sync parziale: ${failures.map((failure) => failure.table).join(", ")}`);
+      if (import.meta.env.DEV) {
+        console.warn("[teamData] Sync parziale Supabase:", failures);
+      }
+      return { source: "partial", error, failures };
+    }
 
     return { source: "supabase" };
   } catch (error) {
@@ -109,24 +123,31 @@ export async function saveRemoteState(state, { teamId } = {}) {
   return saveTeamTablesState(normalizedState, teamId);
 }
 
-// ─── FIX #3: sync appSettings su teams.settings ───────────────────────────
+// ─── Sync appSettings su teams.settings ───────────────────────────────────
 async function syncAppSettings(teamId, appSettings) {
-  // Tenta di salvare settings nella tabella teams.
-  // Fallisce silenziosamente se la colonna `settings` non è stata ancora creata.
   const { error } = await supabase
     .from("teams")
     .update({ settings: appSettings })
     .eq("id", teamId);
 
-  if (error && import.meta.env.DEV) {
-    console.warn("[teamData] syncAppSettings fallita (colonna settings mancante?):", error.message);
-  }
+  if (error) throw error;
+}
+
+// ─── Sync setPlays su teams.set_plays ─────────────────────────────────────
+// setPlays è un oggetto singolo per team (palle inattive), non un array di entità.
+async function syncSetPlays(teamId, setPlays) {
+  const { error } = await supabase
+    .from("teams")
+    .update({ set_plays: setPlays })
+    .eq("id", teamId);
+
+  if (error) throw error;
 }
 
 // ─── Load ──────────────────────────────────────────────────────────────────
 async function loadTeamTablesState(teamId) {
   try {
-    const entries = await Promise.all(
+    const tableResults = await Promise.allSettled(
       Object.entries(ENTITY_TABLES).map(async ([stateKey, table]) => {
         // FIX #2: seleziona anche updated_at per conflict detection futura
         const { data, error } = await supabase
@@ -148,19 +169,32 @@ async function loadTeamTablesState(teamId) {
       })
     );
 
-    // FIX #3: carica appSettings dalla colonna teams.settings
+    const successfulEntries = tableResults
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value);
+    const failures = collectSyncFailures(tableResults);
+
+    if (successfulEntries.length === 0 && failures.length > 0) {
+      throw new Error(`Lettura Supabase fallita: ${failures.map((failure) => failure.table).join(", ")}`);
+    }
+
+    // Carica appSettings e setPlays dalla colonna teams
     const { data: teamRow } = await supabase
       .from("teams")
-      .select("settings")
+      .select("settings, set_plays")
       .eq("id", teamId)
       .maybeSingle();
 
     const localState = loadLocalState();
-    const remoteEntityState = Object.fromEntries(entries);
+    const remoteEntityState = Object.fromEntries(successfulEntries);
     const entityState = Object.fromEntries(
       Object.keys(ENTITY_TABLES).map((stateKey) => {
-        const remoteRecords = remoteEntityState[stateKey] || [];
+        const remoteRecords = remoteEntityState[stateKey];
         const localRecords = localState[stateKey] || [];
+
+        if (!Array.isArray(remoteRecords)) {
+          return [stateKey, localRecords];
+        }
 
         // Protezione perdita dati: se Supabase risponde vuoto ma il browser ha dati,
         // non sovrascriviamo la sorgente locale. Succede facilmente dopo primo login,
@@ -174,19 +208,22 @@ async function loadTeamTablesState(teamId) {
     );
     const state = normalizeAppState({
       ...entityState,
-      // GPS & Load resta local-first finché non esiste una tabella Supabase dedicata.
-      gpsSessions:   localState.gpsSessions   || [],
-      // Azioni staff local-first finché non esiste una tabella Supabase dedicata.
-      staffTasks:    localState.staffTasks    || [],
-      // Infortuni restano local-first finché non esiste una tabella Supabase dedicata.
-      injuryRecords: localState.injuryRecords || [],
       // Usa settings remoti solo se contengono dati reali. Un JSONB vuoto ({})
       // non deve cancellare profilo societa', logo e campi salvati in locale.
       appSettings: resolveAppSettings(teamRow?.settings, localState.appSettings),
+      // setPlays: preferisce remoto se presente, altrimenti locale (stessa logica di appSettings)
+      setPlays: resolveSetPlays(teamRow?.set_plays, localState.setPlays),
     });
 
     saveLocalState(state);
-    return { state, source: "supabase" };
+    return {
+      state,
+      source: failures.length > 0 ? "partial" : "supabase",
+      error: failures.length > 0
+        ? new Error(`Sync parziale: ${failures.map((failure) => failure.table).join(", ")}`)
+        : null,
+      failures,
+    };
   } catch (error) {
     if (import.meta.env.DEV) {
       console.warn("Lettura tabelle Supabase fallita, uso localStorage:", error.message);
@@ -235,6 +272,32 @@ function resolveAppSettings(remoteSettings = {}, localSettings = {}) {
   }
 
   return mergeAppSettings(remoteSettings, localSettings);
+}
+
+// setPlays è un oggetto semplice: preferisce il remoto se non è vuoto,
+// altrimenti usa il locale. Nessun merge complesso — l'ultimo salvataggio vince.
+function resolveSetPlays(remoteSetPlays, localSetPlays) {
+  const remote = remoteSetPlays && typeof remoteSetPlays === "object" ? remoteSetPlays : {};
+  const local  = localSetPlays  && typeof localSetPlays  === "object" ? localSetPlays  : {};
+  // Il remoto è "significativo" se ha almeno una chiave con valori non vuoti
+  const hasRemoteData = Object.values(remote).some(
+    (v) => v && typeof v === "object" && Object.values(v).some((s) => s !== "")
+  );
+  return hasRemoteData ? remote : (Object.keys(local).length > 0 ? local : remote);
+}
+
+function collectSyncFailures(results) {
+  return results
+    .map((result, index) => {
+      if (result.status === "fulfilled") return null;
+      const tableEntry = Object.entries(ENTITY_TABLES)[index];
+      const table = tableEntry?.[1] || (index === Object.keys(ENTITY_TABLES).length ? "teams.settings" : "teams.set_plays");
+      return {
+        table,
+        message: result.reason?.message || String(result.reason || "Errore sconosciuto"),
+      };
+    })
+    .filter(Boolean);
 }
 
 function recoverMissingAppSettings(currentSettings = {}, backupSettings = {}) {

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTabState } from "../hooks/useTabState";
+import { useIsMobile } from "../hooks/useIsMobile";
 import {
   DndContext,
   DragOverlay,
@@ -196,6 +197,7 @@ function Calendar({
 
 function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQuickCreate, onDeleteEvent, onEditEvent }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [openDay, setOpenDay] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
   const [activeEvent, setActiveEvent] = useState(null);
@@ -288,17 +290,18 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(7, minmax(90px, 1fr))",
-          gap: 8,
-          marginBottom: 8,
+          gridTemplateColumns: isMobile ? "repeat(7, 1fr)" : "repeat(7, minmax(90px, 1fr))",
+          gap: isMobile ? 2 : 8,
+          marginBottom: isMobile ? 4 : 8,
           color: "#94a3b8",
-          fontSize: 12,
+          fontSize: isMobile ? 9 : 12,
           fontWeight: 900,
           textTransform: "uppercase",
+          textAlign: isMobile ? "center" : undefined,
         }}
       >
         {weekDayKeys.map((key) => (
-          <span key={key}>{t(key)}</span>
+          <span key={key}>{isMobile ? t(key).slice(0, 1) : t(key)}</span>
         ))}
       </div>
 
@@ -310,9 +313,9 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(7, minmax(90px, 1fr))",
-            gap: 10,
-            overflowX: "auto",
+            gridTemplateColumns: isMobile ? "repeat(7, 1fr)" : "repeat(7, minmax(90px, 1fr))",
+            gap: isMobile ? 3 : 10,
+            overflowX: isMobile ? undefined : "auto",
           }}
         >
           {month.cells.map((cell) => {
@@ -327,9 +330,9 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                 key={cell.dateKey}
                 dateKey={cell.dateKey}
                 style={{
-                  minHeight: 110,
-                  borderRadius: 12,
-                  padding: 10,
+                  minHeight: isMobile ? 44 : 110,
+                  borderRadius: isMobile ? 8 : 12,
+                  padding: isMobile ? "4px 3px" : 10,
                   background: isOpen
                     ? "rgba(56,189,248,0.06)"
                     : isToday
@@ -340,44 +343,57 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                     : isToday
                     ? "2px solid #3b82f6"
                     : "1px solid rgba(255,255,255,0.08)",
+                  overflow: "hidden",
                 }}
               >
                 {/* Header cella */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 3 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1 }}>
-                    <strong style={{ fontSize: 13 }}>{String(cell.day).padStart(2, "0")}</strong>
-                    {isToday && (
-                      <span style={{ fontSize: 10, fontWeight: 800, color: "#3b82f6", background: "rgba(59,130,246,0.18)", borderRadius: 6, padding: "1px 5px", lineHeight: 1.5 }}>
-                        {t("pages.calendar.today")}
-                      </span>
+                {isMobile ? (
+                  /* Mobile: solo numero + dot evento */
+                  <div style={{ textAlign: "center" }}>
+                    <strong style={{ fontSize: 11, color: isToday ? "#38bdf8" : "#94a3b8", display: "block", lineHeight: 1.3 }}>
+                      {cell.day}
+                    </strong>
+                    {cell.events.length > 0 && (
+                      <div style={{ display: "flex", justifyContent: "center", gap: 2, flexWrap: "wrap", marginTop: 2 }}>
+                        {cell.events.slice(0, 3).map((ev) => (
+                          <span
+                            key={ev.id}
+                            style={{
+                              width: 5, height: 5, borderRadius: "50%",
+                              background: ev.type === "Partita" ? "#fb923c" : ev.type === "Altro" ? "#38bdf8" : "#22c55e",
+                              display: "inline-block",
+                            }}
+                          />
+                        ))}
+                      </div>
                     )}
                   </div>
-                  <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-                    {cell.events.length === 1 && (
-                      <>
-                        <button
-                          onClick={() => setEditingEvent(cell.events[0])}
-                          style={wv.addBtnSmall}
-                          title="Modifica evento"
-                        >✏️</button>
-                        <button
-                          onClick={() => onDeleteEvent?.(cell.events[0])}
-                          style={{ ...wv.addBtnSmall, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}
-                          title="Elimina evento"
-                        >🗑️</button>
-                      </>
-                    )}
-                    {onQuickCreate && (
-                      <button
-                        onClick={() => setOpenDay(isOpen ? null : cell.dateKey)}
-                        style={wv.addBtnSmall}
-                        title="Aggiungi evento"
-                      >
-                        {isOpen ? "×" : "+"}
-                      </button>
-                    )}
+                ) : (
+                  /* Desktop: numero + today badge + pulsanti edit/delete/add */
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 3 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1 }}>
+                      <strong style={{ fontSize: 13 }}>{String(cell.day).padStart(2, "0")}</strong>
+                      {isToday && (
+                        <span style={{ fontSize: 10, fontWeight: 800, color: "#3b82f6", background: "rgba(59,130,246,0.18)", borderRadius: 6, padding: "1px 5px", lineHeight: 1.5 }}>
+                          {t("pages.calendar.today")}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+                      {cell.events.length === 1 && (
+                        <>
+                          <button onClick={() => setEditingEvent(cell.events[0])} style={wv.addBtnSmall} title="Modifica evento">✏️</button>
+                          <button onClick={() => onDeleteEvent?.(cell.events[0])} style={{ ...wv.addBtnSmall, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento">🗑️</button>
+                        </>
+                      )}
+                      {onQuickCreate && (
+                        <button onClick={() => setOpenDay(isOpen ? null : cell.dateKey)} style={wv.addBtnSmall} title="Aggiungi evento">
+                          {isOpen ? "×" : "+"}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {isOpen && (
                   <QuickAddForm
@@ -462,6 +478,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
 // ─────────────────────────────────────────────
 function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [offset, setOffset] = useState(0);
   const [openDay, setOpenDay] = useState(null); // dateKey del giorno con form aperto
   const [editingEvent, setEditingEvent] = useState(null);
@@ -538,7 +555,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div style={wv.grid}>
+        <div style={{ ...wv.grid, gridTemplateColumns: isMobile ? "1fr" : "repeat(7,minmax(0,1fr))" }}>
           {week.map((day, index) => {
             const dayEvents  = weekEvents.filter((e) => e.date === day.key);
             const isToday    = day.date.getTime() === today.getTime();
@@ -551,20 +568,34 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
                 dateKey={day.key}
                 style={{
                   ...wv.dayCard,
+                  ...(isMobile ? wv.dayCardMobile : {}),
                   ...(isToday ? wv.dayCardToday : {}),
                   ...(isPast  ? wv.dayCardPast  : {}),
                   ...(isOpen  ? wv.dayCardOpen  : {}),
                 }}
               >
                 {/* Header giorno */}
-                <div style={wv.dayHeader}>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 900, fontSize: 13, color: isToday ? "#38bdf8" : "#94a3b8", textTransform: "uppercase" }}>
-                      {t(weekDayKeys[index])}
-                    </p>
-                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>
-                      {formatShortDate(day.key)}
-                    </p>
+                <div style={isMobile ? wv.dayHeaderMobile : wv.dayHeader}>
+                  <div style={isMobile ? { display: "flex", alignItems: "center", gap: 10 } : {}}>
+                    {isMobile ? (
+                      <>
+                        <span style={{ fontWeight: 900, fontSize: 13, color: isToday ? "#38bdf8" : "#94a3b8", textTransform: "uppercase", minWidth: 34 }}>
+                          {t(weekDayKeys[index])}
+                        </span>
+                        <span style={{ fontSize: 12, color: "#475569" }}>
+                          {formatShortDate(day.key)}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <p style={{ margin: 0, fontWeight: 900, fontSize: 13, color: isToday ? "#38bdf8" : "#94a3b8", textTransform: "uppercase" }}>
+                          {t(weekDayKeys[index])}
+                        </p>
+                        <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>
+                          {formatShortDate(day.key)}
+                        </p>
+                      </>
+                    )}
                   </div>
                   <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
                     <Badge tone={dayEvents.length ? (isToday ? "blue" : "green") : "purple"}>
@@ -595,7 +626,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
                 )}
 
                 {/* Lista eventi */}
-                <div style={wv.eventList}>
+                <div style={isMobile ? wv.eventListMobile : wv.eventList}>
                   {dayEvents.length ? (
                     dayEvents.map((event) => (
                       <DraggableEvent key={`${event.type}-${event.id}`} event={event}>
@@ -603,32 +634,45 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
                           style={{
                             ...wv.event,
                             borderLeftColor: event.type === "Partita" ? "#fb923c" : event.type === "Altro" ? "#38bdf8" : "#22c55e",
+                            ...(isMobile ? { display: "flex", alignItems: "center", gap: 10, padding: "8px 10px" } : {}),
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
-                            <Badge tone={event.type === "Partita" ? "orange" : event.type === "Altro" ? "blue" : "green"}>
-                              {t(EVENT_TYPES.find(et => et.value === event.type)?.labelKey ?? "pages.calendar.typeTraining")}
-                            </Badge>
-                            <div style={{ display: "flex", gap: 3 }}>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }}
-                                style={wv.iconBtn}
-                                title="Modifica evento"
-                              >✏️</button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }}
-                                style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}
-                                title="Elimina evento"
-                              >🗑️</button>
-                            </div>
-                          </div>
-                          <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 13 }}>
-                            {event.title}
-                          </p>
-                          {(event.theme || event.opponent || event.objective || event.notes) && (
-                            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
-                              {event.theme || event.opponent || event.objective || event.notes}
-                            </p>
+                          {isMobile ? (
+                            <>
+                              <span style={{ fontSize: 15 }}>{event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ margin: 0, fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {event.title}
+                                </p>
+                                {(event.theme || event.opponent || event.notes) && (
+                                  <p style={{ margin: 0, fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {event.theme || event.opponent || event.notes}
+                                  </p>
+                                )}
+                              </div>
+                              <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+                                <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica">✏️</button>
+                                <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina">🗑️</button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
+                                <Badge tone={event.type === "Partita" ? "orange" : event.type === "Altro" ? "blue" : "green"}>
+                                  {t(EVENT_TYPES.find(et => et.value === event.type)?.labelKey ?? "pages.calendar.typeTraining")}
+                                </Badge>
+                                <div style={{ display: "flex", gap: 3 }}>
+                                  <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica evento">✏️</button>
+                                  <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento">🗑️</button>
+                                </div>
+                              </div>
+                              <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 13 }}>{event.title}</p>
+                              {(event.theme || event.opponent || event.objective || event.notes) && (
+                                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
+                                  {event.theme || event.opponent || event.objective || event.notes}
+                                </p>
+                              )}
+                            </>
                           )}
                         </div>
                       </DraggableEvent>
@@ -742,6 +786,7 @@ const wv = {
   kpiGrid:     { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 },
   grid:        { display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 10 },
   dayCard:     { borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", minHeight: 126, display: "grid", alignContent: "start", gap: 8 },
+  dayCardMobile: { minHeight: "auto", padding: "10px 14px" },
   dayCardToday:{ background: "rgba(56,189,248,0.09)", border: "1px solid rgba(56,189,248,0.28)" },
   dayCardPast: { opacity: 0.55 },
   dayCardOpen: { background: "rgba(56,189,248,0.06)", border: "1px solid rgba(56,189,248,0.22)" },
@@ -757,8 +802,10 @@ const wv = {
     color: "#38bdf8", cursor: "pointer", fontSize: 13, fontWeight: 900,
     display: "grid", placeItems: "center", lineHeight: 1, padding: 0, minHeight: 0,
   },
-  dayHeader:   { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 },
-  eventList:   { display: "grid", gap: 6 },
+  dayHeader:      { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 },
+  dayHeaderMobile:{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 },
+  eventList:      { display: "grid", gap: 6 },
+  eventListMobile:{ display: "grid", gap: 4 },
   event:       { padding: "8px 10px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid" },
   iconBtn: {
     width: 22, height: 22, borderRadius: 7, padding: 0, minHeight: 0,
@@ -913,9 +960,9 @@ function EventEditModal({ event, onSave, onClose }) {
             <>
               <label style={em.label}>{t("pages.calendar.fieldLocation")}</label>
               <select style={em.input} value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}>
-                <option>Casa</option>
-                <option>Trasferta</option>
-                <option>Neutro</option>
+                <option value="Casa">{t("pages.calendar.locationHome")}</option>
+                <option value="Trasferta">{t("pages.calendar.locationAway")}</option>
+                <option value="Neutro">{t("pages.calendar.locationNeutral")}</option>
               </select>
 
               <label style={em.label}>{t("pages.calendar.fieldResult")}</label>

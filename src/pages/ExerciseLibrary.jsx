@@ -14,6 +14,7 @@ import { TRAINING_BLOCKS, getBlockFromCategory, createId, getCurrentUserRole, is
 import { generateExerciseSvg, getExerciseDescription, getExerciseProgressions } from "../utils/exerciseContent";
 import { emptyExercise } from "../data/initialData";
 import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
 
 // Returns the image to show for an exercise card: generated SVG for fp5 catalog, stored image for personal
@@ -60,6 +61,7 @@ function matchPlayersBucket(exPlayers, bucketLabel) {
 export default function ExerciseLibrary({
   appSettings = {}, exercises = [], setExercises }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
   const detailExerciseId = new URLSearchParams(location.search).get("exerciseId");
@@ -316,7 +318,7 @@ export default function ExerciseLibrary({
         <>
           {/* Filtri */}
           <AppCard>
-            <div style={libStyles.toolbar}>
+            <div style={{ ...libStyles.toolbar, gridTemplateColumns: isMobile ? "1fr" : "1.6fr repeat(6, minmax(100px, 1fr))" }}>
               <SearchBar value={search} onChange={setSearch} placeholder="Cerca per titolo, categoria, tag..." />
               <DarkSelect label="Blocco"      value={filters.block}     options={catOptions.blocks}        onChange={(v) => setFilters({ ...filters, block: v })} />
               <DarkSelect label="Categoria"   value={filters.category}  options={catOptions.categories}    onChange={(v) => setFilters({ ...filters, category: v })} />
@@ -335,12 +337,12 @@ export default function ExerciseLibrary({
                   onClick={() => { setFilters(filterDefaults); setSearch(""); }}
                   style={{ background: "none", border: "none", color: "#38bdf8", fontSize: 12, cursor: "pointer", padding: "2px 6px" }}
                 >
-                  ✕ Reset filtri
+                  {t("pages.exerciseLibrary.resetFilters")}
                 </button>
               )}
               {/* Selezione dimensione pagina */}
               <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Per pagina:</span>
+                <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{t("pages.exerciseLibrary.perPage")}</span>
                 <div style={{ display: "flex", gap: 4 }}>
                   {PAGE_SIZES.map((s) => (
                     <button
@@ -367,7 +369,7 @@ export default function ExerciseLibrary({
             <AppCard>
               <div style={{ textAlign: "center", padding: "40px 0", color: "#94a3b8" }}>
                 <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
-                <p style={{ margin: 0 }}>Caricamento 893 esercizi...</p>
+                <p style={{ margin: 0 }}>{t("pages.exerciseLibrary.loading")}</p>
               </div>
             </AppCard>
           ) : filteredCatalog.length === 0 ? (
@@ -520,16 +522,16 @@ export default function ExerciseLibrary({
 
                         {/* Dettagli */}
                         <div style={libStyles.details}>
-                          {ex.fieldSize  && <InfoChip label="Campo"     value={ex.fieldSize} />}
-                          {ex.material   && <InfoChip label="Materiale" value={ex.material} />}
-                          {ex.ageGroup   && <InfoChip label="Età"       value={ex.ageGroup} />}
-                          {ex.players    && <InfoChip label="Giocatori" value={ex.players} />}
-                          {ex.goal       && <InfoChip label="Focus"     value={ex.goal} />}
+                          {ex.fieldSize  && <InfoChip label={t("pages.exerciseLibrary.chipField")}    value={ex.fieldSize} />}
+                          {ex.material   && <InfoChip label={t("pages.exerciseLibrary.chipMaterial")} value={ex.material} />}
+                          {ex.ageGroup   && <InfoChip label={t("pages.exerciseLibrary.chipAge")}      value={ex.ageGroup} />}
+                          {ex.players    && <InfoChip label={t("pages.exerciseLibrary.chipPlayers")}  value={ex.players} />}
+                          {ex.goal       && <InfoChip label={t("pages.exerciseLibrary.chipFocus")}    value={ex.goal} />}
                         </div>
 
                         {isExpanded && ex.variants && (
                           <div style={libStyles.variantBox}>
-                            <p style={libStyles.variantLabel}>Varianti</p>
+                            <p style={libStyles.variantLabel}>{t("pages.exerciseLibrary.variants")}</p>
                             <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.55 }}>
                               {ex.variants}
                             </p>
@@ -687,6 +689,8 @@ export default function ExerciseLibrary({
       {detailExercise && (
         <ExerciseDetailModal
           exercise={detailExercise}
+          isMobile={isMobile}
+          t={t}
           onClose={closeExerciseDetail}
           onUseInTraining={openExerciseInTraining}
           onOpenLightbox={(src) => setLightboxSrc(src)}
@@ -907,7 +911,7 @@ function parseMethodology(desc = "") {
     });
 }
 
-function ExerciseDetailModal({ exercise, onClose, onUseInTraining, onOpenLightbox }) {
+function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, onOpenLightbox }) {
   const desc = exDesc(exercise);
   const sections = parseMethodology(desc);
   const progressions = getExerciseProgressions(exercise);
@@ -934,21 +938,21 @@ function ExerciseDetailModal({ exercise, onClose, onUseInTraining, onOpenLightbo
           </div>
           <h2 style={libStyles.detailTitle}>{exercise.title}</h2>
           <p style={libStyles.detailSubtitle}>
-            {exercise.objective || exercise.goal || "Scheda metodologica pronta per la seduta."}
+            {exercise.objective || exercise.goal || t("pages.exerciseLibrary.detailDefaultObjective")}
           </p>
           <div style={libStyles.detailActions}>
-            <Button onClick={() => onUseInTraining(exercise)}>Usa in seduta</Button>
+            <Button onClick={() => onUseInTraining(exercise)}>{t("pages.exerciseLibrary.useInSession")}</Button>
             {lightboxSrc && (
               <Button variant="ghost" onClick={() => onOpenLightbox(lightboxSrc)}>
-                Ingrandisci diagramma
+                {t("pages.exerciseLibrary.enlargeDiagram")}
               </Button>
             )}
           </div>
         </div>
 
-        <div style={libStyles.detailGrid}>
+        <div style={{ ...libStyles.detailGrid, gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1.35fr) minmax(260px, 0.65fr)" }}>
           <div style={libStyles.detailDiagramCard}>
-            <p style={libStyles.detailSectionKicker}>Diagramma tattico</p>
+            <p style={libStyles.detailSectionKicker}>{t("pages.exerciseLibrary.detailDiagramTitle")}</p>
             <div style={libStyles.detailDiagram} onClick={() => lightboxSrc && onOpenLightbox(lightboxSrc)}>
               {exercise.tacticalBoard ? (
                 <TacticalMiniPreview board={exercise.tacticalBoard} height={320} />
@@ -957,19 +961,19 @@ function ExerciseDetailModal({ exercise, onClose, onUseInTraining, onOpenLightbo
               ) : exercise.image ? (
                 <TacticalMiniPreview imageSrc={exercise.image} height={320} />
               ) : (
-                <div style={libStyles.detailEmptyDiagram}>Nessun diagramma disponibile</div>
+                <div style={libStyles.detailEmptyDiagram}>{t("pages.exerciseLibrary.detailNoDiagram")}</div>
               )}
             </div>
           </div>
 
           <div style={libStyles.detailSide}>
-            <p style={libStyles.detailSectionKicker}>Dati operativi</p>
+            <p style={libStyles.detailSectionKicker}>{t("pages.exerciseLibrary.detailOpsTitle")}</p>
             <div style={libStyles.detailInfoGrid}>
-              {exercise.duration && <InfoChip label="Durata" value={`${exercise.duration} min`} />}
-              {exercise.players && <InfoChip label="Giocatori" value={exercise.players} />}
-              {exercise.fieldSize && <InfoChip label="Campo" value={exercise.fieldSize} />}
-              {exercise.material && <InfoChip label="Materiale" value={exercise.material} />}
-              {exercise.ageGroup && <InfoChip label="Età" value={exercise.ageGroup} />}
+              {exercise.duration && <InfoChip label={t("pages.exerciseLibrary.chipDuration")} value={`${exercise.duration} min`} />}
+              {exercise.players && <InfoChip label={t("pages.exerciseLibrary.chipPlayers")} value={exercise.players} />}
+              {exercise.fieldSize && <InfoChip label={t("pages.exerciseLibrary.chipField")} value={exercise.fieldSize} />}
+              {exercise.material && <InfoChip label={t("pages.exerciseLibrary.chipMaterial")} value={exercise.material} />}
+              {exercise.ageGroup && <InfoChip label={t("pages.exerciseLibrary.chipAge")} value={exercise.ageGroup} />}
               {exercise.rpe && <InfoChip label="RPE" value={exercise.rpe} />}
             </div>
             {(exercise.tags || []).length > 0 && (
@@ -981,7 +985,7 @@ function ExerciseDetailModal({ exercise, onClose, onUseInTraining, onOpenLightbo
         </div>
 
         <div style={libStyles.detailMethodology}>
-          <p style={libStyles.detailSectionKicker}>Scheda tecnica</p>
+          <p style={libStyles.detailSectionKicker}>{t("pages.exerciseLibrary.detailTechTitle")}</p>
           <div style={libStyles.detailMethodGrid}>
             {sections.map((section, index) => {
               const isObjective = section.label.toLowerCase() === "obiettivo";
@@ -1002,7 +1006,7 @@ function ExerciseDetailModal({ exercise, onClose, onUseInTraining, onOpenLightbo
         </div>
 
         <div style={libStyles.detailProgression}>
-          <p style={libStyles.detailSectionKicker}>Progressione didattica</p>
+          <p style={libStyles.detailSectionKicker}>{t("pages.exerciseLibrary.detailProgressionTitle")}</p>
           <div style={libStyles.progressionGrid}>
             {progressions.map((item, index) => (
               <div key={item.level} style={libStyles.progressionCard}>
@@ -1019,7 +1023,7 @@ function ExerciseDetailModal({ exercise, onClose, onUseInTraining, onOpenLightbo
 
         {exercise.variants && (
           <div style={libStyles.detailVariant}>
-            <p style={libStyles.detailSectionKicker}>Varianti e progressioni</p>
+            <p style={libStyles.detailSectionKicker}>{t("pages.exerciseLibrary.detailVariantsTitle")}</p>
             <p style={{ margin: 0, color: "#cbd5e1", lineHeight: 1.6, fontSize: 14 }}>{exercise.variants}</p>
           </div>
         )}

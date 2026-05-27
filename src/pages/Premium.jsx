@@ -198,7 +198,7 @@ export default function Premium({
 
       window.location.assign(data.url);
     } catch (error) {
-      setCheckoutError(error?.message || "Errore durante l'avvio del checkout.");
+      setCheckoutError(error?.message || t("pages.premium.checkoutError"));
       setPendingPlan(null);
     }
   }
@@ -218,10 +218,10 @@ export default function Premium({
         }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.url) throw new Error(data.error || "Portale non disponibile.");
+      if (!response.ok || !data.url) throw new Error(data.error || t("pages.premium.portalError"));
       window.location.assign(data.url);
     } catch (error) {
-      setCheckoutError(error?.message || "Errore apertura portale.");
+      setCheckoutError(error?.message || t("pages.premium.portalError"));
       setPendingPlan(null);
     }
   }
@@ -249,9 +249,9 @@ export default function Premium({
         throw new Error(data.error || "Disdetta non disponibile.");
       }
 
-      setBillingMessage("Abbonamento attivo fino a fine periodo.");
+      setBillingMessage(t("pages.premium.subscriptionCancelled"));
     } catch (error) {
-      setCheckoutError(error?.message || "Errore durante la disdetta.");
+      setCheckoutError(error?.message || t("pages.premium.cancellationError"));
     } finally {
       setPendingPlan(null);
     }
@@ -305,7 +305,7 @@ export default function Premium({
         });
       }
     } catch (error) {
-      setCheckoutError(error?.message || "Errore aggiornamento VIP.");
+      setCheckoutError(error?.message || t("pages.premium.vipUpdateError"));
     } finally {
       setPendingPlan(null);
     }
@@ -328,7 +328,7 @@ export default function Premium({
   }
 
   function displayPrice(plan) {
-    if (plan.price === "0") return "Gratis";
+    if (plan.price === "0") return t("pages.premium.free");
     return `€ ${plan.price}`;
   }
 
@@ -354,8 +354,8 @@ export default function Premium({
       </style>
       <PageHeader
         title={t("pages.premium.title")}
-        subtitle="Tutto quello che ti serve per gestire la stagione in modo professionale."
-        badge={`Piano attivo: ${billing.effectivePlan.name}`}
+        subtitle={t("pages.premium.subtitle")}
+        badge={t("pages.premium.activePlanBadge", { plan: billing.effectivePlan.name })}
       />
 
       {/* ── Stato billing corrente ── */}
@@ -367,8 +367,8 @@ export default function Premium({
         }}>
           <span style={{ fontSize: 13, color: billing.trialActive ? "#fde68a" : "#fca5a5" }}>
             {billing.trialActive
-              ? `⏳ Trial ${billing.effectivePlan.name} attivo — ${billing.trialDaysLeft} giorni rimanenti.`
-              : "❌ Trial scaduto — scegli un piano per continuare ad usare le funzioni avanzate."}
+              ? t("pages.premium.trialActive", { plan: billing.effectivePlan.name, days: billing.trialDaysLeft })
+              : t("pages.premium.trialExpired")}
           </span>
           {billing.trialActive && (
             <button
@@ -377,7 +377,7 @@ export default function Premium({
               onClick={() => activatePlan(billing.trialPlan)}
               disabled={pendingPlan !== null}
             >
-              Attiva ora →
+              {t("pages.premium.activateNow")}
             </button>
           )}
         </div>
@@ -398,9 +398,9 @@ export default function Premium({
       {vipNotice && (
         <div style={ps.vipSuccessBanner}>
           <div>
-            <strong style={ps.vipSuccessTitle}>Hai raggiunto {vipNotice.level?.toUpperCase()}</strong>
+            <strong style={ps.vipSuccessTitle}>{t("pages.premium.vipReachedTitle", { level: vipNotice.level?.toUpperCase() })}</strong>
             {vipNotice.reward && (
-              <p style={ps.vipSuccessText}>Codice reward: {vipNotice.reward.promotionCode}</p>
+              <p style={ps.vipSuccessText}>{t("pages.premium.rewardCode", { code: vipNotice.reward.promotionCode })}</p>
             )}
           </div>
           <button type="button" style={ps.vipDismiss} onClick={() => setVipNotice(null)}>×</button>
@@ -410,13 +410,12 @@ export default function Premium({
       <AppCard>
         <div style={ps.vipHeader}>
           <div>
-            <Badge tone="purple">VIP Club</Badge>
-            <h3 style={ps.vipTitle}>Livello {vipCurrent.label}</h3>
-            <p style={ps.vipSubtitle}>Fonte ufficiale: Supabase teams.vip_points</p>
+            <Badge tone="purple">{t("pages.premium.vipClub")}</Badge>
+            <h3 style={ps.vipTitle}>{t("pages.premium.vipLevelLabel", { level: vipCurrent.label })}</h3>
           </div>
           <div style={ps.vipPointsBox}>
             <strong>{vipPoints}</strong>
-            <span>punti VIP</span>
+            <span>{t("pages.premium.vipPoints")}</span>
           </div>
         </div>
 
@@ -424,20 +423,20 @@ export default function Premium({
           <div>
             <div style={ps.vipProgressTop}>
               <span>{vipCurrent.label}</span>
-              <span>{nextVipLevel ? `${nextVipLevel.label} a ${nextVipLevel.min} pt` : "Livello massimo"}</span>
+              <span>{nextVipLevel ? t("pages.premium.nextVipLevelAt", { label: nextVipLevel.label, min: nextVipLevel.min }) : t("pages.premium.maxLevel")}</span>
             </div>
             <div style={ps.progressTrack}>
               <div style={{ ...ps.progressBar, width: `${vipProgress.percent}%` }} />
             </div>
             <p style={ps.vipSubtitle}>
               {nextVipLevel
-                ? `${vipProgress.pointsToNext} punti al prossimo unlock`
-                : "Tutti i reward VIP sono sbloccati"}
+                ? t("pages.premium.pointsToNext", { count: vipProgress.pointsToNext })
+                : t("pages.premium.allVipUnlocked")}
             </p>
           </div>
 
           <div style={ps.vipRewardPanel}>
-            <strong style={ps.vipPanelTitle}>Reward sbloccati</strong>
+            <strong style={ps.vipPanelTitle}>{t("pages.premium.unlockedRewards")}</strong>
             {unlockedVipRewards.length ? (
               <div style={ps.vipRewardsList}>
                 {unlockedVipRewards.map((item) => (
@@ -447,14 +446,17 @@ export default function Premium({
                 ))}
               </div>
             ) : (
-              <p style={ps.vipSubtitle}>Primo reward a Silver: COACH20</p>
+              <p style={ps.vipSubtitle}>{t("pages.premium.firstReward")}</p>
             )}
           </div>
         </div>
 
         <div style={ps.vipFooter}>
           <span>
-            Prossimo obiettivo: {nextVipLevel ? `${nextVipLevel.label} (${nextVipLevel.min} punti)` : "Elite mantenuto"}
+            {t("pages.premium.nextObjective")}{" "}
+            {nextVipLevel
+              ? `${nextVipLevel.label} (${nextVipLevel.min} ${t("pages.premium.vipPoints")})`
+              : t("pages.premium.vipMaintained")}
           </span>
           <button
             type="button"
@@ -462,7 +464,7 @@ export default function Premium({
             onClick={() => syncVipStatus(0)}
             disabled={pendingPlan !== null}
           >
-            {pendingPlan === "update-vip" ? "Aggiorno…" : "Aggiorna VIP"}
+            {pendingPlan === "update-vip" ? t("pages.premium.updating") : t("pages.premium.updateVip")}
           </button>
         </div>
       </AppCard>
@@ -474,15 +476,15 @@ export default function Premium({
           onClick={() => setActivePeriod("monthly")}
           style={{ ...ps.periodBtn, ...(activePeriod === "monthly" ? ps.periodBtnActive : {}) }}
         >
-          Mensile
+          {t("pages.premium.monthly")}
         </button>
         <button
           type="button"
           onClick={() => setActivePeriod("yearly")}
           style={{ ...ps.periodBtn, ...(activePeriod === "yearly" ? ps.periodBtnActive : {}) }}
         >
-          Annuale
-          <span style={ps.discountChip}>fino al –25%</span>
+          {t("pages.premium.yearly")}
+          <span style={ps.discountChip}>{t("pages.premium.yearlyDiscount")}</span>
         </button>
       </div>
 
@@ -515,12 +517,12 @@ export default function Premium({
                   )}
                   {isActive && !plan.badge && (
                     <span style={{ ...ps.planBadge, background: "rgba(255,255,255,0.25)" }}>
-                      ✓ Attivo
+                      {t("pages.premium.activeBadge")}
                     </span>
                   )}
                   {isActive && plan.badge && (
                     <span style={{ ...ps.planBadge, background: "rgba(255,255,255,0.25)", marginLeft: 0 }}>
-                      ✓ Attivo
+                      {t("pages.premium.activeBadge")}
                     </span>
                   )}
                 </div>
@@ -532,10 +534,10 @@ export default function Premium({
                       <>
                         <div style={ps.priceBlock}>
                           <strong style={ps.priceAmount}>{yearlyMeta.total}</strong>
-                          <span style={ps.pricePer}>/ anno</span>
+                          <span style={ps.pricePer}>{t("pages.premium.perYear")}</span>
                           <span style={{ ...ps.discountChipInline }}>–{yearlyMeta.discountPct}%</span>
                         </div>
-                        <p style={ps.priceMonthlyEq}>≈ {yearlyMeta.monthlyEq} / mese</p>
+                        <p style={ps.priceMonthlyEq}>≈ {yearlyMeta.monthlyEq} {t("pages.premium.perMonth")}</p>
                       </>
                     );
                   }
@@ -544,7 +546,7 @@ export default function Premium({
                       <div style={ps.priceBlock}>
                         <strong style={ps.priceAmount}>{displayPrice(plan)}</strong>
                         {plan.price !== "0" && (
-                          <span style={ps.pricePer}>/ mese</span>
+                          <span style={ps.pricePer}>{t("pages.premium.perMonth")}</span>
                         )}
                       </div>
                       {plan.price !== "0" && (
@@ -584,16 +586,16 @@ export default function Premium({
                         title={!hasCheckoutPrice ? "Configura il Price ID Stripe per questo piano" : undefined}
                       >
                         {isPending
-                          ? "Attendere…"
+                          ? t("pages.premium.loading")
                           : isActive
-                          ? "Piano attivo"
+                          ? t("pages.premium.activePlan")
                           : developerUnlocked
-                          ? "Attiva piano"
-                          : "Vai al checkout"}
+                          ? t("pages.premium.activatePlan")
+                          : t("pages.premium.goToCheckout")}
                       </button>
                       {!developerUnlocked && !isActive && !hasCheckoutPrice && (
                         <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", margin: "6px 0 0" }}>
-                          Configura il Price ID Stripe per attivare il checkout.
+                          {t("pages.premium.configurePriceId")}
                         </p>
                       )}
                     </>
@@ -611,11 +613,11 @@ export default function Premium({
                         onClick={() => startTrial(plan.id)}
                         disabled={!developerUnlocked || pendingPlan !== null}
                       >
-                        {pendingPlan === `trial-${plan.id}` ? "Attendere…" : !developerUnlocked ? "Disponibile a breve" : "Prova 14 giorni gratis"}
+                        {pendingPlan === `trial-${plan.id}` ? t("pages.premium.loading") : !developerUnlocked ? t("pages.premium.waitingDevMode") : t("pages.premium.trialFree")}
                       </button>
                       {!developerUnlocked && (
                         <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", margin: "6px 0 0" }}>
-                          Il pagamento online sarà disponibile al lancio ufficiale.
+                          {t("pages.premium.checkoutNotAvailable")}
                         </p>
                       )}
                     </>
@@ -629,11 +631,11 @@ export default function Premium({
                         onClick={() => activatePlan("free")}
                         disabled={!developerUnlocked || pendingPlan !== null}
                       >
-                        {!developerUnlocked ? "Disponibile a breve" : "Torna al piano gratuito"}
+                        {!developerUnlocked ? t("pages.premium.waitingDevMode") : t("pages.premium.returnFree")}
                       </button>
                       {!developerUnlocked && (
                         <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", margin: "6px 0 0" }}>
-                          Il pagamento online sarà disponibile al lancio ufficiale.
+                          {t("pages.premium.checkoutNotAvailable")}
                         </p>
                       )}
                     </>
@@ -642,7 +644,7 @@ export default function Premium({
                   {isActive && (
                     <>
                       <p style={{ color: "#22c55e", fontSize: 12, fontWeight: 700, margin: "8px 0 0", textAlign: "center" }}>
-                        Piano corrente attivo
+                        {t("pages.premium.currentPlanActive")}
                       </p>
                       {hasActiveSubscription && (
                         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
@@ -659,7 +661,7 @@ export default function Premium({
                             onClick={openBillingPortal}
                             disabled={pendingPlan !== null}
                           >
-                            {pendingPlan === "billing-portal" ? "Attendere…" : "🧾 Gestisci abbonamento"}
+                            {pendingPlan === "billing-portal" ? t("pages.premium.loading") : t("pages.premium.manageSubscription")}
                           </button>
                           <button
                             type="button"
@@ -671,7 +673,7 @@ export default function Premium({
                             onClick={cancelSubscription}
                             disabled={pendingPlan !== null}
                           >
-                            {pendingPlan === "cancel-subscription" ? "Attendere…" : "Disdici abbonamento"}
+                            {pendingPlan === "cancel-subscription" ? t("pages.premium.loading") : t("pages.premium.cancelSubscription")}
                           </button>
                         </div>
                       )}
@@ -687,19 +689,18 @@ export default function Premium({
       {/* ── Dev note ── */}
       {developerUnlocked && (
         <div style={ps.devNote}>
-          🛠 Modalità sviluppo attiva — i pulsanti simulano il cambio piano senza Stripe.
-          In produzione i pulsanti redirigono a Stripe Checkout.
+          {t("pages.premium.devModeNote")}
         </div>
       )}
 
       {/* ── Feature comparison table ── */}
       <AppCard>
-        <h3 style={{ marginTop: 0, marginBottom: 18, lineHeight: 1.2 }}>Confronto funzioni</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 18, lineHeight: 1.2 }}>{t("pages.premium.featureComparison")}</h3>
         <div style={{ overflowX: "auto" }}>
           <table style={ps.table}>
             <thead>
               <tr>
-                <th style={ps.thLabel}>Funzione</th>
+                <th style={ps.thLabel}>{t("pages.premium.featureLabel")}</th>
                 {PLANS.map((p) => (
                   <th key={p.id} style={{ ...ps.th, color: p.id === "free" ? "#94a3b8" : p.id === "premium" ? "#60a5fa" : "#4ade80" }}>
                     {p.name}
@@ -709,19 +710,19 @@ export default function Premium({
             </thead>
             <tbody>
               {[
-                ["Rosa e disponibilità",         true, true, true],
-                ["Calendario e sedute",           true, true, true],
-                ["Lavagna tattica",               true, true, true],
-                ["Match Day avanzato",            false, true, true],
-                ["Report post gara",              false, true, true],
-                ["Test fisici",                   false, true, true],
-                ["Scouting avversari",            false, true, true],
-                ["Export PDF",                    false, true, true],
-                ["Generatore sedute",             false, true, true],
-                ["Staff multi-utente",            false, false, true],
-                ["Area giocatori",                false, false, true],
-                ["Portale sponsor",               false, false, true],
-                ["AI session builder",            false, false, true],
+                [t("pages.premium.featureRoster"),     true,  true,  true],
+                [t("pages.premium.featureCalendar"),   true,  true,  true],
+                [t("pages.premium.featureTactical"),   true,  true,  true],
+                [t("pages.premium.featureMatchDay"),   false, true,  true],
+                [t("pages.premium.featurePostMatch"),  false, true,  true],
+                [t("pages.premium.featurePhysical"),   false, true,  true],
+                [t("pages.premium.featureScouting"),   false, true,  true],
+                [t("pages.premium.featureExport"),     false, true,  true],
+                [t("pages.premium.featureGenerator"),  false, true,  true],
+                [t("pages.premium.featureStaff"),      false, false, true],
+                [t("pages.premium.featurePlayerArea"), false, false, true],
+                [t("pages.premium.featureSponsor"),    false, false, true],
+                [t("pages.premium.featureAi"),         false, false, true],
               ].map(([label, free, premium, club]) => (
                 <tr key={label} style={ps.tableRow}>
                   <td style={ps.tdLabel}>{label}</td>
@@ -738,30 +739,30 @@ export default function Premium({
       {/* ── Reward coach ── */}
       <div style={ps.heroGrid}>
         <AppCard>
-          <Badge tone="purple">Reward coach</Badge>
+          <Badge tone="purple">{t("pages.premium.rewardCoach")}</Badge>
           <div style={{ fontSize: 52, fontWeight: 900, margin: "14px 0 0", lineHeight: 1 }}>{reward.points}</div>
-          <p style={{ color: "#94a3b8", margin: "4px 0 12px" }}>punti attività</p>
+          <p style={{ color: "#94a3b8", margin: "4px 0 12px" }}>{t("pages.premium.activityPoints")}</p>
           <h3 style={{ margin: "0 0 10px", lineHeight: 1.2 }}>
-            Livello {reward.level} — {reward.title}
+            {t("pages.premium.levelLabel", { level: reward.level, title: reward.title })}
           </h3>
           <div style={ps.progressTrack}>
             <div style={{ ...ps.progressBar, width: `${reward.progress}%` }} />
           </div>
           <p style={{ color: "#94a3b8", margin: "8px 0 0", fontSize: 13 }}>
-            Sconto potenziale: <strong style={{ color: "white" }}>{reward.discount}%</strong>
-            {reward.nextLevel ? ` · prossimo livello a ${reward.nextLevel.min} pt` : " · livello massimo"}
+            {t("pages.premium.potentialDiscount")} <strong style={{ color: "white" }}>{reward.discount}%</strong>
+            {reward.nextLevel ? t("pages.premium.nextLevelAt", { min: reward.nextLevel.min }) : t("pages.premium.maxLevelReached")}
           </p>
         </AppCard>
 
         <AppCard>
-          <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>Come salire di livello</h3>
+          <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>{t("pages.premium.howToLevelUp")}</h3>
           <p style={{ color: "#94a3b8", margin: "0 0 16px", fontSize: 13 }}>
-            Il reward premia dati utili, non solo quantità.
+            {t("pages.premium.levelUpSubtitle")}
           </p>
           <div style={{ display: "grid", gap: 10 }}>
             {(reward.suggestedActions.length
               ? reward.suggestedActions
-              : ["Continua ad aggiornare sedute, test e scouting."]
+              : [t("pages.premium.continueUpdating")]
             ).map((item) => (
               <div key={item} style={ps.actionItem}>
                 <span style={{ color: "#22c55e", fontWeight: 900 }}>+</span>
@@ -774,7 +775,7 @@ export default function Premium({
             variant="ghost"
             onClick={() => navigate("/settings")}
           >
-            Invita staff → più punti
+            {t("pages.premium.inviteStaff")}
           </Button>
         </AppCard>
       </div>
