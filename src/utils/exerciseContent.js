@@ -988,6 +988,125 @@ export function getExerciseProgressions(ex) {
 }
 
 /**
+ * Extracts the coaching-points sentence from the generated description.
+ * Falls back to the stored coachingPoints field (currently always empty in catalog,
+ * but may be filled for user-created exercises).
+ */
+export function getCoachingPoints(ex) {
+  const desc = getExerciseDescription(ex);
+  const cpLine = desc.split("\n").find((l) => l.toLowerCase().startsWith("coaching points:"));
+  if (cpLine) return cpLine.replace(/^coaching points:\s*/i, "").trim();
+  if (ex.coachingPoints && ex.coachingPoints.trim()) return ex.coachingPoints.trim();
+  return "";
+}
+
+// ─── Per-category common-error lists ────────────────────────────────────────
+const COMMON_ERRORS_BY_CAT = {
+  possesso: [
+    "Supporti passivi senza offrire angoli di passaggio",
+    "Corpo chiuso alla ricezione — non orientato verso il campo",
+    "Passaggio sul piede sbagliato del ricevente",
+    "Reazione lenta alla perdita: mancato pressing immediato",
+  ],
+  pressing: [
+    "Corsa in linea retta verso il portatore (facilmente aggirabile)",
+    "Squadra lunga: linee scolacciate dietro la pressione",
+    "Trigger non rispettato — pressione individuale invece che collettiva",
+    "Primo passaggio dopo il recupero troppo orizzontale",
+  ],
+  finalizzazione: [
+    "Smarcamento avviene dopo l'ultimo passaggio invece che prima",
+    "Stop non orientato all'ingresso in area",
+    "Nessun presidio sulla seconda palla o ribattuta",
+    "Scelta della superficie di tiro non valutata",
+  ],
+  "tecnica individuale": [
+    "Testa bassa durante la conduzione — visione periferica assente",
+    "Piede d'appoggio lontano o mal posizionato rispetto alla palla",
+    "Primo controllo non orientato verso la giocata successiva",
+    "Ritmo uniforme senza variazione di velocità",
+  ],
+  passaggio: [
+    "Corpo non aperto prima della ricezione",
+    "Passaggio effettuato con il piede scorretto",
+    "Mancato movimento dopo aver ceduto il pallone",
+    "Passaggio orizzontale sotto pressione invece di girare la palla velocemente",
+  ],
+  "fase difensiva": [
+    "Distanze eccessive tra le linee (squadra lunga)",
+    "Uscita su portatore senza copertura preventiva del compagno",
+    "Postura frontale invece di postura laterale a tre quarti",
+    "Comunicazione verbale assente tra i reparti",
+  ],
+  scaglionamento: [
+    "Distanze eccessive tra le linee (squadra lunga)",
+    "Uscita su portatore senza copertura preventiva del compagno",
+    "Postura frontale invece di postura laterale a tre quarti",
+    "Comunicazione verbale assente tra i reparti",
+  ],
+  cross: [
+    "Cross effettuato senza guardare le posizioni dei compagni",
+    "Timing sbagliato degli attaccanti (arrivano troppo presto o tardi)",
+    "Stop dell'esterno non orientato verso il fondo",
+    "Cross troppo lungo che supera tutti gli attaccanti",
+  ],
+  ampiezza: [
+    "Cross effettuato senza guardare le posizioni dei compagni",
+    "Timing sbagliato degli attaccanti (arrivano troppo presto o tardi)",
+    "Stop dell'esterno non orientato verso il fondo",
+    "Cross troppo lungo che supera tutti gli attaccanti",
+  ],
+  combinazione: [
+    "Movimento senza palla troppo lento o in ritardo",
+    "Ricezione non orientata verso la continuazione dello schema",
+    "Mancanza di sincronismo tra passaggio e movimento del terzo uomo",
+    "Schema abbandonato al primo ostacolo invece di adattarlo",
+  ],
+  "palle inattive": [
+    "Codice di chiamata non ascoltato o frainteso",
+    "Blocchi eseguiti troppo presto o fuori zona",
+    "Nessun presidio sulla seconda palla",
+    "Coperture preventive su eventuale ripartenza assenti",
+  ],
+  "gioco aereo": [
+    "Salto in anticipo o in ritardo rispetto all'arrivo della palla",
+    "Attacco al pallone frontale invece che con stacco laterale",
+    "Nessuna lettura della traiettoria del cross o lancio",
+    "Postura sbilanciata in salto — piede d'appoggio sbagliato",
+  ],
+};
+
+const COMMON_ERRORS_DEFAULT = [
+  "Postura chiusa alla ricezione",
+  "Pensare dopo aver ricevuto invece che anticipare la scelta",
+  "Comunicazione verbale assente tra i giocatori",
+  "Intensità non sostenuta nelle ripetizioni",
+];
+
+/**
+ * Returns a list of common mistakes for the given exercise type.
+ * Used in the exercise detail modal to surface coaching knowledge.
+ */
+export function getCommonErrors(ex) {
+  const cat = (ex.category || "").toLowerCase();
+  const focus = textHaystack(ex.title, ex.category, ...(ex.tags || []));
+
+  if (/possesso|torello|rondo/.test(focus))            return COMMON_ERRORS_BY_CAT.possesso;
+  if (/pressing|riaggressione/.test(focus))             return COMMON_ERRORS_BY_CAT.pressing;
+  if (/finalizzazione|tiro|conclusione/.test(focus))    return COMMON_ERRORS_BY_CAT.finalizzazione;
+  if (/tecnica individuale|conduzione|slalom/.test(focus)) return COMMON_ERRORS_BY_CAT["tecnica individuale"];
+  if (/passaggio|ricezione/.test(focus))                return COMMON_ERRORS_BY_CAT.passaggio;
+  if (/scaglionamento/.test(focus))                     return COMMON_ERRORS_BY_CAT.scaglionamento;
+  if (/fase difensiva|blocco/.test(focus))              return COMMON_ERRORS_BY_CAT["fase difensiva"];
+  if (/cross|fascia|ampiezza/.test(focus))              return COMMON_ERRORS_BY_CAT.cross;
+  if (/combinazione|uno.due|sovrapposizione/.test(focus)) return COMMON_ERRORS_BY_CAT.combinazione;
+  if (/palle inattive|corner|punizione/.test(focus))    return COMMON_ERRORS_BY_CAT["palle inattive"];
+  if (/gioco aereo|colpo di testa/.test(focus))         return COMMON_ERRORS_BY_CAT["gioco aereo"];
+  if (COMMON_ERRORS_BY_CAT[cat])                        return COMMON_ERRORS_BY_CAT[cat];
+  return COMMON_ERRORS_DEFAULT;
+}
+
+/**
  * Returns the image SVG string for an exercise.
  * For FP5 catalog exercises (source === "fp5"), always generates a fresh SVG.
  * For personal exercises with a stored image, returns that image.

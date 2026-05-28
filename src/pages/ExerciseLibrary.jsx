@@ -11,7 +11,8 @@ import SearchBar from "../components/ui/SearchBar";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { styles } from "../styles/index.js";
 import { TRAINING_BLOCKS, getBlockFromCategory, createId, getCurrentUserRole, isFeatureUnlocked } from "../utils/helpers";
-import { generateExerciseSvg, getExerciseDescription, getExerciseProgressions } from "../utils/exerciseContent";
+import { generateExerciseSvg, getExerciseDescription, getExerciseProgressions, getCommonErrors } from "../utils/exerciseContent";
+import ExerciseDiagram from "../components/exercises/ExerciseDiagram";
 import { emptyExercise } from "../data/initialData";
 import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -100,6 +101,9 @@ export default function ExerciseLibrary({
 
   // Lightbox anteprima disegno
   const [lightboxSrc, setLightboxSrc] = useState(null);
+
+  // Mobile: filtri collassabili
+  const [showFilters, setShowFilters] = useState(false);
   const [detailExercise, setDetailExercise] = useState(null);
 
   // Ruolo corrente
@@ -263,6 +267,11 @@ export default function ExerciseLibrary({
 
   function openExerciseInTraining(exercise) {
     const block = exercise.trainingBlock || getBlockFromCategory(exercise.category);
+    // Build a rich note string: variants + coaching points (when available)
+    const cp = exercise.coachingPoints && exercise.coachingPoints.trim()
+      ? exercise.coachingPoints.trim()
+      : "";
+    const variantText = [exercise.variants, cp ? `Coaching: ${cp}` : ""].filter(Boolean).join("\n");
     navigate("/trainings", {
       state: {
         draftTraining: {
@@ -273,7 +282,7 @@ export default function ExerciseLibrary({
             exerciseId: exercise.id,
             customDuration: exercise.duration || 15,
             customPlayers: exercise.players || "",
-            variantNotes: exercise.variants || "",
+            variantNotes: variantText,
           }],
         },
       },
@@ -318,15 +327,37 @@ export default function ExerciseLibrary({
         <>
           {/* Filtri */}
           <AppCard>
-            <div style={{ ...libStyles.toolbar, gridTemplateColumns: isMobile ? "1fr" : "1.6fr repeat(6, minmax(100px, 1fr))" }}>
-              <SearchBar value={search} onChange={setSearch} placeholder="Cerca per titolo, categoria, tag..." />
-              <DarkSelect label="Blocco"      value={filters.block}     options={catOptions.blocks}        onChange={(v) => setFilters({ ...filters, block: v })} />
-              <DarkSelect label="Categoria"   value={filters.category}  options={catOptions.categories}    onChange={(v) => setFilters({ ...filters, category: v })} />
-              <DarkSelect label="Tipologia"   value={filters.phase}     options={catOptions.phases}        onChange={(v) => setFilters({ ...filters, phase: v })} />
-              <DarkSelect label="Intensità"   value={filters.intensity} options={catOptions.intensities}   onChange={(v) => setFilters({ ...filters, intensity: v })} />
-              <DarkSelect label="Giocatori"   value={filters.players}   options={catOptions.playerBuckets} onChange={(v) => setFilters({ ...filters, players: v })} />
-              <DarkSelect label="Età"         value={filters.ageGroup}  options={catOptions.ageGroups}     onChange={(v) => setFilters({ ...filters, ageGroup: v })} />
+            {/* Barra di ricerca + toggle filtri (mobile) */}
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <div style={{ flex: 1 }}>
+                <SearchBar value={search} onChange={setSearch} placeholder="Cerca per titolo, categoria, tag..." />
+              </div>
+              {isMobile && (
+                <button
+                  onClick={() => setShowFilters((f) => !f)}
+                  style={{
+                    padding: "9px 14px", borderRadius: 10, flexShrink: 0, cursor: "pointer",
+                    background: showFilters ? "rgba(56,189,248,0.15)" : "rgba(255,255,255,0.06)",
+                    border: `1px solid ${showFilters ? "rgba(56,189,248,0.3)" : "rgba(255,255,255,0.1)"}`,
+                    color: showFilters ? "#38bdf8" : "#94a3b8", fontSize: 13, fontWeight: 700,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Filtri {(filters.block !== "Tutti" || filters.category !== "Tutte" || filters.phase !== "Tutte" || filters.intensity !== "Tutte" || filters.players !== "Tutti" || filters.ageGroup !== "Tutte") ? "●" : "▼"}
+                </button>
+              )}
             </div>
+            {/* Selects: sempre su desktop, collassabili su mobile */}
+            {(!isMobile || showFilters) && (
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(6, minmax(100px, 1fr))", gap: 12, alignItems: "end", marginTop: 12 }}>
+                <DarkSelect label="Blocco"      value={filters.block}     options={catOptions.blocks}        onChange={(v) => setFilters({ ...filters, block: v })} />
+                <DarkSelect label="Categoria"   value={filters.category}  options={catOptions.categories}    onChange={(v) => setFilters({ ...filters, category: v })} />
+                <DarkSelect label="Tipologia"   value={filters.phase}     options={catOptions.phases}        onChange={(v) => setFilters({ ...filters, phase: v })} />
+                <DarkSelect label="Intensità"   value={filters.intensity} options={catOptions.intensities}   onChange={(v) => setFilters({ ...filters, intensity: v })} />
+                <DarkSelect label="Giocatori"   value={filters.players}   options={catOptions.playerBuckets} onChange={(v) => setFilters({ ...filters, players: v })} />
+                <DarkSelect label="Età"         value={filters.ageGroup}  options={catOptions.ageGroups}     onChange={(v) => setFilters({ ...filters, ageGroup: v })} />
+              </div>
+            )}
             <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <Badge tone="blue">{filteredCatalog.length} esercizi</Badge>
               {!premiumUnlocked && <Badge tone="orange">🔒 Dettagli riservati agli abbonati Premium</Badge>}
@@ -401,29 +432,30 @@ export default function ExerciseLibrary({
                       if (locked) {
                         return (
                           <div style={{ ...libStyles.thumb, width: "100%", height: 80, marginBottom: 14, cursor: "default", borderRadius: 10, overflow: "hidden" }}>
-                            {svgMarkup
-                              ? <div dangerouslySetInnerHTML={{ __html: svgMarkup }} style={{ width: "100%", height: "100%", filter: "blur(1px) brightness(0.6)", pointerEvents: "none" }} />
-                              : <img src={ex.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                            <ExerciseDiagram
+                              exercise={ex}
+                              svgMarkup={svgMarkup}
+                              height={80}
+                              style={{ filter: "blur(1px) brightness(0.6)", pointerEvents: "none" }}
+                            />
                             <div style={libStyles.thumbOverlay}>🔒</div>
                           </div>
                         );
                       }
 
                       return (
-                        <div
-                          style={{ marginBottom: 14, borderRadius: 12, overflow: "hidden", cursor: "zoom-in", position: "relative" }}
-                          onClick={openLightbox}
-                          title="Clicca per ingrandire"
-                        >
-                          {ex.tacticalBoard
-                            ? <TacticalMiniPreview board={ex.tacticalBoard} height={180} />
-                            : svgMarkup
-                              ? <div dangerouslySetInnerHTML={{ __html: svgMarkup }} style={{ width: "100%", lineHeight: 0 }} />
-                              : <TacticalMiniPreview imageSrc={ex.image} height={180} />}
+                        <div style={{ marginBottom: 14, position: "relative" }} title="Clicca per ingrandire">
+                          <ExerciseDiagram
+                            exercise={ex}
+                            svgMarkup={svgMarkup}
+                            height={180}
+                            onClick={openLightbox}
+                          />
                           <span style={{
                             position: "absolute", bottom: 8, right: 8,
                             background: "rgba(0,0,0,0.5)", color: "white",
                             fontSize: 11, padding: "2px 7px", borderRadius: 8,
+                            pointerEvents: "none",
                           }}>
                             🔍 Ingrandisci
                           </span>
@@ -444,6 +476,11 @@ export default function ExerciseLibrary({
                           <Badge tone={ex.intensity === "Alta" ? "red" : ex.intensity === "Bassa" ? "blue" : "default"}>
                             {ex.intensity || "Media"}
                           </Badge>
+                          {ex.difficulty && (
+                            <Badge tone={ex.difficulty === "Avanzato" ? "orange" : ex.difficulty === "Base" ? "blue" : "default"}>
+                              {ex.difficulty}
+                            </Badge>
+                          )}
                           {ex.phase && <Badge tone="default">{ex.phase}</Badge>}
                         </div>
                         <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>
@@ -913,8 +950,12 @@ function parseMethodology(desc = "") {
 
 function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, onOpenLightbox }) {
   const desc = exDesc(exercise);
-  const sections = parseMethodology(desc);
+  // Separate coaching points from the main methodology sections
+  const allSections = parseMethodology(desc);
+  const coachingSection = allSections.find((s) => s.label.toLowerCase() === "coaching points");
+  const sections = allSections.filter((s) => s.label.toLowerCase() !== "coaching points");
   const progressions = getExerciseProgressions(exercise);
+  const commonErrors = getCommonErrors(exercise);
   const svgMarkup = exercise.source === "fp5" ? exImage(exercise) : null;
   const block = exercise.trainingBlock || getBlockFromCategory(exercise.category);
   const blockDef = TRAINING_BLOCKS.find((item) => item.id === block);
@@ -953,13 +994,14 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
         <div style={{ ...libStyles.detailGrid, gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1.35fr) minmax(260px, 0.65fr)" }}>
           <div style={libStyles.detailDiagramCard}>
             <p style={libStyles.detailSectionKicker}>{t("pages.exerciseLibrary.detailDiagramTitle")}</p>
-            <div style={libStyles.detailDiagram} onClick={() => lightboxSrc && onOpenLightbox(lightboxSrc)}>
-              {exercise.tacticalBoard ? (
-                <TacticalMiniPreview board={exercise.tacticalBoard} height={320} />
-              ) : svgMarkup ? (
-                <div dangerouslySetInnerHTML={{ __html: svgMarkup }} style={{ width: "100%", lineHeight: 0 }} />
-              ) : exercise.image ? (
-                <TacticalMiniPreview imageSrc={exercise.image} height={320} />
+            <div style={libStyles.detailDiagram}>
+              {(exercise.tacticalBoard || exercise.source === "fp5" || exercise.image) ? (
+                <ExerciseDiagram
+                  exercise={exercise}
+                  svgMarkup={svgMarkup}
+                  height={320}
+                  onClick={() => lightboxSrc && onOpenLightbox(lightboxSrc)}
+                />
               ) : (
                 <div style={libStyles.detailEmptyDiagram}>{t("pages.exerciseLibrary.detailNoDiagram")}</div>
               )}
@@ -975,6 +1017,7 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
               {exercise.material && <InfoChip label={t("pages.exerciseLibrary.chipMaterial")} value={exercise.material} />}
               {exercise.ageGroup && <InfoChip label={t("pages.exerciseLibrary.chipAge")} value={exercise.ageGroup} />}
               {exercise.rpe && <InfoChip label="RPE" value={exercise.rpe} />}
+              {exercise.difficulty && <InfoChip label="Livello" value={exercise.difficulty} />}
             </div>
             {(exercise.tags || []).length > 0 && (
               <div style={libStyles.detailTags}>
@@ -1004,6 +1047,26 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
             })}
           </div>
         </div>
+
+        {/* ── Coaching points ─────────────────────────────────────────────── */}
+        {coachingSection && (
+          <div style={libStyles.detailCoaching}>
+            <p style={libStyles.detailSectionKicker}>🎯 Coaching points</p>
+            <p style={{ margin: 0, color: "#86efac", fontSize: 14, lineHeight: 1.7 }}>{coachingSection.body}</p>
+          </div>
+        )}
+
+        {/* ── Errori comuni ────────────────────────────────────────────────── */}
+        {commonErrors.length > 0 && (
+          <div style={libStyles.detailErrors}>
+            <p style={libStyles.detailSectionKicker}>⚠️ Errori comuni</p>
+            <ul style={{ margin: 0, padding: "0 0 0 18px", display: "grid", gap: 6 }}>
+              {commonErrors.map((err, i) => (
+                <li key={i} style={{ color: "#fca5a5", fontSize: 13, lineHeight: 1.55 }}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div style={libStyles.detailProgression}>
           <p style={libStyles.detailSectionKicker}>{t("pages.exerciseLibrary.detailProgressionTitle")}</p>
@@ -1162,7 +1225,7 @@ const libStyles = {
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
     gap: 18,
   },
   cardHead: {
@@ -1422,5 +1485,17 @@ const libStyles = {
     fontWeight: 900,
     textTransform: "uppercase",
     letterSpacing: 0,
+  },
+  detailCoaching: {
+    padding: 16,
+    borderRadius: 16,
+    background: "rgba(134,239,172,0.07)",
+    border: "1px solid rgba(134,239,172,0.22)",
+  },
+  detailErrors: {
+    padding: 16,
+    borderRadius: 16,
+    background: "rgba(252,165,165,0.07)",
+    border: "1px solid rgba(252,165,165,0.22)",
   },
 };
