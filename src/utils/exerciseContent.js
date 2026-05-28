@@ -21,26 +21,40 @@ function svgWrap(inner, label = "") {
 function fieldBase() {
   return `<defs>
   <linearGradient id="fpFieldShade" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0%" stop-color="#123d25"/>
-    <stop offset="55%" stop-color="#0f3320"/>
-    <stop offset="100%" stop-color="#092416"/>
+    <stop offset="0%" stop-color="#14532d"/>
+    <stop offset="55%" stop-color="#0f3f26"/>
+    <stop offset="100%" stop-color="#062516"/>
   </linearGradient>
-  <pattern id="fps" width="30" height="30" patternUnits="userSpaceOnUse">
-    <rect width="30" height="15" fill="rgba(255,255,255,0.035)"/>
-    <rect y="15" width="30" height="15" fill="rgba(0,0,0,0.08)"/>
+  <linearGradient id="fpPlayerGloss" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="rgba(255,255,255,0.28)"/>
+    <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+  </linearGradient>
+  <radialGradient id="fpBallShade" cx="35%" cy="28%" r="70%">
+    <stop offset="0%" stop-color="#ffffff"/>
+    <stop offset="58%" stop-color="#e5e7eb"/>
+    <stop offset="100%" stop-color="#94a3b8"/>
+  </radialGradient>
+  <pattern id="fps" width="46" height="280" patternUnits="userSpaceOnUse">
+    <rect width="23" height="280" fill="rgba(255,255,255,0.035)"/>
+    <rect x="23" width="23" height="280" fill="rgba(0,0,0,0.065)"/>
   </pattern>
-  <marker id="fpmP" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-    <path d="M0,0L6,3L0,6Z" fill="#fbbf24"/>
+  <filter id="fpDrop" x="-30%" y="-30%" width="160%" height="160%">
+    <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#020617" flood-opacity="0.32"/>
+  </filter>
+  <marker id="fpmP" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0L8,4L0,8Z" fill="#fbbf24"/>
   </marker>
-  <marker id="fpmR" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-    <path d="M0,0L6,3L0,6Z" fill="rgba(255,255,255,0.7)"/>
+  <marker id="fpmR" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0L8,4L0,8Z" fill="rgba(255,255,255,0.78)"/>
   </marker>
 </defs>
 <rect width="${W}" height="${H}" fill="url(#fpFieldShade)"/>
 <rect width="${W}" height="${H}" fill="url(#fps)" opacity="0.9"/>
-<rect x="16" y="16" width="368" height="248" fill="none" stroke="rgba(255,255,255,0.24)" stroke-width="1.5" rx="3"/>
-<line x1="200" y1="16" x2="200" y2="264" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
-<circle cx="200" cy="140" r="34" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+<rect x="16" y="16" width="368" height="248" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1.6" rx="4"/>
+<rect x="16" y="76" width="50" height="128" fill="none" stroke="rgba(255,255,255,0.13)" stroke-width="1"/>
+<rect x="334" y="76" width="50" height="128" fill="none" stroke="rgba(255,255,255,0.13)" stroke-width="1"/>
+<line x1="200" y1="16" x2="200" y2="264" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+<circle cx="200" cy="140" r="34" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
 <circle cx="200" cy="140" r="2.5" fill="rgba(255,255,255,0.32)"/>`;
 }
 
@@ -52,14 +66,15 @@ function playerPalette(team) {
 
 function playerFigure(x, y, lbl, team = "own", scale = 1) {
   const [shirt, shorts, text] = playerPalette(team);
-  const head = 3.8 * scale;
-  const bodyW = 14 * scale;
+  const head = 4.2 * scale;
+  const bodyW = 15.5 * scale;
   const leg = 8 * scale;
   const font = Math.max(6.2, 8.5 * scale);
-  return `<g transform="translate(${x} ${y})">
-    <ellipse cx="0" cy="${6.5 * scale}" rx="${8.5 * scale}" ry="${2.2 * scale}" fill="rgba(0,0,0,0.28)"/>
+  return `<g transform="translate(${x} ${y})" filter="url(#fpDrop)">
+    <ellipse cx="0" cy="${7.8 * scale}" rx="${9.8 * scale}" ry="${2.5 * scale}" fill="rgba(0,0,0,0.30)" filter="none"/>
     <circle cx="0" cy="${-10 * scale}" r="${head}" fill="#f8d0a8" stroke="rgba(0,0,0,0.25)" stroke-width="${0.8 * scale}"/>
     <path d="M${-bodyW / 2},${-5 * scale} Q0,${-10 * scale} ${bodyW / 2},${-5 * scale} L${bodyW / 2 - 2 * scale},${7 * scale} Q0,${10 * scale} ${-bodyW / 2 + 2 * scale},${7 * scale}Z" fill="${shirt}" stroke="rgba(0,0,0,0.38)" stroke-width="${0.9 * scale}"/>
+    <path d="M${-bodyW / 2 + 2 * scale},${-4.5 * scale} Q0,${-8 * scale} ${bodyW / 2 - 2 * scale},${-4.5 * scale}" stroke="url(#fpPlayerGloss)" stroke-width="${1.6 * scale}" stroke-linecap="round"/>
     <path d="M${-bodyW / 2},${-2 * scale} L${-bodyW / 2 - 5 * scale},${4 * scale}" stroke="${shirt}" stroke-width="${2.4 * scale}" stroke-linecap="round"/>
     <path d="M${bodyW / 2},${-2 * scale} L${bodyW / 2 + 5 * scale},${4 * scale}" stroke="${shirt}" stroke-width="${2.4 * scale}" stroke-linecap="round"/>
     <path d="M${-3.8 * scale},${7 * scale} L${-6.5 * scale},${leg + 7 * scale}" stroke="${shorts}" stroke-width="${2.8 * scale}" stroke-linecap="round"/>
@@ -77,40 +92,50 @@ function ps(x, y, lbl, team = "own") {
 }
 
 function ball(x, y) {
-  return `<g transform="translate(${x} ${y})">
-    <circle cx="0" cy="0" r="7.2" fill="#f8fafc" stroke="rgba(0,0,0,0.45)" stroke-width="1"/>
+  return `<g transform="translate(${x} ${y})" filter="url(#fpDrop)">
+    <circle cx="0" cy="0" r="7.2" fill="url(#fpBallShade)" stroke="rgba(0,0,0,0.45)" stroke-width="1"/>
     <path d="M0,-3.5 L3.2,-1.1 L2,2.8 L-2,2.8 L-3.2,-1.1Z" fill="#111827"/>
     <path d="M-6,-1.5 L-3.2,-1.1 M6,-1.5 L3.2,-1.1 M-3.8,5 L-2,2.8 M3.8,5 L2,2.8 M0,-7 L0,-3.5" stroke="#111827" stroke-width="0.8" stroke-linecap="round"/>
   </g>`;
 }
 
 function pass(x1, y1, x2, y2) {
-  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#fpmP)"/>`;
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(251,191,36,0.42)" stroke-width="5.5" stroke-linecap="round"/>
+    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round" marker-end="url(#fpmP)"/>`;
 }
 
 function run(x1, y1, x2, y2) {
-  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#fpmR)"/>`;
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(15,23,42,0.38)" stroke-width="5" stroke-linecap="round" stroke-dasharray="7,6"/>
+    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(255,255,255,0.78)" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="7,5" marker-end="url(#fpmR)"/>`;
 }
 
 function goalH(cx, y, half = false) { // horizontal goal (top or bottom)
   const w = half ? 32 : 44;
-  return `<rect x="${cx - w / 2}" y="${y}" width="${w}" height="6" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>`;
+  return `<g filter="url(#fpDrop)">
+    <rect x="${cx - w / 2}" y="${y}" width="${w}" height="7" rx="2" fill="rgba(15,23,42,0.45)" stroke="rgba(255,255,255,0.72)" stroke-width="1.8"/>
+    <path d="M${cx - w / 2 + 5},${y + 1} V${y + 6} M${cx},${y + 1} V${y + 6} M${cx + w / 2 - 5},${y + 1} V${y + 6}" stroke="rgba(255,255,255,0.32)" stroke-width="0.8"/>
+  </g>`;
 }
 
 function goalV(x, cy, half = false) { // vertical goal (left or right side)
   const h = half ? 32 : 44;
-  return `<rect x="${x}" y="${cy - h / 2}" width="6" height="${h}" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>`;
+  return `<g filter="url(#fpDrop)">
+    <rect x="${x}" y="${cy - h / 2}" width="7" height="${h}" rx="2" fill="rgba(15,23,42,0.45)" stroke="rgba(255,255,255,0.72)" stroke-width="1.8"/>
+    <path d="M${x + 1},${cy - h / 2 + 5} H${x + 6} M${x + 1},${cy} H${x + 6} M${x + 1},${cy + h / 2 - 5} H${x + 6}" stroke="rgba(255,255,255,0.32)" stroke-width="0.8"/>
+  </g>`;
 }
 
 function zone(x, y, w, h, col = "rgba(255,255,255,0.06)", stroke = "rgba(255,255,255,0.14)") {
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${col}" stroke="${stroke}" stroke-width="1" rx="4"/>`;
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${col}" stroke="${stroke}" stroke-width="1.2" rx="8" stroke-dasharray="8,5"/>`;
 }
 
 function cone(x, y) {
-  return `<g transform="translate(${x} ${y})">
-    <path d="M0,-9 L-6,5 H6Z" fill="#f97316" stroke="rgba(0,0,0,0.28)" stroke-width="1"/>
+  return `<g transform="translate(${x} ${y})" filter="url(#fpDrop)">
+    <ellipse cx="0" cy="7" rx="8" ry="2.2" fill="rgba(0,0,0,0.24)" filter="none"/>
+    <path d="M0,-10 L-6.5,5.2 H6.5Z" fill="#f97316" stroke="rgba(0,0,0,0.28)" stroke-width="1"/>
+    <path d="M-2.4,-4 H2.4 M-4.3,1 H4.3" stroke="#fed7aa" stroke-width="1.25"/>
     <path d="M-3,0 H3" stroke="#fed7aa" stroke-width="1.4"/>
-    <rect x="-7" y="5" width="14" height="3" rx="1.5" fill="#c2410c"/>
+    <rect x="-8" y="5" width="16" height="3.6" rx="1.8" fill="#c2410c"/>
   </g>`;
 }
 
