@@ -9,7 +9,10 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',        // chiede all'utente prima di aggiornare
+      // Temporaneamente disattivata in produzione: il service worker precedente
+      // puo bloccare login/cache. Questo deploy lo rimuove dai browser.
+      selfDestroying: true,
+      registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'pwa-192.svg', 'pwa-512.svg'],
       manifest: {
         name: 'CalcioLab — Coach Platform',
