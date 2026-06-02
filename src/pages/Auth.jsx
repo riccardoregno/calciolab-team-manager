@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { supabase } from "../lib/supabaseClient";
+import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { useTranslation } from "../i18n";
 
 /* ─── Social proof ──────────────────────────────────────────── */
@@ -30,6 +30,7 @@ function Auth() {
   const [isMobile,     setIsMobile]     = useState(
     () => typeof window !== "undefined" && window.innerWidth < 680
   );
+  const authUnavailable = !isSupabaseConfigured || !supabase;
 
   /* Responsive: listen for resize */
   useEffect(() => {
@@ -74,6 +75,7 @@ function Auth() {
   /* Reinvia email di conferma */
   async function resendConfirmation() {
     if (!email) { setFeedback({ type: "error", text: t("pages.auth.missingEmailForResend") }); return; }
+    if (authUnavailable) { setFeedback({ type: "error", text: t("pages.auth.supabaseNotConfigured") }); return; }
     setResendLoading(true);
     try {
       const { error } = await supabase.auth.resend({ type: "signup", email });
@@ -93,6 +95,7 @@ function Auth() {
     /* ─ Reset password ─ */
     if (mode === "reset") {
       if (!email) { setFeedback({ type: "error", text: t("pages.auth.missingEmail") }); return; }
+      if (authUnavailable) { setFeedback({ type: "error", text: t("pages.auth.supabaseNotConfigured") }); return; }
       setLoading(true);
       try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -106,6 +109,7 @@ function Auth() {
 
     /* ─ Login / Register common validation ─ */
     if (!email || !password) { setFeedback({ type: "error", text: t("pages.auth.missingEmailPassword") }); return; }
+    if (authUnavailable) { setFeedback({ type: "error", text: t("pages.auth.supabaseNotConfigured") }); return; }
 
     if (mode === "register") {
       if (!firstName || !lastName) { setFeedback({ type: "error", text: t("pages.auth.missingName") }); return; }

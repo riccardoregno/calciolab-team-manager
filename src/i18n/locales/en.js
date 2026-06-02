@@ -714,6 +714,7 @@ export const en = {
       missingEmailForResend: "Enter your email to receive the link.",
       enterEmailPassword: "Enter email and password.",
       missingEmailPassword: "Enter email and password.",
+      supabaseNotConfigured: "Cloud access is not configured. Check the Supabase deploy variables.",
       enterNameSurname: "Enter first and last name.",
       missingName: "Enter first and last name.",
       acceptTermsRequired: "You must accept the Terms of Service and Privacy Policy to proceed.",

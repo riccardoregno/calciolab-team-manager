@@ -714,6 +714,7 @@ export const it = {
       missingEmailForResend: "Inserisci la tua email per ricevere il link.",
       enterEmailPassword: "Inserisci email e password.",
       missingEmailPassword: "Inserisci email e password.",
+      supabaseNotConfigured: "Accesso cloud non configurato. Verifica le variabili Supabase del deploy.",
       enterNameSurname: "Inserisci nome e cognome.",
       missingName: "Inserisci nome e cognome.",
       acceptTermsRequired: "Devi accettare i Termini di Servizio e la Privacy Policy per procedere.",

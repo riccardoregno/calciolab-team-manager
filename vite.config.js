@@ -41,10 +41,10 @@ export default defineConfig(({ mode }) => ({
         navigateFallback: '/offline.html',
         // Escludi la pagina offline dal fallback normale (solo per navigazione, non asset)
         navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
-        // Cache-first per tutti gli asset statici (JS/CSS/font/immagini)
+        // Cache-first per tutti gli asset statici (JS/CSS/font/immagini).
+        // offline.html e gia incluso da globPatterns: aggiungerlo anche a
+        // additionalManifestEntries crea conflitti Workbox nel precache.
         globPatterns: ['**/*.{js,css,html,ico,svg,png,woff2}'],
-        // Includi la pagina offline nel precache
-        additionalManifestEntries: [{ url: '/offline.html', revision: null }],
         // Dimensione massima file in cache: 5MB (catalogo esercizi è ~700KB)
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
