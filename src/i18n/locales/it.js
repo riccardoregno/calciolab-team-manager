@@ -109,7 +109,7 @@ export const it = {
       availability: "Disponibilità",
       physicalTests: "Test fisici",
       physicalWorkouts: "Lavori fisici",
-      exercises: "Editor esercizi",
+      exercises: "Esercizi",
       exerciseLibrary: "Eserciziario",
       trainings: "Sedute",
       microcycle: "Microciclo",

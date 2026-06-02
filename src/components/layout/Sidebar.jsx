@@ -31,7 +31,7 @@ const menuGroups = [
   {
     titleKey: "navigation.groups.field",
     items: [
-      { to: "/exercise-library", labelKey: "navigation.items.exerciseLibrary", icon: "📚", roles: technicalRoles },
+      { to: "/exercises", labelKey: "navigation.items.exercises", icon: "📚", roles: technicalRoles },
       { to: "/trainings", labelKey: "navigation.items.trainings", icon: "📋", roles: technicalRoles },
       { to: "/microcycle", labelKey: "navigation.items.microcycle", icon: "🗓️", roles: technicalRoles },
       { to: "/tactical-board", labelKey: "navigation.items.tacticalBoard", icon: "🧠", roles: technicalRoles },

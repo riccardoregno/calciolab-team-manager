@@ -109,7 +109,7 @@ export const en = {
       availability: "Availability",
       physicalTests: "Physical tests",
       physicalWorkouts: "Physical workouts",
-      exercises: "Exercise editor",
+      exercises: "Exercises",
       exerciseLibrary: "Exercise library",
       trainings: "Sessions",
       microcycle: "Microcycle",

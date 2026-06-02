@@ -62,7 +62,7 @@ const StaffTasks = lazy(() => import("./pages/StaffTasks"));
 const Premium = lazy(() => import("./pages/Premium"));
 const PlayerPortal = lazy(() => import("./pages/PlayerPortal"));
 const Sponsors = lazy(() => import("./pages/Sponsors"));
-const ExerciseLibrary = lazy(() => import("./pages/ExerciseLibrary"));
+// const ExerciseLibrary = lazy(() => import("./pages/ExerciseLibrary")); // temporaneamente disabilitato
 const AiSessionBuilder = lazy(() => import("./pages/AiSessionBuilder"));
 const Onboarding  = lazy(() => import("./pages/Onboarding"));
 const StaffChat        = lazy(() => import("./pages/StaffChat"));
@@ -677,16 +677,8 @@ function App() {
               />
 
 
-              <Route
-                path="/exercise-library"
-                element={
-                  gate(technicalRoles, <ExerciseLibrary
-                    appSettings={previewAppSettings}
-                    exercises={exercises}
-                    setExercises={setExercises}
-                  />)
-                }
-              />
+              {/* Eserciziario FP5 temporaneamente disabilitato — redirect a /exercises */}
+              <Route path="/exercise-library" element={<Navigate to="/exercises" replace />} />
 
               <Route
                 path="/ai-session-builder"
