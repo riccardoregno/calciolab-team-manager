@@ -26,8 +26,19 @@ export default function Badge({ children, tone, variant }) {
       color: "#d8b4fe",
       border: "rgba(216,180,254,0.24)",
     },
+    // Tono neutro esplicito — usato per fasi, livelli, varianti secondarie
+    default: {
+      background: "rgba(148,163,184,0.11)",
+      color: "#94a3b8",
+      border: "rgba(148,163,184,0.20)",
+    },
+    slate: {
+      background: "rgba(148,163,184,0.11)",
+      color: "#94a3b8",
+      border: "rgba(148,163,184,0.20)",
+    },
   };
-  const toneStyle = tones[resolvedTone] || tones.blue;
+  const toneStyle = tones[resolvedTone] || tones.default;
 
   return (
     <span

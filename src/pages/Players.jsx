@@ -9,7 +9,6 @@ import EmptyState from "../components/ui/EmptyState";
 import Modal from "../components/ui/Modal";
 import AppCard from "../components/ui/AppCard";
 import { useToast } from "../components/ui/Toast";
-import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 import PlayerCard from "../components/players/PlayerCard";
 import ImportPlayersModal from "../components/players/ImportPlayersModal";
@@ -56,7 +55,6 @@ function Players({ players, setPlayers }) {
   const openModal = new URLSearchParams(location.search).get("modal") === PLAYER_MODAL_QUERY;
 
   const { showToast, ToastContainer } = useToast();
-  const [confirmState, setConfirmState] = useState(null);
   const [showImport, setShowImport] = useState(false);
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -216,21 +214,20 @@ function Players({ players, setPlayers }) {
   }
 
   function deletePlayer(id) {
-    setConfirmState({
-      message: t("pages.players.deleteConfirm"),
-      confirmLabel: t("common.delete"),
-      confirmTone: "red",
-      onConfirm: () => {
-        // Confronto string→string per coerenza con FIX #12 (ID sempre stringa)
-        setPlayers((prevPlayers) => prevPlayers.filter((p) => String(p.id) !== String(id)));
-        showToast(t("pages.players.playerDeleted"), "info");
+    const removed = players.find((p) => String(p.id) === String(id));
+    if (!removed) return;
+    setPlayers((prev) => prev.filter((p) => String(p.id) !== String(id)));
+    showToast(t("pages.players.playerDeleted"), "info", {
+      duration: 5000,
+      action: {
+        label: t("common.undo"),
+        fn: () => setPlayers((prev) => [...prev, removed]),
       },
     });
   }
 
   return (
     <div style={styles.page}>
-      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <ToastContainer />
 
       {showImport && (

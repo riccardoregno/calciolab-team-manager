@@ -205,16 +205,23 @@ function MatchDay({
     });
   }
 
+  // Numero massimo di sostituzioni per partita (regole FIFA moderne: 5)
+  const MAX_SUBSTITUTIONS = 5;
+
   function moveToStarter(player) {
     if (lineup.starterIds.includes(player.id) || lineup.starterIds.length >= 11) {
       return;
     }
+
+    // Conta la sostituzione solo a distinta già pronta (gara in corso)
+    const newSubsMade = lineup.ready ? lineup.subsMade + 1 : lineup.subsMade;
 
     updateSelectedMatch({
       lineup: {
         calledUpIds: uniqueIds([...lineup.calledUpIds, player.id]),
         starterIds: [...lineup.starterIds, player.id],
         benchIds: lineup.benchIds.filter((id) => id !== player.id),
+        subsMade: newSubsMade,
       },
     });
   }
@@ -629,6 +636,13 @@ function MatchDay({
             <MiniStat label={t("pages.matchDay.statTime")} value={selectedMatch.time || "-"} />
             <MiniStat label={t("pages.matchDay.statFormation")} value={selectedMatch.formation || "-"} />
             <MiniStat label={t("pages.matchDay.statStatus")} value={lineup.ready ? t("pages.matchDay.statusReady") : t("pages.matchDay.statusDraft")} />
+            {lineup.ready && (
+              <MiniStat
+                label={t("pages.matchDay.statSubs")}
+                value={`${lineup.subsMade}/${MAX_SUBSTITUTIONS}`}
+                valueColor={lineup.subsMade >= MAX_SUBSTITUTIONS ? "#f87171" : lineup.subsMade >= MAX_SUBSTITUTIONS - 1 ? "#fb923c" : undefined}
+              />
+            )}
           </div>
         </AppCard>
 
@@ -1138,11 +1152,11 @@ function TeamMark({ logo, logoSize = 100, name, fallback }) {
   );
 }
 
-function MiniStat({ label, value }) {
+function MiniStat({ label, value, valueColor }) {
   return (
     <div style={matchDayStyles.statCard}>
       <span>{label}</span>
-      <strong style={{ lineHeight: 1 }}>{value}</strong>
+      <strong style={{ lineHeight: 1, ...(valueColor ? { color: valueColor } : {}) }}>{value}</strong>
     </div>
   );
 }

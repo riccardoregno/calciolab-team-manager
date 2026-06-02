@@ -441,11 +441,11 @@ export default function ExerciseLibrary({
         subtitle={
           tab === "catalogo"
             ? t(premiumUnlocked ? "pages.exerciseLibrary.catalogCount" : "pages.exerciseLibrary.catalogCountLocked", { count: catalog.length })
-            : `${myExercises.length} esercizi creati`
+            : t("pages.exerciseLibrary.myExercisesCount", { count: myExercises.length })
         }
         action={
           isOwner && tab === "catalogo" ? (
-            <Button onClick={openNew}>+ Aggiungi al catalogo</Button>
+            <Button onClick={openNew}>{t("pages.exerciseLibrary.addToCatalog")}</Button>
           ) : !premiumUnlocked ? (
             <Button onClick={() => navigate("/premium")}>{t("pages.exerciseLibrary.unlockPremium")}</Button>
           ) : null
@@ -455,10 +455,10 @@ export default function ExerciseLibrary({
       {/* ── Tab switcher ──────────────────────────────────────────────────── */}
       <div style={libStyles.tabs}>
         <TabBtn active={tab === "catalogo"} onClick={() => setTab("catalogo")}>
-          📚 Catalogo tecnico
+          {t("pages.exerciseLibrary.tabCatalog")}
         </TabBtn>
         <TabBtn active={tab === "miei"} onClick={() => setTab("miei")}>
-          ⭐ I miei esercizi
+          {t("pages.exerciseLibrary.tabMy")}
           {myExercises.length > 0 && (
             <span style={libStyles.tabBadge}>{myExercises.length}</span>
           )}
@@ -474,6 +474,7 @@ export default function ExerciseLibrary({
               <span style={libStyles.blockRailLabel}>{t("pages.exerciseLibrary.quickBlocks")}</span>
               <button
                 type="button"
+                className="cl-card-btn"
                 onClick={() => setFilters({ ...filters, block: "Tutti" })}
                 style={{ ...libStyles.blockChip, ...(filters.block === "Tutti" ? libStyles.blockChipActive : null) }}
               >
@@ -483,6 +484,7 @@ export default function ExerciseLibrary({
                 <button
                   type="button"
                   key={block.id}
+                  className="cl-card-btn"
                   onClick={() => setFilters({ ...filters, block: block.id })}
                   style={{ ...libStyles.blockChip, ...(filters.block === block.id ? libStyles.blockChipActive : null) }}
                 >
@@ -494,7 +496,7 @@ export default function ExerciseLibrary({
             {/* Barra di ricerca + toggle filtri (mobile) */}
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <div style={{ flex: 1 }}>
-                <SearchBar value={search} onChange={setSearch} placeholder="Cerca per titolo, categoria, tag..." />
+                <SearchBar value={search} onChange={setSearch} placeholder={t("pages.exerciseLibrary.searchPlaceholder")} />
               </div>
               {isMobile && (
                 <button
@@ -507,25 +509,25 @@ export default function ExerciseLibrary({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  Filtri {(filters.block !== "Tutti" || filters.category !== "Tutte" || filters.phase !== "Tutte" || filters.intensity !== "Tutte" || filters.players !== "Tutti" || filters.ageGroup !== "Tutte") ? "●" : "▼"}
+                  {t("pages.exerciseLibrary.filtersBtn")} {(filters.block !== "Tutti" || filters.category !== "Tutte" || filters.phase !== "Tutte" || filters.intensity !== "Tutte" || filters.players !== "Tutti" || filters.ageGroup !== "Tutte") ? "●" : "▼"}
                 </button>
               )}
             </div>
             {/* Selects: sempre su desktop, collassabili su mobile */}
             {(!isMobile || showFilters) && (
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(6, minmax(100px, 1fr))", gap: 12, alignItems: "end", marginTop: 12 }}>
-                <DarkSelect label="Blocco"      value={filters.block}     options={catOptions.blocks}        onChange={(v) => setFilters({ ...filters, block: v })} />
-                <DarkSelect label="Categoria"   value={filters.category}  options={catOptions.categories}    onChange={(v) => setFilters({ ...filters, category: v })} />
-                <DarkSelect label="Tipologia"   value={filters.phase}     options={catOptions.phases}        onChange={(v) => setFilters({ ...filters, phase: v })} />
-                <DarkSelect label="Intensità"   value={filters.intensity} options={catOptions.intensities}   onChange={(v) => setFilters({ ...filters, intensity: v })} />
-                <DarkSelect label="Giocatori"   value={filters.players}   options={catOptions.playerBuckets} onChange={(v) => setFilters({ ...filters, players: v })} />
-                <DarkSelect label="Età"         value={filters.ageGroup}  options={catOptions.ageGroups}     onChange={(v) => setFilters({ ...filters, ageGroup: v })} />
+                <DarkSelect label={t("pages.exerciseLibrary.filterBlockLabel")}     value={filters.block}     options={catOptions.blocks}        onChange={(v) => setFilters({ ...filters, block: v })} />
+                <DarkSelect label={t("pages.exerciseLibrary.filterCategoryLabel")} value={filters.category}  options={catOptions.categories}    onChange={(v) => setFilters({ ...filters, category: v })} />
+                <DarkSelect label={t("pages.exerciseLibrary.filterPhaseLabel")}    value={filters.phase}     options={catOptions.phases}        onChange={(v) => setFilters({ ...filters, phase: v })} />
+                <DarkSelect label={t("pages.exerciseLibrary.filterIntensityLabel")}value={filters.intensity} options={catOptions.intensities}   onChange={(v) => setFilters({ ...filters, intensity: v })} />
+                <DarkSelect label={t("pages.exerciseLibrary.filterPlayersLabel")}  value={filters.players}   options={catOptions.playerBuckets} onChange={(v) => setFilters({ ...filters, players: v })} />
+                <DarkSelect label={t("pages.exerciseLibrary.filterAgeLabel")}      value={filters.ageGroup}  options={catOptions.ageGroups}     onChange={(v) => setFilters({ ...filters, ageGroup: v })} />
               </div>
             )}
             <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <Badge tone="blue">{filteredCatalog.length} esercizi</Badge>
-              {!premiumUnlocked && <Badge tone="orange">🔒 Dettagli riservati agli abbonati Premium</Badge>}
-              {isOwner && <Badge tone="green">✏️ Modalità admin</Badge>}
+              <Badge tone="blue">{t("pages.exerciseLibrary.filteredCount", { count: filteredCatalog.length })}</Badge>
+              {!premiumUnlocked && <Badge tone="orange">{t("pages.exerciseLibrary.lockedBadge")}</Badge>}
+              {isOwner && <Badge tone="green">{t("pages.exerciseLibrary.adminBadge")}</Badge>}
               {/* Reset filtri */}
               {(filters.category !== "Tutte" || filters.phase !== "Tutte" || filters.intensity !== "Tutte" || filters.players !== "Tutti" || filters.ageGroup !== "Tutte" || filters.block !== "Tutti" || search) && (
                 <button
@@ -568,7 +570,7 @@ export default function ExerciseLibrary({
               </div>
             </AppCard>
           ) : filteredCatalog.length === 0 ? (
-            <EmptyState icon="🎯" title="Nessun esercizio trovato" text="Modifica i filtri di ricerca." />
+            <EmptyState icon="🎯" title={t("pages.exerciseLibrary.emptyTitle")} text={t("pages.exerciseLibrary.emptyText")} />
           ) : (
             <>
             <div style={libStyles.grid}>
@@ -612,11 +614,11 @@ export default function ExerciseLibrary({
           <AppCard>
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <SearchBar value={mySearch} onChange={setMySearch} placeholder="Cerca nei tuoi esercizi..." />
+                <SearchBar value={mySearch} onChange={setMySearch} placeholder={t("pages.exerciseLibrary.mySearchPlaceholder")} />
               </div>
-              <Badge tone="blue">{myExercises.length} esercizi creati</Badge>
+              <Badge tone="blue">{t("pages.exerciseLibrary.myExercisesCount", { count: myExercises.length })}</Badge>
               <Button onClick={() => navigate("/exercises")}>
-                + Nuovo esercizio
+                {t("pages.exerciseLibrary.newExercise")}
               </Button>
             </div>
           </AppCard>
@@ -624,9 +626,9 @@ export default function ExerciseLibrary({
           {filteredMy.length === 0 ? (
               <EmptyState
                 icon="✏️"
-                title="Nessun esercizio personale"
-                text="Crea i tuoi esercizi personali oppure modifica una proposta dal Catalogo."
-                action={<Button onClick={() => navigate("/exercises")}>+ Nuovo esercizio</Button>}
+                title={t("pages.exerciseLibrary.myEmptyTitle")}
+                text={t("pages.exerciseLibrary.myEmptyText")}
+                action={<Button onClick={() => navigate("/exercises")}>{t("pages.exerciseLibrary.newExercise")}</Button>}
               />
           ) : (
             <>
@@ -667,7 +669,7 @@ export default function ExerciseLibrary({
                       variant="ghost"
                       onClick={() => navigate("/exercises", { state: { editExerciseId: ex.id } })}
                     >
-                      ✏️ Modifica
+                      {t("common.edit")}
                     </Button>
                   </div>
                 </AppCard>
@@ -730,7 +732,7 @@ export default function ExerciseLibrary({
       {/* ══════════════════ MODAL MODIFICA (owner) ══════════════════ */}
       {editModal && editForm && (
         <Modal
-          title={editIsNew ? "Nuovo esercizio nel catalogo" : `Modifica: ${editForm.title}`}
+          title={editIsNew ? t("pages.exerciseLibrary.editModalNew") : t("pages.exerciseLibrary.editModalEdit", { title: editForm.title })}
           onClose={() => { setEditModal(false); setEditForm(null); }}
         >
           <div style={{ display: "grid", gap: 14 }}>
@@ -755,22 +757,22 @@ export default function ExerciseLibrary({
                   onClick={openTacticalBoard}
                   style={{ marginTop: 8, width: "100%" }}
                 >
-                  🎨 Modifica nella Lavagna Tattica
+                  {t("pages.exerciseLibrary.tacticalBoardBtn")}
                 </Button>
               </div>
             )}
 
-            <Field label="Titolo">
+            <Field label={t("pages.exerciseLibrary.editFieldTitle")}>
               <input
                 style={styles.input}
                 value={editForm.title || ""}
                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                placeholder="Titolo esercizio"
+                placeholder={t("pages.exerciseLibrary.editFieldTitle")}
               />
             </Field>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <Field label="Categoria">
+              <Field label={t("pages.exerciseLibrary.editFieldCategory")}>
                 <input
                   style={styles.input}
                   value={editForm.category || ""}
@@ -778,7 +780,7 @@ export default function ExerciseLibrary({
                   placeholder="es. Possesso"
                 />
               </Field>
-              <Field label="Fase">
+              <Field label={t("pages.exerciseLibrary.editFieldPhase")}>
                 <input
                   style={styles.input}
                   value={editForm.phase || ""}
@@ -789,7 +791,7 @@ export default function ExerciseLibrary({
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-              <Field label="Durata (min)">
+              <Field label={t("pages.exerciseLibrary.editFieldDuration")}>
                 <input
                   style={styles.input}
                   type="number"
@@ -797,7 +799,7 @@ export default function ExerciseLibrary({
                   onChange={(e) => setEditForm({ ...editForm, duration: Number(e.target.value) })}
                 />
               </Field>
-              <Field label="Giocatori">
+              <Field label={t("pages.exerciseLibrary.editFieldPlayers")}>
                 <input
                   style={styles.input}
                   value={editForm.players || ""}
@@ -805,7 +807,7 @@ export default function ExerciseLibrary({
                   placeholder="es. 12-16"
                 />
               </Field>
-              <Field label="Intensità">
+              <Field label={t("pages.exerciseLibrary.editFieldIntensity")}>
                 <select
                   style={styles.input}
                   value={editForm.intensity || "Media"}
@@ -817,7 +819,7 @@ export default function ExerciseLibrary({
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <Field label="Campo">
+              <Field label={t("pages.exerciseLibrary.editFieldField")}>
                 <input
                   style={styles.input}
                   value={editForm.fieldSize || ""}
@@ -825,7 +827,7 @@ export default function ExerciseLibrary({
                   placeholder="es. 20x30m"
                 />
               </Field>
-              <Field label="Materiale">
+              <Field label={t("pages.exerciseLibrary.editFieldMaterial")}>
                 <input
                   style={styles.input}
                   value={editForm.material || ""}
@@ -835,16 +837,16 @@ export default function ExerciseLibrary({
               </Field>
             </div>
 
-            <Field label="Descrizione">
+            <Field label={t("pages.exerciseLibrary.editFieldDescription")}>
               <textarea
                 style={{ ...styles.input, minHeight: 90, resize: "vertical" }}
                 value={editForm.description || ""}
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                placeholder="Descrizione dell'esercizio..."
+                placeholder={t("pages.exerciseLibrary.editFieldDescription")}
               />
             </Field>
 
-            <Field label="Obiettivo">
+            <Field label={t("pages.exerciseLibrary.editFieldObjective")}>
               <input
                 style={styles.input}
                 value={editForm.objective || ""}
@@ -852,7 +854,7 @@ export default function ExerciseLibrary({
               />
             </Field>
 
-            <Field label="Varianti">
+            <Field label={t("pages.exerciseLibrary.editFieldVariants")}>
               <textarea
                 style={{ ...styles.input, minHeight: 60, resize: "vertical" }}
                 value={editForm.variants || ""}
@@ -862,10 +864,10 @@ export default function ExerciseLibrary({
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 8 }}>
               <Button variant="ghost" onClick={() => { setEditModal(false); setEditForm(null); }}>
-                Annulla
+                {t("common.cancel")}
               </Button>
               <Button onClick={saveEdit}>
-                {editIsNew ? "Aggiungi al catalogo" : "Salva modifiche"}
+                {editIsNew ? t("pages.exerciseLibrary.saveNewBtn") : t("pages.exerciseLibrary.saveEditBtn")}
               </Button>
             </div>
           </div>
@@ -1091,8 +1093,8 @@ const CatalogCard = memo(function CatalogCard({
       {/* ── Azioni owner ─────────────────────────────────────────────────── */}
       {isOwner && (
         <div style={{ display: "flex", gap: 8, marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-          <Button variant="ghost" onClick={() => onEdit(ex)}>✏️ Modifica</Button>
-          <Button variant="ghost" onClick={() => onDelete(ex.id)}>🗑️</Button>
+          <Button variant="ghost" onClick={() => onEdit(ex)}>✏️ {t("common.edit")}</Button>
+          <Button variant="ghost" onClick={() => onDelete(ex.id)} title={t("common.delete")}>🗑️</Button>
         </div>
       )}
     </AppCard>
@@ -1147,14 +1149,17 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
                 {t("pages.exerciseLibrary.customizeExercise")}
               </Button>
             )}
-            <Button variant="ghost" onClick={() => window.print()}>
-              {t("pages.exerciseLibrary.printPdf")}
-            </Button>
-            {lightboxSrc && (
-              <Button variant="ghost" onClick={() => onOpenLightbox(lightboxSrc)}>
-                {t("pages.exerciseLibrary.enlargeDiagram")}
+            {/* Utility actions — visually de-emphasised and hidden from print */}
+            <span className="no-print" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Button variant="ghost" onClick={() => window.print()}>
+                🖨️ {t("pages.exerciseLibrary.printPdf")}
               </Button>
-            )}
+              {lightboxSrc && (
+                <Button variant="ghost" onClick={() => onOpenLightbox(lightboxSrc)}>
+                  🔍 {t("pages.exerciseLibrary.enlargeDiagram")}
+                </Button>
+              )}
+            </span>
           </div>
         </div>
 
@@ -1349,27 +1354,29 @@ function ExercisePrintSheet({ exercise, t }) {
           </section>
         )}
 
-        <section className="print-section">
-          <h2>{t("pages.exerciseLibrary.detailProgressionTitle")}</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>{t("pages.exerciseLibrary.printLevel")}</th>
-                <th>{t("pages.exerciseLibrary.printProgression")}</th>
-                <th>{t("pages.exerciseLibrary.printDescription")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {progressions.map((item) => (
-                <tr key={item.level}>
-                  <td>{item.level}</td>
-                  <td>{item.title}</td>
-                  <td>{item.text}</td>
+        {progressions.length > 0 && (
+          <section className="print-section">
+            <h2>{t("pages.exerciseLibrary.detailProgressionTitle")}</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ width: "14%" }}>{t("pages.exerciseLibrary.printLevel")}</th>
+                  <th style={{ width: "30%" }}>{t("pages.exerciseLibrary.printProgression")}</th>
+                  <th>{t("pages.exerciseLibrary.printDescription")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+              </thead>
+              <tbody>
+                {progressions.map((item) => (
+                  <tr key={item.level}>
+                    <td>{item.level}</td>
+                    <td><strong>{item.title}</strong></td>
+                    <td>{item.text}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
 
         {commonErrors.length > 0 && (
           <section className="print-section">
@@ -1382,6 +1389,10 @@ function ExercisePrintSheet({ exercise, t }) {
           </section>
         )}
       </article>
+      <footer style={{ marginTop: 18, paddingTop: 12, borderTop: "1px solid #dbe3ef", color: "#94a3b8", fontSize: 11, display: "flex", justifyContent: "space-between" }}>
+        <span>{t("pages.exerciseLibrary.printFooter")}</span>
+        <span>{new Date().toLocaleDateString()}</span>
+      </footer>
     </div>
   );
 }
@@ -1400,6 +1411,7 @@ function uniq(arr) {
 }
 
 function Pagination({ page, totalPages, total, pageSize, onPrev, onNext, onGo }) {
+  const { t } = useTranslation();
   const from = (page - 1) * pageSize + 1;
   const to   = Math.min(page * pageSize, total);
 
@@ -1427,9 +1439,9 @@ function Pagination({ page, totalPages, total, pageSize, onPrev, onNext, onGo })
       {/* Info range */}
       <span style={{ fontSize: 13, color: "#64748b" }}>
         <span style={{ color: "#94a3b8", fontWeight: 600 }}>{from}–{to}</span>
-        {" "}di{" "}
+        {" "}{t("pages.exerciseLibrary.paginationOf")}{" "}
         <span style={{ color: "#94a3b8", fontWeight: 600 }}>{total}</span>
-        {" "}esercizi
+        {" "}{t("pages.exerciseLibrary.paginationExercises")}
       </span>
 
       {/* Bottoni pagina */}
@@ -1479,7 +1491,9 @@ const libStyles = {
     background: "rgba(255,255,255,0.04)",
     borderRadius: 14,
     border: "1px solid rgba(255,255,255,0.08)",
-    width: "fit-content",
+    maxWidth: "100%",
+    overflowX: "auto",
+    flexShrink: 0,
   },
   tabBtn: {
     display: "flex",

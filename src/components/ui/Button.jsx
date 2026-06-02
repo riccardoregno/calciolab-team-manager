@@ -31,6 +31,7 @@ export default function Button({ children, onClick, variant = "primary", style =
       type={type}
       onClick={onClick}
       disabled={disabled}
+      className={`cl-btn-${variant}`}
       style={{ ...base, ...variants[variant], ...style }}
       {...props}
     >

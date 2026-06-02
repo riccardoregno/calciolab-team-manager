@@ -5,20 +5,29 @@ import { useState, useCallback } from "react";
  * Uso:
  *   const { showToast, ToastContainer } = useToast();
  *   showToast("Seduta salvata", "ok");
+ *   showToast("Giocatore eliminato", "info", {
+ *     action: { label: "Annulla", fn: () => restorePlayer() },
+ *     duration: 5000,
+ *   });
  *   <ToastContainer />  ← metti in fondo al JSX del componente
  *
  * Tipi: "ok" | "error" | "info" | "warn"
+ * Opzioni: { action?: { label: string, fn: () => void }, duration?: number }
  */
 export function useToast() {
   const [toasts, setToasts] = useState([]);
 
-  const showToast = useCallback((text, type = "ok") => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, text, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3200);
+  const dismiss = useCallback((id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  const showToast = useCallback((text, type = "ok", options = {}) => {
+    const id = Date.now() + Math.random();
+    const duration = options.duration ?? 3200;
+    const action = options.action ?? null;
+    setToasts((prev) => [...prev, { id, text, type, action }]);
+    setTimeout(() => dismiss(id), duration);
+  }, [dismiss]);
 
   const ToastContainer = useCallback(
     () => (
@@ -26,10 +35,18 @@ export function useToast() {
         {toasts.map((t) => (
           <div key={t.id} style={{ ...toastStyles.toast, ...toastStyles[t.type] }}>
             <span style={toastStyles.icon}>{ICONS[t.type]}</span>
-            <span>{t.text}</span>
+            <span style={{ flex: 1 }}>{t.text}</span>
+            {t.action && (
+              <button
+                style={toastStyles.action}
+                onClick={() => { t.action.fn(); dismiss(t.id); }}
+              >
+                {t.action.label}
+              </button>
+            )}
             <button
               style={toastStyles.close}
-              onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+              onClick={() => dismiss(t.id)}
               aria-label="Chiudi notifica"
             >
               ×
@@ -38,7 +55,7 @@ export function useToast() {
         ))}
       </div>
     ),
-    [toasts],
+    [toasts, dismiss],
   );
 
   return { showToast, ToastContainer };
@@ -77,6 +94,19 @@ const toastStyles = {
   info:  { background: "rgba(37,99,235,0.92)",  color: "#fff", border: "1px solid rgba(147,197,253,0.3)" },
   warn:  { background: "rgba(202,138,4,0.92)",  color: "#fff", border: "1px solid rgba(253,224,71,0.3)"  },
   icon: { fontSize: 16, flexShrink: 0 },
+  action: {
+    marginLeft: 6,
+    background: "rgba(255,255,255,0.22)",
+    border: "1px solid rgba(255,255,255,0.35)",
+    borderRadius: 7,
+    color: "inherit",
+    cursor: "pointer",
+    fontSize: 12,
+    fontWeight: 800,
+    padding: "4px 10px",
+    flexShrink: 0,
+    whiteSpace: "nowrap",
+  },
   close: {
     marginLeft: "auto",
     background: "none",

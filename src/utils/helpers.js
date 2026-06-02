@@ -541,6 +541,15 @@ export const DEFAULT_PHYSICAL_METRICS = [
   { key: "height",     label: "Altezza",       unit: "cm",  higherIsBetter: null,  icon: "📏", enabled: true,  custom: false },
 ];
 
+/** Returns "YYYY/YYYY+1" for the current football season.
+ *  Season is considered to start in July (month >= 7). */
+function getDefaultSeason() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const start = now.getMonth() >= 6 ? year : year - 1; // getMonth() 6 = July
+  return `${start}/${start + 1}`;
+}
+
 export function normalizeAppSettings(settings = {}){
   const workspaceCategory = settings.workspaceProfile?.category === "Adulti"
     ? "Prima squadra"
@@ -622,7 +631,7 @@ export function normalizeAppSettings(settings = {}){
       homeFieldAddress: settings.workspaceProfile?.homeFieldAddress || "",
       homeFieldSurface: settings.workspaceProfile?.homeFieldSurface || "Erba naturale",
       seasonGoal: settings.workspaceProfile?.seasonGoal || "",
-      currentSeason: settings.workspaceProfile?.currentSeason || "2025/2026",
+      currentSeason: settings.workspaceProfile?.currentSeason || getDefaultSeason(),
       userRole: settings.workspaceProfile?.userRole || "headCoach",
       recommendedPlan: settings.workspaceProfile?.recommendedPlan || "premium",
       modules: settings.workspaceProfile?.modules || ["trainings", "matches", "players"],
@@ -1083,6 +1092,7 @@ export function getLineup(match){
     captainId: match?.lineup?.captainId || "",
     roles: match?.lineup?.roles || {},
     ready: Boolean(match?.lineup?.ready),
+    subsMade: Number(match?.lineup?.subsMade || 0),
   };
 }
 
@@ -1227,7 +1237,14 @@ export function getTeamAverageAge(players = []) {
   return Math.round((ages.reduce((sum, a) => sum + a, 0) / ages.length) * 10) / 10;
 }
 
-export function getCoachAlerts({ players = [], matches = [], physicalTests = [], sessions = [], playerStatsMap = {} } = {}){
+export function getCoachAlerts({ players = [], matches = [], physicalTests = [], sessions = [], playerStatsMap = {}, t } = {}){
+  // Fallback identity if t is not provided (avoids crashes if called without i18n context)
+  const tr = t || ((key, vars = {}) => {
+    let s = key.split(".").pop() || key;
+    Object.entries(vars).forEach(([k, v]) => { s = s.replace(`{{${k}}}`, v); });
+    return s;
+  });
+
   const now = new Date();
   const thirtyDaysAgo = new Date(now);
   thirtyDaysAgo.setDate(now.getDate() - 30);
@@ -1238,10 +1255,10 @@ export function getCoachAlerts({ players = [], matches = [], physicalTests = [],
   players.forEach((player) => {
     if (isBirthdayToday(player.birthDate)) {
       const age = calcPlayerAge(player.birthDate);
-      const ageStr = age ? ` (${age} anni)` : "";
+      const ageStr = age ? tr("common.alerts.birthdayAge", { age }) : "";
       alerts.push({
         tone: "green",
-        text: `🎂 Tanti auguri a ${player.name || player.firstName || ""}${ageStr}!`,
+        text: tr("common.alerts.birthday", { name: player.name || player.firstName || "", age: ageStr }),
       });
     }
   });
@@ -1252,25 +1269,29 @@ export function getCoachAlerts({ players = [], matches = [], physicalTests = [],
       .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
     if (!latestTest || new Date(latestTest.date) < thirtyDaysAgo) {
-      alerts.push({ tone: "orange", text: `${player.name}: test fisico da aggiornare` });
+      alerts.push({ tone: "orange", text: tr("common.alerts.physicalTestOutdated", { name: player.name }) });
     }
 
     if (player.status === "Infortunato" && player.expectedReturn) {
-      alerts.push({ tone: "red", text: `${player.name}: rientro previsto ${player.expectedReturn}` });
+      alerts.push({ tone: "red", text: tr("common.alerts.injuryReturn", { name: player.name, date: player.expectedReturn }) });
     }
   });
 
   matches
     .filter((match) => new Date(match.date) >= now)
     .forEach((match) => {
-      if (!match.lineup?.ready) alerts.push({ tone: "blue", text: `${match.title}: distinta non pronta` });
+      if (!match.lineup?.ready) {
+        alerts.push({ tone: "blue", text: tr("common.alerts.lineupNotReady", { title: match.title }) });
+      }
       if (!match.opponentScouting?.formation && !match.opponentScouting?.lineup?.length) {
-        alerts.push({ tone: "purple", text: `${match.opponent || "Avversario"}: scouting mancante` });
+        alerts.push({ tone: "purple", text: tr("common.alerts.scoutingMissing", { opponent: match.opponent || "?" }) });
       }
     });
 
   sessions.forEach((session) => {
-    if (!session.objective) alerts.push({ tone: "orange", text: `${session.title}: obiettivo seduta mancante` });
+    if (!session.objective) {
+      alerts.push({ tone: "orange", text: tr("common.alerts.sessionNoObjective", { title: session.title }) });
+    }
   });
 
   // Alert diffide / squalifiche da yellow cards (soglia: 5 ammonizioni)
@@ -1282,12 +1303,12 @@ export function getCoachAlerts({ players = [], matches = [], physicalTests = [],
     if (yellows >= SUSPENSION_THRESHOLD) {
       alerts.push({
         tone: "red",
-        text: `${player.name} — squalificato (${yellows} ammonizioni)`,
+        text: tr("common.alerts.playerSuspended", { name: player.name, yellows }),
       });
     } else if (yellows === SUSPENSION_THRESHOLD - 1) {
       alerts.push({
         tone: "orange",
-        text: `${player.name} — diffidato (${yellows}/${SUSPENSION_THRESHOLD} ammonizioni)`,
+        text: tr("common.alerts.playerCautioned", { name: player.name, yellows, threshold: SUSPENSION_THRESHOLD }),
       });
     }
   });

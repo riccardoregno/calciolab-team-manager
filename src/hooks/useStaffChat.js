@@ -25,7 +25,7 @@ const PAGE_SIZE = 60;
  *   markSeen     — segna tutti i messaggi come letti (chiama quando si apre la chat)
  *   supported    — false se Supabase non è configurato
  */
-export function useStaffChat({ teamId, userId, authorName = "", authorRole = "headCoach" } = {}) {
+export function useStaffChat({ teamId, userId, authorName = "", authorRole = "headCoach", instanceId = "main" } = {}) {
   const supported = isSupabaseConfigured && Boolean(teamId) && Boolean(userId);
 
   const [messages, setMessages]     = useState([]);
@@ -80,8 +80,10 @@ export function useStaffChat({ teamId, userId, authorName = "", authorRole = "he
   useEffect(() => {
     if (!supported) return;
 
-    const channel = supabase
-      .channel(`staff_messages:${teamId}`)
+    let channel;
+    try {
+    channel = supabase
+      .channel(`staff_messages:${teamId}:${instanceId}`)
       .on(
         "postgres_changes",
         {
@@ -113,8 +115,11 @@ export function useStaffChat({ teamId, userId, authorName = "", authorRole = "he
         }
       )
       .subscribe();
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn("[useStaffChat] Realtime subscription failed:", err);
+    }
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { if (channel) supabase.removeChannel(channel); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supported, teamId]);
 

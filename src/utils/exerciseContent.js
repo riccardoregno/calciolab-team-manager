@@ -184,16 +184,28 @@ function drawRondo(nvnAtt = 6, nvnDef = 2) {
   const cx = 200, cy = 148, r = 85;
   const n = Math.min(Math.max(nvnAtt, 4), 9);
   const parts = [zone(110, 60, 180, 176)];
+
+  // Pre-compute player positions so we can draw the pass arrow to the actual player
+  const positions = [];
   for (let i = 0; i < n; i++) {
     const a = (2 * Math.PI * i / n) - Math.PI / 2;
     const x = Math.round(cx + r * Math.cos(a));
     const y = Math.round(cy + r * Math.sin(a));
-    parts.push(pl(x, y, String(i + 1)));
+    positions.push([x, y]);
   }
+  positions.forEach(([x, y], i) => parts.push(pl(x, y, String(i + 1))));
+
+  // Defenders in the centre
   const defs = nvnDef >= 2 ? [[185, 138], [215, 158]] : [[200, 148]];
   defs.forEach(([x, y]) => parts.push(pl(x, y, "D", "opp")));
-  parts.push(ball(cx, 73));
-  parts.push(pass(cx, 67, cx - 5, 126));
+
+  // Ball near player 1 (top), curved pass to player 2 (upper-right) that arcs
+  // away from the central defenders rather than cutting straight through them
+  const [p1x, p1y] = positions[0]; // top player
+  const [p2x, p2y] = positions[1] ?? [cx + r, cy]; // upper-right player
+  parts.push(ball(p1x, p1y + 10));
+  parts.push(curvedPass(`M${p1x},${p1y + 5} C${p1x + 28},${p1y + 20} ${p2x - 10},${p2y - 22} ${p2x},${p2y - 5}`));
+
   return svgWrap(parts.join(""), "Possesso");
 }
 
@@ -272,14 +284,15 @@ function drawDuel2v1() {
   const parts = [
     zone(78, 28, 244, 224, "rgba(56,189,248,0.06)", "rgba(56,189,248,0.18)"),
     goalH(200, 20),
-    pl(155, 195, "A"),
-    pl(245, 195, "A"),
-    pl(200, 125, "D", "opp"),
-    pl(200, 48, "P"),
-    ball(155, 183),
-    pass(155, 178, 245, 180),
-    curvedRun("M245,180 C260,150 252,112 222,75"),
-    run(155, 182, 176, 96),
+    `<rect x="130" y="20" width="140" height="52" fill="none" stroke="rgba(255,255,255,0.13)" stroke-width="1"/>`,
+    pl(155, 198, "A1"),
+    pl(245, 198, "A2"),
+    pl(200, 130, "D", "opp"),
+    pl(200, 50, "P"),
+    ball(155, 185),
+    pass(155, 180, 244, 183),              // pass A1 → A2
+    curvedRun("M244,183 C258,152 248,105 215,46"), // A2 drives into box and shoots
+    run(156, 178, 174, 92),               // A1 supports toward far post
   ];
   return svgWrap(parts.join(""), "2 vs 1");
 }

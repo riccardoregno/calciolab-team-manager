@@ -9,10 +9,9 @@ import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/Toast";
-import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 import { styles } from "../styles/index.js";
-import { createId, formatDate, normalizeAppSettings } from "../utils/helpers";
+import { createId, formatDate, normalizeAppSettings, parseMatchResult } from "../utils/helpers";
 
 const MATCH_MODAL_QUERY = "match";
 const MATCH_DRAFT_KEY = "calciolab_match_draft_v1";
@@ -52,7 +51,6 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
   const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
   const clubLogo = workspaceProfile.logo || "";
   const clubLogoSize = Number(workspaceProfile.logoSize || 100);
-  const [confirmState, setConfirmState] = useState(null);
   const searchParams = new URLSearchParams(location.search);
   const openModal = searchParams.get("modal") === MATCH_MODAL_QUERY;
   const modalEditId = searchParams.get("edit") || "";
@@ -124,8 +122,15 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
     setFormErrors({});
     savingRef.current = true;
 
+    // Calcola result dalla coppia strutturata; se i campi sono vuoti la partita è "In programma"
+    const computedResult =
+      form.goalsFor !== "" && form.goalsAgainst !== ""
+        ? `${Number(form.goalsFor)}-${Number(form.goalsAgainst)}`
+        : "";
+
     const payload = {
       ...form,
+      result: computedResult,
       id: editingId || createId("match"),
       type: "Partita",
       title: `${clubName} - ${form.opponent}`,
@@ -218,20 +223,20 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
   }
 
   function deleteMatch(id) {
-    setConfirmState({
-      message: t("pages.matches.deleteConfirm"),
-      confirmLabel: t("common.delete"),
-      confirmTone: "red",
-      onConfirm: () => {
-        setMatches((prevMatches) => prevMatches.filter((match) => match.id !== id));
-        showToast(t("pages.matches.matchDeleted"), "info");
+    const removed = matches.find((m) => m.id === id);
+    if (!removed) return;
+    setMatches((prev) => prev.filter((m) => m.id !== id));
+    showToast(t("pages.matches.matchDeleted"), "info", {
+      duration: 5000,
+      action: {
+        label: t("common.undo"),
+        fn: () => setMatches((prev) => [...prev, removed].sort(sortMatchesByDate)),
       },
     });
   }
 
   return (
     <div style={styles.page}>
-      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <ToastContainer />
       <PageHeader
         title={t("pages.matches.title")}
@@ -528,12 +533,33 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
               <option value="Neutro">{t("pages.matches.neutral")}</option>
             </select>
 
-            <input
-              placeholder={t("pages.matches.resultPlaceholder")}
-              value={form.result}
-              onChange={(e) => setForm({ ...form, result: e.target.value })}
-              style={styles.input}
-            />
+            {/* Risultato strutturato: due campi numerici separati da "–" */}
+            <label style={{ display: "grid", gap: 6, color: "#94a3b8", fontSize: 12, fontWeight: 700, textTransform: "uppercase" }}>
+              <span>{t("pages.matches.scoreLabel")}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  aria-label={t("pages.matches.scoreHome")}
+                  placeholder="0"
+                  value={form.goalsFor}
+                  onChange={(e) => setForm({ ...form, goalsFor: e.target.value })}
+                  style={{ ...styles.input, textAlign: "center", flex: 1 }}
+                />
+                <span style={{ color: "#94a3b8", fontWeight: 900, fontSize: 22, lineHeight: 1, flexShrink: 0 }}>–</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  aria-label={t("pages.matches.scoreAway")}
+                  placeholder="0"
+                  value={form.goalsAgainst}
+                  onChange={(e) => setForm({ ...form, goalsAgainst: e.target.value })}
+                  style={{ ...styles.input, textAlign: "center", flex: 1 }}
+                />
+              </div>
+            </label>
 
             <input
               placeholder={t("pages.matches.competitionPlaceholder")}
@@ -864,12 +890,15 @@ function clearMatchDraft(id = "new") {
 }
 
 function matchToForm(match) {
+  const parsed = parseMatchResult(match.result);
   return {
     opponent: match.opponent || "",
     date: match.date || new Date().toISOString().slice(0, 10),
     time: match.time || "",
     location: match.location || "Casa",
     result: match.result || "",
+    goalsFor:     parsed ? String(parsed.goalsFor)     : "",
+    goalsAgainst: parsed ? String(parsed.goalsAgainst) : "",
     formation: match.formation || "4-2-3-1",
     notes: match.notes || "",
     competition: match.competition || "",
@@ -892,6 +921,8 @@ function emptyMatch(homeLogo = "") {
     time: "",
     location: "Casa",
     result: "",
+    goalsFor: "",
+    goalsAgainst: "",
     formation: "4-2-3-1",
     notes: "",
     competition: "",

@@ -139,6 +139,7 @@ function Dashboard({
   physicalTests: rawPhysicalTests = [],
   appSettings = {},
   setAppSettings,
+  loading = false,
 }) {
   const players = useMemo(() => Array.isArray(rawPlayers) ? rawPlayers : [], [rawPlayers]);
   const exercises = useMemo(() => Array.isArray(rawExercises) ? rawExercises : [], [rawExercises]);
@@ -274,6 +275,7 @@ function Dashboard({
     physicalTests,
     sessions,
     playerStatsMap,
+    t,
   });
   const coachAlerts = [
     ...getMatchOperationalAlerts(nextMatch, t),
@@ -1037,65 +1039,108 @@ function Dashboard({
         </AppCard>
       )}
 
-      <AppCard style={{ marginBottom: 18 }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr auto",
-            gap: 16,
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <Badge tone={setup.percent >= 70 ? "green" : "orange"}>
-              {t("pages.dashboard.setupPercent", { percent: setup.percent })}
-            </Badge>
-
-            <h2 style={{ margin: "12px 0 6px" }}>
-              {setup.next ? t(setup.next.labelKey) : t("pages.dashboard.workspaceReady")}
+      {/* ── First-run welcome card: visibile solo quando l'utente non ha ancora dati ── */}
+      {!loading && players.length === 0 && sessions.length === 0 && matches.length === 0 ? (
+        <AppCard style={{ marginBottom: 18 }}>
+          <div style={{ marginBottom: 20 }}>
+            <h2 style={{ margin: "0 0 6px", fontSize: 26, lineHeight: 1.12 }}>
+              {t("pages.dashboard.firstRunTitle")}
             </h2>
-
-            <p style={{ color: "#94a3b8", margin: 0 }}>
-              {t("pages.dashboard.setupStepsCompleted", { completed: setup.completed, total: setup.total })}
+            <p style={{ color: "#94a3b8", margin: 0, lineHeight: 1.5 }}>
+              {t("pages.dashboard.firstRunSubtitle")}
             </p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14 }}>
+            {[
+              { icon: "👥", titleKey: "firstRunStep1Title", textKey: "firstRunStep1Text", btnKey: "firstRunStep1Btn", path: "/players", tone: "blue" },
+              { icon: "📋", titleKey: "firstRunStep2Title", textKey: "firstRunStep2Text", btnKey: "firstRunStep2Btn", path: "/trainings", tone: "green" },
+              { icon: "⚽", titleKey: "firstRunStep3Title", textKey: "firstRunStep3Text", btnKey: "firstRunStep3Btn", path: "/matches", tone: "orange" },
+            ].map(({ icon, titleKey, textKey, btnKey, path, tone }) => (
+              <button
+                key={path}
+                type="button"
+                onClick={() => navigate(path)}
+                className="cl-card-btn"
+                style={{
+                  textAlign: "left", padding: "18px 16px", borderRadius: 16, cursor: "pointer",
+                  background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.09)",
+                  color: "white",
+                }}
+              >
+                <div style={{ fontSize: 28, marginBottom: 10 }}>{icon}</div>
+                <h3 style={{ margin: "0 0 6px", fontSize: 15, lineHeight: 1.2 }}>
+                  {t(`pages.dashboard.${titleKey}`)}
+                </h3>
+                <p style={{ margin: "0 0 14px", color: "#94a3b8", fontSize: 13, lineHeight: 1.5 }}>
+                  {t(`pages.dashboard.${textKey}`)}
+                </p>
+                <Badge tone={tone}>{t(`pages.dashboard.${btnKey}`)}</Badge>
+              </button>
+            ))}
+          </div>
+        </AppCard>
+      ) : (
+        /* ── Setup progress card: visibile dopo il primo dato inserito ── */
+        <AppCard style={{ marginBottom: 18 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto",
+              gap: 16,
+              alignItems: "center",
+            }}
+          >
+            <div>
+              <Badge tone={setup.percent >= 70 ? "green" : "orange"}>
+                {t("pages.dashboard.setupPercent", { percent: setup.percent })}
+              </Badge>
+
+              <h2 style={{ margin: "12px 0 6px" }}>
+                {setup.next ? t(setup.next.labelKey) : t("pages.dashboard.workspaceReady")}
+              </h2>
+
+              <p style={{ color: "#94a3b8", margin: 0 }}>
+                {t("pages.dashboard.setupStepsCompleted", { completed: setup.completed, total: setup.total })}
+              </p>
+
+              <div
+                style={{
+                  height: 10,
+                  borderRadius: 999,
+                  background: "rgba(255,255,255,0.08)",
+                  overflow: "hidden",
+                  marginTop: 14,
+                }}
+              >
+                <div
+                  style={{
+                    width: `${setup.percent}%`,
+                    height: "100%",
+                    background: "linear-gradient(135deg,#22c55e,#38bdf8)",
+                  }}
+                />
+              </div>
+            </div>
 
             <div
               style={{
-                height: 10,
-                borderRadius: 999,
-                background: "rgba(255,255,255,0.08)",
-                overflow: "hidden",
-                marginTop: 14,
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
               }}
             >
-              <div
-                style={{
-                  width: `${setup.percent}%`,
-                  height: "100%",
-                  background: "linear-gradient(135deg,#22c55e,#38bdf8)",
-                }}
-              />
+              <Button variant="ghost" onClick={() => navigate("/onboarding")}>
+                {t("pages.dashboard.onboarding")}
+              </Button>
+
+              <Button onClick={() => navigate(setup.next?.path || "/settings")}>
+                {t("pages.dashboard.nextStep")}
+              </Button>
             </div>
           </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexWrap: "wrap",
-              justifyContent: "flex-end",
-            }}
-          >
-            <Button variant="ghost" onClick={() => navigate("/onboarding")}>
-              {t("pages.dashboard.onboarding")}
-            </Button>
-
-            <Button onClick={() => navigate(setup.next?.path || "/settings")}>
-              {t("pages.dashboard.nextStep")}
-            </Button>
-          </div>
-        </div>
-      </AppCard>
+        </AppCard>
+      )}
 
       {openCorrections.length > 0 && (
         <OpenCorrectionsCard
@@ -1635,6 +1680,7 @@ function TopPerformer({ label, value, name, tone, onClick }) {
     <button
       type="button"
       onClick={onClick}
+      className={onClick ? "cl-card-btn" : undefined}
       style={{
         borderRadius: 12,
         padding: 16,
@@ -1669,6 +1715,7 @@ function FocusItem({ label, title, meta, tone, action, onClick }) {
     <button
       type="button"
       onClick={onClick}
+      className={onClick ? "cl-card-btn" : undefined}
       style={{
         width: "100%",
         textAlign: "left",
@@ -1712,6 +1759,7 @@ function QuickAction({ label, icon, onClick }) {
     <button
       type="button"
       onClick={onClick}
+      className="cl-card-btn"
       style={{
         borderRadius: 12,
         padding: 16,

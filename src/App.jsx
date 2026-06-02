@@ -13,6 +13,7 @@ import AppCard from "./components/ui/AppCard";
 import Button from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import PWAInstallBanner from "./components/ui/PWAInstallBanner";
+import PWAUpdateBanner from "./components/ui/PWAUpdateBanner";
 import PushBanner from "./components/ui/PushBanner";
 import BillingBanner from "./components/ui/BillingBanner";
 import DeepLinkHandler from "./components/utils/DeepLinkHandler";
@@ -263,12 +264,14 @@ function App() {
     enabled: Boolean(previewAppSettings?.notifications?.push !== false),
   });
 
-  // Staff chat — solo per contare i non letti da mostrare nel badge sidebar
+  // Staff chat — solo per contare i non letti da mostrare nel badge sidebar.
+  // instanceId:"badge" garantisce un nome canale Supabase diverso da quello della pagina chat.
   const { unreadCount: chatUnread } = useStaffChat({
     teamId:     auth.team?.id,
     userId:     auth.user?.id,
     authorName: profile ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() : "Coach",
     authorRole: auth.team?.role || previewAppSettings?.currentUserRole || "headCoach",
+    instanceId: "badge",
   });
 
   // Pagine pubbliche — accessibili senza autenticazione
@@ -451,19 +454,19 @@ function App() {
           <BillingBanner appSettings={previewAppSettings} />
 
           <div style={styles.storageStatus}>
-            <Badge tone={storageSource === "supabase" ? "green" : "orange"}>
+            <Badge tone={storageSource === "supabase" ? "green" : storageSource === "partial" ? "orange" : "red"}>
               {loading || auth.authLoading
                 ? t("common.loadingData")
                 : storageSource === "supabase"
                 ? `Sync ${auth.team?.name || "Supabase"}`
                 : storageSource === "partial"
-                ? "Sync parziale"
-                : t("common.localSave")}
+                ? t("common.syncPartial")
+                : `⚡ ${t("common.localSave")}`}
             </Badge>
 
-            {storageError && (
-              <span style={styles.storageStatusText}>
-                {storageSource === "partial" ? storageError : t("common.supabaseUnavailable")}
+            {storageError && storageSource !== "supabase" && (
+              <span style={{ ...styles.storageStatusText, maxWidth: 320 }}>
+                {storageSource === "partial" ? storageError : t("common.offlineHint")}
               </span>
             )}
           </div>
@@ -490,6 +493,7 @@ function App() {
                     physicalTests={physicalTests}
                     appSettings={previewAppSettings}
                     setAppSettings={setAppSettings}
+                    loading={loading}
                   />)
                 }
               />
@@ -931,6 +935,7 @@ function App() {
       <DeepLinkHandler />
 
       <MobileBottomNav />
+      <PWAUpdateBanner />
       <PWAInstallBanner />
       <PushBanner />
       <style>{`

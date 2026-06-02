@@ -77,31 +77,9 @@ export function emptyPhysicalTest() {
   };
 }
 
-// FIX #12: ID stringa fin dall'inizio — elimina type mismatch con UUID generati da createId()
-export const initialPlayers = [
-  {
-    id: "player-initial-1",
-    name: "Luca Rossi",
-    role: "Centrale",
-    secondaryRole: "Braccetto destro",
-    foot: "Dx",
-    status: "Disponibile",
-    birthDate: "2001-04-12",
-    height: "186",
-    weight: "78",
-    nationality: "Italia",
-    shirtNumber: "5",
-    injuryType: "",
-    expectedReturn: "",
-    strengths: "Leadership difensiva, lettura preventiva, duello aereo.",
-    improvements: "Velocizzare la prima giocata sotto pressione.",
-    individualGoals: "Aumentare precisione nel cambio gioco e gestione linea alta.",
-    videoLink: "",
-    notes: "Leader difensivo, buona lettura preventiva.",
-    photo: "",
-    ratings: { technique: 7, vision: 7, intensity: 8, speed: 6, physicality: 8, leadership: 9, tactics: 8, mentality: 8 },
-  },
-];
+// Nessun giocatore demo: il nuovo utente parte con rosa vuota.
+// Il guard hasUserLocalRecords in teamData.js è aggiornato di conseguenza.
+export const initialPlayers = [];
 
 export const initialExercises = [
   {

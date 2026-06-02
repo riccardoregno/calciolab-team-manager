@@ -38,6 +38,16 @@ export default function AiSessionBuilder({
   // RPE calcolato in base alla distanza dalla gara
   const rpeTarget = RPE_BY_MATCH_DAY[prompt.matchDayDistance] || RPE_BY_MATCH_DAY["MD-3"];
 
+  // Translated RPE display — uses the same keys already defined in Trainings.jsx
+  const RPE_I18N = {
+    "MD+1": ["pages.trainings.rpeMDp1Label", "pages.trainings.rpeMDp1Description"],
+    "MD-4": ["pages.trainings.rpeMDm4Label", "pages.trainings.rpeMDm4Description"],
+    "MD-3": ["pages.trainings.rpeMDm3Label", "pages.trainings.rpeMDm3Description"],
+    "MD-2": ["pages.trainings.rpeMDm2Label", "pages.trainings.rpeMDm2Description"],
+    "MD-1": ["pages.trainings.rpeMDm1Label", "pages.trainings.rpeMDm1Description"],
+  };
+  const [rpeLabel, rpeDescription] = (RPE_I18N[prompt.matchDayDistance] || RPE_I18N["MD-3"]).map((k) => t(k));
+
   // Carica il catalogo FP5 e lo unisce agli esercizi personali
   const [fp5Catalog, setFp5Catalog] = useState([]);
   useEffect(() => {
@@ -238,10 +248,10 @@ export default function AiSessionBuilder({
             </div>
             <div>
               <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>
-                {rpeTarget.label}
+                {rpeLabel}
               </p>
               <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-                {rpeTarget.description} · {t("pages.aiSessionBuilder.rpeBlocks")} {getRpeBlocks(prompt.matchDayDistance)}
+                {rpeDescription} · {t("pages.aiSessionBuilder.rpeBlocks")} {getRpeBlocks(prompt.matchDayDistance)}
               </p>
             </div>
             {/* Barra visiva RPE */}

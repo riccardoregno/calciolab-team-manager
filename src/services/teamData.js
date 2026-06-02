@@ -235,8 +235,9 @@ async function loadTeamTablesState(teamId) {
 function hasUserLocalRecords(stateKey, records = []) {
   if (!Array.isArray(records) || records.length === 0) return false;
 
+  // Players: initialPlayers is now empty, so any record counts as user data.
   if (stateKey === "players") {
-    return records.some((record) => record.id !== "player-initial-1");
+    return records.length > 0;
   }
 
   if (stateKey === "exercises") {
