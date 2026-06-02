@@ -13,7 +13,6 @@ import AppCard from "./components/ui/AppCard";
 import Button from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import PWAInstallBanner from "./components/ui/PWAInstallBanner";
-import PWAUpdateBanner from "./components/ui/PWAUpdateBanner";
 import PushBanner from "./components/ui/PushBanner";
 import BillingBanner from "./components/ui/BillingBanner";
 import DeepLinkHandler from "./components/utils/DeepLinkHandler";
@@ -26,6 +25,12 @@ import { supabase } from "./lib/supabaseClient";
 import { isNative, hideSplashScreen, setStatusBarDark, onAndroidBack } from "./utils/capacitor";
 import { updateTeamSubscription } from "./services/subscription";
 import { usePushNotifications } from "./hooks/usePushNotifications";
+
+// Wrapper che vive DENTRO <BrowserRouter> così useNavigate funziona correttamente
+function PushNotificationHandler({ userId, teamId, enabled }) {
+  usePushNotifications({ userId, teamId, enabled });
+  return null;
+}
 
 import Auth from "./pages/Auth";
 const Landing = lazy(() => import("./pages/Landing"));
@@ -257,12 +262,8 @@ function App() {
     enabled:  Boolean(previewAppSettings?.notifications?.enabled),
   });
 
-  // Push notifications — registra token dispositivo su iOS/Android
-  usePushNotifications({
-    userId: auth.user?.id  || null,
-    teamId: auth.team?.id  || null,
-    enabled: Boolean(previewAppSettings?.notifications?.push !== false),
-  });
+  // Push notifications — il hook usa useNavigate, quindi viene montato DENTRO BrowserRouter
+  // tramite il componente PushNotificationHandler (vedi in fondo al return).
 
   // Staff chat — solo per contare i non letti da mostrare nel badge sidebar.
   // instanceId:"badge" garantisce un nome canale Supabase diverso da quello della pagina chat.
@@ -935,9 +936,14 @@ function App() {
       <DeepLinkHandler />
 
       <MobileBottomNav />
-      <PWAUpdateBanner />
       <PWAInstallBanner />
       <PushBanner />
+      {/* Push notifications — dentro BrowserRouter perché il hook usa useNavigate */}
+      <PushNotificationHandler
+        userId={auth.user?.id || null}
+        teamId={auth.team?.id || null}
+        enabled={Boolean(previewAppSettings?.notifications?.push !== false)}
+      />
       <style>{`
         @keyframes pushSlideIn {
           from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
