@@ -139,6 +139,39 @@ function cone(x, y) {
   </g>`;
 }
 
+function miniGoal(x, y, w = 34) {
+  return `<g transform="translate(${x} ${y})" filter="url(#fpDrop)">
+    <rect x="${-w / 2}" y="-6" width="${w}" height="12" rx="3" fill="rgba(15,23,42,0.46)" stroke="rgba(255,255,255,0.72)" stroke-width="1.5"/>
+    <path d="M${-w / 2 + 5},-4 V4 M0,-4 V4 M${w / 2 - 5},-4 V4" stroke="rgba(255,255,255,0.26)" stroke-width="0.8"/>
+  </g>`;
+}
+
+function hurdle(x, y) {
+  return `<g transform="translate(${x} ${y})" filter="url(#fpDrop)">
+    <path d="M-12,6 V-6 H12 V6" fill="none" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-12,6 H-17 M12,6 H17" stroke="#f59e0b" stroke-width="2.1" stroke-linecap="round"/>
+  </g>`;
+}
+
+function ladder(x, y, steps = 6) {
+  const h = steps * 15;
+  const rails = `<path d="M-16,0 V${h} M16,0 V${h}" stroke="#e5e7eb" stroke-width="2.2" stroke-linecap="round"/>`;
+  const rungs = Array.from({ length: steps + 1 }, (_, i) =>
+    `<line x1="-16" y1="${i * 15}" x2="16" y2="${i * 15}" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>`
+  ).join("");
+  return `<g transform="translate(${x} ${y})" filter="url(#fpDrop)">${rails}${rungs}</g>`;
+}
+
+function curvedRun(d, color = "rgba(255,255,255,0.78)") {
+  return `<path d="${d}" stroke="rgba(15,23,42,0.38)" stroke-width="5" stroke-linecap="round" stroke-dasharray="7,6" fill="none"/>
+    <path d="${d}" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="7,5" fill="none" marker-end="url(#fpmR)"/>`;
+}
+
+function curvedPass(d) {
+  return `<path d="${d}" stroke="rgba(251,191,36,0.42)" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+    <path d="${d}" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round" fill="none" marker-end="url(#fpmP)"/>`;
+}
+
 function badge(text) {
   const w = text.length * 7 + 14;
   return `<rect x="8" y="8" width="${w}" height="20" rx="6" fill="rgba(0,0,0,0.55)"/>` +
@@ -194,22 +227,50 @@ function drawTechnical() {
   return svgWrap(parts.join(""), "Tecnica");
 }
 
+function drawSlalom() {
+  const path = [[90, 220], [125, 185], [160, 220], [195, 185], [230, 220], [265, 185], [300, 220]];
+  const parts = [
+    zone(64, 72, 272, 176, "rgba(56,189,248,0.05)", "rgba(56,189,248,0.16)"),
+    miniGoal(312, 92, 42),
+    ...path.map(([x, y]) => cone(x, y)),
+    pl(72, 238, "1"),
+    ball(78, 220),
+    curvedRun("M82,218 C120,165 145,242 182,190 C215,145 235,235 300,200"),
+    `<path d="M300,198 L314,105" stroke="#fbbf24" stroke-width="1.7" fill="none" marker-end="url(#fpmP)"/>`,
+  ];
+  return svgWrap(parts.join(""), "Slalom");
+}
+
+function drawQuickness() {
+  const parts = [
+    zone(54, 46, 292, 188, "rgba(14,165,233,0.05)", "rgba(14,165,233,0.18)"),
+    ladder(86, 68, 7),
+    hurdle(175, 82), hurdle(215, 112), hurdle(255, 142),
+    cone(305, 68), cone(325, 108), cone(305, 148), cone(325, 188),
+    pl(70, 220, "1"),
+    run(82, 210, 88, 70),
+    run(108, 72, 175, 82),
+    curvedRun("M175,82 C200,76 195,128 225,122 C250,116 245,172 305,182", "#7dd3fc"),
+  ];
+  return svgWrap(parts.join(""), "Rapidità");
+}
+
 function drawDuel1v1() {
   const parts = [
-    zone(130, 25, 140, 230),
-    goalH(200, 20, true),
-    pl(200, 80, "A"),
-    pl(200, 155, "D", "opp"),
-    pl(200, 48, "P"),
-    ball(200, 110),
-    run(200, 92, 200, 140),
+    zone(105, 30, 190, 220, "rgba(56,189,248,0.06)", "rgba(56,189,248,0.2)"),
+    miniGoal(145, 38), miniGoal(255, 38),
+    cone(112, 96), cone(288, 96), cone(112, 218), cone(288, 218),
+    pl(200, 212, "A"),
+    pl(200, 132, "D", "opp"),
+    ball(200, 195),
+    curvedRun("M200,195 C170,168 174,132 200,112 C222,94 246,82 260,44"),
   ];
   return svgWrap(parts.join(""), "1 vs 1");
 }
 
 function drawDuel2v1() {
   const parts = [
-    zone(90, 25, 220, 230),
+    zone(78, 28, 244, 224, "rgba(56,189,248,0.06)", "rgba(56,189,248,0.18)"),
     goalH(200, 20),
     pl(155, 195, "A"),
     pl(245, 195, "A"),
@@ -217,7 +278,8 @@ function drawDuel2v1() {
     pl(200, 48, "P"),
     ball(155, 183),
     pass(155, 178, 245, 180),
-    run(245, 180, 230, 100),
+    curvedRun("M245,180 C260,150 252,112 222,75"),
+    run(155, 182, 176, 96),
   ];
   return svgWrap(parts.join(""), "2 vs 1");
 }
@@ -307,6 +369,21 @@ function drawShooting(combo = false) {
     parts.push(`<path d="M172,78 L205,46" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#fpmP)"/>`);
   }
   return svgWrap(parts.join(""), "Finalizzazione");
+}
+
+function drawThirdManFinish() {
+  const parts = [
+    goalH(200, 14),
+    `<rect x="130" y="14" width="140" height="64" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>`,
+    pl(200, 44, "P"),
+    pl(105, 205, "1"), pl(205, 178, "2"), pl(292, 206, "3"), pl(220, 90, "4"),
+    ball(105, 193),
+    pass(105, 193, 205, 166),
+    pass(205, 166, 292, 194),
+    curvedRun("M220,180 C220,140 236,118 220,92"),
+    `<path d="M292,194 C260,144 246,100 220,82" stroke="#fbbf24" stroke-width="1.7" fill="none" marker-end="url(#fpmP)"/>`,
+  ];
+  return svgWrap(parts.join(""), "Terzo uomo");
 }
 
 function drawCross() {
@@ -408,6 +485,36 @@ function drawSetpiece() {
   return svgWrap(parts.join(""), "Palla Inattiva");
 }
 
+function drawFreeKick() {
+  const parts = [
+    goalH(200, 14),
+    `<rect x="130" y="14" width="140" height="68" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>`,
+    pl(200, 45, "P"),
+    ...[150, 175, 200, 225, 250].map((x, i) => pl(x, 104, String(i + 1), "opp")),
+    pl(130, 182, "B1"), pl(168, 196, "B2"), pl(245, 166, "3"),
+    ball(130, 166),
+    curvedPass("M130,166 C142,118 178,84 214,58"),
+    curvedRun("M245,160 C250,130 235,92 212,62"),
+  ];
+  return svgWrap(parts.join(""), "Punizione");
+}
+
+function drawCornerSetpiece() {
+  const parts = [
+    `<rect x="238" y="176" width="146" height="88" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>`,
+    `<rect x="302" y="208" width="82" height="56" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>`,
+    goalH(348, 256, false),
+    ball(382, 262),
+    pl(372, 238, "B1"),
+    pl(346, 232, "1"), pl(324, 218, "2"), pl(302, 232, "3"), pl(344, 202, "4"),
+    pl(330, 250, "G", "opp"), pl(314, 242, "D", "opp"), pl(354, 216, "D", "opp"),
+    curvedPass("M380,256 C354,226 338,208 320,225"),
+    curvedRun("M302,232 C312,218 316,208 324,218"),
+    curvedRun("M344,202 C342,220 338,232 346,232"),
+  ];
+  return svgWrap(parts.join(""), "Corner");
+}
+
 function drawAerial() {
   const parts = [
     `<rect x="130" y="14" width="140" height="70" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>`,
@@ -473,15 +580,20 @@ function classify(ex) {
 
   if (/rondo|torello/.test(t))                           return "rondo";
   if (/riscaldamento/.test(t))                           return "warmup";
-  if (/tecnica individuale|birilli|fosso|a secco|psico/.test(t)) return "technical";
+  if (/scaletta|ladder|ostacol|rapidit|navett|cambio direzione/.test(t) || ["rapidità", "attivazione"].includes(cat)) return "quickness";
+  if (/slalom|dribbling|birilli|conduzione/.test(t))      return "slalom";
+  if (/tecnica individuale|fosso|a secco|psico/.test(t))  return "technical";
   if (/penetrazione|dribbling/.test(t) || cat === "penetrazione") return "duel1v1";
   if (/cross/.test(t) || cat === "cross")               return "cross";
   if (/pressing|riaggressione/.test(t))                 return "pressing";
-  if (/palle inattive|punizione|calcio.d.angolo|set.?piece/.test(t) || cat === "palle inattive") return "setpiece";
+  if (/corner|calcio.d.angolo|angolo/.test(t))          return "corner";
+  if (/punizione|free.?kick/.test(t))                    return "freekick";
+  if (/palle inattive|set.?piece/.test(t) || cat === "palle inattive") return "setpiece";
   if (/fase difensiva|scaglionamento/.test(t) || cat === "fase difensiva" || cat === "scaglionamento") return "defensive";
   if (/reparti|corridoi|fase offensiva/.test(t) || cat === "fase offensiva") return "offensive";
   if (/gioco aereo|colpo di testa/.test(t) || cat === "gioco aereo") return "aerial";
   if (/resistenza/.test(t) || cat === "resistenza")     return "fitness";
+  if (/terzo uomo|combinata|combinato/.test(t) && (/tiro|finalizzaz/.test(t) || cat === "finalizzazione")) return "thirdman";
   if (/tiro|finalizzaz/.test(t) || cat === "finalizzazione") return "shooting";
   if (/combinazione|passaggio|sovrapposizione|taglio|inserimento/.test(t) ||
       ["combinazione", "passaggio", "taglio", "sovrapposizione", "inserimento"].includes(cat)) return "combination";
@@ -513,18 +625,23 @@ export function generateExerciseSvg(ex) {
     case "rondo":      return drawRondo(nvn?.att ?? 6, nvn?.def ?? 2);
     case "warmup":     return drawWarmup();
     case "technical":  return drawTechnical();
+    case "slalom":     return drawSlalom();
+    case "quickness":  return drawQuickness();
     case "duel1v1":    return drawDuel1v1();
     case "duel2v1":    return drawDuel2v1();
     case "smallgame":  return drawSmallGame(nvn?.att ?? 3, nvn?.def ?? 2);
     case "mediumgame": return drawMediumGame(nvn?.att ?? 5, nvn?.def ?? 5);
     case "fullgame":   return drawFullGame();
     case "shooting":   return drawShooting(nvn?.att >= 3);
+    case "thirdman":   return drawThirdManFinish();
     case "cross":      return drawCross();
     case "pressing":   return drawPressing();
     case "defensive":  return drawDefensive();
     case "possession": return drawPossession(true);
     case "combination":return drawCombination();
     case "setpiece":   return drawSetpiece();
+    case "corner":     return drawCornerSetpiece();
+    case "freekick":   return drawFreeKick();
     case "aerial":     return drawAerial();
     case "offensive":  return drawOffensive();
     case "fitness":    return drawFitness();
