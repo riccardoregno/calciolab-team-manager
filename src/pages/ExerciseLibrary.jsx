@@ -127,6 +127,20 @@ function getQualityTone(score) {
   return "orange";
 }
 
+function buildTrainingNotes(exercise) {
+  const desc = exDesc(exercise);
+  const sections = parseMethodology(desc);
+  const pick = (label) => sections.find((item) => item.label.toLowerCase() === label.toLowerCase())?.body;
+  const notes = [
+    pick("Organizzazione") ? `Organizzazione: ${pick("Organizzazione")}` : "",
+    pick("Svolgimento") ? `Svolgimento: ${pick("Svolgimento")}` : "",
+    pick("Regole") ? `Regole: ${pick("Regole")}` : "",
+    pick("Coaching points") ? `Coaching: ${pick("Coaching points")}` : "",
+    cleanText(exercise.variants) ? `Varianti: ${cleanText(exercise.variants)}` : "",
+  ].filter(Boolean);
+  return notes.join("\n");
+}
+
 // Returns the image to show for an exercise card: generated SVG for fp5 catalog, stored image for personal
 function exImage(ex) {
   if (ex.source === "fp5" || !ex.image) return generateExerciseSvg(ex);
@@ -394,17 +408,13 @@ export default function ExerciseLibrary({
 
   const openExerciseInTraining = useCallback((exercise) => {
     const block = exercise.trainingBlock || getBlockFromCategory(exercise.category);
-    // Build a rich note string: variants + coaching points (when available)
-    const cp = exercise.coachingPoints && exercise.coachingPoints.trim()
-      ? exercise.coachingPoints.trim()
-      : "";
-    const variantText = [exercise.variants, cp ? `Coaching: ${cp}` : ""].filter(Boolean).join("\n");
+    const variantText = buildTrainingNotes(exercise);
     navigate("/trainings", {
       state: {
         draftTraining: {
-          title: exercise.title ? `Seduta - ${exercise.title}` : "Nuova seduta",
+          title: exercise.title ? `Seduta - ${getDisplayTitle(exercise)}` : "Nuova seduta",
           theme: block || exercise.category || "Tecnica",
-          objective: exercise.objective || exercise.goal || "",
+          objective: getPrimaryObjective(exercise),
           exercises: [{
             exerciseId: exercise.id,
             customDuration: exercise.duration || 15,
