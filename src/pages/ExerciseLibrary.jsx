@@ -141,6 +141,12 @@ function buildTrainingNotes(exercise) {
   return notes.join("\n");
 }
 
+function getPrintableExerciseImage(exercise) {
+  const svgMarkup = exercise.source === "fp5" ? exImage(exercise) : null;
+  if (svgMarkup) return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`;
+  return exercise.image || null;
+}
+
 // Returns the image to show for an exercise card: generated SVG for fp5 catalog, stored image for personal
 function exImage(ex) {
   if (ex.source === "fp5" || !ex.image) return generateExerciseSvg(ex);
@@ -1141,6 +1147,9 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
                 {t("pages.exerciseLibrary.customizeExercise")}
               </Button>
             )}
+            <Button variant="ghost" onClick={() => window.print()}>
+              {t("pages.exerciseLibrary.printPdf")}
+            </Button>
             {lightboxSrc && (
               <Button variant="ghost" onClick={() => onOpenLightbox(lightboxSrc)}>
                 {t("pages.exerciseLibrary.enlargeDiagram")}
@@ -1246,7 +1255,134 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
           </div>
         )}
       </div>
+
+      <ExercisePrintSheet exercise={exercise} t={t} />
     </Modal>
+  );
+}
+
+function ExercisePrintSheet({ exercise, t }) {
+  const desc = exDesc(exercise);
+  const sections = parseMethodology(desc);
+  const coachingSection = sections.find((section) => section.label.toLowerCase() === "coaching points");
+  const methodologySections = sections.filter((section) => section.label.toLowerCase() !== "coaching points");
+  const setupItems = getSetupItems(exercise, t);
+  const progressions = getExerciseProgressions(exercise);
+  const commonErrors = getCommonErrors(exercise);
+  const printImage = getPrintableExerciseImage(exercise);
+  const title = getDisplayTitle(exercise);
+  const meta = [
+    exercise.category,
+    exercise.duration ? `${exercise.duration} min` : "",
+    exercise.players ? `${exercise.players} ${t("pages.exerciseLibrary.printPlayersSuffix")}` : "",
+    exercise.intensity,
+  ].filter(Boolean);
+
+  return (
+    <div className="print-area print-template screen-hidden-print-area">
+      <article>
+        <header className="print-header">
+          <div>
+            <p>{t("pages.exerciseLibrary.printEyebrow")}</p>
+            <h1>{title}</h1>
+          </div>
+          <div className="print-meta">
+            {meta.map((item) => <span key={item}>{item}</span>)}
+            {getTitleCode(exercise.title) && <span>{getTitleCode(exercise.title)}</span>}
+          </div>
+        </header>
+
+        <section className="print-section">
+          <h2>{t("pages.exerciseLibrary.printObjective")}</h2>
+          <div className="print-box">
+            <p>{getPrimaryObjective(exercise) || t("pages.exerciseLibrary.detailDefaultObjective")}</p>
+          </div>
+        </section>
+
+        <div className="print-grid two">
+          {printImage && (
+            <section className="print-section">
+              <h2>{t("pages.exerciseLibrary.detailDiagramTitle")}</h2>
+              <div className="print-box">
+                <img src={printImage} alt="" style={{ width: "100%", display: "block", borderRadius: 10 }} />
+              </div>
+            </section>
+          )}
+
+          <section className="print-section">
+            <h2>{t("pages.exerciseLibrary.detailOpsTitle")}</h2>
+            <div className="print-grid">
+              {setupItems.map((item) => (
+                <div key={item.label} className="print-box">
+                  <span>{item.label}</span>
+                  <p>{item.value}</p>
+                </div>
+              ))}
+              {exercise.ageGroup && (
+                <div className="print-box">
+                  <span>{t("pages.exerciseLibrary.chipAge")}</span>
+                  <p>{exercise.ageGroup}</p>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <section className="print-section">
+          <h2>{t("pages.exerciseLibrary.detailTechTitle")}</h2>
+          <div className="print-grid two">
+            {methodologySections.map((section, index) => (
+              <div key={`${section.label}-${index}`} className="print-box">
+                <span>{section.label}</span>
+                <p>{section.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {coachingSection && (
+          <section className="print-section">
+            <h2>{t("pages.exerciseLibrary.detailCoachingTitle")}</h2>
+            <div className="print-box">
+              <p>{coachingSection.body}</p>
+            </div>
+          </section>
+        )}
+
+        <section className="print-section">
+          <h2>{t("pages.exerciseLibrary.detailProgressionTitle")}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>{t("pages.exerciseLibrary.printLevel")}</th>
+                <th>{t("pages.exerciseLibrary.printProgression")}</th>
+                <th>{t("pages.exerciseLibrary.printDescription")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {progressions.map((item) => (
+                <tr key={item.level}>
+                  <td>{item.level}</td>
+                  <td>{item.title}</td>
+                  <td>{item.text}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        {commonErrors.length > 0 && (
+          <section className="print-section">
+            <h2>{t("pages.exerciseLibrary.detailErrorsTitle")}</h2>
+            <div className="print-box">
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {commonErrors.map((error) => <li key={error}>{error}</li>)}
+              </ul>
+            </div>
+          </section>
+        )}
+      </article>
+    </div>
   );
 }
 

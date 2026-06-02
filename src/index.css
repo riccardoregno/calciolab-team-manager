@@ -239,6 +239,10 @@ textarea:focus-visible {
   min-height: 720px;
 }
 
+.screen-hidden-print-area {
+  display: none;
+}
+
 .print-template article {
   display: grid;
   gap: 20px;
@@ -411,6 +415,10 @@ textarea:focus-visible {
     padding: 0;
     border-radius: 0;
     min-height: auto;
+  }
+
+  .screen-hidden-print-area {
+    display: block !important;
   }
 
   .print-area,
