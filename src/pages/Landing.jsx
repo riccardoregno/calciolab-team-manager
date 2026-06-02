@@ -4,7 +4,6 @@
  * Nessuna dipendenza da auth/Supabase/useTeamData
  */
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 /* ─── Dati ────────────────────────────────────────────────────── */
 const FEATURES = [
@@ -89,13 +88,14 @@ const STATS = [
 
 /* ─── Componente principale ────────────────────────────────────── */
 export default function Landing() {
-  const navigate = useNavigate();
   const [billingPeriod, setBillingPeriod] = useState("monthly");
   const [openFaq, setOpenFaq] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  function goToLogin()  { navigate("/login"); }
-  function goToSignup() { navigate("/login?mode=register"); }
+  // Landing vive in un BrowserRouter separato da App.jsx — usiamo
+  // window.location per forzare una navigazione reale verso il login.
+  function goToLogin()  { window.location.assign("/login"); }
+  function goToSignup() { window.location.assign("/login?mode=register"); }
 
   return (
     <div style={l.root}>
