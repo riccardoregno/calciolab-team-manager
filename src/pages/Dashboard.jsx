@@ -34,6 +34,39 @@ import {
 
 const DASHBOARD_SECTION_KEYS = ["nextEvent", "kpis", "rosterStatus", "weekFocus", "coachAlerts", "recentActivities", "quickActions", "rewardCenter"];
 const DEFAULT_SECTION_ORDER = DASHBOARD_SECTION_KEYS;
+const PLAYER_STATUS_LABEL_KEYS = {
+  Disponibile: "pages.players.statusAvailable",
+  Infortunato: "pages.players.statusInjured",
+  Squalificato: "pages.players.statusSuspended",
+  Recupero: "pages.dashboard.statusRecovery",
+  Differenziato: "pages.dashboard.statusDifferentiated",
+};
+const TRAINING_THEME_LABEL_KEYS = {
+  Costruzione: "pages.trainings.themeCostruzione",
+  Possesso: "pages.trainings.themePossesso",
+  Pressing: "pages.trainings.themePressing",
+  Transizione: "pages.trainings.themeTransizione",
+  Finalizzazione: "pages.trainings.themeFinalizzazione",
+  "Fase difensiva": "pages.trainings.themeFaseDifensiva",
+  "Palla inattiva": "pages.trainings.themePallaInattiva",
+  Recupero: "pages.trainings.themeRecupero",
+};
+
+function getDashboardEventTypeLabel(type, t) {
+  if (type === "Partita") return t("pages.dashboard.eventTypeMatch");
+  if (type === "Seduta" || type === "Allenamento") return t("pages.dashboard.eventTypeSession");
+  return type || t("pages.dashboard.widgetEvent");
+}
+
+function getPlayerStatusLabel(status, t) {
+  if (!status) return t("pages.dashboard.athleteProfile");
+  return t(PLAYER_STATUS_LABEL_KEYS[status] || "pages.dashboard.athleteProfile");
+}
+
+function getTrainingThemeLabel(theme, t) {
+  if (!theme) return t("common.session");
+  return t(TRAINING_THEME_LABEL_KEYS[theme] || "pages.trainings.themeFallback");
+}
 
 function SortableSection({ id, children }) {
   const { t } = useTranslation();
@@ -323,7 +356,7 @@ function Dashboard({
                     <h3 style={{ marginTop: 0 }}>{t("pages.dashboard.nextEvent")}</h3>
                     {nextEvent ? (
                       <div>
-                        <Badge tone="green">{nextEvent.type}</Badge>
+                        <Badge tone="green">{getDashboardEventTypeLabel(nextEvent.type, t)}</Badge>
                         <h2 style={{ marginBottom: 8 }}>{nextEvent.title}</h2>
                         <p style={{ color: "#94a3b8" }}>{formatDate(nextEvent.date)}</p>
                         <p style={{ color: "#cbd5e1" }}>
@@ -392,7 +425,7 @@ function Dashboard({
                     label={t("pages.dashboard.teamGoals")}
                     value={totalGoals}
                     icon="⚽"
-                    note={realTopScorer?.goals ? `Top: ${realTopScorer.name}` : t("pages.dashboard.noGoals")}
+                    note={realTopScorer?.goals ? t("pages.dashboard.topPlayerNote", { name: realTopScorer.name }) : t("pages.dashboard.noGoals")}
                   />
                   <KpiCard
                     label={t("pages.dashboard.teamAssists")}
@@ -400,7 +433,7 @@ function Dashboard({
                     icon="🅰️"
                     note={
                       realTopAssistman?.assists
-                        ? `Top: ${realTopAssistman.name}`
+                        ? t("pages.dashboard.topPlayerNote", { name: realTopAssistman.name })
                         : t("pages.dashboard.noAssists")
                     }
                   />
@@ -408,7 +441,7 @@ function Dashboard({
                     label={t("pages.dashboard.totalMinutes")}
                     value={totalMinutes}
                     icon="⏱️"
-                    note={realTopMinutes?.minutes ? `Top: ${realTopMinutes.name}` : t("pages.dashboard.noMinutes")}
+                    note={realTopMinutes?.minutes ? t("pages.dashboard.topPlayerNote", { name: realTopMinutes.name }) : t("pages.dashboard.noMinutes")}
                   />
                 </>
               )}
@@ -588,7 +621,7 @@ function Dashboard({
                   return (
                     <FocusItem
                       key={`${event.type}-${event.id}-${event.date}`}
-                      label={isMatch ? t("common.match") : event.type || t("common.session")}
+                      label={isMatch ? t("common.match") : getDashboardEventTypeLabel(event.type, t)}
                       title={isMatch ? `${settings.workspaceProfile?.clubName || t("common.appName")} - ${event.opponent || t("pages.matches.opponentPlaceholder")}` : event.title || t("common.session")}
                       meta={`${formatDate(event.date)}${event.theme ? ` · ${event.theme}` : ""}`}
                       tone={isMatch ? "orange" : "green"}
@@ -691,7 +724,7 @@ function Dashboard({
                       <strong>{activity.title}</strong>
 
                       <Badge tone={activity.type === "Partita" ? "orange" : "green"}>
-                        {activity.type}
+                        {getDashboardEventTypeLabel(activity.type, t)}
                       </Badge>
                     </div>
 
@@ -1015,7 +1048,7 @@ function Dashboard({
         >
           <div>
             <Badge tone={setup.percent >= 70 ? "green" : "orange"}>
-              Setup {setup.percent}%
+              {t("pages.dashboard.setupPercent", { percent: setup.percent })}
             </Badge>
 
             <h2 style={{ margin: "12px 0 6px" }}>
@@ -1128,7 +1161,7 @@ function PlayerRoleDashboard({
       <div style={roleDashboardStyles.heroGrid}>
         <AppCard>
           <Badge tone={player?.status === "Disponibile" ? "green" : "orange"}>
-            {player?.status || t("pages.dashboard.athleteProfile")}
+            {getPlayerStatusLabel(player?.status, t)}
           </Badge>
 
           <h2 style={roleDashboardStyles.heroTitle}>
@@ -1296,7 +1329,7 @@ function OpenCorrectionsCard({ corrections, navigate, t }) {
                   <Badge tone={status.tone}>{t(status.labelKey)}</Badge>
                 </div>
                 <p style={correctionStyles.meta}>
-                  {matchLabel} · {formatDate(session.date)} · {session.theme || t("common.session")}
+                  {matchLabel} · {formatDate(session.date)} · {getTrainingThemeLabel(session.theme, t)}
                 </p>
                 {session.objectiveReview && (
                   <p style={correctionStyles.review}>{session.objectiveReview}</p>
@@ -1725,7 +1758,7 @@ function EventList({ events, emptyText }) {
           </div>
 
           <Badge tone={event.type === "Partita" ? "orange" : "green"}>
-            {event.type || t("pages.dashboard.widgetEvent")}
+            {getDashboardEventTypeLabel(event.type, t)}
           </Badge>
         </div>
       ))}

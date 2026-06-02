@@ -12,17 +12,16 @@ import { useSeasonGoals } from "../hooks/useSeasonGoals";
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
 import { useToast } from "../components/ui/Toast";
+import { parseMatchResult } from "../utils/helpers";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getSeasonStats(matches = []) {
-  const played = matches.filter(
-    (m) => m.homeScore !== undefined && m.homeScore !== null && m.homeScore !== ""
-  );
+  const played = matches.map((match) => parseMatchResult(match.result)).filter(Boolean);
   let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0, cleanSheets = 0;
-  for (const m of played) {
-    const gf = Number(m.homeScore ?? 0);
-    const ga = Number(m.awayScore ?? 0);
+  for (const result of played) {
+    const gf = result.goalsFor;
+    const ga = result.goalsAgainst;
     goalsFor += gf;
     goalsAgainst += ga;
     if (ga === 0) cleanSheets++;
@@ -49,6 +48,18 @@ const TEAM_GOAL_TEMPLATES = [
   { type: "goals_against",emoji: "🛡️", color: "#f87171", invert: true },
   { type: "clean_sheets", emoji: "🧤", color: "#a78bfa" },
 ];
+
+const STATUS_LABEL_KEYS = {
+  "In corso": "pages.seasonGoals.statusInProgress",
+  Completato: "pages.seasonGoals.statusCompleted",
+  "Non raggiunto": "pages.seasonGoals.statusNotReached",
+};
+
+function getGoalStatus(pct, invert = false) {
+  if (invert && pct >= 100) return "Non raggiunto";
+  if (!invert && pct >= 100) return "Completato";
+  return "In corso";
+}
 
 function getAutoValue(type, stats) {
   const map = {
@@ -84,19 +95,20 @@ function ProgressBar({ pct, color = "#60a5fa", invert = false }) {
 
 function StatusBadge({ pct, invert = false }) {
   const { t } = useTranslation();
-  let label, color, bg;
+  const status = getGoalStatus(pct, invert);
+  let color, bg;
   if (invert) {
-    if (pct >= 100) { label = t("pages.seasonGoals.statusOver"); color = "#f87171"; bg = "rgba(239,68,68,0.1)"; }
-    else if (pct >= 75) { label = t("pages.seasonGoals.statusWarning"); color = "#fb923c"; bg = "rgba(251,146,60,0.1)"; }
-    else { label = t("pages.seasonGoals.statusGood"); color = "#22c55e"; bg = "rgba(34,197,94,0.1)"; }
+    if (pct >= 100) { color = "#f87171"; bg = "rgba(239,68,68,0.1)"; }
+    else if (pct >= 75) { color = "#fb923c"; bg = "rgba(251,146,60,0.1)"; }
+    else { color = "#22c55e"; bg = "rgba(34,197,94,0.1)"; }
   } else {
-    if (pct >= 100) { label = t("pages.seasonGoals.statusAchieved"); color = "#22c55e"; bg = "rgba(34,197,94,0.1)"; }
-    else if (pct >= 60) { label = t("pages.seasonGoals.statusOnTrack"); color = "#fbbf24"; bg = "rgba(251,191,36,0.1)"; }
-    else { label = t("pages.seasonGoals.statusBehind"); color = "#f87171"; bg = "rgba(239,68,68,0.1)"; }
+    if (pct >= 100) { color = "#22c55e"; bg = "rgba(34,197,94,0.1)"; }
+    else if (pct >= 60) { color = "#fbbf24"; bg = "rgba(251,191,36,0.1)"; }
+    else { color = "#f87171"; bg = "rgba(239,68,68,0.1)"; }
   }
   return (
     <span style={{ fontSize: 11, fontWeight: 800, padding: "2px 9px", borderRadius: 99, color, background: bg }}>
-      {label}
+      {t(STATUS_LABEL_KEYS[status])}
     </span>
   );
 }

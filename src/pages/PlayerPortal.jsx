@@ -709,9 +709,9 @@ function PlayerPreviewCard({
           </div>
 
           {/* Messaggio spogliatoio */}
-          {portal.welcomeMessage && (
-            <p style={ps.welcomeMsg}>{portal.welcomeMessage}</p>
-          )}
+          <p style={ps.welcomeMsg}>
+            {portal.welcomeMessage || t("pages.playerPortal.defaultWelcome")}
+          </p>
 
           {/* KPI */}
           <div style={ps.kpiGrid}>

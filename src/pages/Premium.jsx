@@ -166,7 +166,7 @@ export default function Premium({
     const priceId = STRIPE_PRICE_IDS[planId]?.[activePeriod];
 
     if (!priceId) {
-      setCheckoutError(`Price ID Stripe mancante per ${planId} (${activePeriod}).`);
+      setCheckoutError(t("pages.premium.missingPriceId", { plan: planId, period: activePeriod }));
       return;
     }
 
@@ -193,7 +193,7 @@ export default function Premium({
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok || !data.url) {
-        throw new Error(data.error || "Checkout Stripe non disponibile.");
+        throw new Error(data.error || t("pages.premium.checkoutUnavailable"));
       }
 
       window.location.assign(data.url);
@@ -246,7 +246,7 @@ export default function Premium({
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Disdetta non disponibile.");
+        throw new Error(data.error || t("pages.premium.cancelNotAvailable"));
       }
 
       setBillingMessage(t("pages.premium.subscriptionCancelled"));
@@ -290,7 +290,7 @@ export default function Premium({
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) {
-        throw new Error(data.error || "Aggiornamento VIP non disponibile.");
+        throw new Error(data.error || t("pages.premium.vipNotAvailable"));
       }
 
       setVipState({
@@ -583,7 +583,7 @@ export default function Premium({
                         }}
                         onClick={() => activatePlan(plan.id)}
                         disabled={isCheckoutDisabled}
-                        title={!hasCheckoutPrice ? "Configura il Price ID Stripe per questo piano" : undefined}
+                        title={!hasCheckoutPrice ? t("pages.premium.configurePriceIdTitle") : undefined}
                       >
                         {isPending
                           ? t("pages.premium.loading")

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  getInitialState,
   loadRemoteState,
   saveLocalState,
   saveTeamTablesState,
@@ -9,7 +8,16 @@ import { normalizeAppState, normalizeSetPlays } from "../utils/helpers";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 
 export function useTeamData({ teamId } = {}) {
-  const [state, setState] = useState(getInitialState);
+  const [state, setState] = useState(() => normalizeAppState({
+    players: [],
+    exercises: [],
+    sessions: [],
+    matches: [],
+    physicalTests: [],
+    gpsSessions: [],
+    staffTasks: [],
+    injuryRecords: [],
+  }));
   const [loading, setLoading] = useState(true);
   const [storageSource, setStorageSource] = useState("local");
   const [storageError, setStorageError] = useState(null);

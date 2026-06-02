@@ -16,6 +16,32 @@ import { createId, formatDate, normalizeAppSettings } from "../utils/helpers";
 
 const MATCH_MODAL_QUERY = "match";
 const MATCH_DRAFT_KEY = "calciolab_match_draft_v1";
+const STATUS_LABEL_KEYS = {
+  Vinta: "pages.matches.statusWon",
+  Persa: "pages.matches.statusLost",
+  Pareggio: "pages.matches.statusDraw",
+  "In programma": "pages.matches.statusScheduled",
+};
+const LOCATION_LABEL_KEYS = {
+  Casa: "pages.matches.home",
+  Trasferta: "pages.matches.away",
+  Neutro: "pages.matches.neutral",
+};
+
+function getMatchStatusLabel(status, t) {
+  return t(STATUS_LABEL_KEYS[status] || STATUS_LABEL_KEYS["In programma"]);
+}
+
+function getMatchStatusTone(status) {
+  if (status === "Vinta") return "green";
+  if (status === "Persa") return "red";
+  if (status === "Pareggio") return "orange";
+  return "blue";
+}
+
+function translateLocation(location, t) {
+  return t(LOCATION_LABEL_KEYS[location] || LOCATION_LABEL_KEYS.Casa);
+}
 
 function Matches({ matches, setMatches, players = [], appSettings = {} }) {
   const { t } = useTranslation();
@@ -327,6 +353,11 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
                   <p style={{ color: "#94a3b8", margin: 0 }}>
                     {formatDate(match.date)}
                   </p>
+                  <div style={{ marginTop: 8 }}>
+                    <Badge tone={getMatchStatusTone(getMatchStatus(match))}>
+                      {getMatchStatusLabel(getMatchStatus(match), t)}
+                    </Badge>
+                  </div>
                 </div>
 
                 <TeamBox
@@ -345,7 +376,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
                   marginBottom: 18,
                 }}
               >
-                  <MiniInfo label={t("pages.matches.field")} value={formatMatchVenue(match)} />
+                  <MiniInfo label={t("pages.matches.field")} value={formatMatchVenue(match, t)} />
                   <MiniInfo label={t("pages.matches.formation")} value={match.formation || "-"} />
                   <MiniInfo
                   label={t("pages.matches.calledUp")}
@@ -627,8 +658,8 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
                           <td style={previewStyles.td}>{formatDate(match.date)}</td>
                           <td style={previewStyles.td}>{match.time || "-"}</td>
                           <td style={previewStyles.td}>{match.opponent}</td>
-                          <td style={previewStyles.td}>{match.location}</td>
-                          <td style={previewStyles.td}>{formatMatchVenue(match)}</td>
+                          <td style={previewStyles.td}>{translateLocation(match.location, t)}</td>
+                          <td style={previewStyles.td}>{formatMatchVenue(match, t)}</td>
                           <td style={previewStyles.td}>{[match.competition, match.matchday].filter(Boolean).join(" · ") || "-"}</td>
                         </tr>
                       ))}
@@ -1010,9 +1041,23 @@ function sortMatchesByDate(a, b) {
   return new Date(aKey) - new Date(bKey);
 }
 
-function formatMatchVenue(match) {
+function getMatchStatus(match) {
+  const result = String(match.result || "").trim();
+  if (!result) return "In programma";
+
+  const score = result.match(/(\d+)\s*[-:]\s*(\d+)/);
+  if (!score) return "In programma";
+
+  const homeGoals = Number(score[1]);
+  const awayGoals = Number(score[2]);
+  if (homeGoals > awayGoals) return "Vinta";
+  if (homeGoals < awayGoals) return "Persa";
+  return "Pareggio";
+}
+
+function formatMatchVenue(match, t) {
   return [
-    match.location,
+    t ? translateLocation(match.location, t) : match.location,
     match.venueName,
     match.venueAddress,
   ].filter(Boolean).join(" · ") || "-";

@@ -583,9 +583,19 @@ export function normalizeAppSettings(settings = {}){
       quickActions: true,
       rewardCenter: true,
     },
+    dashboardSectionOrder: Array.isArray(settings.dashboardSectionOrder)
+      ? settings.dashboardSectionOrder
+      : null,
+    notifications: {
+      enabled: Boolean(settings.notifications?.enabled),
+      remindersEnabled: Boolean(settings.notifications?.remindersEnabled),
+      push: settings.notifications?.push !== false,
+      reminderMinutes: Number(settings.notifications?.reminderMinutes || 60),
+    },
+    pendingInvites: Array.isArray(settings.pendingInvites) ? settings.pendingInvites : [],
     playerPortal: {
       enabled: Boolean(settings.playerPortal?.enabled),
-      welcomeMessage: settings.playerPortal?.welcomeMessage || "Benvenuto nella tua area personale CalcioLab.",
+      welcomeMessage: settings.playerPortal?.welcomeMessage || "",
       visibleMetrics: settings.playerPortal?.visibleMetrics || ["minutes", "tests", "goals", "load"],
       programs: settings.playerPortal?.programs || {},
       goals: settings.playerPortal?.goals || {},
@@ -689,7 +699,7 @@ export function normalizePromoCode(code = {}) {
     id:        code.id        || createId("promo"),
     code:      code.code      || "",
     plan:      code.plan      || "premium",      // "premium" | "club"
-    permanent: Boolean(code.permanent !== false), // true = no expiry
+    permanent: code.permanent === true,           // true = no expiry
     maxUses:   Number(code.maxUses  || 0),       // 0 = unlimited
     uses:      Number(code.uses     || 0),
     createdAt: code.createdAt || new Date().toISOString(),

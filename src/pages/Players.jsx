@@ -441,10 +441,10 @@ function Players({ players, setPlayers }) {
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {[
                   { val: "tutti", label: t("pages.players.all") },
-                  { val: "u18", label: "Under 18" },
+                  { val: "u18", label: t("pages.players.ageUnder18") },
                   { val: "18-23", label: "18-23" },
                   { val: "24-30", label: "24-30" },
-                  { val: "o30", label: "Over 30" },
+                  { val: "o30", label: t("pages.players.ageOver30") },
                 ].map(({ val, label }) => (
                   <button key={val} onClick={() => setFilterAge(val)} style={{
                     padding: "5px 11px", borderRadius: 8, fontSize: 12, fontWeight: 700,
@@ -665,7 +665,7 @@ function Players({ players, setPlayers }) {
                 />
               </div>
               <label style={{ width: "min(320px, 100%)", display: "grid", gap: 6, color: "#94a3b8", fontSize: 12, fontWeight: 800, textTransform: "uppercase" }}>
-                Dimensione foto {Number(form.photoSize || 100)}%
+                {t("pages.players.photoSize", { value: Number(form.photoSize || 100) })}
                 <input
                   type="range"
                   min="60"

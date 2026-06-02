@@ -17,6 +17,37 @@ import { useTranslation } from "../i18n";
 import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
 import { useIsMobile } from "../hooks/useIsMobile";
 
+const THEME_LABEL_KEYS = {
+  Costruzione: "pages.trainings.themeCostruzione",
+  Possesso: "pages.trainings.themePossesso",
+  Pressing: "pages.trainings.themePressing",
+  Transizione: "pages.trainings.themeTransizione",
+  Finalizzazione: "pages.trainings.themeFinalizzazione",
+  "Fase difensiva": "pages.trainings.themeFaseDifensiva",
+  "Palla inattiva": "pages.trainings.themePallaInattiva",
+  Recupero: "pages.trainings.themeRecupero",
+};
+const RPE_LABEL_KEYS = {
+  "MD+1": ["pages.trainings.rpeMDp1Label", "pages.trainings.rpeMDp1Description"],
+  "MD-4": ["pages.trainings.rpeMDm4Label", "pages.trainings.rpeMDm4Description"],
+  "MD-3": ["pages.trainings.rpeMDm3Label", "pages.trainings.rpeMDm3Description"],
+  "MD-2": ["pages.trainings.rpeMDm2Label", "pages.trainings.rpeMDm2Description"],
+  "MD-1": ["pages.trainings.rpeMDm1Label", "pages.trainings.rpeMDm1Description"],
+};
+
+function getThemeLabel(theme, t) {
+  return t(THEME_LABEL_KEYS[theme] || "pages.trainings.themeFallback");
+}
+
+function getRpeDisplayMeta(md, rpe, t) {
+  const [labelKey, descriptionKey] = RPE_LABEL_KEYS[md] || RPE_LABEL_KEYS["MD-3"];
+  return {
+    ...rpe,
+    label: t(labelKey),
+    description: t(descriptionKey),
+  };
+}
+
 function Trainings({
   exercises, sessions, setSessions, players = [], appSettings = {} }) {
 
@@ -270,7 +301,7 @@ function Trainings({
                   </div>
                   <div className="print-meta">
                     <span>{formatDate(form.date)}</span>
-                    <span>{form.theme}</span>
+                    <span>{getThemeLabel(form.theme, t)}</span>
                     <span>{form.matchDayDistance}</span>
                     <span>{clubName}</span>
                   </div>
@@ -295,7 +326,7 @@ function Trainings({
                     />
                     <PrintBox
                       title={t("pages.trainings.printMetaTheme")}
-                      value={`${form.theme} · ${form.matchDayDistance}`}
+                      value={`${getThemeLabel(form.theme, t)} · ${form.matchDayDistance}`}
                     />
                     {form.sourceType === "postMatch" && (
                       <PrintBox
@@ -381,7 +412,7 @@ function Trainings({
 
     <div style={trainingStyles.sessionPreviewStrip}>
       <SessionMeta label={t("pages.trainings.fieldDate")} value={formatDate(form.date)} />
-      <SessionMeta label={t("pages.trainings.fieldTheme")} value={form.theme} />
+                <SessionMeta label={t("pages.trainings.fieldTheme")} value={getThemeLabel(form.theme, t)} />
       <SessionMeta label={t("pages.trainings.fieldObjective")} value={form.objective || t("pages.trainings.printMetaObjectiveFallback")} />
       <SessionMeta label={t("pages.trainings.fieldLoad")} value={form.matchDayDistance} />
     </div>
@@ -393,8 +424,7 @@ function Trainings({
         gap: 14,
       }}
     >
-      <label style={trainingStyles.field}>
-        <span>{t("pages.trainings.fieldTitle")}</span>
+      <FieldLabel label={t("pages.trainings.fieldTitle")}>
         <input
           placeholder={t("pages.trainings.titlePlaceholder")}
           value={form.title}
@@ -402,10 +432,9 @@ function Trainings({
           style={{ ...styles.input, ...(formErrors.title ? trainingStyles.inputError : {}) }}
         />
         {formErrors.title && <span style={trainingStyles.errorMsg}>{t("pages.trainings.titleRequired")}</span>}
-      </label>
+      </FieldLabel>
 
-      <label style={trainingStyles.field}>
-        <span>{t("pages.trainings.fieldDate")}</span>
+      <FieldLabel label={t("pages.trainings.fieldDate")}>
         <input
           type="date"
           value={form.date}
@@ -413,10 +442,9 @@ function Trainings({
           style={{ ...styles.input, ...(formErrors.date ? trainingStyles.inputError : {}) }}
         />
         {formErrors.date && <span style={trainingStyles.errorMsg}>{t("pages.trainings.dateRequired")}</span>}
-      </label>
+      </FieldLabel>
 
-      <label style={trainingStyles.field}>
-        <span>{t("pages.trainings.fieldTheme")}</span>
+      <FieldLabel label={t("pages.trainings.fieldTheme")}>
         <select
           value={form.theme}
           onChange={(e) => setForm({ ...form, theme: e.target.value })}
@@ -431,10 +459,9 @@ function Trainings({
           <option value="Palla inattiva">{t("pages.trainings.themePallaInattiva")}</option>
           <option value="Recupero">{t("pages.trainings.themeRecupero")}</option>
         </select>
-      </label>
+      </FieldLabel>
 
-      <label style={trainingStyles.field}>
-        <span>{t("pages.trainings.fieldLoad")}</span>
+      <FieldLabel label={t("pages.trainings.fieldLoad")}>
         <select
           value={form.matchDayDistance}
           onChange={(e) => setForm({ ...form, matchDayDistance: e.target.value })}
@@ -447,20 +474,18 @@ function Trainings({
           <option value="MD-2">{t("pages.trainings.loadMDm2")}</option>
           <option value="MD-1">{t("pages.trainings.loadMDm1")}</option>
         </select>
-      </label>
+      </FieldLabel>
 
-      <label style={trainingStyles.field}>
-        <span>{t("pages.trainings.fieldObjective")}</span>
+      <FieldLabel label={t("pages.trainings.fieldObjective")}>
         <input
           placeholder={t("pages.trainings.objectivePlaceholder")}
           value={form.objective}
           onChange={(e) => setForm({ ...form, objective: e.target.value })}
           style={styles.input}
         />
-      </label>
+      </FieldLabel>
 
-      <label style={trainingStyles.field}>
-        <span>{t("pages.trainings.fieldNotes")}</span>
+      <FieldLabel label={t("pages.trainings.fieldNotes")}>
         <textarea
           placeholder={t("pages.trainings.notesPlaceholder")}
           value={form.notes}
@@ -471,7 +496,7 @@ function Trainings({
             resize: "vertical",
           }}
         />
-      </label>
+      </FieldLabel>
     </div>
 
     {/* Pannello RPE — distanza dalla gara */}
@@ -620,6 +645,8 @@ function Trainings({
                     <input
                       type="number"
                       min="1"
+                      title={t("pages.trainings.printDuration")}
+                      aria-label={t("pages.trainings.printDuration")}
                       value={item.customDuration}
                       onChange={(e) =>
                         updateVariant(
@@ -634,6 +661,8 @@ function Trainings({
                     <input
                       type="number"
                       min="1"
+                      title={t("pages.trainings.printPlayers")}
+                      aria-label={t("pages.trainings.printPlayers")}
                       value={item.customPlayers}
                       onChange={(e) =>
                         updateVariant(
@@ -701,7 +730,7 @@ function Trainings({
 
               <div style={trainingStyles.previewMetaGrid}>
                 <SessionMeta label={t("pages.trainings.previewMetaDate")} value={formatDate(form.date)} />
-                <SessionMeta label={t("pages.trainings.previewMetaTheme")} value={form.theme} />
+                <SessionMeta label={t("pages.trainings.previewMetaTheme")} value={getThemeLabel(form.theme, t)} />
                 <SessionMeta label={t("pages.trainings.previewMetaDuration")} value={`${totalMinutes} min`} />
                 <SessionMeta label={t("pages.trainings.previewMetaExercises")} value={selectedExercises.length} />
               </div>
@@ -844,7 +873,7 @@ function Trainings({
                         <h3 style={{ margin: 0, lineHeight: 1.2 }}>{session.title}</h3>
 
                         <p style={{ color: "#94a3b8", margin: "8px 0", lineHeight: 1.4 }}>
-                          {formatDate(session.date)} · {session.theme} ·{" "}
+                          {formatDate(session.date)} · {getThemeLabel(session.theme, t)} ·{" "}
                           {sessionTotal} min
                         </p>
 
@@ -1057,6 +1086,8 @@ function AvailablePlayers({ players }) {
 
 // ─── RPE Panel ────────────────────────────────────────────────────────────────
 function RpePanel({ rpe, md }) {
+  const { t } = useTranslation();
+  const displayRpe = getRpeDisplayMeta(md, rpe, t);
   const colorMap = {
     red:    { bg: "rgba(239,68,68,0.08)",   border: "rgba(239,68,68,0.25)",   text: "#ef4444" },
     orange: { bg: "rgba(251,146,60,0.08)",  border: "rgba(251,146,60,0.25)",  text: "#fb923c" },
@@ -1064,7 +1095,7 @@ function RpePanel({ rpe, md }) {
     blue:   { bg: "rgba(56,189,248,0.08)",  border: "rgba(56,189,248,0.25)",  text: "#38bdf8" },
     default:{ bg: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.10)", text: "#94a3b8" },
   };
-  const c = colorMap[rpe.color] || colorMap.default;
+  const c = colorMap[displayRpe.color] || colorMap.default;
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 14,
@@ -1073,16 +1104,16 @@ function RpePanel({ rpe, md }) {
     }}>
       <div style={{ textAlign: "center", minWidth: 52 }}>
         <div style={{ fontSize: 20, fontWeight: 900, color: c.text, lineHeight: 1 }}>
-          {rpe.min}–{rpe.max}
+          {displayRpe.min}–{displayRpe.max}
         </div>
         <div style={{ fontSize: 10, color: "#475569", fontWeight: 700, textTransform: "uppercase", marginTop: 2 }}>RPE</div>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{rpe.label}</p>
-        <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{rpe.description} · {md}</p>
+        <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{displayRpe.label}</p>
+        <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{displayRpe.description} · {md}</p>
       </div>
       <div style={{ width: 70, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.08)", overflow: "hidden", flexShrink: 0 }}>
-        <div style={{ height: "100%", width: `${(rpe.max / 10) * 100}%`, borderRadius: 3, background: c.text, transition: "width .3s" }} />
+        <div style={{ height: "100%", width: `${(displayRpe.max / 10) * 100}%`, borderRadius: 3, background: c.text, transition: "width .3s" }} />
       </div>
     </div>
   );
@@ -1121,6 +1152,15 @@ function BlockBtn({ active, onClick, children, color }) {
     >
       {children}
     </button>
+  );
+}
+
+function FieldLabel({ label, children }) {
+  return (
+    <label style={trainingStyles.field}>
+      <span>{label}</span>
+      {children}
+    </label>
   );
 }
 

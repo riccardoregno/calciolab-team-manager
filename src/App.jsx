@@ -103,13 +103,27 @@ function getInitialDevelopmentRolePreview() {
   return "headCoach";
 }
 
+function extractRemoteSubscription(team) {
+  if (!team) return null;
+  return {
+    subscription_plan:  team.subscription_plan  ?? "free",
+    billing_status:     team.billing_status     ?? "free",
+    trial_plan:         team.trial_plan         ?? "",
+    trial_started_at:   team.trial_started_at   ?? "",
+    trial_ends_at:      team.trial_ends_at      ?? "",
+    trial_used:         team.trial_used         ?? false,
+    stripe_customer_id: team.stripe_customer_id ?? "",
+    stripe_subscription_id: team.stripe_subscription_id ?? "",
+  };
+}
+
 function App() {
   const { t } = useTranslation();
   const auth = useAuth();
   const [profile, setProfile] = useState(null);
   const [developmentPlanPreview, setDevelopmentPlanPreview] = useState(getInitialDevelopmentPlanPreview);
   const [developmentRolePreview, setDevelopmentRolePreview] = useState(getInitialDevelopmentRolePreview);
-  const [remoteSubscription, setRemoteSubscription] = useState(null);
+  const [remoteSubscription, setRemoteSubscription] = useState(() => extractRemoteSubscription(auth.team));
   const [renderStartedAt] = useState(() => Date.now());
 
   // ── Capacitor lifecycle (solo su iOS/Android) ──────────────────────────────
@@ -139,16 +153,7 @@ function App() {
   useEffect(() => {
     if (!auth.team) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRemoteSubscription({
-      subscription_plan:  auth.team.subscription_plan  ?? "free",
-      billing_status:     auth.team.billing_status     ?? "free",
-      trial_plan:         auth.team.trial_plan         ?? "",
-      trial_started_at:   auth.team.trial_started_at   ?? "",
-      trial_ends_at:      auth.team.trial_ends_at      ?? "",
-      trial_used:         auth.team.trial_used         ?? false,
-      stripe_customer_id: auth.team.stripe_customer_id ?? "",
-      stripe_subscription_id: auth.team.stripe_subscription_id ?? "",
-    });
+    setRemoteSubscription(extractRemoteSubscription(auth.team));
   }, [auth.team]);
 
   const {
@@ -306,7 +311,7 @@ function App() {
     return (
       <div style={{ minHeight: "100vh", background: "#0f1115", color: "white", display: "grid", placeItems: "center", padding: 24 }}>
         <AppCard style={{ maxWidth: 520 }}>
-          <h2 style={{ margin: "0 0 8px" }}>Invito non completato</h2>
+          <h2 style={{ margin: "0 0 8px" }}>{t("pages.auth.inviteNotCompleted")}</h2>
           <p style={{ color: "#94a3b8", lineHeight: 1.6, margin: "0 0 16px" }}>
             {auth.authError}
           </p>
@@ -316,7 +321,7 @@ function App() {
               window.location.href = "/";
             }}
           >
-            Torna all'accesso
+            {t("pages.auth.backToAccess")}
           </Button>
         </AppCard>
       </div>
