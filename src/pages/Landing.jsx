@@ -59,7 +59,7 @@ const PLANS = [
 const FAQS = [
   {
     q: "Posso usare CalcioLab gratis?",
-    a: "Sì. Il piano Starter è gratuito per sempre e include rosa completa, calendario, sedute base e lavagna tattica. Non serve carta di credito.",
+    a: "Sì. Il piano Starter è gratuito e include rosa completa, calendario, sedute base e lavagna tattica. Non serve carta di credito.",
   },
   {
     q: "Funziona su smartphone?",
@@ -174,7 +174,7 @@ export default function Landing() {
               Ho già un account
             </button>
           </div>
-          <p style={l.heroNote}>Nessuna carta di credito richiesta · Piano gratuito per sempre</p>
+          <p style={l.heroNote}>Nessuna carta di credito richiesta</p>
 
           {/* Dashboard mockup */}
           <div style={l.mockup}>
