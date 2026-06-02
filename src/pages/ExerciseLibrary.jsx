@@ -87,6 +87,46 @@ function isValidFieldSize(str = "") {
   return cleaned.length > 0 && cleaned.length < 30 && /\d/.test(cleaned) && !/[À-ÿ]/.test(cleaned);
 }
 
+function getMethodSection(desc = "", wanted = "") {
+  const section = parseMethodology(desc).find((item) => item.label.toLowerCase() === wanted.toLowerCase());
+  return section?.body || "";
+}
+
+function getPrimaryObjective(ex) {
+  return ex.objective || ex.goal || getMethodSection(exDesc(ex), "Obiettivo");
+}
+
+function getSetupItems(ex, t) {
+  return [
+    ex.duration ? { label: t("pages.exerciseLibrary.chipDuration"), value: `${ex.duration} min` } : null,
+    ex.players ? { label: t("pages.exerciseLibrary.chipPlayers"), value: ex.players } : null,
+    isValidFieldSize(ex.fieldSize) ? { label: t("pages.exerciseLibrary.chipField"), value: cleanText(ex.fieldSize) } : null,
+    ex.material ? { label: t("pages.exerciseLibrary.chipMaterial"), value: cleanText(ex.material) } : null,
+  ].filter(Boolean);
+}
+
+function getExerciseQuality(ex) {
+  const desc = exDesc(ex);
+  const score = [
+    Boolean(getPrimaryObjective(ex)),
+    Boolean(getMethodSection(desc, "Organizzazione")),
+    Boolean(getMethodSection(desc, "Svolgimento")),
+    Boolean(getMethodSection(desc, "Coaching points") || ex.coachingPoints),
+    Boolean(getExerciseProgressions(ex).length),
+    Boolean(getCommonErrors(ex).length),
+    Boolean(isValidFieldSize(ex.fieldSize)),
+    Boolean(ex.duration && ex.players),
+    Boolean(ex.source === "fp5" || ex.tacticalBoard || ex.image),
+  ].filter(Boolean).length;
+  return Math.round((score / 9) * 100);
+}
+
+function getQualityTone(score) {
+  if (score >= 78) return "green";
+  if (score >= 56) return "blue";
+  return "orange";
+}
+
 // Returns the image to show for an exercise card: generated SVG for fp5 catalog, stored image for personal
 function exImage(ex) {
   if (ex.source === "fp5" || !ex.image) return generateExerciseSvg(ex);
@@ -393,6 +433,27 @@ export default function ExerciseLibrary({
         <>
           {/* Filtri */}
           <AppCard>
+            <div style={libStyles.blockRail}>
+              <span style={libStyles.blockRailLabel}>{t("pages.exerciseLibrary.quickBlocks")}</span>
+              <button
+                type="button"
+                onClick={() => setFilters({ ...filters, block: "Tutti" })}
+                style={{ ...libStyles.blockChip, ...(filters.block === "Tutti" ? libStyles.blockChipActive : null) }}
+              >
+                {t("pages.exerciseLibrary.allBlocks")}
+              </button>
+              {TRAINING_BLOCKS.map((block) => (
+                <button
+                  type="button"
+                  key={block.id}
+                  onClick={() => setFilters({ ...filters, block: block.id })}
+                  style={{ ...libStyles.blockChip, ...(filters.block === block.id ? libStyles.blockChipActive : null) }}
+                >
+                  <span>{block.icon}</span>
+                  <span>{block.id}</span>
+                </button>
+              ))}
+            </div>
             {/* Barra di ricerca + toggle filtri (mobile) */}
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <div style={{ flex: 1 }}>
@@ -816,11 +877,11 @@ function DarkSelect({ label, value, options, onChange }) {
   );
 }
 
-function InfoChip({ label, value }) {
+function InfoChip({ label, value, compact = false }) {
   return (
-    <div style={{ padding: "8px 10px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div style={{ padding: compact ? "7px 9px" : "8px 10px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 12, color: "#94a3b8" }}>{value}</div>
+      <div style={{ fontSize: compact ? 11 : 12, color: "#94a3b8", fontWeight: compact ? 800 : 500 }}>{value}</div>
     </div>
   );
 }
@@ -850,6 +911,11 @@ const CatalogCard = memo(function CatalogCard({
   const isFp5     = ex.source === "fp5";
   const hasDiagram = isFp5 || ex.tacticalBoard || ex.image;
   const svgMarkup  = isFp5 ? exImage(ex) : null;
+  const desc = exDesc(ex);
+  const objective = getPrimaryObjective(ex);
+  const setupItems = getSetupItems(ex, t).slice(0, 3);
+  const quality = getExerciseQuality(ex);
+  const coachingCue = getMethodSection(desc, "Coaching points") || ex.coachingPoints || getCommonErrors(ex)[0] || "";
 
   function handleLightbox() {
     if (isFp5 && svgMarkup) {
@@ -906,6 +972,7 @@ const CatalogCard = memo(function CatalogCard({
               </Badge>
             )}
             {ex.phase && <Badge tone="default">{ex.phase}</Badge>}
+            <Badge tone={getQualityTone(quality)}>{t("pages.exerciseLibrary.qualityBadge", { score: quality })}</Badge>
             {getTitleCode(ex.title) && <span style={libStyles.codeTag}>{getTitleCode(ex.title)}</span>}
           </div>
           <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>
@@ -939,29 +1006,27 @@ const CatalogCard = memo(function CatalogCard({
       ) : (
         <>
           {/* Obiettivo — una riga scansionabile */}
-          {(() => {
-            const desc    = exDesc(ex);
-            if (!desc) return null;
-            const objLine = desc.split("\n").find((l) => /^obiettivo:\s*/i.test(l));
-            const objText = objLine
-              ? objLine.replace(/^obiettivo:\s*/i, "").trim()
-              : (ex.objective || "").slice(0, 130);
-            if (!objText) return null;
-            return (
-              <p style={{ margin: "10px 0 0", fontSize: 13, color: "#94a3b8", lineHeight: 1.55 }}>
-                {objText.length > 130 ? `${objText.slice(0, 130)}…` : objText}
-              </p>
-            );
-          })()}
+          {objective && (
+            <p style={libStyles.cardObjective}>
+              {objective.length > 145 ? `${objective.slice(0, 145)}…` : objective}
+            </p>
+          )}
 
           {/* Dettagli operativi */}
-          <div style={libStyles.details}>
-            {isValidFieldSize(ex.fieldSize) && <InfoChip label={t("pages.exerciseLibrary.chipField")}    value={cleanText(ex.fieldSize)} />}
-            {ex.material && <InfoChip label={t("pages.exerciseLibrary.chipMaterial")} value={ex.material} />}
-            {ex.ageGroup && <InfoChip label={t("pages.exerciseLibrary.chipAge")}      value={ex.ageGroup} />}
-            {ex.players  && <InfoChip label={t("pages.exerciseLibrary.chipPlayers")}  value={ex.players} />}
-            {ex.goal     && <InfoChip label={t("pages.exerciseLibrary.chipFocus")}    value={ex.goal} />}
-          </div>
+          {setupItems.length > 0 && (
+            <div style={libStyles.setupStrip}>
+              {setupItems.map((item) => (
+                <InfoChip key={item.label} label={item.label} value={item.value} compact />
+              ))}
+            </div>
+          )}
+
+          {coachingCue && (
+            <div style={libStyles.coachCue}>
+              <span style={libStyles.coachCueLabel}>{t("pages.exerciseLibrary.cardCoachFocus")}</span>
+              <p style={libStyles.coachCueText}>{coachingCue.length > 150 ? `${coachingCue.slice(0, 150)}…` : coachingCue}</p>
+            </div>
+          )}
 
           {/* Varianti — testo sanitizzato, troncato */}
           {ex.variants && cleanText(ex.variants) && (
@@ -977,7 +1042,7 @@ const CatalogCard = memo(function CatalogCard({
 
           <div style={libStyles.cardActions}>
             <Button variant="ghost" onClick={() => onDetail(ex)}>{t("pages.exerciseLibrary.openSheet")}</Button>
-            <Button variant="ghost" onClick={() => onUseInTraining(ex)}>Usa in seduta</Button>
+            <Button variant="ghost" onClick={() => onUseInTraining(ex)}>{t("pages.exerciseLibrary.useInSession")}</Button>
           </div>
         </>
       )}
@@ -1004,6 +1069,9 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
   const svgMarkup = exercise.source === "fp5" ? exImage(exercise) : null;
   const block = exercise.trainingBlock || getBlockFromCategory(exercise.category);
   const blockDef = TRAINING_BLOCKS.find((item) => item.id === block);
+  const setupItems = getSetupItems(exercise, t);
+  const quality = getExerciseQuality(exercise);
+  const objective = getPrimaryObjective(exercise) || t("pages.exerciseLibrary.detailDefaultObjective");
   const lightboxSrc = svgMarkup
     ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`
     : exercise.image || null;
@@ -1021,6 +1089,7 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
               </Badge>
             )}
             {exercise.phase && <Badge tone="default">{exercise.phase}</Badge>}
+            <Badge tone={getQualityTone(quality)}>{t("pages.exerciseLibrary.qualityBadge", { score: quality })}</Badge>
             {/* Catalog reference code */}
             {getTitleCode(exercise.title) && (
               <span style={libStyles.codeTag}>{getTitleCode(exercise.title)}</span>
@@ -1028,7 +1097,7 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
           </div>
           <h2 style={libStyles.detailTitle}>{getDisplayTitle(exercise)}</h2>
           <p style={libStyles.detailSubtitle}>
-            {exercise.objective || exercise.goal || t("pages.exerciseLibrary.detailDefaultObjective")}
+            {objective}
           </p>
           <div style={libStyles.detailActions}>
             <Button onClick={() => onUseInTraining(exercise)}>{t("pages.exerciseLibrary.useInSession")}</Button>
@@ -1060,13 +1129,10 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
           <div style={libStyles.detailSide}>
             <p style={libStyles.detailSectionKicker}>{t("pages.exerciseLibrary.detailOpsTitle")}</p>
             <div style={libStyles.detailInfoGrid}>
-              {exercise.duration && <InfoChip label={t("pages.exerciseLibrary.chipDuration")} value={`${exercise.duration} min`} />}
-              {exercise.players && <InfoChip label={t("pages.exerciseLibrary.chipPlayers")} value={exercise.players} />}
-              {isValidFieldSize(exercise.fieldSize) && <InfoChip label={t("pages.exerciseLibrary.chipField")} value={cleanText(exercise.fieldSize)} />}
-              {exercise.material && <InfoChip label={t("pages.exerciseLibrary.chipMaterial")} value={exercise.material} />}
+              {setupItems.map((item) => <InfoChip key={item.label} label={item.label} value={item.value} />)}
               {exercise.ageGroup && <InfoChip label={t("pages.exerciseLibrary.chipAge")} value={exercise.ageGroup} />}
               {exercise.rpe && <InfoChip label="RPE" value={exercise.rpe} />}
-              {exercise.difficulty && <InfoChip label="Livello" value={exercise.difficulty} />}
+              {exercise.difficulty && <InfoChip label={t("pages.exerciseLibrary.chipLevel")} value={exercise.difficulty} />}
             </div>
             {(exercise.tags || []).length > 0 && (
               <div style={libStyles.detailTags}>
@@ -1100,7 +1166,7 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
         {/* ── Coaching points ─────────────────────────────────────────────── */}
         {coachingSection && (
           <div style={libStyles.detailCoaching}>
-            <p style={libStyles.detailSectionKicker}>🎯 Coaching points</p>
+            <p style={libStyles.detailSectionKicker}>{t("pages.exerciseLibrary.detailCoachingTitle")}</p>
             <p style={{ margin: 0, color: "#86efac", fontSize: 14, lineHeight: 1.7 }}>{coachingSection.body}</p>
           </div>
         )}
@@ -1108,7 +1174,7 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
         {/* ── Errori comuni ────────────────────────────────────────────────── */}
         {commonErrors.length > 0 && (
           <div style={libStyles.detailErrors}>
-            <p style={libStyles.detailSectionKicker}>⚠️ Errori comuni</p>
+            <p style={libStyles.detailSectionKicker}>{t("pages.exerciseLibrary.detailErrorsTitle")}</p>
             <ul style={{ margin: 0, padding: "0 0 0 18px", display: "grid", gap: 6 }}>
               {commonErrors.map((err, i) => (
                 <li key={i} style={{ color: "#fca5a5", fontSize: 13, lineHeight: 1.55 }}>{err}</li>
@@ -1277,6 +1343,41 @@ const libStyles = {
     gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
     gap: 18,
   },
+  blockRail: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+    marginBottom: 14,
+    paddingBottom: 14,
+    borderBottom: "1px solid rgba(255,255,255,0.07)",
+  },
+  blockRailLabel: {
+    fontSize: 11,
+    fontWeight: 900,
+    color: "#64748b",
+    textTransform: "uppercase",
+    marginRight: 2,
+  },
+  blockChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    padding: "7px 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.04)",
+    color: "#94a3b8",
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+  blockChipActive: {
+    background: "rgba(56,189,248,0.14)",
+    border: "1px solid rgba(56,189,248,0.34)",
+    color: "#7dd3fc",
+    boxShadow: "0 0 0 1px rgba(56,189,248,0.06) inset",
+  },
   cardHead: {
     display: "flex",
     gap: 14,
@@ -1307,6 +1408,43 @@ const libStyles = {
     border: "1px solid rgba(255,255,255,0.1)",
     fontSize: 11,
     color: "#64748b",
+  },
+  cardObjective: {
+    margin: "10px 0 0",
+    padding: "10px 12px",
+    borderRadius: 12,
+    background: "rgba(56,189,248,0.07)",
+    border: "1px solid rgba(56,189,248,0.14)",
+    fontSize: 13,
+    color: "#bfdbfe",
+    lineHeight: 1.55,
+  },
+  setupStrip: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 7,
+    marginTop: 10,
+  },
+  coachCue: {
+    marginTop: 10,
+    padding: "10px 12px",
+    borderRadius: 12,
+    background: "rgba(34,197,94,0.06)",
+    border: "1px solid rgba(34,197,94,0.14)",
+  },
+  coachCueLabel: {
+    display: "block",
+    marginBottom: 4,
+    color: "#86efac",
+    fontSize: 10,
+    fontWeight: 900,
+    textTransform: "uppercase",
+  },
+  coachCueText: {
+    margin: 0,
+    color: "#bbf7d0",
+    fontSize: 13,
+    lineHeight: 1.55,
   },
   codeTag: {
     padding: "2px 7px",
