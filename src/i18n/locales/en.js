@@ -1579,6 +1579,7 @@ export const en = {
       premiumLockedText: "Unlock Premium to access the description, tactical diagram, variations and coaching points.",
       discoverPremium: "Discover Premium →",
       openSheet: "Open sheet",
+      customizeExercise: "Customize",
       detailFallbackTitle: "Exercise sheet",
       variants: "Variants",
       useInSession: "Use in session",

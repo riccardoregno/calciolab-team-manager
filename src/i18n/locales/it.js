@@ -1590,6 +1590,7 @@ export const it = {
       premiumLockedText: "Sblocca Premium per accedere a descrizione, diagramma tattico, varianti e coaching points.",
       discoverPremium: "Scopri Premium →",
       openSheet: "Apri scheda",
+      customizeExercise: "Personalizza",
       detailFallbackTitle: "Scheda esercizio",
       variants: "Varianti",
       useInSession: "Usa in seduta",

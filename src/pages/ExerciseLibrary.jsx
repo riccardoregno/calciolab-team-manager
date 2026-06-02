@@ -312,6 +312,27 @@ export default function ExerciseLibrary({
     setEditModal(true);
   }, []);
 
+  const cloneExerciseToMine = useCallback((exercise) => {
+    const cloned = {
+      ...exercise,
+      id: createId("exercise"),
+      source: "custom",
+      title: getDisplayTitle(exercise),
+      description: exDesc(exercise),
+      objective: getPrimaryObjective(exercise),
+      originalExerciseId: exercise.id,
+      originalCatalogCode: getTitleCode(exercise.title),
+      clonedAt: new Date().toISOString(),
+    };
+    setExercises((prevExercises) => [...prevExercises, cloned]);
+    setTab("miei");
+    setMySearch("");
+    const params = new URLSearchParams(location.search);
+    params.set("tab", "miei");
+    params.set("exerciseId", cloned.id);
+    navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
+  }, [location, navigate, setExercises]);
+
   function openNew() {
     setEditForm({ ...emptyExercise(), id: createId("fp5-custom"), intensity: "Media" });
     setEditIsNew(true);
@@ -545,6 +566,7 @@ export default function ExerciseLibrary({
                   onLightbox={setLightboxSrc}
                   onDetail={openExerciseDetail}
                   onUseInTraining={openExerciseInTraining}
+                  onClone={cloneExerciseToMine}
                   onEdit={openEdit}
                   onDelete={deleteFromCatalog}
                 />
@@ -602,6 +624,7 @@ export default function ExerciseLibrary({
                         {ex.intensity && (
                           <Badge tone={ex.intensity === "Alta" ? "red" : "default"}>{ex.intensity}</Badge>
                         )}
+                        {ex.originalCatalogCode && <span style={libStyles.codeTag}>{ex.originalCatalogCode}</span>}
                       </div>
                       <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>
                         {ex.title || "Esercizio senza titolo"}
@@ -683,6 +706,7 @@ export default function ExerciseLibrary({
           t={t}
           onClose={closeExerciseDetail}
           onUseInTraining={openExerciseInTraining}
+          onClone={cloneExerciseToMine}
           onOpenLightbox={(src) => setLightboxSrc(src)}
         />
       )}
@@ -905,7 +929,7 @@ function parseMethodology(desc = "") {
 // Memoized so that state changes in the parent (e.g. opening the lightbox or
 // the detail modal) do NOT trigger a re-render of every card in the grid.
 const CatalogCard = memo(function CatalogCard({
-  ex, locked, isOwner, t, onLightbox, onDetail, onUseInTraining, onEdit, onDelete,
+  ex, locked, isOwner, t, onLightbox, onDetail, onUseInTraining, onClone, onEdit, onDelete,
 }) {
   const cardNav = useNavigate();
   const isFp5     = ex.source === "fp5";
@@ -1043,6 +1067,7 @@ const CatalogCard = memo(function CatalogCard({
           <div style={libStyles.cardActions}>
             <Button variant="ghost" onClick={() => onDetail(ex)}>{t("pages.exerciseLibrary.openSheet")}</Button>
             <Button variant="ghost" onClick={() => onUseInTraining(ex)}>{t("pages.exerciseLibrary.useInSession")}</Button>
+            {ex.source === "fp5" && <Button variant="ghost" onClick={() => onClone(ex)}>{t("pages.exerciseLibrary.customizeExercise")}</Button>}
           </div>
         </>
       )}
@@ -1058,7 +1083,7 @@ const CatalogCard = memo(function CatalogCard({
   );
 });
 
-function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, onOpenLightbox }) {
+function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, onClone, onOpenLightbox }) {
   const desc = exDesc(exercise);
   // Separate coaching points from the main methodology sections
   const allSections = parseMethodology(desc);
@@ -1101,6 +1126,11 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
           </p>
           <div style={libStyles.detailActions}>
             <Button onClick={() => onUseInTraining(exercise)}>{t("pages.exerciseLibrary.useInSession")}</Button>
+            {exercise.source === "fp5" && (
+              <Button variant="ghost" onClick={() => onClone(exercise)}>
+                {t("pages.exerciseLibrary.customizeExercise")}
+              </Button>
+            )}
             {lightboxSrc && (
               <Button variant="ghost" onClick={() => onOpenLightbox(lightboxSrc)}>
                 {t("pages.exerciseLibrary.enlargeDiagram")}
