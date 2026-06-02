@@ -904,11 +904,24 @@ function generateByPattern(ex) {
         "L'atleta esegue il percorso tecnico prestabilito: conduzione, finte, cambi di direzione, eventuale conclusione. Ripetizioni alternate piede forte/debole.",
         "Migliorare il gesto tecnico individuale in condizioni di lavoro controllato, automatizzare il gesto."
       );
+    case "penetrazione":
+      return buildDesc(
+        `Corridoio 18-25 m con porta o porticine. Attaccante, difensore e possibile sponda.`,
+        "L'attaccante riceve fronte o spalle alla porta, fissa il difensore e sceglie se puntare, combinare o attaccare lo spazio libero. Dopo ogni azione si lavora subito sulla transizione.",
+        "Sviluppare coraggio nell'1v1, cambio ritmo dopo la finta, protezione palla e capacità di attaccare il vantaggio creato."
+      );
     case "resistenza":
       return buildDesc(
         `Campo grande o intero campo. Squadra o gruppi di lavoro.`,
         "Esercitazione ad alta intensità con lavoro continuo (20-45 s) alternato a recupero attivo. La palla è sempre presente per mantenere il contesto tecnico.",
         "Migliorare la capacità aerobica specifica, tolleranza al lattato, qualità tecnica sotto fatica."
+      );
+    case "rapidità":
+    case "attivazione":
+      return buildDesc(
+        `Area 20×15 m con scaletta, ostacoli bassi, cinesini e porta bersaglio finale.`,
+        "Il giocatore esegue un blocco coordinativo breve, cambia direzione su stimolo e completa con conduzione, passaggio o conclusione. Le ripetizioni restano brevi e ad alta qualità.",
+        "Attivare frequenza, coordinazione, primo passo e cambio ritmo mantenendo controllo tecnico e lettura dello stimolo."
       );
     case "riscaldamento":
       return buildDesc(
@@ -954,6 +967,20 @@ function generateByPattern(ex) {
         "Migliorare la tecnica di colpo di testa (centro, deviazione), timing del salto, duello aereo."
       );
     case "palle inattive":
+      if (/corner|angolo|calcio d.angolo/.test(t)) {
+        return buildDesc(
+          `Zona corner + area di rigore. Battitore, secondo battitore, blocchi, attaccanti e coperture preventive.`,
+          "Si prova lo schema con chiamata codificata: blocco, attacco primo/secondo palo, giocatore al limite e coperture su eventuale ripartenza. Ripetere da entrambi i lati.",
+          "Sincronizzare chiamata, tempi di corsa, attacco della zona e responsabilità sulla seconda palla."
+        );
+      }
+      if (/punizione/.test(t)) {
+        return buildDesc(
+          `Zona laterale o centrale di rifinitura. Battitore, secondo battitore, barriera e linee di attacco area.`,
+          "Si alternano battuta diretta, schema corto e palla sul secondo palo. La linea offensiva parte su trigger chiaro, mentre restano coperture preventive fuori area.",
+          "Rendere leggibile il codice, coordinare movimenti contro barriera e marcature, proteggere la transizione difensiva."
+        );
+      }
       return buildDesc(
         `Zona specifica (fascia, limite area, corner). Tutti i reparti coinvolti.`,
         "Esecuzione ripetuta degli schemi di palla inattiva codificati: movimenti, trigger e assegnazioni precise per ogni giocatore in fase offensiva e difensiva.",
@@ -1051,6 +1078,46 @@ export function getExerciseProgressions(ex) {
     ];
   }
 
+  if (["duel1v1", "duel2v1"].includes(type) || /duello|1v1|1 vs 1|2v1|penetrazione/.test(focus)) {
+    return [
+      {
+        level: "Base",
+        title: "Tecnica del duello",
+        text: "Lavora con difensore passivo o semi-attivo. L'attaccante deve fissare l'avversario, usare finte semplici e cambiare ritmo dopo il gesto tecnico.",
+      },
+      {
+        level: "Intermedio",
+        title: "Scelta sotto pressione",
+        text: "Rendi il difensore attivo e aggiungi una seconda porta o una sponda. L'attaccante deve scegliere se puntare, scaricare o proteggere palla.",
+      },
+      {
+        level: "Avanzato",
+        title: "Duello con transizione",
+        text: "Se il difensore recupera, riparte immediatamente verso una porta bersaglio. Il duello diventa doppia fase: superare, concludere e reagire alla perdita.",
+      },
+    ];
+  }
+
+  if (["slalom", "quickness"].includes(type) || /slalom|scaletta|ostacol|rapidit|conduzione|cambio direzione/.test(focus)) {
+    return [
+      {
+        level: "Base",
+        title: "Controllo e postura",
+        text: "Esegui il percorso senza pressione, curando frequenza dei passi, distanza palla-piede e testa alta tra un gesto e il successivo.",
+      },
+      {
+        level: "Intermedio",
+        title: "Ritmo e scelta",
+        text: "Aggiungi segnale visivo o porta finale: il giocatore deve cambiare ritmo e direzione in base allo stimolo, non solo completare il tracciato.",
+      },
+      {
+        level: "Avanzato",
+        title: "Tecnica dentro gara",
+        text: "Inserisci un difensore che parte in ritardo o una conclusione obbligatoria. La rapidità deve produrre vantaggio reale, non solo velocità meccanica.",
+      },
+    ];
+  }
+
   if (["defensive"].includes(type) || /difensiva|scaglionamento|blocco/.test(focus)) {
     return [
       {
@@ -1091,7 +1158,7 @@ export function getExerciseProgressions(ex) {
     ];
   }
 
-  if (type === "setpiece" || category === "palle inattive") {
+  if (["setpiece", "corner", "freekick"].includes(type) || category === "palle inattive") {
     return [
       {
         level: "Base",
@@ -1169,6 +1236,18 @@ const COMMON_ERRORS_BY_CAT = {
     "Primo controllo non orientato verso la giocata successiva",
     "Ritmo uniforme senza variazione di velocità",
   ],
+  rapidita: [
+    "Frequenza dei passi alta ma senza controllo del busto",
+    "Palla troppo lontana dopo il cambio direzione",
+    "Sguardo sempre basso durante il percorso",
+    "Accelerazione finale assente dopo scaletta o ostacolo",
+  ],
+  duello: [
+    "Attaccante punta il difensore troppo presto senza fissarlo",
+    "Cambio ritmo assente dopo la finta",
+    "Difensore entra frontale invece di accompagnare verso l'esterno",
+    "Transizione lenta dopo palla persa o recuperata",
+  ],
   passaggio: [
     "Corpo non aperto prima della ricezione",
     "Passaggio effettuato con il piede scorretto",
@@ -1237,6 +1316,8 @@ export function getCommonErrors(ex) {
   if (/possesso|torello|rondo/.test(focus))            return COMMON_ERRORS_BY_CAT.possesso;
   if (/pressing|riaggressione/.test(focus))             return COMMON_ERRORS_BY_CAT.pressing;
   if (/finalizzazione|tiro|conclusione/.test(focus))    return COMMON_ERRORS_BY_CAT.finalizzazione;
+  if (/duello|1v1|1 vs 1|2v1|penetrazione/.test(focus)) return COMMON_ERRORS_BY_CAT.duello;
+  if (/rapidit|scaletta|ostacol|navett|cambio direzione/.test(focus)) return COMMON_ERRORS_BY_CAT.rapidita;
   if (/tecnica individuale|conduzione|slalom/.test(focus)) return COMMON_ERRORS_BY_CAT["tecnica individuale"];
   if (/passaggio|ricezione/.test(focus))                return COMMON_ERRORS_BY_CAT.passaggio;
   if (/scaglionamento/.test(focus))                     return COMMON_ERRORS_BY_CAT.scaglionamento;
