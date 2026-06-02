@@ -474,6 +474,7 @@ function classify(ex) {
   if (/rondo|torello/.test(t))                           return "rondo";
   if (/riscaldamento/.test(t))                           return "warmup";
   if (/tecnica individuale|birilli|fosso|a secco|psico/.test(t)) return "technical";
+  if (/penetrazione|dribbling/.test(t) || cat === "penetrazione") return "duel1v1";
   if (/cross/.test(t) || cat === "cross")               return "cross";
   if (/pressing|riaggressione/.test(t))                 return "pressing";
   if (/palle inattive|punizione|calcio.d.angolo|set.?piece/.test(t) || cat === "palle inattive") return "setpiece";

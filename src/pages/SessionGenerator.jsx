@@ -8,12 +8,14 @@ import PageHeader from "../components/ui/PageHeader";
 import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { createId } from "../utils/helpers";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
 
 export default function SessionGenerator({
   exercises = [], setSessions, players = [], matches = [] }) {
 
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
   const [goal, setGoal] = useState("Possesso");
@@ -70,25 +72,33 @@ export default function SessionGenerator({
         action={<Button variant="ghost" onClick={() => navigate("/ai-session-builder")}>{t("pages.sessionGenerator.aiBuilder")}</Button>}
       />
 
-      <div style={generatorStyles.grid}>
+      <div style={{ ...generatorStyles.grid, gridTemplateColumns: isMobile ? "1fr" : "0.8fr 1.2fr" }}>
         <AppCard>
           <h3 style={{ marginTop: 0 }}>{t("pages.sessionGenerator.parametersTitle")}</h3>
-          <select value={goal} onChange={(event) => setGoal(event.target.value)} style={styles.input}>
-            <option value="Possesso">{t("pages.sessionGenerator.goalPossesso")}</option>
-            <option value="Pressing">{t("pages.sessionGenerator.goalPressing")}</option>
-            <option value="Finalizzazione">{t("pages.sessionGenerator.goalFinalizzazione")}</option>
-            <option value="Transizione">{t("pages.sessionGenerator.goalTransizione")}</option>
-            <option value="Fase difensiva">{t("pages.sessionGenerator.goalFaseDifensiva")}</option>
-            <option value="Palla inattiva">{t("pages.sessionGenerator.goalPallaInattiva")}</option>
-          </select>
-          <input type="number" value={duration} onChange={(event) => setDuration(Number(event.target.value))} style={styles.input} />
-          <select value={intensity} onChange={(event) => setIntensity(event.target.value)} style={styles.input}>
-            <option value="Bassa">{t("pages.sessionGenerator.intensityBassa")}</option>
-            <option value="Media">{t("pages.sessionGenerator.intensityMedia")}</option>
-            <option value="Alta">{t("pages.sessionGenerator.intensityAlta")}</option>
-          </select>
+          <div style={generatorStyles.formGrid}>
+            <FieldLabel label={t("pages.sessionGenerator.labelGoal")}>
+              <select value={goal} onChange={(event) => setGoal(event.target.value)} style={styles.input}>
+                <option value="Possesso">{t("pages.sessionGenerator.goalPossesso")}</option>
+                <option value="Pressing">{t("pages.sessionGenerator.goalPressing")}</option>
+                <option value="Finalizzazione">{t("pages.sessionGenerator.goalFinalizzazione")}</option>
+                <option value="Transizione">{t("pages.sessionGenerator.goalTransizione")}</option>
+                <option value="Fase difensiva">{t("pages.sessionGenerator.goalFaseDifensiva")}</option>
+                <option value="Palla inattiva">{t("pages.sessionGenerator.goalPallaInattiva")}</option>
+              </select>
+            </FieldLabel>
+            <FieldLabel label={t("pages.sessionGenerator.labelDuration")}>
+              <input type="number" value={duration} onChange={(event) => setDuration(Number(event.target.value))} style={styles.input} />
+            </FieldLabel>
+            <FieldLabel label={t("pages.sessionGenerator.labelIntensity")}>
+              <select value={intensity} onChange={(event) => setIntensity(event.target.value)} style={styles.input}>
+                <option value="Bassa">{t("pages.sessionGenerator.intensityBassa")}</option>
+                <option value="Media">{t("pages.sessionGenerator.intensityMedia")}</option>
+                <option value="Alta">{t("pages.sessionGenerator.intensityAlta")}</option>
+              </select>
+            </FieldLabel>
+          </div>
           {nextMatch && <p style={generatorStyles.muted}>{t("pages.sessionGenerator.nextMatch", { title: nextMatch.title })}</p>}
-          <Button onClick={saveProposal}>{t("pages.sessionGenerator.saveProposal")}</Button>
+          <Button onClick={saveProposal} style={{ marginTop: 4, width: "100%" }}>{t("pages.sessionGenerator.saveProposal")}</Button>
         </AppCard>
 
         <AppCard>
@@ -108,9 +118,19 @@ export default function SessionGenerator({
   );
 }
 
+function FieldLabel({ label, children }) {
+  return (
+    <label style={{ display: "grid", gap: 4, color: "#94a3b8", fontSize: 12, fontWeight: 700, textTransform: "uppercase" }}>
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
+
 const generatorStyles = {
-  grid: { display: "grid", gridTemplateColumns: "0.8fr 1.2fr", gap: 22, alignItems: "start" },
+  grid: { display: "grid", gap: 22, alignItems: "start" },
+  formGrid: { display: "grid", gap: 12, marginBottom: 16 },
   list: { display: "grid", gap: 12 },
   item: { display: "grid", gap: 8, padding: 14, borderRadius: 16, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" },
-  muted: { color: "#94a3b8", lineHeight: 1.5 },
+  muted: { color: "#94a3b8", lineHeight: 1.5, margin: "0 0 14px" },
 };

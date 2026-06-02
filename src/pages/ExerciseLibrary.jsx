@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import AppCard from "../components/ui/AppCard";
@@ -17,6 +17,75 @@ import { emptyExercise } from "../data/initialData";
 import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
+
+// Strips the catalog code prefix ("POS-001 — ") from a display title.
+function stripTitleCode(title = "") {
+  return title.replace(/^[A-Z]+-\d+\s*[—–-]\s*/, "").trim() || title;
+}
+
+// Returns the catalog code prefix ("POS-001") or empty string.
+function getTitleCode(title = "") {
+  const m = title.match(/^([A-Z]+-\d+)/);
+  return m ? m[1] : "";
+}
+
+// Sanitises legacy PDF-conversion encoding artifacts (ÿB, ÿ AÀG, etc.)
+function cleanText(str = "") {
+  if (!str) return "";
+  return str
+    .replace(/ÿ\S*/g, "")   // strip any ÿ-prefixed token
+    .replace(/ {2,}/g, " ")
+    .trim();
+}
+
+// Generic category-level titles that need player-count context to be useful.
+const GENERIC_DISPLAY_NAMES = new Set(["Partita", "Cross", "Taglio", "Duello"]);
+
+/**
+ * Returns a human-readable display title for an exercise card / detail.
+ * Handles three legacy data problems:
+ *   1. Duration-only titles  e.g. "PEN-001 — : 11'"  → "Penetrazione — 2 gioc."
+ *   2. Encoding artifacts    e.g. "FIN-055 — Ÿ Àg"   → "Finalizzazione"
+ *   3. Generic category name e.g. "PAR-013 — Partita" → "Partita — 10 gioc."
+ */
+function getDisplayTitle(ex) {
+  const stripped = stripTitleCode(ex.title);
+
+  // ── Encoding artifacts: non-ASCII chars dominate a short string ────────────
+  const nonAsciiCount = Array.from(stripped).filter((c) => c.charCodeAt(0) > 127).length;
+  const readableLen   = Array.from(stripped).filter((c) => c.charCodeAt(0) <= 127).join("").trim().length;
+  if (nonAsciiCount > 0 && readableLen < 3) {
+    return ex.category || "Esercizio";
+  }
+
+  // ── Duration-only: optional ":" then digits + quote char ──────────────────
+  const isDurationOnly = /^:?\s*\d+['"']\s*(-\s*\d+['"'])?$/.test(stripped.trim());
+  if (isDurationOnly || stripped.trim().length < 2) {
+    const base = ex.category || "Esercizio";
+    const ctx  = ex.players && /^\d/.test(String(ex.players).trim())
+      ? ` — ${ex.players} gioc.`
+      : "";
+    return base + ctx;
+  }
+
+  // ── Generic single-word category name: add player count for uniqueness ─────
+  if (GENERIC_DISPLAY_NAMES.has(stripped) && ex.players && /^\d/.test(String(ex.players).trim())) {
+    return `${stripped} — ${ex.players} gioc.`;
+  }
+
+  return stripped;
+}
+
+/**
+ * Returns true only if the fieldSize string is a valid dimension (e.g. "20x30 mt").
+ * Rejects legacy encoding artifacts like "WÀÉricezione".
+ */
+function isValidFieldSize(str = "") {
+  if (!str || !str.trim()) return false;
+  const cleaned = cleanText(str);
+  // Must contain at least one digit, be reasonably short, and contain no non-Latin chars
+  return cleaned.length > 0 && cleaned.length < 30 && /\d/.test(cleaned) && !/[À-ÿ]/.test(cleaned);
+}
 
 // Returns the image to show for an exercise card: generated SVG for fp5 catalog, stored image for personal
 function exImage(ex) {
@@ -81,9 +150,6 @@ export default function ExerciseLibrary({
 
   // Filtri "I miei"
   const [mySearch, setMySearch] = useState("");
-
-  // Espandi descrizione
-  const [expandedId, setExpandedId] = useState(null);
 
   // Modal modifica (solo owner)
   const [editModal, setEditModal]   = useState(false);
@@ -200,11 +266,11 @@ export default function ExerciseLibrary({
     : filteredMy.slice((myPage - 1) * myPageSize, myPage * myPageSize);
 
   // ── Modifica esercizio (owner) ──────────────────────────────────────────────
-  function openEdit(ex) {
+  const openEdit = useCallback((ex) => {
     setEditForm({ ...ex });
     setEditIsNew(false);
     setEditModal(true);
-  }
+  }, []);
 
   function openNew() {
     setEditForm({ ...emptyExercise(), id: createId("fp5-custom"), intensity: "Media" });
@@ -224,14 +290,14 @@ export default function ExerciseLibrary({
     setEditForm(null);
   }
 
-  function deleteFromCatalog(id) {
+  const deleteFromCatalog = useCallback((id) => {
     setConfirmState({
-      message: "Rimuovere questo esercizio dal catalogo?",
-      confirmLabel: "Rimuovi",
+      message: t("pages.exerciseLibrary.removeCatalogConfirm"),
+      confirmLabel: t("pages.exerciseLibrary.removeCatalogLabel"),
       confirmTone: "red",
       onConfirm: () => setExercises((prevExercises) => prevExercises.filter((e) => e.id !== id)),
     });
-  }
+  }, [setExercises, t]);
 
   // Salva l'esercizio nello state (se non c'è già) e apre la lavagna tattica
   function openTacticalBoard() {
@@ -248,11 +314,11 @@ export default function ExerciseLibrary({
     });
   }
 
-  function openExerciseDetail(exercise) {
+  const openExerciseDetail = useCallback((exercise) => {
     const params = new URLSearchParams(location.search);
     params.set("exerciseId", exercise.id);
     navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
-  }
+  }, [location, navigate]);
 
   function closeExerciseDetail() {
     const params = new URLSearchParams(location.search);
@@ -265,7 +331,7 @@ export default function ExerciseLibrary({
     setDetailExercise(null);
   }
 
-  function openExerciseInTraining(exercise) {
+  const openExerciseInTraining = useCallback((exercise) => {
     const block = exercise.trainingBlock || getBlockFromCategory(exercise.category);
     // Build a rich note string: variants + coaching points (when available)
     const cp = exercise.coachingPoints && exercise.coachingPoints.trim()
@@ -287,7 +353,7 @@ export default function ExerciseLibrary({
         },
       },
     });
-  }
+  }, [navigate]);
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -297,14 +363,14 @@ export default function ExerciseLibrary({
         title={t("pages.exerciseLibrary.title")}
         subtitle={
           tab === "catalogo"
-            ? `${catalog.length} esercizi nel catalogo${premiumUnlocked ? "" : " · Sblocca Premium per vedere i dettagli"}`
+            ? t(premiumUnlocked ? "pages.exerciseLibrary.catalogCount" : "pages.exerciseLibrary.catalogCountLocked", { count: catalog.length })
             : `${myExercises.length} esercizi creati`
         }
         action={
           isOwner && tab === "catalogo" ? (
             <Button onClick={openNew}>+ Aggiungi al catalogo</Button>
           ) : !premiumUnlocked ? (
-            <Button onClick={() => navigate("/premium")}>🔓 Sblocca Premium</Button>
+            <Button onClick={() => navigate("/premium")}>{t("pages.exerciseLibrary.unlockPremium")}</Button>
           ) : null
         }
       />
@@ -408,194 +474,20 @@ export default function ExerciseLibrary({
           ) : (
             <>
             <div style={libStyles.grid}>
-              {catalogSlice.map((ex) => {
-                const isExpanded = expandedId === ex.id;
-                const locked = !premiumUnlocked;
-
-                return (
-                  <AppCard key={ex.id}>
-                    {/* ── Anteprima disegno: sempre visibile per FP5; locked/premium per altri ── */}
-                    {(() => {
-                      const isFp5 = ex.source === "fp5";
-                      const hasDiagram = isFp5 || ex.tacticalBoard || ex.image;
-                      if (!hasDiagram) return null;
-
-                      const svgMarkup = isFp5 ? exImage(ex) : null;
-                      const openLightbox = () => {
-                        if (isFp5 && svgMarkup) {
-                          setLightboxSrc(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`);
-                        } else {
-                          setLightboxSrc(ex.image || null);
-                        }
-                      };
-
-                      if (locked) {
-                        return (
-                          <div style={{ ...libStyles.thumb, width: "100%", height: 80, marginBottom: 14, cursor: "default", borderRadius: 10, overflow: "hidden" }}>
-                            <ExerciseDiagram
-                              exercise={ex}
-                              svgMarkup={svgMarkup}
-                              height={80}
-                              style={{ filter: "blur(1px) brightness(0.6)", pointerEvents: "none" }}
-                            />
-                            <div style={libStyles.thumbOverlay}>🔒</div>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div style={{ marginBottom: 14, position: "relative" }} title="Clicca per ingrandire">
-                          <ExerciseDiagram
-                            exercise={ex}
-                            svgMarkup={svgMarkup}
-                            height={180}
-                            onClick={openLightbox}
-                          />
-                          <span style={{
-                            position: "absolute", bottom: 8, right: 8,
-                            background: "rgba(0,0,0,0.5)", color: "white",
-                            fontSize: 11, padding: "2px 7px", borderRadius: 8,
-                            pointerEvents: "none",
-                          }}>
-                            🔍 Ingrandisci
-                          </span>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Header titolo/badge */}
-                    <div style={libStyles.cardHead}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-                          {(() => {
-                            const block = ex.trainingBlock || getBlockFromCategory(ex.category);
-                            const blockDef = TRAINING_BLOCKS.find((b) => b.id === block);
-                            return blockDef ? <Badge tone={blockDef.color}>{blockDef.icon} {block}</Badge> : null;
-                          })()}
-                          <Badge tone={locked ? "orange" : "green"}>{locked ? "🔒 Premium" : "Premium"}</Badge>
-                          <Badge tone={ex.intensity === "Alta" ? "red" : ex.intensity === "Bassa" ? "blue" : "default"}>
-                            {ex.intensity || "Media"}
-                          </Badge>
-                          {ex.difficulty && (
-                            <Badge tone={ex.difficulty === "Avanzato" ? "orange" : ex.difficulty === "Base" ? "blue" : "default"}>
-                              {ex.difficulty}
-                            </Badge>
-                          )}
-                          {ex.phase && <Badge tone="default">{ex.phase}</Badge>}
-                        </div>
-                        <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>
-                          {ex.title}
-                        </h3>
-                        <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-                          {ex.category}{ex.duration ? ` · ${ex.duration} min` : ""}{ex.players ? ` · ${ex.players} gioc.` : ""}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Tag */}
-                    {(ex.tags || []).length > 0 && (
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
-                        {(ex.tags || []).slice(0, 5).map((tag) => (
-                          <span key={tag} style={libStyles.tag}>{tag}</span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Contenuto: locked o visibile */}
-                    {locked ? (
-                      <div style={libStyles.lockBanner}>
-                        <p style={{ margin: "0 0 10px", fontSize: 13, color: "#94a3b8" }}>
-                          Sblocca Premium per accedere a descrizione, diagramma tattico, varianti e coaching points.
-                        </p>
-                        <Button variant="ghost" onClick={() => navigate("/premium")}>
-                          Scopri Premium →
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        {(() => {
-                          const desc = exDesc(ex);
-                          if (!desc) return null;
-                          // Format multi-line methodology (Obiettivo / Organizzazione / Svolgimento / Regole / Coaching points)
-                          const lines = desc.split("\n").filter(Boolean);
-                          const isMultiline = lines.length > 1;
-                          const renderDesc = isMultiline
-                            ? (
-                              <div style={libStyles.methodGrid}>
-                                {lines.map((line, i) => {
-                                  const splitIndex = line.indexOf(":");
-                                  const label = splitIndex >= 0 ? line.slice(0, splitIndex).trim() : "Nota";
-                                  const body = splitIndex >= 0 ? line.slice(splitIndex + 1).trim() : line;
-                                  const isObjective = label.toLowerCase() === "obiettivo";
-                                  return (
-                                    <div
-                                      key={i}
-                                      style={{
-                                        ...libStyles.methodItem,
-                                        ...(isObjective ? libStyles.methodItemPrimary : null),
-                                      }}
-                                    >
-                                      <span style={libStyles.methodLabel}>{label}</span>
-                                      <p style={libStyles.methodText}>{body}</p>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )
-                            : <p style={{ margin: 0, fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
-                                {isExpanded || desc.length <= 160 ? desc : `${desc.slice(0, 160)}…`}
-                              </p>;
-                          return (
-                            <div style={{ marginTop: 12 }}>
-                              {isExpanded || isMultiline ? renderDesc : renderDesc}
-                              {!isMultiline && desc.length > 160 && (
-                                <button onClick={() => setExpandedId(isExpanded ? null : ex.id)} style={libStyles.expandBtn}>
-                                  {isExpanded ? "Mostra meno ▲" : "Mostra tutto ▼"}
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })()}
-
-                        {/* Dettagli */}
-                        <div style={libStyles.details}>
-                          {ex.fieldSize  && <InfoChip label={t("pages.exerciseLibrary.chipField")}    value={ex.fieldSize} />}
-                          {ex.material   && <InfoChip label={t("pages.exerciseLibrary.chipMaterial")} value={ex.material} />}
-                          {ex.ageGroup   && <InfoChip label={t("pages.exerciseLibrary.chipAge")}      value={ex.ageGroup} />}
-                          {ex.players    && <InfoChip label={t("pages.exerciseLibrary.chipPlayers")}  value={ex.players} />}
-                          {ex.goal       && <InfoChip label={t("pages.exerciseLibrary.chipFocus")}    value={ex.goal} />}
-                        </div>
-
-                        {isExpanded && ex.variants && (
-                          <div style={libStyles.variantBox}>
-                            <p style={libStyles.variantLabel}>{t("pages.exerciseLibrary.variants")}</p>
-                            <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.55 }}>
-                              {ex.variants}
-                            </p>
-                          </div>
-                        )}
-
-                        <div style={libStyles.cardActions}>
-                          <Button variant="ghost" onClick={() => openExerciseDetail(ex)}>
-                            Apri scheda
-                          </Button>
-                          <Button variant="ghost" onClick={() => openExerciseInTraining(ex)}>
-                            Usa in seduta
-                          </Button>
-                        </div>
-                      </>
-                    )}
-
-                    {/* Azioni owner */}
-                    {isOwner && (
-                      <div style={{ display: "flex", gap: 8, marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-                        <Button variant="ghost" onClick={() => openEdit(ex)}>✏️ Modifica</Button>
-                        <Button variant="ghost" onClick={() => deleteFromCatalog(ex.id)}>🗑️</Button>
-                      </div>
-                    )}
-                  </AppCard>
-                );
-              })}
+              {catalogSlice.map((ex) => (
+                <CatalogCard
+                  key={ex.id}
+                  ex={ex}
+                  locked={!premiumUnlocked}
+                  isOwner={isOwner}
+                  t={t}
+                  onLightbox={setLightboxSrc}
+                  onDetail={openExerciseDetail}
+                  onUseInTraining={openExerciseInTraining}
+                  onEdit={openEdit}
+                  onDelete={deleteFromCatalog}
+                />
+              ))}
             </div>
 
             {/* ── Paginazione catalogo ── */}
@@ -718,7 +610,7 @@ export default function ExerciseLibrary({
             />
           </div>
           <p style={{ position: "absolute", bottom: 24, color: "rgba(255,255,255,0.4)", fontSize: 13 }}>
-            Clicca per chiudere
+            {t("pages.exerciseLibrary.clickToClose")}
           </p>
         </div>
       )}
@@ -948,6 +840,159 @@ function parseMethodology(desc = "") {
     });
 }
 
+// ─── CatalogCard ─────────────────────────────────────────────────────────────
+// Memoized so that state changes in the parent (e.g. opening the lightbox or
+// the detail modal) do NOT trigger a re-render of every card in the grid.
+const CatalogCard = memo(function CatalogCard({
+  ex, locked, isOwner, t, onLightbox, onDetail, onUseInTraining, onEdit, onDelete,
+}) {
+  const cardNav = useNavigate();
+  const isFp5     = ex.source === "fp5";
+  const hasDiagram = isFp5 || ex.tacticalBoard || ex.image;
+  const svgMarkup  = isFp5 ? exImage(ex) : null;
+
+  function handleLightbox() {
+    if (isFp5 && svgMarkup) {
+      onLightbox(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`);
+    } else {
+      onLightbox(ex.image || null);
+    }
+  }
+
+  return (
+    <AppCard>
+      {/* ── Anteprima disegno ─────────────────────────────────────────────── */}
+      {hasDiagram && (
+        locked ? (
+          <div style={{ ...libStyles.thumb, width: "100%", height: 80, marginBottom: 14, cursor: "default", borderRadius: 10, overflow: "hidden" }}>
+            <ExerciseDiagram
+              exercise={ex}
+              svgMarkup={svgMarkup}
+              height={80}
+              style={{ filter: "blur(1px) brightness(0.6)", pointerEvents: "none" }}
+            />
+            <div style={libStyles.thumbOverlay}>🔒</div>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 14, position: "relative" }} title={t("pages.exerciseLibrary.clickToEnlarge")}>
+            <ExerciseDiagram exercise={ex} svgMarkup={svgMarkup} height={180} onClick={handleLightbox} />
+            <span style={{
+              position: "absolute", bottom: 8, right: 8,
+              background: "rgba(0,0,0,0.5)", color: "white",
+              fontSize: 11, padding: "2px 7px", borderRadius: 8, pointerEvents: "none",
+            }}>
+              🔍 {t("pages.exerciseLibrary.enlargeDiagram")}
+            </span>
+          </div>
+        )
+      )}
+
+      {/* ── Header titolo / badge ─────────────────────────────────────────── */}
+      <div style={libStyles.cardHead}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+            {(() => {
+              const block    = ex.trainingBlock || getBlockFromCategory(ex.category);
+              const blockDef = TRAINING_BLOCKS.find((b) => b.id === block);
+              return blockDef ? <Badge tone={blockDef.color}>{blockDef.icon} {block}</Badge> : null;
+            })()}
+            <Badge tone={locked ? "orange" : "green"}>{locked ? "🔒 Premium" : "Premium"}</Badge>
+            <Badge tone={ex.intensity === "Alta" ? "red" : ex.intensity === "Bassa" ? "blue" : "default"}>
+              {ex.intensity || "Media"}
+            </Badge>
+            {ex.difficulty && (
+              <Badge tone={ex.difficulty === "Avanzato" ? "orange" : ex.difficulty === "Base" ? "blue" : "default"}>
+                {ex.difficulty}
+              </Badge>
+            )}
+            {ex.phase && <Badge tone="default">{ex.phase}</Badge>}
+            {getTitleCode(ex.title) && <span style={libStyles.codeTag}>{getTitleCode(ex.title)}</span>}
+          </div>
+          <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>
+            {getDisplayTitle(ex)}
+          </h3>
+          <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
+            {ex.category}{ex.duration ? ` · ${ex.duration} min` : ""}{ex.players ? ` · ${ex.players} gioc.` : ""}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Tag ──────────────────────────────────────────────────────────── */}
+      {(ex.tags || []).length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+          {(ex.tags || []).slice(0, 5).map((tag) => (
+            <span key={tag} style={libStyles.tag}>{tag}</span>
+          ))}
+        </div>
+      )}
+
+      {/* ── Corpo: locked vs. accessibile ───────────────────────────────── */}
+      {locked ? (
+        <div style={libStyles.lockBanner}>
+          <p style={{ margin: "0 0 10px", fontSize: 13, color: "#94a3b8" }}>
+            {t("pages.exerciseLibrary.premiumLockedText")}
+          </p>
+          <Button variant="ghost" onClick={() => cardNav("/premium")}>
+            {t("pages.exerciseLibrary.discoverPremium")}
+          </Button>
+        </div>
+      ) : (
+        <>
+          {/* Obiettivo — una riga scansionabile */}
+          {(() => {
+            const desc    = exDesc(ex);
+            if (!desc) return null;
+            const objLine = desc.split("\n").find((l) => /^obiettivo:\s*/i.test(l));
+            const objText = objLine
+              ? objLine.replace(/^obiettivo:\s*/i, "").trim()
+              : (ex.objective || "").slice(0, 130);
+            if (!objText) return null;
+            return (
+              <p style={{ margin: "10px 0 0", fontSize: 13, color: "#94a3b8", lineHeight: 1.55 }}>
+                {objText.length > 130 ? `${objText.slice(0, 130)}…` : objText}
+              </p>
+            );
+          })()}
+
+          {/* Dettagli operativi */}
+          <div style={libStyles.details}>
+            {isValidFieldSize(ex.fieldSize) && <InfoChip label={t("pages.exerciseLibrary.chipField")}    value={cleanText(ex.fieldSize)} />}
+            {ex.material && <InfoChip label={t("pages.exerciseLibrary.chipMaterial")} value={ex.material} />}
+            {ex.ageGroup && <InfoChip label={t("pages.exerciseLibrary.chipAge")}      value={ex.ageGroup} />}
+            {ex.players  && <InfoChip label={t("pages.exerciseLibrary.chipPlayers")}  value={ex.players} />}
+            {ex.goal     && <InfoChip label={t("pages.exerciseLibrary.chipFocus")}    value={ex.goal} />}
+          </div>
+
+          {/* Varianti — testo sanitizzato, troncato */}
+          {ex.variants && cleanText(ex.variants) && (
+            <div style={libStyles.variantBox}>
+              <p style={libStyles.variantLabel}>{t("pages.exerciseLibrary.variants")}</p>
+              <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.55 }}>
+                {cleanText(ex.variants).length > 160
+                  ? `${cleanText(ex.variants).slice(0, 160)}…`
+                  : cleanText(ex.variants)}
+              </p>
+            </div>
+          )}
+
+          <div style={libStyles.cardActions}>
+            <Button variant="ghost" onClick={() => onDetail(ex)}>{t("pages.exerciseLibrary.openSheet")}</Button>
+            <Button variant="ghost" onClick={() => onUseInTraining(ex)}>Usa in seduta</Button>
+          </div>
+        </>
+      )}
+
+      {/* ── Azioni owner ─────────────────────────────────────────────────── */}
+      {isOwner && (
+        <div style={{ display: "flex", gap: 8, marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+          <Button variant="ghost" onClick={() => onEdit(ex)}>✏️ Modifica</Button>
+          <Button variant="ghost" onClick={() => onDelete(ex.id)}>🗑️</Button>
+        </div>
+      )}
+    </AppCard>
+  );
+});
+
 function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, onOpenLightbox }) {
   const desc = exDesc(exercise);
   // Separate coaching points from the main methodology sections
@@ -964,7 +1009,7 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
     : exercise.image || null;
 
   return (
-    <Modal title={exercise.title || "Scheda esercizio"} onClose={onClose}>
+    <Modal title={getDisplayTitle(exercise) || t("pages.exerciseLibrary.detailFallbackTitle")} onClose={onClose}>
       <div style={libStyles.detailShell}>
         <div style={libStyles.detailHero}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
@@ -976,8 +1021,12 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
               </Badge>
             )}
             {exercise.phase && <Badge tone="default">{exercise.phase}</Badge>}
+            {/* Catalog reference code */}
+            {getTitleCode(exercise.title) && (
+              <span style={libStyles.codeTag}>{getTitleCode(exercise.title)}</span>
+            )}
           </div>
-          <h2 style={libStyles.detailTitle}>{exercise.title}</h2>
+          <h2 style={libStyles.detailTitle}>{getDisplayTitle(exercise)}</h2>
           <p style={libStyles.detailSubtitle}>
             {exercise.objective || exercise.goal || t("pages.exerciseLibrary.detailDefaultObjective")}
           </p>
@@ -1013,7 +1062,7 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
             <div style={libStyles.detailInfoGrid}>
               {exercise.duration && <InfoChip label={t("pages.exerciseLibrary.chipDuration")} value={`${exercise.duration} min`} />}
               {exercise.players && <InfoChip label={t("pages.exerciseLibrary.chipPlayers")} value={exercise.players} />}
-              {exercise.fieldSize && <InfoChip label={t("pages.exerciseLibrary.chipField")} value={exercise.fieldSize} />}
+              {isValidFieldSize(exercise.fieldSize) && <InfoChip label={t("pages.exerciseLibrary.chipField")} value={cleanText(exercise.fieldSize)} />}
               {exercise.material && <InfoChip label={t("pages.exerciseLibrary.chipMaterial")} value={exercise.material} />}
               {exercise.ageGroup && <InfoChip label={t("pages.exerciseLibrary.chipAge")} value={exercise.ageGroup} />}
               {exercise.rpe && <InfoChip label="RPE" value={exercise.rpe} />}
@@ -1084,10 +1133,10 @@ function ExerciseDetailModal({ exercise, isMobile, t, onClose, onUseInTraining, 
           </div>
         </div>
 
-        {exercise.variants && (
+        {cleanText(exercise.variants) && (
           <div style={libStyles.detailVariant}>
             <p style={libStyles.detailSectionKicker}>{t("pages.exerciseLibrary.detailVariantsTitle")}</p>
-            <p style={{ margin: 0, color: "#cbd5e1", lineHeight: 1.6, fontSize: 14 }}>{exercise.variants}</p>
+            <p style={{ margin: 0, color: "#cbd5e1", lineHeight: 1.6, fontSize: 14 }}>{cleanText(exercise.variants)}</p>
           </div>
         )}
       </div>
@@ -1258,6 +1307,17 @@ const libStyles = {
     border: "1px solid rgba(255,255,255,0.1)",
     fontSize: 11,
     color: "#64748b",
+  },
+  codeTag: {
+    padding: "2px 7px",
+    borderRadius: 20,
+    background: "transparent",
+    border: "1px solid rgba(255,255,255,0.1)",
+    fontSize: 10,
+    color: "#475569",
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+    fontFamily: "monospace",
   },
   lockBanner: {
     marginTop: 14,

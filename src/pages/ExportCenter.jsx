@@ -198,20 +198,26 @@ export default function ExportCenter({
   );
 }
 
-const microcycleDays = [
-  { key: "MD+1", offset: -6, focus: "Recupero gara precedente", plan: "Rigenerante, terapie, scarico" },
-  { key: "MD-4", offset: -4, focus: "Principi e carico", plan: "Tecnico-tattico, volume medio" },
-  { key: "MD-3", offset: -3, focus: "Picco settimanale", plan: "Alta intensita', duelli, reparti" },
-  { key: "MD-2", offset: -2, focus: "Piano gara", plan: "Strategia, palle inattive, undici" },
-  { key: "MD-1", offset: -1, focus: "Rifinitura", plan: "Attivazione, chiarezza compiti" },
-  { key: "MD", offset: 0, focus: "Gara", plan: "Match day" },
-];
+/** Returns the microcycle days array with translated focus/plan strings. */
+function getMicrocycleDays(t) {
+  const T = "pages.exportCenter.tpl.microcycle";
+  return [
+    { key: "MD+1", offset: -6, focus: t(`${T}.md1Focus`),  plan: t(`${T}.md1Plan`) },
+    { key: "MD-4", offset: -4, focus: t(`${T}.md4Focus`),  plan: t(`${T}.md4Plan`) },
+    { key: "MD-3", offset: -3, focus: t(`${T}.md3Focus`),  plan: t(`${T}.md3Plan`) },
+    { key: "MD-2", offset: -2, focus: t(`${T}.md2Focus`),  plan: t(`${T}.md2Plan`) },
+    { key: "MD-1", offset: -1, focus: t(`${T}.mdm1Focus`), plan: t(`${T}.mdm1Plan`) },
+    { key: "MD",   offset:  0, focus: t(`${T}.md0Focus`),  plan: t(`${T}.md0Plan`) },
+  ];
+}
 
 function MicrocycleTemplate({ match, sessions, matches, players, gpsSessions }) {
-  if (!match) return <EmptyPrint title="Nessuna partita disponibile" />;
+  const { t } = useTranslation();
+  const T = "pages.exportCenter.tpl.microcycle";
+  if (!match) return <EmptyPrint />;
 
   const matchDate = toDateKey(match.date);
-  const week = microcycleDays.map((day) => {
+  const week = getMicrocycleDays(t).map((day) => {
     const date = addDays(matchDate, day.offset);
     const daySessions = sessions.filter((session) => toDateKey(session.date) === date);
     const dayMatches = matches.filter((item) => toDateKey(item.date) === date);
@@ -235,30 +241,30 @@ function MicrocycleTemplate({ match, sessions, matches, players, gpsSessions }) 
   return (
     <article>
       <PrintHeader
-        eyebrow="Microciclo gara"
+        eyebrow={t(`${T}.eyebrow`)}
         title={match.title}
-        meta={[formatDate(match.date), match.opponent || "Avversario da definire", match.competition || "Gara"]}
+        meta={[formatDate(match.date), match.opponent || t(`${T}.fallbackOpponent`, { defaultValue: t("pages.exportCenter.tpl.fallbackOpponent") }), match.competition || t("pages.exportCenter.tpl.fallbackCompetition")]}
       />
 
       <KpiGrid
         items={[
-          { label: "Sedute settimana", value: totalSessions },
-          { label: "Carico stimato", value: totalLoad },
-          { label: "GPS totale", value: totalGpsDistance ? `${Math.round(totalGpsDistance / 100) / 10} km` : "-" },
-          { label: "Alert rosa", value: unavailable.length },
+          { label: t(`${T}.kpiSessions`), value: totalSessions },
+          { label: t(`${T}.kpiLoad`),     value: totalLoad },
+          { label: t(`${T}.kpiGps`),      value: totalGpsDistance ? `${Math.round(totalGpsDistance / 100) / 10} km` : "-" },
+          { label: t(`${T}.kpiAlert`),    value: unavailable.length },
         ]}
       />
 
-      <Section title="Settimana gara">
+      <Section title={t(`${T}.sectionWeek`)}>
         <table>
           <thead>
             <tr>
-              <th>Giorno</th>
-              <th>Data</th>
-              <th>Focus</th>
-              <th>Contenuto</th>
-              <th>RPE target</th>
-              <th>Load</th>
+              <th>{t(`${T}.colDay`)}</th>
+              <th>{t(`${T}.colDate`)}</th>
+              <th>{t(`${T}.colFocus`)}</th>
+              <th>{t(`${T}.colContent`)}</th>
+              <th>{t(`${T}.colRpe`)}</th>
+              <th>{t(`${T}.colLoad`)}</th>
             </tr>
           </thead>
           <tbody>
@@ -283,15 +289,15 @@ function MicrocycleTemplate({ match, sessions, matches, players, gpsSessions }) 
         </table>
       </Section>
 
-      <Section title="Alert staff">
+      <Section title={t(`${T}.sectionAlerts`)}>
         <div className="print-grid two">
           <PrintBox
-            label="Non disponibili / limitati"
-            value={unavailable.map((player) => `${player.name} (${player.status})`).join(", ") || "Nessun alert registrato"}
+            label={t(`${T}.labelUnavailable`)}
+            value={unavailable.map((player) => `${player.name} (${player.status})`).join(", ") || "-"}
           />
           <PrintBox
-            label="Priorita' settimana"
-            value={`Preparare ${match.opponent || "avversario"}, rifinitura MD-1, palle inattive e gestione carichi individuali.`}
+            label={t(`${T}.labelPriority`)}
+            value={t(`${T}.priorityValue`, { opponent: match.opponent || t("pages.exportCenter.tpl.fallbackOpponent") })}
           />
         </div>
       </Section>
@@ -300,47 +306,49 @@ function MicrocycleTemplate({ match, sessions, matches, players, gpsSessions }) 
 }
 
 function TrainingTemplate({ session, exercises }) {
-  if (!session) return <EmptyPrint title="Nessuna seduta disponibile" />;
+  const { t } = useTranslation();
+  const T = "pages.exportCenter.tpl.training";
+  if (!session) return <EmptyPrint />;
 
   const plannedExercises = (session.exercises || []).map((block) => {
     const exercise = exercises.find((item) => sameId(item.id, block.exerciseId));
     return {
       ...block,
       exercise,
-      title: exercise?.title || block.title || "Blocco seduta",
+      title: exercise?.title || block.title || t(`${T}.colBlock`),
     };
   });
 
   return (
     <article>
       <PrintHeader
-        eyebrow="Seduta allenamento"
+        eyebrow={t(`${T}.eyebrow`)}
         title={session.title}
         meta={[
           formatDate(session.date),
-          session.theme || session.type || "Allenamento",
+          session.theme || session.type || t(`${T}.eyebrow`),
           `${session.duration || 0}'`,
         ]}
       />
 
       <KpiGrid
         items={[
-          { label: "Obiettivo", value: session.objective || "Da definire" },
-          { label: "RPE previsto", value: session.rpe || "-" },
-          { label: "Blocchi", value: plannedExercises.length },
-          { label: "Carico stimato", value: `${Number(session.duration || 0) * Number(session.rpe || 0)}` },
+          { label: t(`${T}.kpiObjective`), value: session.objective || t("pages.exportCenter.tpl.fallbackTbd") },
+          { label: t(`${T}.kpiRpe`),       value: session.rpe || "-" },
+          { label: t(`${T}.kpiBlocks`),    value: plannedExercises.length },
+          { label: t(`${T}.kpiLoad`),      value: `${Number(session.duration || 0) * Number(session.rpe || 0)}` },
         ]}
       />
 
-      <Section title="Timeline campo">
+      <Section title={t(`${T}.sectionTimeline`)}>
         {plannedExercises.length ? (
           <table>
             <thead>
               <tr>
-                <th>Minuti</th>
-                <th>Blocco</th>
-                <th>Spazio</th>
-                <th>Focus staff</th>
+                <th>{t(`${T}.colMinutes`)}</th>
+                <th>{t(`${T}.colBlock`)}</th>
+                <th>{t(`${T}.colField`)}</th>
+                <th>{t(`${T}.colFocus`)}</th>
               </tr>
             </thead>
             <tbody>
@@ -358,14 +366,14 @@ function TrainingTemplate({ session, exercises }) {
             </tbody>
           </table>
         ) : (
-          <p>Nessun esercizio collegato alla seduta.</p>
+          <p>{t(`${T}.noExercises`)}</p>
         )}
       </Section>
 
-      <Section title="Materiale e note">
+      <Section title={t(`${T}.sectionMaterial`)}>
         <div className="print-grid two">
-          <PrintBox label="Materiale" value={session.materials || "Palloni, cinesini, casacche"} />
-          <PrintBox label="Note staff" value={session.notes || "Annotazioni libere per gestione gruppo."} />
+          <PrintBox label={t(`${T}.labelMaterial`)} value={session.materials || t(`${T}.materialFallback`)} />
+          <PrintBox label={t(`${T}.labelNotes`)}    value={session.notes    || t(`${T}.notesFallback`)} />
         </div>
       </Section>
     </article>
@@ -373,7 +381,10 @@ function TrainingTemplate({ session, exercises }) {
 }
 
 function MatchDayTemplate({ match, players }) {
-  if (!match) return <EmptyPrint title="Nessuna partita disponibile" />;
+  const { t } = useTranslation();
+  const T = "pages.exportCenter.tpl.matchday";
+  const Tc = "pages.exportCenter.tpl";
+  if (!match) return <EmptyPrint />;
 
   const lineup = getLineup(match);
   const starters = lineup.starterIds.map((id) => findPlayer(players, id)).filter(Boolean);
@@ -384,41 +395,41 @@ function MatchDayTemplate({ match, players }) {
   return (
     <article>
       <PrintHeader
-        eyebrow="Match day"
+        eyebrow={t(`${T}.eyebrow`)}
         title={match.title}
         meta={[
           formatDate(match.date),
-          match.location || "Campo da definire",
-          match.competition || "Gara",
+          match.location || t(`${T}.locationFallback`),
+          match.competition || t(`${Tc}.fallbackCompetition`),
         ]}
       />
 
       <KpiGrid
         items={[
-          { label: "Avversario", value: match.opponent || "-" },
-          { label: "Convocati", value: calledUp.length || starters.length + bench.length },
-          { label: "Modulo nostro", value: match.formation || "Da definire" },
-          { label: "Modulo avversario", value: match.opponentScouting?.formation || "Da definire" },
+          { label: t(`${T}.kpiOpponent`),    value: match.opponent || "-" },
+          { label: t(`${T}.kpiCalledUp`),    value: calledUp.length || starters.length + bench.length },
+          { label: t(`${T}.kpiFormation`),   value: match.formation || t(`${Tc}.fallbackTbd`) },
+          { label: t(`${T}.kpiOppFormation`), value: match.opponentScouting?.formation || t(`${Tc}.fallbackTbd`) },
         ]}
       />
 
-      <Section title="Distinta CalcioLab">
+      <Section title={t(`${T}.sectionLineup`)}>
         <div className="print-grid two">
-          <RosterList title="Titolari" players={starters} roles={lineup.roles} captainId={lineup.captainId} />
-          <RosterList title="Panchina" players={bench} roles={lineup.roles} captainId={lineup.captainId} />
+          <RosterList title={t(`${T}.starters`)} players={starters} roles={lineup.roles} captainId={lineup.captainId} t={t} />
+          <RosterList title={t(`${T}.bench`)}    players={bench}    roles={lineup.roles} captainId={lineup.captainId} t={t} />
         </div>
       </Section>
 
-      <Section title="Distinta avversaria">
+      <Section title={t(`${T}.sectionOpponent`)}>
         {opponentLineup.length ? (
           <table>
             <thead>
               <tr>
-                <th>#</th>
-                <th>Giocatore</th>
-                <th>Anno</th>
-                <th>Ruolo</th>
-                <th>Note</th>
+                <th>{t(`${T}.colNum`)}</th>
+                <th>{t(`${T}.colPlayer`)}</th>
+                <th>{t(`${T}.colYear`)}</th>
+                <th>{t(`${T}.colRole`)}</th>
+                <th>{t(`${T}.colNotes`)}</th>
               </tr>
             </thead>
             <tbody>
@@ -434,19 +445,19 @@ function MatchDayTemplate({ match, players }) {
             </tbody>
           </table>
         ) : (
-          <p>Nessuna distinta avversaria registrata.</p>
+          <p>{t(`${T}.noOpponentLineup`)}</p>
         )}
         {match.opponentScouting?.attachment && (
-          <PrintBox label="Allegato distinta" value={match.opponentScouting.attachment.name || "File caricato"} />
+          <PrintBox label={t(`${T}.labelAttachment`)} value={match.opponentScouting.attachment.name || "File caricato"} />
         )}
       </Section>
 
-      <Section title="Piano gara e ritorno">
+      <Section title={t(`${T}.sectionPlan`)}>
         <div className="print-grid two">
-          <PrintBox label="Piano gara" value={match.matchPlan || "Principi e priorita' da comunicare alla squadra."} />
-          <PrintBox label="Appunti ritorno" value={match.opponentScouting?.returnLegNotes || "Osservazioni da recuperare al ritorno."} />
-          <PrintBox label="Punti forti avversario" value={match.opponentScouting?.strengths || "-"} />
-          <PrintBox label="Dove attaccarli" value={match.opponentScouting?.weaknesses || "-"} />
+          <PrintBox label={t(`${T}.labelPlan`)}      value={match.matchPlan || t(`${T}.planFallback`)} />
+          <PrintBox label={t(`${T}.labelReturn`)}    value={match.opponentScouting?.returnLegNotes || t(`${T}.returnFallback`)} />
+          <PrintBox label={t(`${T}.labelStrengths`)} value={match.opponentScouting?.strengths || "-"} />
+          <PrintBox label={t(`${T}.labelWeaknesses`)} value={match.opponentScouting?.weaknesses || "-"} />
         </div>
       </Section>
     </article>
@@ -454,7 +465,10 @@ function MatchDayTemplate({ match, players }) {
 }
 
 function PostMatchTemplate({ match, players }) {
-  if (!match) return <EmptyPrint title="Nessuna partita disponibile" />;
+  const { t } = useTranslation();
+  const T = "pages.exportCenter.tpl.postmatch";
+  const Tc = "pages.exportCenter.tpl";
+  if (!match) return <EmptyPrint />;
 
   const report = match.postMatch || {};
   const videoClips = match.videoAnalysis || [];
@@ -464,57 +478,57 @@ function PostMatchTemplate({ match, players }) {
   return (
     <article>
       <PrintHeader
-        eyebrow="Report post gara"
+        eyebrow={t(`${T}.eyebrow`)}
         title={match.title}
-        meta={[formatDate(match.date), match.result || "Risultato da inserire", match.competition || "Gara"]}
+        meta={[formatDate(match.date), match.result || t(`${T}.resultFallback`), match.competition || t(`${Tc}.fallbackCompetition`)]}
       />
 
       <KpiGrid
         items={[
-          { label: "Avversario", value: match.opponent || "-" },
-          { label: "Risultato", value: match.result || "-" },
-          { label: "Report staff", value: `${completion}%` },
-          { label: "Clip video", value: videoClips.length },
+          { label: t(`${T}.kpiOpponent`), value: match.opponent || "-" },
+          { label: t(`${T}.kpiResult`),   value: match.result || "-" },
+          { label: t(`${T}.kpiReport`),   value: `${completion}%` },
+          { label: t(`${T}.kpiClips`),    value: videoClips.length },
         ]}
       />
 
-      <Section title="Analisi tecnica">
+      <Section title={t(`${T}.sectionAnalysis`)}>
         <div className="print-grid two">
-          <PrintBox label="Cosa ha funzionato" value={report.worked || "-"} />
-          <PrintBox label="Cosa migliorare" value={report.notWorked || "-"} />
-          <PrintBox label="Momenti chiave" value={report.keyMoments || "-"} />
-          <PrintBox label="Focus prossima settimana" value={report.nextWeekFocus || "-"} />
-          <PrintBox label="Correzioni tattiche" value={report.tacticalCorrections || "-"} />
-          <PrintBox label="Azioni in allenamento" value={report.trainingActions || "-"} />
+          <PrintBox label={t(`${T}.labelWorked`)}      value={report.worked || "-"} />
+          <PrintBox label={t(`${T}.labelNotWorked`)}   value={report.notWorked || "-"} />
+          <PrintBox label={t(`${T}.labelKeyMoments`)}  value={report.keyMoments || "-"} />
+          <PrintBox label={t(`${T}.labelNextWeek`)}    value={report.nextWeekFocus || "-"} />
+          <PrintBox label={t(`${T}.labelTactical`)}    value={report.tacticalCorrections || "-"} />
+          <PrintBox label={t(`${T}.labelTraining`)}    value={report.trainingActions || "-"} />
         </div>
       </Section>
 
-      <Section title="Giocatori e alert">
+      <Section title={t(`${T}.sectionPlayers`)}>
         <div className="print-grid two">
-          <PrintBox label="Note positive" value={positivePlayers || "-"} />
-          <PrintBox label="Alert fisici" value={report.physicalAlerts || "-"} />
+          <PrintBox label={t(`${T}.labelPositive`)} value={positivePlayers || "-"} />
+          <PrintBox label={t(`${T}.labelAlerts`)}   value={report.physicalAlerts || "-"} />
         </div>
       </Section>
 
-      <Section title="Palle inattive, video e staff">
+      <Section title={t(`${T}.sectionSetPieces`)}>
         <div className="print-grid two">
-          <PrintBox label="Review palle inattive" value={report.setPiecesReview || "-"} />
-          <PrintBox label="Sintesi video" value={report.videoClips || "-"} />
-          <PrintBox label="Lezioni sull'avversario" value={report.opponentLessons || "-"} />
-          <PrintBox label="Decisioni staff" value={report.staffDecisions || "-"} />
+          <PrintBox label={t(`${T}.labelSetPieces`)}        value={report.setPiecesReview || "-"} />
+          <PrintBox label={t(`${T}.labelVideo`)}            value={report.videoClips || "-"} />
+          <PrintBox label={t(`${T}.labelOpponentLessons`)}  value={report.opponentLessons || "-"} />
+          <PrintBox label={t(`${T}.labelStaff`)}            value={report.staffDecisions || "-"} />
         </div>
       </Section>
 
       {videoClips.length > 0 && (
-        <Section title="Clip taggate">
+        <Section title={t(`${T}.sectionClips`)}>
           <table>
             <thead>
               <tr>
-                <th>Minuto</th>
-                <th>Categoria</th>
-                <th>Fase</th>
-                <th>Giocatore</th>
-                <th>Nota</th>
+                <th>{t(`${T}.colMinute`)}</th>
+                <th>{t(`${T}.colCategory`)}</th>
+                <th>{t(`${T}.colPhase`)}</th>
+                <th>{t(`${T}.colPlayer`)}</th>
+                <th>{t(`${T}.colNote`)}</th>
               </tr>
             </thead>
             <tbody>
@@ -536,7 +550,9 @@ function PostMatchTemplate({ match, players }) {
 }
 
 function PlayerTemplate({ player, sessions, matches, physicalTests, appSettings }) {
-  if (!player) return <EmptyPrint title="Nessun giocatore disponibile" />;
+  const { t } = useTranslation();
+  const T = "pages.exportCenter.tpl.player";
+  if (!player) return <EmptyPrint />;
 
   const summary = getPlayerSummary(player, { sessions, matches, physicalTests });
   const latestTest = summary.latestTests[0];
@@ -547,39 +563,39 @@ function PlayerTemplate({ player, sessions, matches, physicalTests, appSettings 
   return (
     <article>
       <PrintHeader
-        eyebrow="Scheda giocatore"
+        eyebrow={t(`${T}.eyebrow`)}
         title={player.name}
-        meta={[player.role || "Ruolo da definire", player.status || "Disponibile", player.shirtNumber ? `#${player.shirtNumber}` : ""]}
+        meta={[player.role || t(`${T}.roleFallback`), player.status || t(`${T}.statusFallback`), player.shirtNumber ? `#${player.shirtNumber}` : ""]}
       />
 
       <KpiGrid
         items={[
-          { label: "Presenze", value: summary.stats.presences },
-          { label: "Minuti", value: summary.stats.minutes },
-          { label: "Gol + assist", value: `${summary.stats.goals} + ${summary.stats.assists}` },
-          { label: "Readiness", value: `${readiness}%` },
+          { label: t(`${T}.kpiPresences`), value: summary.stats.presences },
+          { label: t(`${T}.kpiMinutes`),   value: summary.stats.minutes },
+          { label: t(`${T}.kpiGoals`),     value: `${summary.stats.goals} + ${summary.stats.assists}` },
+          { label: t(`${T}.kpiReadiness`), value: `${readiness}%` },
         ]}
       />
 
-      <Section title="Profilo fisico">
+      <Section title={t(`${T}.sectionPhysical`)}>
         <div className="print-grid two">
-          <PrintBox label="Ultimo test" value={latestTest ? formatShortDate(latestTest.date) : "Da testare"} />
-          <PrintBox label="Gruppo lavoro" value={reference.group} />
-          <PrintBox label="MAS stimata" value={reference.mas ? `${reference.mas} km/h` : "-"} />
-          <PrintBox label="Indicazione" value={reference.intensity} />
+          <PrintBox label={t(`${T}.labelLastTest`)}  value={latestTest ? formatShortDate(latestTest.date) : t(`${T}.testFallback`)} />
+          <PrintBox label={t(`${T}.labelGroup`)}     value={reference.group} />
+          <PrintBox label={t(`${T}.labelMas`)}       value={reference.mas ? `${reference.mas} km/h` : "-"} />
+          <PrintBox label={t(`${T}.labelIndication`)} value={reference.intensity} />
         </div>
       </Section>
 
-      <Section title="Metri riferimento">
+      <Section title={t(`${T}.sectionMeters`)}>
         {reference.reps.length ? (
           <table>
             <thead>
               <tr>
-                <th>Protocollo</th>
-                <th>Metri</th>
-                <th>Ripetizioni</th>
-                <th>Serie</th>
-                <th>Recupero</th>
+                <th>{t(`${T}.colProtocol`)}</th>
+                <th>{t(`${T}.colMeters`)}</th>
+                <th>{t(`${T}.colReps`)}</th>
+                <th>{t(`${T}.colSets`)}</th>
+                <th>{t(`${T}.colRecovery`)}</th>
               </tr>
             </thead>
             <tbody>
@@ -595,19 +611,19 @@ function PlayerTemplate({ player, sessions, matches, physicalTests, appSettings 
             </tbody>
           </table>
         ) : (
-          <p>Inserisci un test Gacon o Yo-Yo per calcolare i metri di riferimento.</p>
+          <p>{t(`${T}.noTest`)}</p>
         )}
       </Section>
 
-      <Section title="Storico recente">
+      <Section title={t(`${T}.sectionHistory`)}>
         <table>
           <thead>
             <tr>
-              <th>Evento</th>
-              <th>Data</th>
-              <th>Minuti</th>
-              <th>RPE</th>
-              <th>Status</th>
+              <th>{t(`${T}.colEvent`)}</th>
+              <th>{t(`${T}.colDate`)}</th>
+              <th>{t(`${T}.colMinutes`)}</th>
+              <th>{t(`${T}.colRpe`)}</th>
+              <th>{t(`${T}.colStatus`)}</th>
             </tr>
           </thead>
           <tbody>
@@ -622,29 +638,29 @@ function PlayerTemplate({ player, sessions, matches, physicalTests, appSettings 
             ))}
             {!summary.recentEvents.length && (
               <tr>
-                <td colSpan="5">Nessun evento recente registrato.</td>
+                <td colSpan="5">{t(`${T}.noEvents`)}</td>
               </tr>
             )}
           </tbody>
         </table>
       </Section>
 
-      <Section title="Note staff">
+      <Section title={t(`${T}.sectionNotes`)}>
         <div className="print-grid two">
-          <PrintBox label="Obiettivo individuale" value={player.weeklyGoal || "-"} />
-          <PrintBox label="Alert" value={summary.alerts.join(", ") || "-"} />
-          <PrintBox label="Punti di forza" value={player.strengths || player.developmentNotes?.strengths || "-"} />
-          <PrintBox label="Aree da migliorare" value={player.improvements || player.developmentNotes?.improvements || "-"} />
+          <PrintBox label={t(`${T}.labelGoal`)}         value={player.weeklyGoal || "-"} />
+          <PrintBox label={t(`${T}.labelAlert`)}        value={summary.alerts.join(", ") || "-"} />
+          <PrintBox label={t(`${T}.labelStrengths`)}    value={player.strengths || player.developmentNotes?.strengths || "-"} />
+          <PrintBox label={t(`${T}.labelImprovements`)} value={player.improvements || player.developmentNotes?.improvements || "-"} />
         </div>
       </Section>
 
-      <Section title="Medico e prevenzione">
+      <Section title={t(`${T}.sectionMedical`)}>
         <div className="print-grid two">
           <PrintBox
-            label="Status medico"
-            value={activeInjuries.length ? activeInjuries.map((injury) => injury.injuryType || injury.type || "Infortunio").join(", ") : player.status || "Disponibile"}
+            label={t(`${T}.labelMedicalStatus`)}
+            value={activeInjuries.length ? activeInjuries.map((injury) => injury.injuryType || injury.type || "Infortunio").join(", ") : player.status || t(`${T}.statusFallback`)}
           />
-          <PrintBox label="Note prevenzione" value={player.injuryNotes || player.preventionNotes || "-"} />
+          <PrintBox label={t(`${T}.labelPrevention`)} value={player.injuryNotes || player.preventionNotes || "-"} />
         </div>
       </Section>
     </article>
@@ -707,7 +723,8 @@ function PrintBox({ label, value }) {
   );
 }
 
-function RosterList({ title, players, roles, captainId }) {
+function RosterList({ title, players, roles, captainId, t }) {
+  const Tc = "pages.exportCenter.tpl";
   return (
     <div className="print-box">
       <span>{title}</span>
@@ -720,14 +737,14 @@ function RosterList({ title, players, roles, captainId }) {
                 {player.name}
               </strong>
               <small>
-                {roles?.[player.id] || player.role || "Ruolo"}
-                {sameId(player.id, captainId) ? " · Capitano" : ""}
+                {roles?.[player.id] || player.role || t("pages.exportCenter.tpl.matchday.colRole")}
+                {sameId(player.id, captainId) ? ` · ${t(`${Tc}.captain`)}` : ""}
               </small>
             </li>
           ))}
         </ol>
       ) : (
-        <p>Nessun giocatore selezionato.</p>
+        <p>{t(`${Tc}.noPlayers`)}</p>
       )}
     </div>
   );
@@ -735,13 +752,15 @@ function RosterList({ title, players, roles, captainId }) {
 
 // ─── Season Report Panel ────────────────────────────────────────────────────
 function SeasonReportPanel({ players, sessions, matches, physicalTests, appSettings }) {
+  const { t } = useTranslation();
+  const T = "pages.exportCenter.tpl.season";
   const [generating, setGenerating] = useState(false);
-  const teamName = appSettings?.workspaceProfile?.clubName || "La tua squadra";
+  const teamName = appSettings?.workspaceProfile?.clubName || "CalcioLab";
 
-  const played   = matches.filter((m) => m.goalsScored !== undefined || m.goals_scored !== undefined);
-  const wins     = played.filter((m) => Number(m.goalsScored ?? m.goals_scored ?? 0) > Number(m.goalsConceded ?? m.goals_conceded ?? 0)).length;
-  const draws    = played.filter((m) => Number(m.goalsScored ?? m.goals_scored ?? 0) === Number(m.goalsConceded ?? m.goals_conceded ?? 0)).length;
-  const losses   = played.length - wins - draws;
+  const played = matches.filter((m) => m.goalsScored !== undefined || m.goals_scored !== undefined);
+  const wins   = played.filter((m) => Number(m.goalsScored ?? m.goals_scored ?? 0) > Number(m.goalsConceded ?? m.goals_conceded ?? 0)).length;
+  const draws  = played.filter((m) => Number(m.goalsScored ?? m.goals_scored ?? 0) === Number(m.goalsConceded ?? m.goals_conceded ?? 0)).length;
+  const losses = played.length - wins - draws;
 
   async function handleDownload() {
     setGenerating(true);
@@ -753,59 +772,39 @@ function SeasonReportPanel({ players, sessions, matches, physicalTests, appSetti
   }
 
   const kpis = [
-    { label: "Partite",     value: matches.length },
-    { label: "Vittorie",    value: wins },
-    { label: "Pareggi",     value: draws },
-    { label: "Sconfitte",   value: losses },
-    { label: "Allenamenti", value: sessions.length },
-    { label: "Giocatori",   value: players.length },
+    { label: t(`${T}.kpiMatches`),  value: matches.length },
+    { label: t(`${T}.kpiWins`),     value: wins },
+    { label: t(`${T}.kpiDraws`),    value: draws },
+    { label: t(`${T}.kpiLosses`),   value: losses },
+    { label: t(`${T}.kpiSessions`), value: sessions.length },
+    { label: t(`${T}.kpiPlayers`),  value: players.length },
+  ];
+
+  const sections = [
+    { icon: "📋", label: t(`${T}.sectionSummary`),    desc: t(`${T}.sectionSummaryDesc`) },
+    { icon: "⚽", label: t(`${T}.sectionMatches`),    desc: t(`${T}.sectionMatchesDesc`) },
+    { icon: "📅", label: t(`${T}.sectionAttendance`), desc: t(`${T}.sectionAttendanceDesc`) },
+    { icon: "📈", label: t(`${T}.sectionStats`),      desc: t(`${T}.sectionStatsDesc`) },
+    ...(physicalTests.length > 0 ? [{ icon: "⏱️", label: t(`${T}.sectionTests`), desc: t(`${T}.sectionTestsDesc`) }] : []),
   ];
 
   return (
     <AppCard
-      title="📊 Report stagione"
-      subtitle={`Documento PDF completo di ${teamName} — partite, presenze, statistiche e test fisici.`}
+      title={t(`${T}.title`)}
+      subtitle={t(`${T}.subtitle`, { teamName })}
     >
-      {/* KPI strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
         {kpis.map((k) => (
-          <div
-            key={k.label}
-            style={{
-              background: "rgba(37,99,235,0.08)",
-              border: "1px solid rgba(37,99,235,0.2)",
-              borderRadius: 12,
-              padding: "12px 14px",
-              textAlign: "center",
-            }}
-          >
+          <div key={k.label} style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 12, padding: "12px 14px", textAlign: "center" }}>
             <div style={{ fontSize: 22, fontWeight: 900, color: "#60a5fa" }}>{k.value}</div>
             <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, marginTop: 2 }}>{k.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Sections list */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-        {[
-          { icon: "📋", label: "Riepilogo stagione",         desc: "Punti, gol, clean sheet, partite e allenamenti" },
-          { icon: "⚽", label: "Calendario partite",         desc: "Tutte le gare con risultato e esito" },
-          { icon: "📅", label: "Presenze allenamenti",       desc: "Tabella presenze % per ogni giocatore" },
-          { icon: "📈", label: "Statistiche giocatori",      desc: "Gol, assist, minutaggio per gara" },
-          ...(physicalTests.length > 0 ? [{ icon: "⏱️", label: "Test fisici", desc: "Ultimi risultati Gacon / Yo-Yo per giocatore" }] : []),
-        ].map((s) => (
-          <div
-            key={s.label}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "10px 14px",
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: 10,
-            }}
-          >
+        {sections.map((s) => (
+          <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10 }}>
             <span style={{ fontSize: 18 }}>{s.icon}</span>
             <div>
               <div style={{ fontWeight: 700, fontSize: 13, color: "#e2e8f0" }}>{s.label}</div>
@@ -815,22 +814,19 @@ function SeasonReportPanel({ players, sessions, matches, physicalTests, appSetti
         ))}
       </div>
 
-      <Button
-        onClick={handleDownload}
-        disabled={generating}
-        style={{ width: "100%", justifyContent: "center", fontSize: 15, padding: "13px 0" }}
-      >
-        {generating ? "⏳ Generazione in corso..." : "⬇️ Scarica Report PDF"}
+      <Button onClick={handleDownload} disabled={generating} style={{ width: "100%", justifyContent: "center", fontSize: 15, padding: "13px 0" }}>
+        {generating ? t(`${T}.btnGenerating`) : t(`${T}.btnDownload`)}
       </Button>
     </AppCard>
   );
 }
 
-function EmptyPrint({ title }) {
+function EmptyPrint() {
+  const { t } = useTranslation();
   return (
     <article>
-      <PrintHeader eyebrow="Export" title={title} meta={["CalcioLab"]} />
-      <p>Aggiungi dati nel modulo dedicato per generare questo documento.</p>
+      <PrintHeader eyebrow="Export" title="—" meta={["CalcioLab"]} />
+      <p>{t("pages.exportCenter.tpl.emptyText")}</p>
     </article>
   );
 }

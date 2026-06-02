@@ -7,6 +7,7 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
 import { generatePhysicalWorkout, normalizeAppSettings, formatDate } from "../utils/helpers";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
 
 const GROUP_TONE = {
@@ -25,28 +26,44 @@ const GROUP_COLOR = {
   "Da testare": "#a78bfa",
 };
 
+// Maps internal Italian group keys → i18n paths (data never changes; display is translated)
+const GROUP_LABEL_KEYS = {
+  "Gruppo A":   "pages.physicalWorkouts.groupA",
+  "Gruppo B":   "pages.physicalWorkouts.groupB",
+  "Gruppo C":   "pages.physicalWorkouts.groupC",
+  "Gruppo D":   "pages.physicalWorkouts.groupD",
+  "Da testare": "pages.physicalWorkouts.groupUntested",
+  "Tutti":      "pages.physicalWorkouts.groupAll",
+};
+
 export default function PhysicalWorkouts({
   players = [], physicalTests = [], appSettings }) {
 
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const settings = normalizeAppSettings(appSettings);
+  const settings = useMemo(() => normalizeAppSettings(appSettings), [appSettings]);
   const [groupFilter, setGroupFilter] = useState("Tutti");
+
+  // Returns a translated label for a group tab. Extracts the letter for "Gruppo X" / "Group X"
+  // so tabs show compact "A / B / C / D" in any language; "Untested" for the fifth group.
+  function getGroupLabel(g) {
+    return t(GROUP_LABEL_KEYS[g] || "pages.physicalWorkouts.groupA");
+  }
+  function getGroupTabLabel(g) {
+    if (g === "Tutti") return t("pages.physicalWorkouts.tabAll", { count: rows.length });
+    const letter = getGroupLabel(g).match(/\b([A-D])\b/)?.[1];
+    return letter || getGroupLabel(g);
+  }
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState(null);
 
-  const rows = useMemo(
-    () => generatePhysicalWorkout(players, physicalTests, settings.coachParameters),
-    [players, physicalTests, settings.coachParameters]
-  );
-
-  const filtered = useMemo(() => {
-    return rows.filter((row) => {
-      const matchGroup = groupFilter === "Tutti" || row.reference.group === groupFilter;
-      const matchSearch = row.player.name.toLowerCase().includes(search.toLowerCase());
-      return matchGroup && matchSearch;
-    });
-  }, [rows, groupFilter, search]);
+  const rows = generatePhysicalWorkout(players, physicalTests, settings.coachParameters);
+  const filtered = rows.filter((row) => {
+    const matchGroup = groupFilter === "Tutti" || row.reference.group === groupFilter;
+    const matchSearch = row.player.name.toLowerCase().includes(search.toLowerCase());
+    return matchGroup && matchSearch;
+  });
 
   // KPI
   const tested = rows.filter((r) => r.reference.mas > 0).length;
@@ -101,7 +118,7 @@ export default function PhysicalWorkouts({
           {["Gruppo A", "Gruppo B", "Gruppo C", "Gruppo D", "Da testare"].map((g) => (
             <div key={g} style={pw.groupChip}>
               <span style={{ ...pw.groupDot, background: GROUP_COLOR[g] }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#cbd5e1" }}>{g}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#cbd5e1" }}>{getGroupLabel(g)}</span>
               <span style={{ fontSize: 13, fontWeight: 900, color: GROUP_COLOR[g], marginLeft: 4 }}>
                 {groupCounts[g] || 0}
               </span>
@@ -114,7 +131,7 @@ export default function PhysicalWorkouts({
             return pct > 0 ? (
               <div
                 key={g}
-                title={`${g}: ${groupCounts[g] || 0}`}
+                title={`${getGroupLabel(g)}: ${groupCounts[g] || 0}`}
                 style={{ width: `${pct}%`, background: GROUP_COLOR[g], height: "100%", borderRadius: 4 }}
               />
             ) : null;
@@ -145,7 +162,7 @@ export default function PhysicalWorkouts({
                 color: groupFilter === g ? (GROUP_COLOR[g] || "#38bdf8") : "#94a3b8",
               }}
             >
-              {g === "Tutti" ? t("pages.physicalWorkouts.tabAll", { count: rows.length }) : g.replace("Gruppo ", "")}
+              {getGroupTabLabel(g)}
             </button>
           ))}
         </div>
@@ -175,7 +192,7 @@ export default function PhysicalWorkouts({
                       <span style={{ fontSize: 12, color: "#64748b" }}>{player.role || t("pages.physicalWorkouts.roleFallback")}</span>
                     </div>
                   </div>
-                  <Badge tone={GROUP_TONE[reference.group]}>{reference.group}</Badge>
+                  <Badge tone={GROUP_TONE[reference.group]}>{getGroupLabel(reference.group)}</Badge>
                 </div>
 
                 {/* Info principali */}
@@ -206,14 +223,14 @@ export default function PhysicalWorkouts({
 
                     {isExpanded && (
                       <div style={pw.repGrid}>
-                        <div style={pw.repHeader}>
+                        <div style={{ ...pw.repHeader, gridTemplateColumns: isMobile ? "1fr 60px 80px 55px" : "1fr 80px 100px 80px" }}>
                           <span>{t("pages.physicalWorkouts.repHeaderBlock")}</span>
                           <span>{t("pages.physicalWorkouts.repHeaderMeters")}</span>
                           <span>{t("pages.physicalWorkouts.repHeaderReps")}</span>
                           <span>{t("pages.physicalWorkouts.repHeaderRecovery")}</span>
                         </div>
                         {reference.reps.map((rep, i) => (
-                          <div key={i} style={pw.repRow}>
+                          <div key={i} style={{ ...pw.repRow, gridTemplateColumns: isMobile ? "1fr 60px 80px 55px" : "1fr 80px 100px 80px" }}>
                             <span style={{ fontWeight: 700 }}>{rep.label}</span>
                             <span style={{ color: "#38bdf8", fontWeight: 800 }}>{rep.meters}m</span>
                             <span style={{ color: "#cbd5e1" }}>{rep.reps} × {rep.sets}</span>

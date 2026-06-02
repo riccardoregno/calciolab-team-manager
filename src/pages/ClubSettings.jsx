@@ -200,7 +200,7 @@ export default function ClubSettings({
                   <div style={clubStyles.permissions}>
                     {["manageSessions", "managePlayers", "manageSponsors", "viewOwnProfile"].map((permission) => (
                       <Badge key={permission} tone={hasPermission(member.role, permission) ? "green" : "orange"}>
-                        {permission}
+                        {t(`pages.clubSettings.perm_${permission}`)}
                       </Badge>
                     ))}
                   </div>
