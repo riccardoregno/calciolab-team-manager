@@ -532,7 +532,7 @@ function Players({ players, setPlayers }) {
                   color: "#93c5fd", fontSize: 13, fontWeight: 700, cursor: "pointer",
                 }}
               >
-                + {t("pages.players.newPlayer")}
+                {t("pages.players.newPlayer")}
               </button>
             )
           }
