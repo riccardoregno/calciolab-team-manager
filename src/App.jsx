@@ -483,6 +483,8 @@ function App() {
             }
           >
             <Routes>
+              <Route path="/login" element={<Navigate to="/" replace />} />
+
               <Route
                 path="/"
                 element={
