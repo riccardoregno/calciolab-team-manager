@@ -56,14 +56,24 @@ export function loadLocalState() {
 }
 
 export function saveLocalState(state) {
-  try {
-    const previous = localStorage.getItem(STORAGE_KEY);
-    if (previous) {
-      localStorage.setItem(STORAGE_BACKUP_KEY, previous);
+  const normalized = normalizeAppState(state);
+  const serialized  = JSON.stringify(normalized);
+
+  function write() {
+    try {
+      const previous = localStorage.getItem(STORAGE_KEY);
+      if (previous) localStorage.setItem(STORAGE_BACKUP_KEY, previous);
+      localStorage.setItem(STORAGE_KEY, serialized);
+    } catch (error) {
+      if (import.meta.env.DEV) console.error("Errore salvataggio localStorage:", error);
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeAppState(state)));
-  } catch (error) {
-    if (import.meta.env.DEV) console.error("Errore salvataggio localStorage:", error);
+  }
+
+  // Write during browser idle time when available — falls back to sync write.
+  if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+    window.requestIdleCallback(write, { timeout: 2000 });
+  } else {
+    write();
   }
 }
 

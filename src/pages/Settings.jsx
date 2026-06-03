@@ -738,6 +738,7 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
   const [profile, setProfile] = useState({ ...DEFAULT_WORKSPACE_PROFILE, ...rawProfile });
   const [inviteForm, setInviteForm] = useState(() => loadInviteMemberDraft());
   const [showCustomPerms, setShowCustomPerms] = useState(false);
+  const [expandedMemberPerms, setExpandedMemberPerms] = useState({});
   const [inviteCopied, setInviteCopied] = useState(false);
   const [copiedInviteId, setCopiedInviteId] = useState("");
   const incomingProfileKey = JSON.stringify(rawProfile);
@@ -912,6 +913,18 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
       ...settings,
       members: currentMembers.map((m) =>
         String(m.id) === String(memberId) ? { ...m, role } : m
+      ),
+    });
+  }
+
+  function updateMemberArea(memberId, areaKey, level) {
+    const currentMembers = settings.members || [];
+    setAppSettings?.({
+      ...settings,
+      members: currentMembers.map((m) =>
+        String(m.id) === String(memberId)
+          ? { ...m, customAreas: { ...(m.customAreas || {}), [areaKey]: level } }
+          : m
       ),
     });
   }
@@ -1192,10 +1205,12 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
             </p>
             <div style={s.memberList}>
               {(settings.members || []).map((member) => (
+                <div key={member.id} style={{ display: "grid", gap: 0, borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <div
-                  key={member.id}
                   style={{
                     ...inviteStyles.memberRow,
+                    border: "none",
+                    borderRadius: 0,
                     ...(member.vip ? inviteStyles.memberRowVip : {}),
                   }}
                 >
@@ -1227,6 +1242,13 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
                   </select>
                   <button
                     type="button"
+                    onClick={() => setExpandedMemberPerms((prev) => ({ ...prev, [member.id]: !prev[member.id] }))}
+                    style={{ ...inviteStyles.copySmallBtn, whiteSpace: "nowrap" }}
+                  >
+                    {expandedMemberPerms[member.id] ? "▲ Permessi" : "▼ Permessi"}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => toggleMemberVip(member.id)}
                     title={member.vip ? "Rimuovi VIP" : "Assegna VIP"}
                     style={{
@@ -1243,7 +1265,41 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
                   >
                     {t("pages.settings.clubBtnRemove")}
                   </button>
-                </div>
+                </div>{/* end inner memberRow */}
+                {expandedMemberPerms[member.id] && (
+                  <div style={{ padding: "10px 14px 14px", borderTop: "1px solid rgba(255,255,255,0.07)", display: "grid", gap: 6 }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      {t("pages.settings.permCustomizeBtn").replace("🔧 ", "")}
+                    </p>
+                    {PERMISSION_AREAS.map((area) => {
+                      const val = (member.customAreas || {})[area.key] || "role";
+                      return (
+                        <div key={area.key} style={inviteStyles.permRow}>
+                          <span style={{ fontSize: 15, width: 22, textAlign: "center" }}>{area.icon}</span>
+                          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>
+                            {t(`pages.settings.permArea${area.key.charAt(0).toUpperCase()}${area.key.slice(1)}`)}
+                          </span>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            {["role", "view", "manage", "none"].map((level) => (
+                              <button
+                                key={level}
+                                type="button"
+                                onClick={() => updateMemberArea(member.id, area.key, level)}
+                                style={{
+                                  ...inviteStyles.permBtn,
+                                  ...(val === level ? inviteStyles.permBtnActive[level] || inviteStyles.permBtnActiveDefault : {}),
+                                }}
+                              >
+                                {t(AREA_ACCESS_LABEL_KEYS[level])}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                </div>{/* end outer wrapper */}
               ))}
             </div>
           </div>

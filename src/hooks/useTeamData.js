@@ -4,7 +4,19 @@ import {
   saveLocalState,
   saveTeamTablesState,
 } from "../services/teamData";
-import { normalizeAppState, normalizeSetPlays } from "../utils/helpers";
+import {
+  normalizeAppState,
+  normalizeAppSettings,
+  normalizeExercise,
+  normalizeGpsSession,
+  normalizeInjuryRecord,
+  normalizeMatch,
+  normalizePhysicalTest,
+  normalizePlayer,
+  normalizeSession,
+  normalizeSetPlays,
+  normalizeStaffTask,
+} from "../utils/helpers";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 
 export function useTeamData({ teamId } = {}) {
@@ -158,70 +170,68 @@ export function useTeamData({ teamId } = {}) {
   const actions = useMemo(
     () => ({
       setPlayers(players) {
-        setState((prev) => normalizeAppState({
-          ...prev,
-          players: typeof players === "function" ? players(prev.players) : players,
-        }));
+        setState((prev) => {
+          const raw = typeof players === "function" ? players(prev.players) : players;
+          return { ...prev, players: (raw || []).map(normalizePlayer) };
+        });
       },
       setExercises(exercises) {
-        setState((prev) => normalizeAppState({
-          ...prev,
-          exercises: typeof exercises === "function" ? exercises(prev.exercises) : exercises,
-        }));
+        setState((prev) => {
+          const raw = typeof exercises === "function" ? exercises(prev.exercises) : exercises;
+          return { ...prev, exercises: (raw || []).map(normalizeExercise) };
+        });
       },
       setSessions(sessions) {
-        setState((prev) => normalizeAppState({
-          ...prev,
-          sessions: typeof sessions === "function" ? sessions(prev.sessions) : sessions,
-        }));
+        setState((prev) => {
+          const raw = typeof sessions === "function" ? sessions(prev.sessions) : sessions;
+          return { ...prev, sessions: (raw || []).map(normalizeSession) };
+        });
       },
       setMatches(matches) {
-        setState((prev) => normalizeAppState({
-          ...prev,
-          matches: typeof matches === "function" ? matches(prev.matches) : matches,
-        }));
+        setState((prev) => {
+          const raw = typeof matches === "function" ? matches(prev.matches) : matches;
+          return { ...prev, matches: (raw || []).map(normalizeMatch) };
+        });
       },
       setPhysicalTests(physicalTests) {
-        setState((prev) => normalizeAppState({
-          ...prev,
-          physicalTests: typeof physicalTests === "function" ? physicalTests(prev.physicalTests) : physicalTests,
-        }));
+        setState((prev) => {
+          const raw = typeof physicalTests === "function" ? physicalTests(prev.physicalTests) : physicalTests;
+          return { ...prev, physicalTests: (raw || []).map(normalizePhysicalTest) };
+        });
       },
       setGpsSessions(gpsSessions) {
-        setState((prev) => normalizeAppState({
-          ...prev,
-          gpsSessions: typeof gpsSessions === "function" ? gpsSessions(prev.gpsSessions) : gpsSessions,
-        }));
+        setState((prev) => {
+          const raw = typeof gpsSessions === "function" ? gpsSessions(prev.gpsSessions) : gpsSessions;
+          return { ...prev, gpsSessions: (raw || []).map(normalizeGpsSession) };
+        });
       },
       setStaffTasks(staffTasks) {
-        setState((prev) => normalizeAppState({
-          ...prev,
-          staffTasks: typeof staffTasks === "function" ? staffTasks(prev.staffTasks) : staffTasks,
-        }));
+        setState((prev) => {
+          const raw = typeof staffTasks === "function" ? staffTasks(prev.staffTasks) : staffTasks;
+          return { ...prev, staffTasks: (raw || []).map(normalizeStaffTask) };
+        });
       },
       setInjuryRecords(injuryRecords) {
-        setState((prev) => normalizeAppState({
-          ...prev,
-          injuryRecords: typeof injuryRecords === "function" ? injuryRecords(prev.injuryRecords) : injuryRecords,
-        }));
+        setState((prev) => {
+          const raw = typeof injuryRecords === "function" ? injuryRecords(prev.injuryRecords) : injuryRecords;
+          return { ...prev, injuryRecords: (raw || []).map(normalizeInjuryRecord) };
+        });
       },
       setAppSettings(appSettings) {
-        setState((prev) => normalizeAppState({
-          ...prev,
-          appSettings: typeof appSettings === "function" ? appSettings(prev.appSettings) : appSettings,
-        }));
+        setState((prev) => {
+          const raw = typeof appSettings === "function" ? appSettings(prev.appSettings) : appSettings;
+          return { ...prev, appSettings: normalizeAppSettings(raw || {}) };
+        });
       },
       setSetPlays(setPlays) {
-        setState((prev) => normalizeAppState({
-          ...prev,
-          setPlays: normalizeSetPlays(typeof setPlays === "function" ? setPlays(prev.setPlays) : setPlays),
-        }));
+        setState((prev) => {
+          const raw = typeof setPlays === "function" ? setPlays(prev.setPlays) : setPlays;
+          return { ...prev, setPlays: normalizeSetPlays(raw || {}) };
+        });
       },
       setState(updater) {
         setState((prev) =>
-          normalizeAppState(
-            typeof updater === "function" ? updater(prev) : updater
-          )
+          normalizeAppState(typeof updater === "function" ? updater(prev) : updater)
         );
       },
     }),

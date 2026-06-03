@@ -280,11 +280,16 @@ function App() {
   // Push notifications — il hook usa useNavigate, quindi viene montato DENTRO BrowserRouter
   // tramite il componente PushNotificationHandler (vedi in fondo al return).
 
-  // Staff chat — solo per contare i non letti da mostrare nel badge sidebar.
-  // instanceId:"badge" garantisce un nome canale Supabase diverso da quello della pagina chat.
+  // Staff chat badge — delayed 4s after login to avoid blocking initial render.
+  const [chatBadgeReady, setChatBadgeReady] = useState(false);
+  useEffect(() => {
+    if (!auth.user?.id) return;
+    const t = window.setTimeout(() => setChatBadgeReady(true), 4000);
+    return () => window.clearTimeout(t);
+  }, [auth.user?.id]);
   const { unreadCount: chatUnread } = useStaffChat({
-    teamId:     auth.team?.id,
-    userId:     auth.user?.id,
+    teamId:     chatBadgeReady ? auth.team?.id : undefined,
+    userId:     chatBadgeReady ? auth.user?.id : undefined,
     authorName: profile ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() : "Coach",
     authorRole: auth.team?.role || previewAppSettings?.currentUserRole || "headCoach",
     instanceId: "badge",
