@@ -18,21 +18,34 @@ function withTimeout(promise, label) {
   });
 }
 
-function loadCachedTeam() {
+function loadCachedTeam(userId) {
   if (typeof window === "undefined") return null;
   try {
     const stored = window.localStorage.getItem(AUTH_TEAM_CACHE_KEY);
-    return stored ? JSON.parse(stored) : null;
+    if (!stored) return null;
+
+    const parsed = JSON.parse(stored);
+    if (parsed?.userId && parsed.userId === userId) {
+      return parsed.team || null;
+    }
+
+    // Legacy cache shape was the raw team object. Ignore it because it was not
+    // bound to the authenticated user and could leak a stale team across logins.
+    if (parsed?.id) {
+      window.localStorage.removeItem(AUTH_TEAM_CACHE_KEY);
+    }
+
+    return null;
   } catch {
     return null;
   }
 }
 
-function saveCachedTeam(team) {
+function saveCachedTeam(userId, team) {
   if (typeof window === "undefined") return;
   try {
-    if (team) {
-      window.localStorage.setItem(AUTH_TEAM_CACHE_KEY, JSON.stringify(team));
+    if (userId && team) {
+      window.localStorage.setItem(AUTH_TEAM_CACHE_KEY, JSON.stringify({ userId, team }));
     } else {
       window.localStorage.removeItem(AUTH_TEAM_CACHE_KEY);
     }
@@ -45,7 +58,7 @@ export function useAuth() {
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured);
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
-  const [team, setTeam] = useState(loadCachedTeam);
+  const [team, setTeam] = useState(null);
   const [authError, setAuthError] = useState(null);
   const [teamLoading, setTeamLoading] = useState(false);
 
@@ -65,10 +78,15 @@ export function useAuth() {
         if (!nextUser) {
           hydratedUserIdRef.current = null;
           setTeam(null);
-          saveCachedTeam(null);
+          saveCachedTeam(null, null);
           setAuthLoading(false);
           setTeamLoading(false);
           return;
+        }
+
+        const cachedTeam = loadCachedTeam(nextUser.id);
+        if (cachedTeam) {
+          setTeam(cachedTeam);
         }
 
         setAuthLoading(false);
@@ -85,7 +103,7 @@ export function useAuth() {
         // Così TOKEN_REFRESHED non può skippare un'idratazione ancora in corso.
         hydratedUserIdRef.current = nextUser.id;
         setTeam(ensuredTeam);
-        saveCachedTeam(ensuredTeam);
+        saveCachedTeam(nextUser.id, ensuredTeam);
         setAuthError(error?.message || null);
       } catch (error) {
         if (!active) return;

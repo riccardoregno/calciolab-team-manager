@@ -496,6 +496,13 @@ function hasArrayItems(value) {
 
 // ─── Sync singola tabella ──────────────────────────────────────────────────
 async function syncEntityTable(table, teamId, records) {
+  if (!Array.isArray(records) || records.length === 0) {
+    if (import.meta.env.DEV) {
+      console.warn(`[teamData] Delete remoto vuoto bloccato per ${table}: nessun record locale da sincronizzare.`);
+    }
+    return;
+  }
+
   const rows = records
     .map((record) => {
       const id = String(record.id);
@@ -521,6 +528,13 @@ async function syncEntityTable(table, teamId, records) {
   if (rows.length > 0) {
     const { error: upsertError } = await supabase.from(table).upsert(rows);
     if (upsertError) throw upsertError;
+  }
+
+  if (rows.length === 0) {
+    if (import.meta.env.DEV) {
+      console.warn(`[teamData] Delete remoto bloccato per ${table}: nessun ID valido dopo la normalizzazione.`);
+    }
+    return;
   }
 
   // FIX #7: usa solo ID validati nella lista delete per evitare injection PostgREST

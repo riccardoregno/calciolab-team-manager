@@ -22,6 +22,7 @@ export function useTeamData({ teamId } = {}) {
   const [storageSource, setStorageSource] = useState("local");
   const [storageError, setStorageError] = useState(null);
   const hydrated = useRef(false);
+  const remoteSyncReady = useRef(false);
 
   // Carica dati al mount / cambio team
   useEffect(() => {
@@ -30,6 +31,7 @@ export function useTeamData({ teamId } = {}) {
     // CRITICO: reset hydrated PRIMA del fetch — impedisce che il secondo useEffect
     // salvi lo stato del team precedente sul team nuovo durante la finestra di caricamento.
     hydrated.current = false;
+    remoteSyncReady.current = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
@@ -39,6 +41,7 @@ export function useTeamData({ teamId } = {}) {
       setState(loadedState);
       setStorageSource(source);
       setStorageError(error?.message || null);
+      remoteSyncReady.current = source === "supabase" && !error;
       hydrated.current = true;
       setLoading(false);
     });
@@ -58,6 +61,7 @@ export function useTeamData({ teamId } = {}) {
 
     // Supabase debounced
     if (!isSupabaseConfigured || !teamId) return;
+    if (!remoteSyncReady.current) return;
 
     const normalized = normalizeAppState(state);
     const timeoutId = window.setTimeout(async () => {

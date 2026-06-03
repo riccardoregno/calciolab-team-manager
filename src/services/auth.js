@@ -107,19 +107,18 @@ export async function ensureDefaultTeam(user) {
     }
   }
 
-  const teamSelect = "id, name, season, category, subscription_plan, subscription_status, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used, stripe_customer_id, stripe_subscription_id, onboarding_completed";
+  const teamSelect = "id, name, season, category, subscription_plan, subscription_status, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used, stripe_customer_id, stripe_subscription_id, onboarding_completed, created_at";
 
   const { data: memberships, error: membershipError } = await supabase
     .from("team_members")
     .select(`team_id, role, teams(${teamSelect})`)
-    .eq("user_id", user.id)
-    .limit(1);
+    .eq("user_id", user.id);
 
   if (membershipError) {
     return { team: null, error: membershipError };
   }
 
-  const existingMembership = memberships?.[0];
+  const existingMembership = await pickBestMembership(memberships || []);
 
   if (existingMembership?.teams) {
     return {
@@ -158,4 +157,48 @@ export async function ensureDefaultTeam(user) {
   }
 
   return { team: { ...team, role: "owner" } };
+}
+
+async function pickBestMembership(memberships) {
+  const validMemberships = memberships.filter((membership) => membership?.teams);
+  if (validMemberships.length <= 1) return validMemberships[0] || null;
+
+  const teamIds = validMemberships.map((membership) => membership.team_id).filter(Boolean);
+  const playerCounts = await getTeamPlayerCounts(teamIds);
+  const roleRank = { owner: 4, headCoach: 3, assistantCoach: 2, athleticTrainer: 2, director: 1 };
+
+  return [...validMemberships].sort((a, b) => {
+    const playersDiff = (playerCounts.get(b.team_id) || 0) - (playerCounts.get(a.team_id) || 0);
+    if (playersDiff !== 0) return playersDiff;
+
+    const roleDiff = (roleRank[b.role] || 0) - (roleRank[a.role] || 0);
+    if (roleDiff !== 0) return roleDiff;
+
+    return new Date(b.teams?.created_at || 0).getTime() - new Date(a.teams?.created_at || 0).getTime();
+  })[0];
+}
+
+async function getTeamPlayerCounts(teamIds) {
+  const counts = new Map();
+  teamIds.forEach((teamId) => counts.set(teamId, 0));
+
+  if (teamIds.length === 0) return counts;
+
+  const { data, error } = await supabase
+    .from("players")
+    .select("team_id")
+    .in("team_id", teamIds);
+
+  if (error) {
+    if (import.meta.env.DEV) {
+      console.warn("[auth] Conteggio giocatori team non disponibile:", error.message);
+    }
+    return counts;
+  }
+
+  (data || []).forEach((row) => {
+    counts.set(row.team_id, (counts.get(row.team_id) || 0) + 1);
+  });
+
+  return counts;
 }
