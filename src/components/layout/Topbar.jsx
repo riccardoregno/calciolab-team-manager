@@ -176,6 +176,8 @@ export default function Topbar({
       </div>
 
       <div style={styles.topbarActions}>
+        <LanguageSelector compact />
+
         <DevelopmentPlanSwitcher
           value={developmentPlanPreview}
           onChange={onDevelopmentPlanPreviewChange}
@@ -223,8 +225,6 @@ export default function Topbar({
           <span style={styles.topbarPlus}>+</span>
           {t("topbar.newSession")}
         </Link>
-
-        <LanguageSelector compact />
 
         <div style={{ position: "relative" }}>
           <button
