@@ -1349,6 +1349,7 @@ export const it = {
       clubBtnCancel: "Annulla",
       clubBtnRemove: "Rimuovi",
       clubModalTitle: "Invita un membro",
+      clubInviteNamePlaceholder: "Nome (opzionale)",
       clubBtnSendInvite: "Invia invito",
       // Notifications tab
       notifTitle: "Notifiche browser",

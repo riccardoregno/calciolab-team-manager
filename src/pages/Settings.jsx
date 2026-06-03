@@ -1322,7 +1322,7 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
                       return (
                         <div key={area.key} style={inviteStyles.permRow}>
                           <span style={{ fontSize: 15, width: 22, textAlign: "center" }}>{area.icon}</span>
-                          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{t(`pages.settings.permArea_${area.key}`)}</span>
+                          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{t(`pages.settings.permArea${area.key.charAt(0).toUpperCase()}${area.key.slice(1)}`)}</span>
                           <div style={{ display: "flex", gap: 4 }}>
                             {["role", "view", "manage", "none"].map((level) => (
                               <button
@@ -1887,6 +1887,8 @@ const inviteStyles = {
     borderRadius: 20,
     padding: 28,
     width: "min(500px, 100%)",
+    maxHeight: "90vh",
+    overflowY: "auto",
     boxShadow: "0 32px 80px rgba(0,0,0,0.5)",
   },
   rolePreview: {
