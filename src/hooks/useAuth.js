@@ -2,6 +2,21 @@ import { useEffect, useState } from "react";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { ensureDefaultTeam, getAuthSession, onAuthChange } from "../services/auth";
 
+const AUTH_REQUEST_TIMEOUT_MS = 10000;
+
+function withTimeout(promise, label) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(`${label}: timeout connessione Supabase`));
+    }, AUTH_REQUEST_TIMEOUT_MS);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    window.clearTimeout(timeoutId);
+  });
+}
+
 export function useAuth() {
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured);
   const [session, setSession] = useState(null);
@@ -18,26 +33,43 @@ export function useAuth() {
       setSession(nextSession);
       setUser(nextUser);
 
-      if (!nextUser) {
+      try {
+        if (!nextUser) {
+          setTeam(null);
+          setAuthLoading(false);
+          return;
+        }
+
+        const { team: ensuredTeam, error } = await withTimeout(
+          ensureDefaultTeam(nextUser),
+          "Team",
+        );
+
+        if (!active) return;
+
+        setTeam(ensuredTeam);
+        setAuthError(error?.message || null);
+      } catch (error) {
+        if (!active) return;
         setTeam(null);
-        setAuthLoading(false);
-        return;
+        setAuthError(error?.message || "Errore autenticazione Supabase");
+      } finally {
+        if (active) setAuthLoading(false);
       }
-
-      const { team: ensuredTeam, error } = await ensureDefaultTeam(nextUser);
-
-      if (!active) return;
-
-      setTeam(ensuredTeam);
-      setAuthError(error?.message || null);
-      setAuthLoading(false);
     }
 
-    getAuthSession().then(({ session: currentSession, user: currentUser, error }) => {
+    withTimeout(getAuthSession(), "Sessione").then(({ session: currentSession, user: currentUser, error }) => {
       if (!active) return;
 
       setAuthError(error?.message || null);
       hydrateAuth(currentUser, currentSession);
+    }).catch((error) => {
+      if (!active) return;
+      setSession(null);
+      setUser(null);
+      setTeam(null);
+      setAuthError(error?.message || "Errore autenticazione Supabase");
+      setAuthLoading(false);
     });
 
     const unsubscribe = onAuthChange(({ session: nextSession, user: nextUser }) => {
@@ -60,4 +92,3 @@ export function useAuth() {
     authError,
   };
 }
-
