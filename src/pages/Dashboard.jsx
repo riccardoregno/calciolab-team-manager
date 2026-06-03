@@ -1130,9 +1130,11 @@ function Dashboard({
                 justifyContent: "flex-end",
               }}
             >
-              <Button variant="ghost" onClick={() => navigate("/onboarding")}>
-                {t("pages.dashboard.onboarding")}
-              </Button>
+              {!settings.onboarding?.completed && (
+                <Button variant="ghost" onClick={() => navigate("/onboarding")}>
+                  {t("pages.dashboard.onboarding")}
+                </Button>
+              )}
 
               <Button onClick={() => navigate(setup.next?.path || "/settings")}>
                 {t("pages.dashboard.nextStep")}

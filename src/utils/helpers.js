@@ -885,14 +885,14 @@ export function getSetupProgress({
       labelKey: "common.setupChecks.workspace",
       label: "Configura squadra e obiettivo",
       done: Boolean(settings.workspaceProfile.teamName && settings.workspaceProfile.seasonGoal),
-      path: "/club-settings",
+      path: "/settings?tab=club",
     },
     {
       key: "members",
       labelKey: "common.setupChecks.members",
       label: "Invita staff o ruoli Club",
       done: settings.members.length > 0,
-      path: "/club-settings",
+      path: "/settings?tab=club&modal=invite-member",
     },
     {
       key: "players",
