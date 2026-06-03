@@ -232,16 +232,17 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
                     {/* Elimina (solo propri, non ottimistici) */}
                     {isOwn && !msg._optimistic && (
                       <button
+                        type="button"
                         onClick={() => handleDelete(msg.id)}
                         style={{
                           ...chatStyles.deleteBtn,
-                          color: deleteConfirm === msg.id ? "#f87171" : "#475569",
+                          ...(deleteConfirm === msg.id ? chatStyles.deleteBtnConfirm : {}),
                         }}
                         title={t("pages.staffChat.delete")}
                       >
                         {deleteConfirm === msg.id
                           ? t("pages.staffChat.confirmDelete")
-                          : "✕"}
+                          : t("pages.staffChat.delete")}
                       </button>
                     )}
                   </div>
@@ -361,14 +362,22 @@ const chatStyles = {
     wordBreak: "break-word",
   },
   deleteBtn: {
-    background: "none",
-    border: "none",
+    alignSelf: "flex-end",
+    background: "rgba(248,113,113,0.08)",
+    border: "1px solid rgba(248,113,113,0.18)",
+    borderRadius: 999,
+    color: "#fca5a5",
     cursor: "pointer",
     fontSize: 11,
-    fontWeight: 700,
-    padding: "2px 0",
-    marginTop: 4,
-    transition: "color 0.15s",
+    fontWeight: 800,
+    padding: "4px 9px",
+    marginTop: 7,
+    transition: "all 0.15s",
+  },
+  deleteBtnConfirm: {
+    background: "rgba(248,113,113,0.18)",
+    border: "1px solid rgba(248,113,113,0.42)",
+    color: "#fecaca",
   },
   inputBar: {
     display: "flex",
