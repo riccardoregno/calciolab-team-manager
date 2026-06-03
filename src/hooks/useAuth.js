@@ -64,6 +64,9 @@ export function useAuth() {
 
   // Traccia l'userId già idratato per skippare il team refetch su TOKEN_REFRESHED
   const hydratedUserIdRef = useRef(null);
+  // Timestamp dell'ultimo team fetch — usato per TTL-based refresh su visibilitychange
+  const lastTeamFetchAt = useRef(0);
+  const TEAM_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minuti
 
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
@@ -102,6 +105,7 @@ export function useAuth() {
         // Segna l'utente come completamente idratato SOLO dopo che il team è stato caricato.
         // Così TOKEN_REFRESHED non può skippare un'idratazione ancora in corso.
         hydratedUserIdRef.current = nextUser.id;
+        lastTeamFetchAt.current = Date.now();
         setTeam(ensuredTeam);
         saveCachedTeam(nextUser.id, ensuredTeam);
         setAuthError(error?.message || null);
@@ -128,6 +132,19 @@ export function useAuth() {
       setAuthLoading(false);
     });
 
+    // Refresh team non bloccante quando il tab torna visibile dopo TTL
+    function handleVisibilityChange() {
+      if (document.visibilityState !== "visible") return;
+      const userId = hydratedUserIdRef.current;
+      if (!userId) return;
+      if (Date.now() - lastTeamFetchAt.current < TEAM_CACHE_TTL_MS) return;
+      getAuthSession().then(({ user: freshUser, session: freshSession }) => {
+        if (!active || !freshUser || freshUser.id !== userId) return;
+        hydrateAuth(freshUser, freshSession);
+      }).catch(() => {});
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     const unsubscribe = onAuthChange(({ event, session: nextSession, user: nextUser }) => {
       // TOKEN_REFRESHED con lo stesso utente → aggiorna solo la sessione (nuovo JWT),
       // non ri-fetchare il team (evita re-render pesanti ogni volta che l'utente
@@ -147,6 +164,7 @@ export function useAuth() {
     return () => {
       active = false;
       unsubscribe();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 

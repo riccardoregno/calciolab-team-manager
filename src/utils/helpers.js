@@ -80,6 +80,13 @@ export function createId(prefix = "id"){
 }
 
 export function normalizePlayer(player){
+  // Fast-path: skip normalization if player already has all required fields
+  if (
+    player?._normalized === true &&
+    typeof player.id === "string" &&
+    Array.isArray(player.injuries)
+  ) return player;
+
   return {
     ...player,
     // FIX #12: ID sempre stringa — elimina type mismatch tra numeric initialData e UUID creati dall'utente
@@ -104,6 +111,7 @@ export function normalizePlayer(player){
     photoOffsetX: Math.min(50, Math.max(-50, Number(player.photoOffsetX || 0))),
     photoOffsetY: Math.min(50, Math.max(-50, Number(player.photoOffsetY || 0))),
     injuries: Array.isArray(player.injuries) ? player.injuries : [],
+    _normalized: true,
   };
 }
 

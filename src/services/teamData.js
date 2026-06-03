@@ -55,9 +55,13 @@ export function loadLocalState() {
   }
 }
 
+// Last serialized state — flushed synchronously on pagehide
+let _lastSerialized = null;
+
 export function saveLocalState(state) {
   const normalized = normalizeAppState(state);
   const serialized  = JSON.stringify(normalized);
+  _lastSerialized   = serialized;
 
   function write() {
     try {
@@ -75,6 +79,23 @@ export function saveLocalState(state) {
   } else {
     write();
   }
+}
+
+// Flush the latest state synchronously when the tab is about to be hidden/closed
+// so we never lose a pending requestIdleCallback write.
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => {
+    if (!_lastSerialized) return;
+    try {
+      const previous = localStorage.getItem(STORAGE_KEY);
+      if (previous && previous !== _lastSerialized) {
+        localStorage.setItem(STORAGE_BACKUP_KEY, previous);
+      }
+      localStorage.setItem(STORAGE_KEY, _lastSerialized);
+    } catch {
+      // Best-effort on pagehide
+    }
+  });
 }
 
 export async function loadRemoteState({ teamId } = {}) {

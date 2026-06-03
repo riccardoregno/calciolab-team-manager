@@ -161,21 +161,16 @@ function Dashboard({
   const settings = normalizeAppSettings(appSettings);
   const widgets = settings.dashboardWidgets;
   const currentRole = getCurrentUserRole(settings);
-  const reward = getCoachRewardProfile({
-    players,
-    exercises,
-    sessions,
-    matches,
-    physicalTests,
-  });
+  const reward = useMemo(() => getCoachRewardProfile({
+    players, exercises, sessions, matches, physicalTests,
+  }), [players, exercises, sessions, matches, physicalTests]);
+
   const plan = getSubscriptionPlan(settings);
-  const setup = getSetupProgress({
-    players,
-    exercises,
-    sessions,
-    matches,
-    appSettings: settings,
-  });
+
+  const setup = useMemo(() => getSetupProgress({
+    players, exercises, sessions, matches, appSettings: settings,
+  }), [players, exercises, sessions, matches, settings]);
+
   const billing = getBillingStatus(settings);
   const redeemedPromo = settings.redeemedPromo;
   const promoAccessActive = Boolean(
@@ -269,18 +264,10 @@ function Dashboard({
 
   const seasonRecord = getSeasonRecord(matches);
 
-  const baseCoachAlerts = getCoachAlerts({
-    players,
-    matches,
-    physicalTests,
-    sessions,
-    playerStatsMap,
-    t,
-  });
-  const coachAlerts = [
+  const coachAlerts = useMemo(() => [
     ...getMatchOperationalAlerts(nextMatch, t),
-    ...baseCoachAlerts,
-  ];
+    ...getCoachAlerts({ players, matches, physicalTests, sessions, playerStatsMap, t }),
+  ], [players, matches, physicalTests, sessions, playerStatsMap, nextMatch, t]);
 
   const sectionOrder = Array.isArray(settings.dashboardSectionOrder)
     ? settings.dashboardSectionOrder.filter((key) => DASHBOARD_SECTION_KEYS.includes(key))

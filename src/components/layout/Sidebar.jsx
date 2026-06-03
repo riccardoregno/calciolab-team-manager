@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { NavLink } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { getCurrentUserRole, isFeatureUnlocked, isRoleAllowed, normalizeAppSettings } from "../../utils/helpers";
@@ -184,10 +184,29 @@ export default function Sidebar({ appSettings = {}, chatUnread = 0 }) {
   );
 }
 
+const ROUTE_PREFETCH_MAP = {
+  "/":                  () => import("../../pages/Dashboard"),
+  "/players":           () => import("../../pages/Players"),
+  "/trainings":         () => import("../../pages/Trainings"),
+  "/matches":           () => import("../../pages/Matches"),
+  "/calendar":          () => import("../../pages/Calendar"),
+  "/physical-tests":    () => import("../../pages/PhysicalTests"),
+  "/physical-workouts": () => import("../../pages/PhysicalWorkouts"),
+  "/settings":          () => import("../../pages/Settings"),
+  "/staff-chat":        () => import("../../pages/StaffChat"),
+};
+
 function SidebarLink({ item, collapsed, locked, label, badge = 0 }) {
+  const prefetch = useCallback(() => {
+    const loader = ROUTE_PREFETCH_MAP[item.to];
+    if (loader) loader().catch(() => {});
+  }, [item.to]);
+
   return (
     <NavLink
       to={item.to}
+      onMouseEnter={prefetch}
+      onFocus={prefetch}
       title={collapsed ? label : undefined}
       style={({ isActive }) => ({
         ...sidebarStyles.link,

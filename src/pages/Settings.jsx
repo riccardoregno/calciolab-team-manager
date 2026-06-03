@@ -797,7 +797,7 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
 
   function generateInviteToken() {
     const token = createId("invite").replace("invite-", "");
-    setAppSettings?.({ ...settings, inviteToken: token });
+    setAppSettings?.((prev) => ({ ...normalizeAppSettings(prev), inviteToken: token }));
     return token;
   }
 
@@ -843,8 +843,10 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
       sentAt:      new Date().toISOString(),
       expiresAt:   getInviteExpiryDate(),
     };
-    const currentInvites = settings.pendingInvites || [];
-    setAppSettings?.({ ...settings, pendingInvites: [...currentInvites, pending] });
+    setAppSettings?.((prev) => {
+      const s = normalizeAppSettings(prev);
+      return { ...s, pendingInvites: [...(s.pendingInvites || []), pending] };
+    });
     setInviteForm(EMPTY_INVITE_FORM);
     setShowCustomPerms(false);
     clearInviteMemberDraft();
@@ -882,9 +884,17 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
   }
 
   function cancelInvite(id) {
-    const currentInvites = settings.pendingInvites || [];
-    setAppSettings?.({ ...settings, pendingInvites: currentInvites.filter((i) => i.id !== id) });
+    setAppSettings?.((prev) => {
+      const s = normalizeAppSettings(prev);
+      return { ...s, pendingInvites: (s.pendingInvites || []).filter((i) => i.id !== id) };
+    });
   }
+
+  // Filter out pending invites whose email already appears in active members
+  const memberEmails = new Set((settings.members || []).map((m) => m.email?.toLowerCase().trim()).filter(Boolean));
+  const visiblePendingInvites = (settings.pendingInvites || []).filter(
+    (inv) => !memberEmails.has((inv.email || "").toLowerCase().trim())
+  );
 
   // getSetupProgress è safe solo se helpers è caricato — usiamo try/catch per sicurezza
   let setup = { percent: 0, checks: [], completed: 0, total: 0, next: null };
@@ -895,7 +905,7 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
   }
 
   function saveProfile() {
-    setAppSettings?.({ ...settings, workspaceProfile: profile });
+    setAppSettings?.((prev) => ({ ...normalizeAppSettings(prev), workspaceProfile: profile }));
   }
 
   function handleClubLogoUpload(file) {
@@ -908,42 +918,36 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
   }
 
   function updateMemberRole(memberId, role) {
-    const currentMembers = settings.members || [];
-    setAppSettings?.({
-      ...settings,
-      members: currentMembers.map((m) =>
-        String(m.id) === String(memberId) ? { ...m, role } : m
-      ),
+    setAppSettings?.((prev) => {
+      const s = normalizeAppSettings(prev);
+      return { ...s, members: (s.members || []).map((m) => String(m.id) === String(memberId) ? { ...m, role } : m) };
     });
   }
 
   function updateMemberArea(memberId, areaKey, level) {
-    const currentMembers = settings.members || [];
-    setAppSettings?.({
-      ...settings,
-      members: currentMembers.map((m) =>
+    setAppSettings?.((prev) => {
+      const s = normalizeAppSettings(prev);
+      return { ...s, members: (s.members || []).map((m) =>
         String(m.id) === String(memberId)
           ? { ...m, customAreas: { ...(m.customAreas || {}), [areaKey]: level } }
           : m
-      ),
+      )};
     });
   }
 
   function removeMember(memberId) {
-    const currentMembers = settings.members || [];
-    setAppSettings?.({
-      ...settings,
-      members: currentMembers.filter((m) => String(m.id) !== String(memberId)),
+    setAppSettings?.((prev) => {
+      const s = normalizeAppSettings(prev);
+      return { ...s, members: (s.members || []).filter((m) => String(m.id) !== String(memberId)) };
     });
   }
 
   function toggleMemberVip(memberId) {
-    const currentMembers = settings.members || [];
-    setAppSettings?.({
-      ...settings,
-      members: currentMembers.map((m) =>
+    setAppSettings?.((prev) => {
+      const s = normalizeAppSettings(prev);
+      return { ...s, members: (s.members || []).map((m) =>
         String(m.id) === String(memberId) ? { ...m, vip: !m.vip } : m
-      ),
+      )};
     });
   }
 
@@ -1150,14 +1154,14 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
           </div>
         )}
 
-        {/* Inviti in attesa */}
-        {(settings.pendingInvites || []).length > 0 && (
+        {/* Inviti in attesa — già accettati filtrati automaticamente */}
+        {visiblePendingInvites.length > 0 && (
           <div style={{ marginTop: 16 }}>
             <p style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#64748b", margin: "0 0 10px", letterSpacing: 0.5 }}>
-              {t("pages.settings.clubPendingInvites", { count: (settings.pendingInvites || []).length })}
+              {t("pages.settings.clubPendingInvites", { count: visiblePendingInvites.length })}
             </p>
             <div style={{ display: "grid", gap: 8 }}>
-              {(settings.pendingInvites || []).map((inv) => {
+              {visiblePendingInvites.map((inv) => {
                 const expired = isInviteExpired(inv);
                 return (
                   <div key={inv.id} style={inviteStyles.inviteRow}>
@@ -1305,7 +1309,7 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
           </div>
         )}
 
-        {!(settings.members || []).length && !(settings.pendingInvites || []).length && (
+        {!(settings.members || []).length && !visiblePendingInvites.length && (
           <p style={{ color: "#475569", fontSize: 13, margin: "16px 0 0" }}>
             {t("pages.settings.clubNoMembers")}
           </p>
@@ -2192,7 +2196,10 @@ function NotificationsTab({ appSettings, setAppSettings, sessions = [], matches 
   const { supported, permission, requestPermission, notify } = useNotifications();
 
   function updateNotif(patch) {
-    setAppSettings?.({ ...settings, notifications: { ...notifSettings, ...patch } });
+    setAppSettings?.((prev) => {
+      const s = normalizeAppSettings(prev);
+      return { ...s, notifications: { ...(s.notifications || {}), ...patch } };
+    });
   }
 
   async function handleEnable() {
