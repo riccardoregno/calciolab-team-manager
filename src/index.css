@@ -169,6 +169,19 @@ textarea:focus-visible {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.page-spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.08);
+  border-top-color: #38bdf8;
+  animation: spin 0.65s linear infinite;
+}
+
 /* ── Utility classes mobile (sempre disponibili, attivate dai breakpoint sotto) ──── */
 .mobile-only  { display: none; }
 .mobile-stack {}

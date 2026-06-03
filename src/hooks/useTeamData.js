@@ -62,8 +62,13 @@ export function useTeamData({ teamId } = {}) {
     const normalized = normalizeAppState(state);
     const timeoutId = window.setTimeout(async () => {
       const result = await saveTeamTablesState(normalized, teamId);
-      setStorageSource(result.source);
-      setStorageError(result.error?.message || null);
+      // Aggiorna solo se il valore cambia — React esce comunque se uguale (Object.is),
+      // ma la forma funzionale evita closure stale e rende l'intento esplicito.
+      setStorageSource((prev) => result.source !== prev ? result.source : prev);
+      setStorageError((prev) => {
+        const next = result.error?.message || null;
+        return next !== prev ? next : prev;
+      });
     }, 300);
 
     return () => window.clearTimeout(timeoutId);

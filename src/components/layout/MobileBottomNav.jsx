@@ -13,7 +13,7 @@ const PRIMARY = [
 
 // ── Voci nel drawer "Altro" ───────────────────────────────────────
 const SECONDARY = [
-  { to: "/exercise-library", labelKey: "navigation.items.exerciseLibrary", icon: "📚" },
+  { to: "/exercises", labelKey: "navigation.items.exercises", icon: "📚" },
   { to: "/microcycle",       labelKey: "navigation.items.microcycle", icon: "🗓️" },
   { to: "/statistics",       labelKey: "navigation.items.statistics", icon: "📊" },
   { to: "/tactical-board",   labelKey: "navigation.items.tacticalBoard", icon: "🧠" },

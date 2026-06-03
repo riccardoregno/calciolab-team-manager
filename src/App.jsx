@@ -275,6 +275,21 @@ function App() {
     instanceId: "badge",
   });
 
+  // Prefetch chunk core dopo login: scarica in background i bundle JS più visitati
+  // così il primo clic sulla sidebar è istantaneo invece di mostrare il fallback Suspense.
+  // Deve stare PRIMA dei return condizionali per rispettare le Rules of Hooks.
+  useEffect(() => {
+    if (!auth.user?.id) return;
+    const timer = window.setTimeout(() => {
+      import("./pages/Dashboard").catch(() => {});
+      import("./pages/Players").catch(() => {});
+      import("./pages/Trainings").catch(() => {});
+      import("./pages/Matches").catch(() => {});
+      import("./pages/Calendar").catch(() => {});
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [auth.user?.id]);
+
   // Pagine pubbliche — accessibili senza autenticazione
   const _path = typeof window !== "undefined" ? window.location.pathname : "";
   if (_path === "/terms")                  return <BrowserRouter><Suspense fallback={null}><Terms /></Suspense></BrowserRouter>;
@@ -473,15 +488,7 @@ function App() {
           </div>
 
           <ErrorBoundary>
-          <Suspense
-            fallback={
-              <AppCard>
-                <p style={{ color: "#94a3b8", margin: 0 }}>
-                  {t("common.loadingView")}
-                </p>
-              </AppCard>
-            }
-          >
+          <Suspense fallback={<PageSpinner />}>
             <Routes>
               <Route path="/login" element={<Navigate to="/" replace />} />
 
@@ -945,6 +952,16 @@ function App() {
         }
       `}</style>
     </BrowserRouter>
+  );
+}
+
+// Fallback Suspense minimo: un piccolo spinner che non occupa spazio visivo.
+// Sostituisce l'<AppCard> con testo che sembrava un reload completo della pagina.
+function PageSpinner() {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 120, opacity: 0.4 }}>
+      <div className="page-spinner" />
+    </div>
   );
 }
 

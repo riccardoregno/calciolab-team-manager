@@ -22,8 +22,8 @@ export function onAuthChange(callback) {
     return () => {};
   }
 
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback({ session, user: session?.user || null });
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    callback({ event, session, user: session?.user || null });
   });
 
   return () => data.subscription.unsubscribe();

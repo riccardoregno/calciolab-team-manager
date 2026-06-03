@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { ensureDefaultTeam, getAuthSession, onAuthChange } from "../services/auth";
 
@@ -49,12 +49,16 @@ export function useAuth() {
   const [authError, setAuthError] = useState(null);
   const [teamLoading, setTeamLoading] = useState(false);
 
+  // Traccia l'userId già idratato per skippare il team refetch su TOKEN_REFRESHED
+  const hydratedUserIdRef = useRef(null);
+
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
 
     let active = true;
 
     async function hydrateAuth(nextUser, nextSession) {
+      hydratedUserIdRef.current = nextUser?.id || null;
       setSession(nextSession);
       setUser(nextUser);
 
@@ -103,7 +107,18 @@ export function useAuth() {
       setAuthLoading(false);
     });
 
-    const unsubscribe = onAuthChange(({ session: nextSession, user: nextUser }) => {
+    const unsubscribe = onAuthChange(({ event, session: nextSession, user: nextUser }) => {
+      // TOKEN_REFRESHED con lo stesso utente → aggiorna solo la sessione (nuovo JWT),
+      // non ri-fetchare il team (evita re-render pesanti ogni volta che l'utente
+      // torna al tab dopo ≥5 minuti o alla scadenza del token ~1h).
+      if (
+        event === "TOKEN_REFRESHED" &&
+        nextUser?.id &&
+        nextUser.id === hydratedUserIdRef.current
+      ) {
+        setSession(nextSession);
+        return;
+      }
       if (!nextUser) setAuthLoading(true);
       hydrateAuth(nextUser, nextSession);
     });
