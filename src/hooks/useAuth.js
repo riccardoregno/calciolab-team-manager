@@ -58,12 +58,12 @@ export function useAuth() {
     let active = true;
 
     async function hydrateAuth(nextUser, nextSession) {
-      hydratedUserIdRef.current = nextUser?.id || null;
       setSession(nextSession);
       setUser(nextUser);
 
       try {
         if (!nextUser) {
+          hydratedUserIdRef.current = null;
           setTeam(null);
           saveCachedTeam(null);
           setAuthLoading(false);
@@ -81,6 +81,9 @@ export function useAuth() {
 
         if (!active) return;
 
+        // Segna l'utente come completamente idratato SOLO dopo che il team è stato caricato.
+        // Così TOKEN_REFRESHED non può skippare un'idratazione ancora in corso.
+        hydratedUserIdRef.current = nextUser.id;
         setTeam(ensuredTeam);
         saveCachedTeam(ensuredTeam);
         setAuthError(error?.message || null);
