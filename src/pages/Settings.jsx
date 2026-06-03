@@ -1423,7 +1423,7 @@ function RedeemPromoCard({ appSettings = {}, setAppSettings }) {
           <span style={{ fontSize: 20 }}>✓</span>
           <div>
             <strong style={{ color: planColors[redeemed.plan] || "#22c55e" }}>
-              Codice <span style={{ fontFamily: "monospace", letterSpacing: 1 }}>{redeemed.code}</span> attivo — piano {redeemed.plan.toUpperCase()}
+              Accesso attivo — piano {redeemed.plan.toUpperCase()}
             </strong>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: "#64748b" }}>
               Riscattato il {new Date(redeemed.redeemedAt).toLocaleDateString("it-IT")}
@@ -1680,7 +1680,7 @@ function PromoCodesCard({ appSettings, setAppSettings }) {
             <span style={{ fontSize: 18 }}>✓</span>
             <div>
               <strong style={{ color: planColors[redeemed.plan] || "#22c55e" }}>
-                Codice {redeemed.code} attivo — piano {redeemed.plan.toUpperCase()}
+                Accesso attivo — piano {redeemed.plan.toUpperCase()}
               </strong>
               <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
                 Riscattato il {new Date(redeemed.redeemedAt).toLocaleDateString("it-IT")}
