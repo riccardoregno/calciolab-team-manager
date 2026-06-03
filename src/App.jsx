@@ -123,6 +123,18 @@ function extractRemoteSubscription(team) {
   };
 }
 
+function formatSyncAge(iso, t) {
+  if (!iso) return "";
+  const seconds = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  if (seconds < 10) return t("common.syncJustNow");
+  if (seconds < 60) return t("common.syncSecondsAgo", { count: seconds });
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return t("common.syncMinutesAgo", { count: minutes });
+  return t("common.syncAt", {
+    time: new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  });
+}
+
 function App() {
   const { t } = useTranslation();
   const auth = useAuth();
@@ -165,8 +177,11 @@ function App() {
   const {
     state,
     loading,
+    refreshing,
     storageSource,
     storageError,
+    lastSyncedAt,
+    refreshTeamData,
     setPlayers,
     setExercises,
     setSessions,
@@ -479,6 +494,27 @@ function App() {
                 ? t("common.syncPartial")
                 : `⚡ ${t("common.localSave")}`}
             </Badge>
+
+            {lastSyncedAt && storageSource === "supabase" && (
+              <span style={styles.storageStatusText}>
+                {formatSyncAge(lastSyncedAt, t)}
+              </span>
+            )}
+
+            {auth.team?.id && (
+              <button
+                type="button"
+                onClick={refreshTeamData}
+                disabled={refreshing || loading}
+                style={{
+                  ...styles.syncNowButton,
+                  opacity: refreshing || loading ? 0.55 : 1,
+                  cursor: refreshing || loading ? "not-allowed" : "pointer",
+                }}
+              >
+                {refreshing ? t("common.syncingNow") : t("common.syncNow")}
+              </button>
+            )}
 
             {storageError && storageSource !== "supabase" && (
               <span style={{ ...styles.storageStatusText, maxWidth: 320 }}>

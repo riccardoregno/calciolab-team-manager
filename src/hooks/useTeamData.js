@@ -19,8 +19,10 @@ export function useTeamData({ teamId } = {}) {
     injuryRecords: [],
   }));
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [storageSource, setStorageSource] = useState("local");
   const [storageError, setStorageError] = useState(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const hydrated = useRef(false);
   const remoteSyncReady = useRef(false);
   const skipNextRemoteSave = useRef(false);
@@ -31,8 +33,21 @@ export function useTeamData({ teamId } = {}) {
     setStorageError(error?.message || null);
     remoteSyncReady.current = source === "supabase" && !error;
     skipNextRemoteSave.current = source === "supabase" && !error;
+    if (source === "supabase" && !error) {
+      setLastSyncedAt(new Date().toISOString());
+    }
     hydrated.current = true;
   }, []);
+
+  const refreshTeamData = useCallback(async () => {
+    if (!isSupabaseConfigured || !teamId) return { source: "local" };
+
+    setRefreshing(true);
+    const result = await loadRemoteState({ teamId });
+    applyLoadedState(result);
+    setRefreshing(false);
+    return result;
+  }, [teamId, applyLoadedState]);
 
   // Carica dati al mount / cambio team
   useEffect(() => {
@@ -114,6 +129,9 @@ export function useTeamData({ teamId } = {}) {
     const normalized = normalizeAppState(state);
     const timeoutId = window.setTimeout(async () => {
       const result = await saveTeamTablesState(normalized, teamId);
+      if (result.source === "supabase" && !result.error) {
+        setLastSyncedAt(new Date().toISOString());
+      }
       // Aggiorna solo se il valore cambia — React esce comunque se uguale (Object.is),
       // ma la forma funzionale evita closure stale e rende l'intento esplicito.
       setStorageSource((prev) => result.source !== prev ? result.source : prev);
@@ -202,8 +220,11 @@ export function useTeamData({ teamId } = {}) {
   return {
     state,
     loading,
+    refreshing,
     storageSource,
     storageError,
+    lastSyncedAt,
+    refreshTeamData,
     teamId,
     ...actions,
   };

@@ -93,6 +93,16 @@ topbarProfileLogout: {
     fontWeight: 700,
   },
 
+  syncNowButton: {
+    border: "1px solid rgba(96,165,250,0.32)",
+    background: "rgba(37,99,235,0.12)",
+    color: "#bfdbfe",
+    borderRadius: 999,
+    padding: "4px 10px",
+    fontSize: 12,
+    fontWeight: 800,
+  },
+
   hero: {
     display: "flex",
     justifyContent: "space-between",
