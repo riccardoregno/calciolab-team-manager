@@ -19,6 +19,16 @@ import { createId, isBirthdayToday, getTeamAverageAge } from "../utils/helpers";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
 const PLAYER_MODAL_QUERY = "new-player";
+
+const PLAYER_ROLE_SUGGESTIONS = [
+  "Portiere",
+  "Terzino destro", "Terzino sinistro",
+  "Difensore centrale",
+  "Mediano", "Mezzala", "Regista",
+  "Trequartista",
+  "Ala destra", "Ala sinistra",
+  "Prima punta", "Seconda punta",
+];
 const NEW_PLAYER_DRAFT_KEY = "calciolab_new_player_draft_v1";
 
 function getEmptyPlayerForm(gruppoFilter = "tutti") {
@@ -139,13 +149,13 @@ function Players({ players, setPlayers }) {
     const r = role.toLowerCase().trim();
     if (!r) return null;
     if (r.includes("portiere") || r === "por" || r === "gk") return "P";
-    if (r.includes("difensore") || r.includes("terzino") || r.includes("libero") ||
+    if (r.includes("terzino") || r.includes("difensore") || r.includes("libero") ||
         r.includes("stopper") || r.includes("centrale") || r.includes("cb") ||
         r.includes("lb") || r.includes("rb") || r.includes("wb")) return "D";
-    if (r.includes("centrocampista") || r.includes("mezzala") || r.includes("mediano") ||
-        r.includes("regista") || r.includes("trequartista") || r.includes("tornante") ||
-        r.includes("mezz") || r.includes("cm") || r.includes("cdm") || r.includes("cam")) return "C";
-    if (r.includes("attaccante") || r.includes("punta") || r.includes("ala") ||
+    if (r.includes("mezzala") || r.includes("mediano") || r.includes("regista") ||
+        r.includes("trequartista") || r.includes("centrocampista") || r.includes("tornante") ||
+        r.includes("cm") || r.includes("cdm") || r.includes("cam")) return "C";
+    if (r.includes("ala") || r.includes("punta") || r.includes("attaccante") ||
         r.includes("bomber") || r.includes("esterno") || r.includes("seconda") ||
         r.includes("cf") || r.includes("lw") || r.includes("rw") || r.includes("st")) return "A";
     return null;
@@ -617,7 +627,12 @@ function Players({ players, setPlayers }) {
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
               style={styles.input}
+              list="player-roles-list"
+              autoComplete="off"
             />
+            <datalist id="player-roles-list">
+              {PLAYER_ROLE_SUGGESTIONS.map((r) => <option key={r} value={r} />)}
+            </datalist>
 
             <input
               type="date"
