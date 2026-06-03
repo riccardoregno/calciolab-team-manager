@@ -134,6 +134,32 @@ function Players({ players, setPlayers }) {
     return acc;
   }, {});
 
+  // Contatori per reparto (keyword-based — funziona anche con ruoli liberi)
+  function getRoleFamily(role = "") {
+    const r = role.toLowerCase().trim();
+    if (!r) return null;
+    if (r.includes("portiere") || r === "por" || r === "gk") return "P";
+    if (r.includes("difensore") || r.includes("terzino") || r.includes("libero") ||
+        r.includes("stopper") || r.includes("centrale") || r.includes("cb") ||
+        r.includes("lb") || r.includes("rb") || r.includes("wb")) return "D";
+    if (r.includes("centrocampista") || r.includes("mezzala") || r.includes("mediano") ||
+        r.includes("regista") || r.includes("trequartista") || r.includes("tornante") ||
+        r.includes("mezz") || r.includes("cm") || r.includes("cdm") || r.includes("cam")) return "C";
+    if (r.includes("attaccante") || r.includes("punta") || r.includes("ala") ||
+        r.includes("bomber") || r.includes("esterno") || r.includes("seconda") ||
+        r.includes("cf") || r.includes("lw") || r.includes("rw") || r.includes("st")) return "A";
+    return null;
+  }
+
+  const countByPosition = players.reduce(
+    (acc, p) => {
+      const family = getRoleFamily(p.role);
+      if (family) acc[family] = (acc[family] || 0) + 1;
+      return acc;
+    },
+    { P: 0, D: 0, C: 0, A: 0 }
+  );
+
   function handlePhotoUpload(file) {
     if (!file) return;
 
@@ -310,6 +336,10 @@ function Players({ players, setPlayers }) {
             {Object.entries(countByGroup).map(([g, n]) => (
               <MetricCard key={g} label={GROUP_LABELS[g] || g} value={n} />
             ))}
+            <MetricCard label={`🧤 ${t("pages.players.posGK")}`}  value={countByPosition.P} tone="slate" />
+            <MetricCard label={`🛡️ ${t("pages.players.posDEF")}`} value={countByPosition.D} tone="blue" />
+            <MetricCard label={`⚙️ ${t("pages.players.posMID")}`} value={countByPosition.C} tone="green" />
+            <MetricCard label={`⚡ ${t("pages.players.posFWD")}`} value={countByPosition.A} tone="orange" />
           </div>
 
           <div style={pStyles.searchWrap}>

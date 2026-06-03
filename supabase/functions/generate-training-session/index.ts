@@ -1,27 +1,51 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
+import { requireAuth } from "../_shared/requireAuth.ts";
+import { checkRateLimit, rateLimitedResponse } from "../_shared/rateLimit.ts";
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+// Rate limit: max 10 generazioni per utente ogni 10 minuti
+const AI_RL_MAX = 10;
+const AI_RL_WINDOW_MS = 10 * 60 * 1000;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...CORS, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: CORS });
   }
 
-  try {
-    if (!GEMINI_API_KEY) {
-      return new Response(JSON.stringify({ error: "GEMINI_API_KEY non configurata" }), {
-        status: 500,
-        headers: { ...CORS, "Content-Type": "application/json" },
-      });
-    }
+  if (!GEMINI_API_KEY) return json({ error: "GEMINI_API_KEY non configurata" }, 500);
 
-    const { prompt, exercises } = await req.json();
+  // Require authenticated user
+  const auth = await requireAuth(req);
+  if (auth.error) return json({ error: auth.error }, auth.status!);
+
+  // Rate limit per user
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rlKey = `ai-gen:${auth.user!.id}:${ip}`;
+  if (!checkRateLimit(rlKey, AI_RL_MAX, AI_RL_WINDOW_MS)) {
+    return rateLimitedResponse(rlKey, CORS);
+  }
+
+  try {
+    const body = await req.json().catch(() => ({}));
+    const { prompt, exercises } = body;
+
+    // Validate inputs
+    if (!prompt || typeof prompt !== "object") return json({ error: "prompt mancante o non valido" }, 400);
+    if (!Array.isArray(exercises))             return json({ error: "exercises deve essere un array" }, 400);
 
     const exerciseList = (exercises as Array<{ id: string; title: string; category?: string; phase?: string; objective?: string; duration?: number }>)
       .slice(0, 60)

@@ -179,11 +179,15 @@ async function loadTeamTablesState(teamId) {
     }
 
     // Carica appSettings e setPlays dalla colonna teams
-    const { data: teamRow } = await supabase
+    const { data: teamRow, error: teamRowError } = await supabase
       .from("teams")
       .select("settings, set_plays")
       .eq("id", teamId)
       .maybeSingle();
+
+    if (teamRowError) {
+      failures.push({ table: "teams.settings", error: teamRowError });
+    }
 
     const localState = loadLocalState();
     const remoteEntityState = Object.fromEntries(successfulEntries);
