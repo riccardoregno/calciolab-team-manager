@@ -1450,24 +1450,27 @@ function RedeemPromoCard({ appSettings = {}, setAppSettings }) {
       setFeedback({ ok: false, text: "Questo codice ha raggiunto il limite di utilizzi." });
       return;
     }
-    const updatedCodes = codes.map((c) =>
-      c.id === found.id ? { ...c, uses: c.uses + 1 } : c
-    );
-    setAppSettings?.({
-      ...settings,
-      promoCodes: updatedCodes,
-      redeemedPromo: {
-        code:       found.code,
-        plan:       found.plan,
-        permanent:  found.permanent,
-        expiresAt:  found.permanent ? null : (found.expiresAt || null),
-        redeemedAt: new Date().toISOString(),
-      },
-      subscription: {
-        ...settings.subscription,
-        plan:          found.plan,
-        billingStatus: "active",
-      },
+    const foundCode = found; // capture for closure
+    setAppSettings?.((prev) => {
+      const s = normalizeAppSettings(prev);
+      return {
+        ...s,
+        promoCodes: (s.promoCodes || []).map((c) =>
+          c.id === foundCode.id ? { ...c, uses: c.uses + 1 } : c
+        ),
+        redeemedPromo: {
+          code:       foundCode.code,
+          plan:       foundCode.plan,
+          permanent:  foundCode.permanent,
+          expiresAt:  foundCode.permanent ? null : (foundCode.expiresAt || null),
+          redeemedAt: new Date().toISOString(),
+        },
+        subscription: {
+          ...(s.subscription || {}),
+          plan:          foundCode.plan,
+          billingStatus: "active",
+        },
+      };
     });
     setFeedback({ ok: true, text: `✓ Codice applicato! Piano ${found.plan.toUpperCase()} attivato.` });
     setInput("");

@@ -158,9 +158,11 @@ function Dashboard({
   const [promoCheckedAt] = useState(() => Date.now());
   const isMobile = useIsMobile();
 
-  const settings = normalizeAppSettings(appSettings);
+  // Memoize settings so derived useMemo hooks don't re-run on every render
+  const settings = useMemo(() => normalizeAppSettings(appSettings), [appSettings]);
   const widgets = settings.dashboardWidgets;
   const currentRole = getCurrentUserRole(settings);
+
   const reward = useMemo(() => getCoachRewardProfile({
     players, exercises, sessions, matches, physicalTests,
   }), [players, exercises, sessions, matches, physicalTests]);

@@ -53,7 +53,7 @@ function Modal({ title, children, onClose }) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const titleId = "modal-title";
+  const titleId = useRef(`modal-title-${Math.random().toString(36).slice(2)}`).current;
 
   const overlayStyle = {
     position: "fixed",
@@ -93,7 +93,7 @@ function Modal({ title, children, onClose }) {
   };
 
   return (
-    <div style={overlayStyle} onClick={onClose} aria-hidden="true">
+    <div style={overlayStyle} onClick={onClose}>
       <div
         ref={panelRef}
         role="dialog"
