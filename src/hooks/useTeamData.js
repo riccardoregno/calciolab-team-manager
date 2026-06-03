@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   loadRemoteState,
   saveLocalState,
@@ -23,6 +23,16 @@ export function useTeamData({ teamId } = {}) {
   const [storageError, setStorageError] = useState(null);
   const hydrated = useRef(false);
   const remoteSyncReady = useRef(false);
+  const skipNextRemoteSave = useRef(false);
+
+  const applyLoadedState = useCallback(({ state: loadedState, source, error }) => {
+    setState(loadedState);
+    setStorageSource(source);
+    setStorageError(error?.message || null);
+    remoteSyncReady.current = source === "supabase" && !error;
+    skipNextRemoteSave.current = source === "supabase" && !error;
+    hydrated.current = true;
+  }, []);
 
   // Carica dati al mount / cambio team
   useEffect(() => {
@@ -32,24 +42,58 @@ export function useTeamData({ teamId } = {}) {
     // salvi lo stato del team precedente sul team nuovo durante la finestra di caricamento.
     hydrated.current = false;
     remoteSyncReady.current = false;
+    skipNextRemoteSave.current = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
-    loadRemoteState({ teamId }).then(({ state: loadedState, source, error }) => {
+    loadRemoteState({ teamId }).then((result) => {
       if (!active) return;
 
-      setState(loadedState);
-      setStorageSource(source);
-      setStorageError(error?.message || null);
-      remoteSyncReady.current = source === "supabase" && !error;
-      hydrated.current = true;
+      applyLoadedState(result);
       setLoading(false);
     });
 
     return () => {
       active = false;
     };
-  }, [teamId]);
+  }, [teamId, applyLoadedState]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !teamId) return undefined;
+
+    let active = true;
+    let refreshing = false;
+
+    async function refreshFromRemote() {
+      if (!active || refreshing) return;
+      refreshing = true;
+      const result = await loadRemoteState({ teamId });
+      if (active) applyLoadedState(result);
+      refreshing = false;
+    }
+
+    function handleVisibleRefresh() {
+      if (document.visibilityState === "visible") {
+        refreshFromRemote();
+      }
+    }
+
+    window.addEventListener("focus", refreshFromRemote);
+    document.addEventListener("visibilitychange", handleVisibleRefresh);
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        refreshFromRemote();
+      }
+    }, 30000);
+
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refreshFromRemote);
+      document.removeEventListener("visibilitychange", handleVisibleRefresh);
+      window.clearInterval(intervalId);
+    };
+  }, [teamId, applyLoadedState]);
 
   // Persistenza: localStorage IMMEDIATAMENTE (previene perdita dati su chiusura tab),
   // Supabase con debounce 300ms.
@@ -62,6 +106,10 @@ export function useTeamData({ teamId } = {}) {
     // Supabase debounced
     if (!isSupabaseConfigured || !teamId) return;
     if (!remoteSyncReady.current) return;
+    if (skipNextRemoteSave.current) {
+      skipNextRemoteSave.current = false;
+      return;
+    }
 
     const normalized = normalizeAppState(state);
     const timeoutId = window.setTimeout(async () => {
