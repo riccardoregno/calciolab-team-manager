@@ -94,6 +94,7 @@ export default function Settings({
   /* data props */
   appSettings = {},
   setAppSettings,
+  currentUserRole,
   players = [],
   exercises = [],
   sessions = [],
@@ -157,6 +158,7 @@ export default function Settings({
         <ClubTab
           appSettings={appSettings}
           setAppSettings={setAppSettings}
+          currentUserRole={currentUserRole}
           players={players}
           exercises={exercises}
           sessions={sessions}
@@ -726,7 +728,7 @@ function isInviteExpired(invite) {
   return Boolean(invite.expiresAt && new Date(invite.expiresAt).getTime() < Date.now());
 }
 
-function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], sessions = [], matches = [] }) {
+function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], exercises = [], sessions = [], matches = [] }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -1255,7 +1257,9 @@ function ClubTab({ appSettings, setAppSettings, players = [], exercises = [], se
       </AppCard>
 
       {/* ── Codici promo / accesso founder ── */}
-      <PromoCodesCard appSettings={appSettings} setAppSettings={setAppSettings} />
+      {currentUserRole === "owner" && (
+        <PromoCodesCard appSettings={appSettings} setAppSettings={setAppSettings} />
+      )}
 
       {/* ── Modale invito ── */}
       {inviteModal && (

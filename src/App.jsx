@@ -517,6 +517,7 @@ function App() {
                   storageSource={storageSource}
                   appSettings={previewAppSettings}
                   setAppSettings={setAppSettings}
+                  currentUserRole={auth.team?.role || null}
                   players={players}
                   exercises={exercises}
                   sessions={sessions}
