@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { ensureDefaultTeam, getAuthSession, onAuthChange } from "../services/auth";
 
 const AUTH_REQUEST_TIMEOUT_MS = 10000;
+const AUTH_TEAM_CACHE_KEY = "calciolab_auth_team_cache_v1";
 
 function withTimeout(promise, label) {
   let timeoutId;
@@ -17,12 +18,36 @@ function withTimeout(promise, label) {
   });
 }
 
+function loadCachedTeam() {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = window.localStorage.getItem(AUTH_TEAM_CACHE_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedTeam(team) {
+  if (typeof window === "undefined") return;
+  try {
+    if (team) {
+      window.localStorage.setItem(AUTH_TEAM_CACHE_KEY, JSON.stringify(team));
+    } else {
+      window.localStorage.removeItem(AUTH_TEAM_CACHE_KEY);
+    }
+  } catch {
+    // Cache solo UX: se fallisce, il flusso auth resta valido.
+  }
+}
+
 export function useAuth() {
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured);
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
-  const [team, setTeam] = useState(null);
+  const [team, setTeam] = useState(loadCachedTeam);
   const [authError, setAuthError] = useState(null);
+  const [teamLoading, setTeamLoading] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
@@ -36,9 +61,14 @@ export function useAuth() {
       try {
         if (!nextUser) {
           setTeam(null);
+          saveCachedTeam(null);
           setAuthLoading(false);
+          setTeamLoading(false);
           return;
         }
+
+        setAuthLoading(false);
+        setTeamLoading(true);
 
         const { team: ensuredTeam, error } = await withTimeout(
           ensureDefaultTeam(nextUser),
@@ -48,13 +78,14 @@ export function useAuth() {
         if (!active) return;
 
         setTeam(ensuredTeam);
+        saveCachedTeam(ensuredTeam);
         setAuthError(error?.message || null);
       } catch (error) {
         if (!active) return;
-        setTeam(null);
         setAuthError(error?.message || "Errore autenticazione Supabase");
       } finally {
         if (active) setAuthLoading(false);
+        if (active) setTeamLoading(false);
       }
     }
 
@@ -73,7 +104,7 @@ export function useAuth() {
     });
 
     const unsubscribe = onAuthChange(({ session: nextSession, user: nextUser }) => {
-      setAuthLoading(true);
+      if (!nextUser) setAuthLoading(true);
       hydrateAuth(nextUser, nextSession);
     });
 
@@ -90,5 +121,6 @@ export function useAuth() {
     user,
     team,
     authError,
+    teamLoading,
   };
 }
