@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Badge from "../components/ui/Badge";
-import { normalizeAppSettings } from "../utils/helpers";
+import { createId, normalizeAppSettings } from "../utils/helpers";
 import { supabase } from "../lib/supabaseClient";
 import { useTranslation } from "../i18n";
 
@@ -76,7 +76,7 @@ function recommendPlan(modules) {
 export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
   const { t }     = useTranslation();
   const navigate  = useNavigate();
-  const settings  = normalizeAppSettings(appSettings) || {};
+  const settings  = useMemo(() => normalizeAppSettings(appSettings) || {}, [appSettings]);
   const stepLabels = [
     t("pages.onboarding.whoCareYou"),
     t("pages.onboarding.yourClub"),
@@ -122,10 +122,17 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
       .eq("id", team.id)
       .maybeSingle()
       .then(({ data }) => {
-        setInviteToken(data?.settings?.inviteToken || "");
+        const remoteToken = data?.settings?.inviteToken || "";
+        if (remoteToken) {
+          setInviteToken(remoteToken);
+          return;
+        }
+        const token = createId("invite").replace("invite-", "");
+        setInviteToken(token);
+        setAppSettings?.({ ...settings, inviteToken: token });
       })
       .catch(() => setInviteToken(""));
-  }, [step, team?.id, inviteToken]);
+  }, [step, team?.id, inviteToken, setAppSettings, settings]);
 
   function toggleModule(id) {
     const modules = form.modules.includes(id)
@@ -243,6 +250,8 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
         {!showSuccess && step === 4 && (
           <Step4
             form={form}
+            appSettings={settings}
+            setAppSettings={setAppSettings}
             team={team}
             inviteToken={inviteToken}
             onBack={() => setStep(3)}
@@ -564,8 +573,9 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
 // ─────────────────────────────────────────────
 // Step 4 — Invita il tuo staff
 // ─────────────────────────────────────────────
-function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile }) {
+function Step4({ form, appSettings, setAppSettings, team: _team, inviteToken, onBack, onComplete, isMobile }) {
   const { t } = useTranslation();
+  const settings = normalizeAppSettings(appSettings) || {};
   const [emails, setEmails]         = useState([]);
   const [inputEmail, setInputEmail] = useState("");
   const [inputRole, setInputRole]   = useState("assistantCoach");
@@ -599,6 +609,31 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
     if (!emails.length) { onComplete(); return; }
     setSending(true);
     try {
+      const sentAt = new Date().toISOString();
+      const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString();
+      const currentInvites = settings.pendingInvites || [];
+      const existingEmails = new Set(currentInvites.map((invite) => String(invite.email || "").trim().toLowerCase()));
+      const pendingInvites = emails
+        .filter((inv) => !existingEmails.has(inv.email))
+        .map((inv) => ({
+          id: createId("invite"),
+          name: "",
+          email: inv.email,
+          role: inv.role,
+          customAreas: {},
+          status: "request_sent",
+          token: inviteToken || "",
+          sentAt,
+          expiresAt,
+        }));
+
+      if (pendingInvites.length) {
+        setAppSettings?.({
+          ...settings,
+          pendingInvites: [...currentInvites, ...pendingInvites],
+        });
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token || "";
 
@@ -627,6 +662,7 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
         )
       );
       setSentCount(emails.length);
+      setEmails((current) => current.map((inv) => ({ ...inv, sent: true })));
     } finally {
       setSending(false);
       setTimeout(() => onComplete(), 1400);
@@ -735,6 +771,11 @@ function Step4({ form, team: _team, inviteToken, onBack, onComplete, isMobile })
                 }}>
                   {INVITE_ROLES.some((r) => r.id === inv.role) ? t(`pages.onboarding.inviteRole_${inv.role}`) : inv.role}
                 </span>
+                {inv.sent && (
+                  <span style={ob.inviteStatusSent}>
+                    {t("pages.onboarding.inviteRequestSent")}
+                  </span>
+                )}
                 <button
                   onClick={() => setEmails(emails.filter((e) => e.email !== inv.email))}
                   style={{
@@ -1112,6 +1153,16 @@ const ob = {
     border: "none", borderRadius: 12, padding: "12px 28px",
     color: "white", fontWeight: 800, fontSize: 15,
     boxShadow: "0 8px 24px rgba(37,99,235,0.35)",
+  },
+  inviteStatusSent: {
+    fontSize: 11,
+    fontWeight: 800,
+    color: "#86efac",
+    background: "rgba(34,197,94,0.12)",
+    border: "1px solid rgba(34,197,94,0.24)",
+    borderRadius: 99,
+    padding: "2px 8px",
+    whiteSpace: "nowrap",
   },
   completeBtn: {
     background: "linear-gradient(135deg, #059669, #047857)",

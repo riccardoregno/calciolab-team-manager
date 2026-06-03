@@ -1152,7 +1152,7 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <strong style={{ fontSize: 13 }}>{inv.name || inv.email}</strong>
                         <Badge tone="orange">{memberRoles[inv.role]?.label || inv.role}</Badge>
-                        <Badge tone={expired ? "red" : "blue"}>{expired ? "Scaduto" : "In attesa"}</Badge>
+                        <Badge tone={expired ? "red" : "blue"}>{expired ? t("pages.settings.clubInviteExpired") : t("pages.settings.clubInviteRequestSent")}</Badge>
                       </div>
                       <p style={{ color: "#64748b", margin: "3px 0 0", fontSize: 12 }}>{inv.email}</p>
                       <p style={{ color: "#475569", margin: "3px 0 0", fontSize: 11 }}>
