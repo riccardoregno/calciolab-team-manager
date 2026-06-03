@@ -166,6 +166,11 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
 
   // Step 2: marks onboarding done on Supabase + local, then navigates
   async function finalize(path = "/") {
+    // Always mark locally first — this survives even if Supabase fails
+    setAppSettings?.((prev) => ({
+      ...normalizeAppSettings(prev),
+      onboarding: { completed: true, completedAt: new Date().toISOString(), currentStep: 3 },
+    }));
     try {
       if (team?.id) {
         await supabase
@@ -176,14 +181,10 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
           })
           .eq("id", team.id);
       }
-      setAppSettings?.((prev) => ({
-        ...normalizeAppSettings(prev),
-        onboarding: { completed: true, completedAt: new Date().toISOString(), currentStep: 3 },
-      }));
-      navigate(path);
     } catch {
-      navigate(path);
+      // Local state already saved above — Supabase will sync on next load
     }
+    navigate(path);
   }
 
   const layoutStyle = isMobile

@@ -26,10 +26,10 @@ const EMAIL_RL_WINDOW_MS = 10 * 60 * 1000; // 10 min
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const RESEND_API_KEY    = Deno.env.get("RESEND_API_KEY") ?? "";
-const FROM_EMAIL        = Deno.env.get("EMAIL_FROM") ?? "CalcioLab <noreply@calciolab.it>";
+const FROM_EMAIL        = Deno.env.get("EMAIL_FROM") ?? "CalcioLab <noreply@calciolab.org>";
 const INTERNAL_SECRET   = Deno.env.get("SEND_EMAIL_SECRET") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const APP_URL           = "https://calciolab.it";
+const APP_URL           = Deno.env.get("APP_URL") ?? "https://calciolab.org";
 
 const CORS = {
   "Access-Control-Allow-Origin":  "*",
