@@ -6,6 +6,24 @@ const LAST_SEEN_KEY = (teamId, userId) =>
 
 const PAGE_SIZE = 60;
 
+function flattenPresenceState(state = {}) {
+  const byUser = new Map();
+
+  Object.values(state).flat().forEach((presence) => {
+    if (!presence?.user_id) return;
+    const existing = byUser.get(presence.user_id);
+    const existingSeen = existing?.last_seen_at ? new Date(existing.last_seen_at).getTime() : 0;
+    const nextSeen = presence.last_seen_at ? new Date(presence.last_seen_at).getTime() : 0;
+    if (!existing || nextSeen >= existingSeen) {
+      byUser.set(presence.user_id, presence);
+    }
+  });
+
+  return Array.from(byUser.values()).sort((a, b) =>
+    String(a.author_name || "").localeCompare(String(b.author_name || ""))
+  );
+}
+
 /**
  * useStaffChat — gestisce messaggi real-time della chat staff.
  *
@@ -32,6 +50,9 @@ export function useStaffChat({ teamId, userId, authorName = "", authorRole = "he
   const [loading, setLoading]       = useState(supported);
   const [sending, setSending]       = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const channelRef = useRef(null);
+  const shouldTrackPresence = instanceId === "main";
 
   // lastSeen è il timestamp ISO dell'ultima visita alla chat
   const lastSeenRef = useRef(
@@ -48,6 +69,14 @@ export function useStaffChat({ teamId, userId, authorName = "", authorRole = "he
       (m) => m.user_id !== userId && new Date(m.created_at).getTime() > last
     ).length;
   }
+
+  const buildPresencePayload = useCallback((lastSeenAt = lastSeenRef.current) => ({
+    user_id:      userId,
+    author_name:  authorName || "Staff",
+    author_role:  authorRole,
+    online_at:    new Date().toISOString(),
+    last_seen_at: lastSeenAt || new Date().toISOString(),
+  }), [userId, authorName, authorRole]);
 
   // --- Caricamento iniziale ---
   useEffect(() => {
@@ -114,14 +143,27 @@ export function useStaffChat({ teamId, userId, authorName = "", authorRole = "he
           setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
         }
       )
-      .subscribe();
+      .on("presence", { event: "sync" }, () => {
+        if (!shouldTrackPresence) return;
+        setOnlineUsers(flattenPresenceState(channel.presenceState()));
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED" && shouldTrackPresence) {
+          channel.track(buildPresencePayload());
+        }
+      });
+      channelRef.current = channel;
     } catch (err) {
       if (import.meta.env.DEV) console.warn("[useStaffChat] Realtime subscription failed:", err);
     }
 
-    return () => { if (channel) supabase.removeChannel(channel); };
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+      if (channelRef.current === channel) channelRef.current = null;
+      setOnlineUsers([]);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supported, teamId]);
+  }, [supported, teamId, instanceId, shouldTrackPresence, buildPresencePayload]);
 
   // --- Invia messaggio ---
   const sendMessage = useCallback(async (content) => {
@@ -202,11 +244,15 @@ export function useStaffChat({ teamId, userId, authorName = "", authorRole = "he
       window.localStorage.setItem(LAST_SEEN_KEY(teamId, userId), now);
     }
     setUnreadCount(0);
-  }, [teamId, userId]);
+    if (shouldTrackPresence) {
+      channelRef.current?.track(buildPresencePayload(now));
+    }
+  }, [teamId, userId, shouldTrackPresence, buildPresencePayload]);
 
   return {
     supported,
     messages,
+    onlineUsers,
     loading,
     sending,
     unreadCount,

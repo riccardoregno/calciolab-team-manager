@@ -74,6 +74,7 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
   const {
     supported,
     messages,
+    onlineUsers,
     loading,
     sending,
     sendMessage,
@@ -90,6 +91,10 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
   useEffect(() => {
     markSeen();
   }, [markSeen]);
+
+  useEffect(() => {
+    if (messages.length > 0) markSeen();
+  }, [messages.length, markSeen]);
 
   // Scroll in fondo a ogni nuovo messaggio
   useEffect(() => {
@@ -124,6 +129,16 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
   const groups = groupByDate(messages);
   const today     = t("pages.staffChat.today");
   const yesterday = t("pages.staffChat.yesterday");
+  const collaboratorsOnline = onlineUsers.filter((person) => person.user_id !== userId);
+
+  function getReadBy(msg) {
+    if (!msg?.created_at) return [];
+    const createdAt = new Date(msg.created_at).getTime();
+    return collaboratorsOnline.filter((person) => {
+      const seenAt = person.last_seen_at ? new Date(person.last_seen_at).getTime() : 0;
+      return seenAt >= createdAt;
+    });
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: isMobile ? "calc(100vh - 120px)" : "calc(100vh - 90px)", gap: 0 }}>
@@ -140,6 +155,27 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
         </AppCard>
       ) : (
         <div style={chatStyles.shell}>
+          <div style={chatStyles.presenceBar}>
+            <div style={chatStyles.presenceTitle}>
+              <span style={chatStyles.onlineDot} />
+              <span>{t("pages.staffChat.onlineNow")}</span>
+            </div>
+            {collaboratorsOnline.length > 0 ? (
+              <div style={chatStyles.presenceList}>
+                {collaboratorsOnline.map((person) => (
+                  <span key={person.user_id} style={chatStyles.presenceChip}>
+                    <span style={chatStyles.presenceAvatar}>
+                      {(person.author_name?.[0] || "?").toUpperCase()}
+                    </span>
+                    {person.author_name || t("pages.staffChat.collaborator")}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span style={chatStyles.presenceEmpty}>{t("pages.staffChat.noOneOnline")}</span>
+            )}
+          </div>
+
           {/* Lista messaggi */}
           <div style={chatStyles.messageList}>
             {loading && (
@@ -172,6 +208,7 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
 
               const { msg } = item;
               const isOwn = msg.user_id === userId;
+              const readBy = isOwn && !msg._optimistic ? getReadBy(msg) : [];
 
               return (
                 <div
@@ -228,6 +265,14 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
 
                     {/* Testo */}
                     <p style={chatStyles.bubbleText}>{msg.content}</p>
+
+                    {readBy.length > 0 && (
+                      <p style={chatStyles.readByText}>
+                        {"✓✓ "}
+                        {t("pages.staffChat.readBy")}{" "}
+                        {readBy.map((person) => person.author_name || t("pages.staffChat.collaborator")).join(", ")}
+                      </p>
+                    )}
 
                     {/* Elimina (solo propri, non ottimistici) */}
                     {isOwn && !msg._optimistic && (
@@ -293,6 +338,66 @@ const chatStyles = {
     border: "1px solid rgba(255,255,255,0.08)",
     borderRadius: 20,
     overflow: "hidden",
+  },
+  presenceBar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: "10px 16px",
+    borderBottom: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.035)",
+    flexWrap: "wrap",
+  },
+  presenceTitle: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    color: "#94a3b8",
+    fontSize: 12,
+    fontWeight: 800,
+    textTransform: "uppercase",
+  },
+  onlineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: "#22c55e",
+    boxShadow: "0 0 0 4px rgba(34,197,94,0.12)",
+  },
+  presenceList: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  presenceChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 7,
+    padding: "5px 10px 5px 6px",
+    borderRadius: 999,
+    background: "rgba(34,197,94,0.1)",
+    border: "1px solid rgba(34,197,94,0.24)",
+    color: "#bbf7d0",
+    fontSize: 12,
+    fontWeight: 800,
+  },
+  presenceAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 999,
+    display: "inline-grid",
+    placeItems: "center",
+    background: "rgba(34,197,94,0.2)",
+    color: "#dcfce7",
+    fontSize: 11,
+    fontWeight: 900,
+  },
+  presenceEmpty: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: 700,
   },
   messageList: {
     flex: 1,
@@ -360,6 +465,13 @@ const chatStyles = {
     lineHeight: 1.5,
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
+  },
+  readByText: {
+    margin: "7px 0 0",
+    color: "#7dd3fc",
+    fontSize: 11,
+    fontWeight: 800,
+    textAlign: "right",
   },
   deleteBtn: {
     alignSelf: "flex-end",
