@@ -26,6 +26,9 @@ export function useTeamData({ teamId } = {}) {
   const hydrated = useRef(false);
   const remoteSyncReady = useRef(false);
   const skipNextRemoteSave = useRef(false);
+  // Tracks in-flight debounced saves — remote refresh is blocked while > 0
+  // to prevent stale Supabase state from overwriting unsaved local changes.
+  const pendingSaveCount = useRef(0);
 
   const applyLoadedState = useCallback(({ state: loadedState, source, error }) => {
     setState(loadedState);
@@ -81,6 +84,9 @@ export function useTeamData({ teamId } = {}) {
 
     async function refreshFromRemote() {
       if (!active || refreshing) return;
+      // Skip refresh while a debounced Supabase save is pending — the local
+      // state is newer than what remote would return.
+      if (pendingSaveCount.current > 0) return;
       refreshing = true;
       const result = await loadRemoteState({ teamId });
       if (active) applyLoadedState(result);
@@ -127,8 +133,10 @@ export function useTeamData({ teamId } = {}) {
     }
 
     const normalized = normalizeAppState(state);
+    pendingSaveCount.current += 1;
     const timeoutId = window.setTimeout(async () => {
       const result = await saveTeamTablesState(normalized, teamId);
+      pendingSaveCount.current = Math.max(0, pendingSaveCount.current - 1);
       if (result.source === "supabase" && !result.error) {
         setLastSyncedAt(new Date().toISOString());
       }
@@ -141,7 +149,10 @@ export function useTeamData({ teamId } = {}) {
       });
     }, 300);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      window.clearTimeout(timeoutId);
+      pendingSaveCount.current = Math.max(0, pendingSaveCount.current - 1);
+    };
   }, [state, teamId]);
 
   const actions = useMemo(

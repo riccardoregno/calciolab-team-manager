@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getVipLevel, getVipProgress, getVipReward } from "../_shared/vip.ts";
 import { sendLevelUpgradeEmail, sendVipRewardEmail } from "../_shared/vipEmail.ts";
+import { requireAuth } from "../_shared/requireAuth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,11 +25,25 @@ Deno.serve(async (req) => {
       metadata = {},
     } = await req.json();
 
-    if (!teamId) {
-      throw new Error("teamId mancante");
+    if (!teamId) throw new Error("teamId mancante");
+
+    // Verify caller — allow owner/headCoach or internal service calls
+    const auth = await requireAuth(req, teamId, ["owner", "headCoach", "director"]);
+    if (auth.error) {
+      return new Response(JSON.stringify({ success: false, error: auth.error }), {
+        status: auth.status!,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const pointsDelta = Number(pointsToAdd || 0);
+    // Clamp points to prevent abuse from frontend calls — server-side events
+    // (Stripe webhook, check-trials) use the internal secret and are unrestricted
+    const isInternal = auth.role === "owner" && auth.user?.id === "internal";
+    const safePointsToAdd = isInternal
+      ? Number(pointsToAdd || 0)
+      : Math.min(1000, Math.max(-1000, Number(pointsToAdd || 0)));
+
+    const pointsDelta = safePointsToAdd;
     const eventSource = String(source || "manual");
     const eventExternalId = externalId
       ? String(externalId)
