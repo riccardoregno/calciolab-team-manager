@@ -443,6 +443,8 @@ export const it = {
       noFilterResults: "Nessun giocatore trovato",
       noFilterResultsText: "Nessun giocatore corrisponde ai filtri selezionati.",
       photoSize: "Dimensione foto {{value}}%",
+      photoOffsetX: "Posizione orizzontale {{value}}",
+      photoOffsetY: "Posizione verticale {{value}}",
     },
     matches: {
       title: "Partite",

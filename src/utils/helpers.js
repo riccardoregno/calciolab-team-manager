@@ -100,7 +100,9 @@ export function normalizePlayer(player){
     ratings: player.ratings || {},
     gruppo: player.gruppo || "prima",
     photo: player.photo || "",
-    photoSize: Math.min(180, Math.max(60, Number(player.photoSize || 100))),
+    photoSize:    Math.min(180, Math.max(60, Number(player.photoSize || 100))),
+    photoOffsetX: Math.min(50, Math.max(-50, Number(player.photoOffsetX || 0))),
+    photoOffsetY: Math.min(50, Math.max(-50, Number(player.photoOffsetY || 0))),
     injuries: Array.isArray(player.injuries) ? player.injuries : [],
   };
 }

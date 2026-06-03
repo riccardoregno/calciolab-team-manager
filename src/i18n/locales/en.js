@@ -443,6 +443,8 @@ export const en = {
       noFilterResults: "No players found",
       noFilterResultsText: "No player matches the selected filters.",
       photoSize: "Photo size {{value}}%",
+      photoOffsetX: "Horizontal position {{value}}",
+      photoOffsetY: "Vertical position {{value}}",
     },
     matches: {
       title: "Matches",

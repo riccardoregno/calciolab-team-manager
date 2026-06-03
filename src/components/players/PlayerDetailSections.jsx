@@ -23,9 +23,11 @@ function formatBirthDateDisplay(raw) {
   return d.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange, summary }) {
+export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange, onPhotoOffsetChange, summary }) {
   const { t } = useTranslation();
-  const photoSize = Math.min(180, Math.max(60, Number(form.photoSize || 100)));
+  const photoSize    = Math.min(180, Math.max(60,  Number(form.photoSize    || 100)));
+  const photoOffsetX = Math.min(50,  Math.max(-50, Number(form.photoOffsetX || 0)));
+  const photoOffsetY = Math.min(50,  Math.max(-50, Number(form.photoOffsetY || 0)));
   return (
     <>
       <AppCard>
@@ -37,7 +39,7 @@ export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange,
                 alt={form.name}
                 style={{
                   ...sectionStyles.avatarImage,
-                  transform: `scale(${photoSize / 100})`,
+                  transform: `scale(${photoSize / 100}) translate(${photoOffsetX}%, ${photoOffsetY}%)`,
                 }}
               />
             </div>
@@ -62,17 +64,32 @@ export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange,
                 style={styles.input}
               />
               {form.photo && (
-                <label style={sectionStyles.photoSizeControl}>
-                  Dimensione foto {photoSize}%
-                  <input
-                    type="range"
-                    min="60"
-                    max="180"
-                    step="5"
-                    value={photoSize}
-                    onChange={(event) => onPhotoSizeChange(Number(event.target.value))}
-                  />
-                </label>
+                <div style={{ display: "grid", gap: 8 }}>
+                  <label style={sectionStyles.photoSizeControl}>
+                    {t("pages.playerDetail.photoSize", { value: photoSize })}
+                    <input
+                      type="range" min="60" max="180" step="5"
+                      value={photoSize}
+                      onChange={(e) => onPhotoSizeChange(Number(e.target.value))}
+                    />
+                  </label>
+                  <label style={sectionStyles.photoSizeControl}>
+                    {t("pages.playerDetail.photoOffsetX", { value: photoOffsetX })}
+                    <input
+                      type="range" min="-50" max="50" step="2"
+                      value={photoOffsetX}
+                      onChange={(e) => onPhotoOffsetChange("photoOffsetX", Number(e.target.value))}
+                    />
+                  </label>
+                  <label style={sectionStyles.photoSizeControl}>
+                    {t("pages.playerDetail.photoOffsetY", { value: photoOffsetY })}
+                    <input
+                      type="range" min="-50" max="50" step="2"
+                      value={photoOffsetY}
+                      onChange={(e) => onPhotoOffsetChange("photoOffsetY", Number(e.target.value))}
+                    />
+                  </label>
+                </div>
               )}
             </div>
           )}

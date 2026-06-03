@@ -321,6 +321,7 @@ function PlayerDetail({
             editing={editing}
             onImageUpload={handleImageUpload}
             onPhotoSizeChange={(value) => updateField("photoSize", value)}
+            onPhotoOffsetChange={(field, value) => updateField(field, value)}
             summary={summary}
           />
         </div>
