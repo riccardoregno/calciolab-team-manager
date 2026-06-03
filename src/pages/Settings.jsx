@@ -801,7 +801,7 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
   }
 
   function getInviteLink(token) {
-    const base = typeof window !== "undefined" ? window.location.origin : "https://app.calciolab.org";
+    const base = typeof window !== "undefined" ? window.location.origin : "https://calciolab.org";
     return `${base}/join?token=${token}`;
   }
 

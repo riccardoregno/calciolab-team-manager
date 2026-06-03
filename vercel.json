@@ -69,6 +69,14 @@
       ]
     }
   ],
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "app.calciolab.org" }],
+      "destination": "https://calciolab.org/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/((?!api|_next|assets|.*\\..*).*)",
