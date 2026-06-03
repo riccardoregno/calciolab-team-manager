@@ -33,6 +33,23 @@ const DIFFERENTIATED_TYPES = [
   "Carico ridotto",
 ];
 
+const INJURY_TYPES = [
+  "Muscolare", "Osseo / frattura", "Articolare",
+  "Tendineo / legamentoso", "Contusione",
+  "Malattia / influenza", "Affaticamento", "Altro",
+];
+
+const INJURY_TYPE_LABEL_KEYS = {
+  "Muscolare":              "pages.availability.injuryTypeMusc",
+  "Osseo / frattura":       "pages.availability.injuryTypeBone",
+  "Articolare":             "pages.availability.injuryTypeJoint",
+  "Tendineo / legamentoso": "pages.availability.injuryTypeTendon",
+  "Contusione":             "pages.availability.injuryTypeBruise",
+  "Malattia / influenza":   "pages.availability.injuryTypeIllness",
+  "Affaticamento":          "pages.availability.injuryTypeFatigue",
+  "Altro":                  "pages.availability.injuryTypeOther",
+};
+
 // Display-label lookup — keeps stored Italian values unchanged
 const DIFF_TYPE_LABEL_KEYS = {
   "Defaticante":                "pages.availability.diffTypeWarmDown",
@@ -63,6 +80,9 @@ function PlayerDetail({
   const [conflictModal, setConflictModal] = useState(false);
   const [medicalForm, setMedicalForm] = useState({
     differentiatedType: DIFFERENTIATED_TYPES[1],
+    injuryType: INJURY_TYPES[0],
+    startDate: new Date().toISOString().slice(0, 10),
+    expectedReturn: "",
     note: "",
     returnDate: new Date().toISOString().slice(0, 10),
   });
@@ -161,6 +181,8 @@ function PlayerDetail({
       ...prevForm,
       injuries:          nextPlayer.injuries,
       injuryNotes:       nextPlayer.injuryNotes       ?? "",
+      injuryType:        nextPlayer.injuryType        ?? "",
+      injuryStartDate:   nextPlayer.injuryStartDate   ?? "",
       status:            nextPlayer.status,
       differentiatedType: nextPlayer.differentiatedType ?? "",
       expectedReturn:    nextPlayer.expectedReturn    ?? "",
@@ -170,10 +192,57 @@ function PlayerDetail({
   function openDifferentiatedModal() {
     setMedicalForm({
       differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
+      injuryType: player.injuryType || INJURY_TYPES[0],
+      startDate: new Date().toISOString().slice(0, 10),
+      expectedReturn: player.expectedReturn || "",
       note: player.injuryNotes || "",
       returnDate: new Date().toISOString().slice(0, 10),
     });
     setMedicalModal("differenziato");
+  }
+
+  function openInjuryModal() {
+    setMedicalForm({
+      differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
+      injuryType: player.injuryType || INJURY_TYPES[0],
+      startDate: new Date().toISOString().slice(0, 10),
+      expectedReturn: player.expectedReturn || "",
+      note: "",
+      returnDate: new Date().toISOString().slice(0, 10),
+    });
+    setMedicalModal("infortunio");
+  }
+
+  function saveInjuryRecord() {
+    const injuryType = medicalForm.injuryType || INJURY_TYPES[0];
+    const startDate = medicalForm.startDate || new Date().toISOString().slice(0, 10);
+    const expectedReturn = medicalForm.expectedReturn || "";
+    const note = medicalForm.note.trim();
+
+    updateMedicalRecord((current) => ({
+      ...current,
+      status: "Infortunato",
+      injuryType,
+      injuryStartDate: startDate,
+      expectedReturn,
+      injuryNotes: [current.injuryNotes, note].filter(Boolean).join("\n"),
+      injuries: [
+        ...(current.injuries || []),
+        {
+          id: createId("injury"),
+          injuryType,
+          status: "Infortunato",
+          startDate,
+          endDate: null,
+          expectedReturn,
+          notes: note,
+          sessionsMissed: 0,
+          matchesMissed: 0,
+        },
+      ],
+    }));
+    setMedicalModal(null);
+    showToast(t("pages.playerDetail.injuryAdded"), "ok");
   }
 
   function saveDifferentiatedWork() {
@@ -207,6 +276,9 @@ function PlayerDetail({
     if (!activeInjuries.length) return;
     setMedicalForm({
       differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
+      injuryType: player.injuryType || INJURY_TYPES[0],
+      startDate: new Date().toISOString().slice(0, 10),
+      expectedReturn: player.expectedReturn || "",
       note: "",
       returnDate: new Date().toISOString().slice(0, 10),
     });
@@ -246,6 +318,9 @@ function PlayerDetail({
   function openNoteModal() {
     setMedicalForm({
       differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
+      injuryType: player.injuryType || INJURY_TYPES[0],
+      startDate: new Date().toISOString().slice(0, 10),
+      expectedReturn: player.expectedReturn || "",
       note: "",
       returnDate: new Date().toISOString().slice(0, 10),
     });
@@ -387,6 +462,7 @@ function PlayerDetail({
               totalMatchesMissed={totalMatchesMissed}
               generalInjuryNotes={player.injuryNotes}
               preventionRecommendations={preventionRecommendations}
+              onAddInjuryRecord={openInjuryModal}
               onCreateDifferentiatedWork={openDifferentiatedModal}
               onAddMedicalNote={openNoteModal}
               onMarkRecovered={openRecoveredModal}
@@ -416,10 +492,12 @@ function PlayerDetail({
             type={medicalModal}
             value={medicalForm}
             onChange={setMedicalForm}
-              onCancel={() => setMedicalModal(null)}
+            onCancel={() => setMedicalModal(null)}
             onSubmit={
               medicalModal === "differenziato"
                 ? saveDifferentiatedWork
+                : medicalModal === "infortunio"
+                ? saveInjuryRecord
                 : medicalModal === "rientro"
                 ? saveRecovered
                 : saveMedicalNote
@@ -481,6 +559,7 @@ function getPlayerVideoClips(matches, playerId) {
 }
 
 function getMedicalModalTitle(type, t) {
+  if (type === "infortunio") return t("pages.playerDetail.addInjuryRecord");
   if (type === "differenziato") return t("pages.playerDetail.createDifferentiatedWork");
   if (type === "rientro") return t("pages.playerDetail.markReturn");
   return t("pages.playerDetail.addMedicalNote");
@@ -494,7 +573,9 @@ function getRelativeDate(days) {
 
 function MedicalActionForm({ type, value, onChange, onCancel, onSubmit }) {
   const { t } = useTranslation();
-  const canSubmit = type !== "nota" || value.note.trim();
+  const canSubmit = type === "infortunio"
+    ? Boolean(value.injuryType && value.startDate)
+    : type !== "nota" || value.note.trim();
 
   return (
     <div style={modalStyles.stack}>
@@ -515,6 +596,47 @@ function MedicalActionForm({ type, value, onChange, onCancel, onSubmit }) {
         </label>
       )}
 
+      {type === "infortunio" && (
+        <>
+          <label style={modalStyles.field}>
+            <span style={modalStyles.label}>{t("pages.playerDetail.injuryType")}</span>
+            <select
+              value={value.injuryType}
+              onChange={(event) => onChange((prev) => ({ ...prev, injuryType: event.target.value }))}
+              style={styles.input}
+            >
+              {INJURY_TYPES.map((item) => (
+                <option key={item} value={item}>
+                  {INJURY_TYPE_LABEL_KEYS[item] ? t(INJURY_TYPE_LABEL_KEYS[item]) : item}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div style={modalStyles.twoColumns}>
+            <label style={modalStyles.field}>
+              <span style={modalStyles.label}>{t("pages.playerDetail.injuryStartDate")}</span>
+              <input
+                type="date"
+                value={value.startDate}
+                onChange={(event) => onChange((prev) => ({ ...prev, startDate: event.target.value }))}
+                style={styles.input}
+              />
+            </label>
+
+            <label style={modalStyles.field}>
+              <span style={modalStyles.label}>{t("pages.playerDetail.expectedReturn")}</span>
+              <input
+                type="date"
+                value={value.expectedReturn}
+                onChange={(event) => onChange((prev) => ({ ...prev, expectedReturn: event.target.value }))}
+                style={styles.input}
+              />
+            </label>
+          </div>
+        </>
+      )}
+
       {type === "rientro" && (
         <label style={modalStyles.field}>
           <span style={modalStyles.label}>{t("pages.playerDetail.returnDate")}</span>
@@ -529,7 +651,13 @@ function MedicalActionForm({ type, value, onChange, onCancel, onSubmit }) {
 
       <label style={modalStyles.field}>
         <span style={modalStyles.label}>
-          {type === "rientro" ? t("pages.playerDetail.finalNote") : type === "differenziato" ? t("pages.playerDetail.operationalNotes") : t("pages.playerDetail.medicalNote")}
+          {type === "rientro"
+            ? t("pages.playerDetail.finalNote")
+            : type === "differenziato"
+            ? t("pages.playerDetail.operationalNotes")
+            : type === "infortunio"
+            ? t("pages.playerDetail.injuryNote")
+            : t("pages.playerDetail.medicalNote")}
         </span>
         <textarea
           value={value.note}
@@ -539,6 +667,8 @@ function MedicalActionForm({ type, value, onChange, onCancel, onSubmit }) {
               ? t("pages.playerDetail.returnNotePlaceholder")
               : type === "differenziato"
               ? t("pages.playerDetail.differentiatedPlaceholder")
+              : type === "infortunio"
+              ? t("pages.playerDetail.injuryNotePlaceholder")
               : t("pages.playerDetail.medicalNotePlaceholder")
           }
           style={{ ...styles.input, minHeight: 120, resize: "vertical" }}
@@ -594,6 +724,11 @@ const modalStyles = {
     justifyContent: "flex-end",
     gap: 10,
     flexWrap: "wrap",
+  },
+  twoColumns: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+    gap: 12,
   },
   helpText: {
     margin: 0,

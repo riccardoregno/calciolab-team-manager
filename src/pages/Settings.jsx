@@ -1303,7 +1303,7 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
                     })}
                   </div>
                 )}
-                </div>{/* end outer wrapper */}
+                </div>
               ))}
             </div>
           </div>

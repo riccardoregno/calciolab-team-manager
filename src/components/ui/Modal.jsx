@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useId, useRef } from "react";
 import { useTranslation } from "../../i18n";
 
 const FOCUSABLE = [
@@ -53,7 +53,7 @@ function Modal({ title, children, onClose }) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const titleId = useRef(`modal-title-${Math.random().toString(36).slice(2)}`).current;
+  const titleId = useId();
 
   const overlayStyle = {
     position: "fixed",

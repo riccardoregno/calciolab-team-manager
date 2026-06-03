@@ -4,6 +4,7 @@ import { ensureDefaultTeam, getAuthSession, onAuthChange } from "../services/aut
 
 const AUTH_REQUEST_TIMEOUT_MS = 10000;
 const AUTH_TEAM_CACHE_KEY = "calciolab_auth_team_cache_v1";
+const TEAM_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function withTimeout(promise, label) {
   let timeoutId;
@@ -66,7 +67,6 @@ export function useAuth() {
   const hydratedUserIdRef = useRef(null);
   // Timestamp dell'ultimo team fetch — usato per TTL-based refresh su visibilitychange
   const lastTeamFetchAt = useRef(0);
-  const TEAM_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minuti
 
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;

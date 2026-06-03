@@ -460,6 +460,7 @@ export function PlayerMedicalTab({
   totalMatchesMissed,
   generalInjuryNotes,
   preventionRecommendations,
+  onAddInjuryRecord,
   onCreateDifferentiatedWork,
   onAddMedicalNote,
   onMarkRecovered,
@@ -480,6 +481,7 @@ export function PlayerMedicalTab({
       </div>
 
       <div style={sectionStyles.quickActions}>
+        <Button onClick={onAddInjuryRecord}>{t("pages.playerDetail.medical.addInjury")}</Button>
         <Button variant="ghost" onClick={onCreateDifferentiatedWork}>{t("pages.playerDetail.medical.createDifferentiated")}</Button>
         <Button variant="ghost" onClick={onAddMedicalNote}>{t("pages.playerDetail.medical.addNote")}</Button>
         <Button variant="ghost" onClick={onMarkRecovered} disabled={!activeInjuries.length}>{t("pages.playerDetail.medical.markRecovered")}</Button>
