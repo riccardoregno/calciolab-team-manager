@@ -373,12 +373,18 @@ function App() {
   }
 
   // Onboarding automatico per nuovi utenti.
-  // Fonte di verità: auth.team.onboarding_completed (campo Supabase) quando disponibile,
-  // altrimenti appSettings.onboarding.completed (localStorage) come fallback locale.
-  // Saltare l'onboarding non concede privilegi aggiuntivi — è solo configurazione.
-  const onboardingDone =
-    auth.team?.onboarding_completed === true ||
-    previewAppSettings?.onboarding?.completed === true;
+  // FIX (audit Codex — "onboarding dual source"): l'OR tra le due fonti
+  // permetteva a un flag locale stale (es. completato su un altro device,
+  // localStorage non sincronizzato) di far saltare l'onboarding anche quando
+  // il team remoto non lo segnava come completato, o viceversa. Ora, se
+  // esiste un team remoto, quello è l'UNICA fonte di verità
+  // (auth.team.onboarding_completed); il valore locale viene usato solo
+  // quando non c'è ancora un team remoto (es. utente appena registrato,
+  // prima che la riga team sia disponibile). Saltare l'onboarding non
+  // concede privilegi aggiuntivi — è solo configurazione.
+  const onboardingDone = auth.team
+    ? auth.team.onboarding_completed === true
+    : previewAppSettings?.onboarding?.completed === true;
   if (!loading && !onboardingDone) {
     return (
       <BrowserRouter>

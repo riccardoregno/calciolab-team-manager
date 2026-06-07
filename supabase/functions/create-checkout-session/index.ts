@@ -47,11 +47,24 @@ Deno.serve(async (req) => {
   if (auth.error) return json({ error: auth.error }, auth.status!);
 
   try {
+    // FIX (audit Codex — "Stripe checkout: sessioni duplicate"): senza una
+    // Idempotency-Key, un doppio click o un retry di rete sul bottone
+    // "abbonati" può creare due checkout session distinte per lo stesso
+    // acquisto, con rischio di doppio addebito se l'utente le completa
+    // entrambe. Deriviamo una chiave deterministica da team+prezzo+finestra
+    // temporale: richieste identiche entro la stessa finestra di 5 minuti
+    // riusano la sessione già creata da Stripe (stessa risposta), mentre
+    // un nuovo tentativo di acquisto genuino (oltre la finestra, o con
+    // priceId diverso) genera una nuova chiave e una nuova sessione.
+    const idempotencyWindow = Math.floor(Date.now() / (5 * 60 * 1000));
+    const idempotencyKey = `checkout-${teamId}-${priceId}-${idempotencyWindow}`;
+
     const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${stripeSecretKey}`,
         "Content-Type": "application/x-www-form-urlencoded",
+        "Idempotency-Key": idempotencyKey,
       },
       body: new URLSearchParams({
         mode: "subscription",
