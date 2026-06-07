@@ -160,6 +160,7 @@ export default function Settings({
           setAppSettings={setAppSettings}
           currentUserRole={currentUserRole}
           team={team}
+          showToast={showToast}
           players={players}
           exercises={exercises}
           sessions={sessions}
@@ -729,7 +730,7 @@ function isInviteExpired(invite) {
   return Boolean(invite.expiresAt && new Date(invite.expiresAt).getTime() < Date.now());
 }
 
-function ClubTab({ appSettings, setAppSettings, currentUserRole, team, players = [], exercises = [], sessions = [], matches = [] }) {
+function ClubTab({ appSettings, setAppSettings, currentUserRole, team, showToast, players = [], exercises = [], sessions = [], matches = [] }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -740,6 +741,11 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, team, players =
   const [inviteForm, setInviteForm] = useState(() => loadInviteMemberDraft());
   const [showCustomPerms, setShowCustomPerms] = useState(false);
   const [expandedMemberPerms, setExpandedMemberPerms] = useState({});
+  // Modifiche ruolo "in sospeso": il cambio nel <select> non si applica subito,
+  // l'utente deve premere "Salva" — evita salvataggi accidentali e rende
+  // visibile l'esito (sincronizzazione con team_members su Supabase).
+  const [pendingMemberRoles, setPendingMemberRoles] = useState({});
+  const [savingMemberRole, setSavingMemberRole] = useState("");
   const [inviteCopied, setInviteCopied] = useState(false);
   const [copiedInviteId, setCopiedInviteId] = useState("");
   const incomingProfileKey = JSON.stringify(rawProfile);
@@ -925,7 +931,7 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, team, players =
     reader.readAsDataURL(file);
   }
 
-  function updateMemberRole(memberId, role) {
+  async function updateMemberRole(memberId, role) {
     setAppSettings?.((prev) => {
       const s = normalizeAppSettings(prev);
       return { ...s, members: (s.members || []).map((m) => String(m.id) === String(memberId) ? { ...m, role } : m) };
@@ -939,20 +945,36 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, team, players =
     // I membri uniti via invito hanno id nel formato `member-${user.id}` (vedi
     // accept-team-invite/index.ts); ne ricaviamo lo user_id per l'update mirato.
     // I membri aggiunti manualmente (senza account Supabase) non hanno una riga
-    // in team_members: l'update sotto semplicemente non troverà righe da aggiornare.
+    // in team_members: l'update sotto semplicemente non troverà righe da aggiornare,
+    // e avvisiamo l'utente invece di far credere che sia tutto a posto.
     const userId = String(memberId).startsWith("member-") ? String(memberId).slice("member-".length) : null;
-    if (userId && team?.id && isSupabaseConfigured) {
-      supabase
-        .from("team_members")
-        .update({ role })
-        .eq("team_id", team.id)
-        .eq("user_id", userId)
-        .then(({ error }) => {
-          if (error && import.meta.env.DEV) {
-            console.warn("[Settings] Sync ruolo team_members fallita:", error.message);
-          }
-        });
+
+    if (!userId || !team?.id || !isSupabaseConfigured) {
+      showToast?.(t("pages.settings.clubRoleSavedLocalOnly"), "warn");
+      return;
     }
+
+    const { data, error } = await supabase
+      .from("team_members")
+      .update({ role })
+      .eq("team_id", team.id)
+      .eq("user_id", userId)
+      .select("user_id");
+
+    if (error) {
+      if (import.meta.env.DEV) console.warn("[Settings] Sync ruolo team_members fallita:", error.message);
+      showToast?.(t("pages.settings.clubRoleSyncError"), "error");
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      // Nessuna riga aggiornata: il membro non ha (ancora) un account Supabase
+      // collegato a questo team — il ruolo resta sincronizzato solo lato UI.
+      showToast?.(t("pages.settings.clubRoleSavedLocalOnly"), "warn");
+      return;
+    }
+
+    showToast?.(t("pages.settings.clubRoleSaved"), "success");
   }
 
   function updateMemberArea(memberId, areaKey, level) {
@@ -1267,14 +1289,45 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, team, players =
                     </div>
                   </div>
                   <select
-                    value={member.role}
-                    onChange={(e) => updateMemberRole(member.id, e.target.value)}
+                    value={pendingMemberRoles[member.id] ?? member.role}
+                    onChange={(e) => {
+                      const nextRole = e.target.value;
+                      setPendingMemberRoles((prev) => {
+                        if (nextRole === member.role) {
+                          const { [member.id]: _drop, ...rest } = prev;
+                          return rest;
+                        }
+                        return { ...prev, [member.id]: nextRole };
+                      });
+                    }}
                     style={{ ...styles.input, marginTop: 0, width: "auto", minWidth: 140 }}
                   >
                     {Object.entries(memberRoles).map(([key, role]) => (
                       <option key={key} value={key}>{role.label}</option>
                     ))}
                   </select>
+                  {pendingMemberRoles[member.id] && pendingMemberRoles[member.id] !== member.role && (
+                    <button
+                      type="button"
+                      disabled={savingMemberRole === member.id}
+                      onClick={async () => {
+                        const nextRole = pendingMemberRoles[member.id];
+                        setSavingMemberRole(member.id);
+                        try {
+                          await updateMemberRole(member.id, nextRole);
+                          setPendingMemberRoles((prev) => {
+                            const { [member.id]: _drop, ...rest } = prev;
+                            return rest;
+                          });
+                        } finally {
+                          setSavingMemberRole("");
+                        }
+                      }}
+                      style={{ ...inviteStyles.copySmallBtn, whiteSpace: "nowrap", opacity: savingMemberRole === member.id ? 0.6 : 1 }}
+                    >
+                      {savingMemberRole === member.id ? t("common.saving") : t("common.save")}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setExpandedMemberPerms((prev) => ({ ...prev, [member.id]: !prev[member.id] }))}
