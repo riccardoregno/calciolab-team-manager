@@ -144,7 +144,7 @@ async function checkAndSendReminders(): Promise<{
           firstName: owner.firstName,
           daysLeft:  3,
           planName:  team.trial_plan || "Premium Coach",
-          upgradeUrl: "https://calciolab.it/premium",
+          upgradeUrl: "https://calciolab.org/premium",
         });
 
         // Marca come inviato
@@ -170,7 +170,7 @@ async function checkAndSendReminders(): Promise<{
           firstName: owner.firstName,
           daysLeft:  1,
           planName:  team.trial_plan || "Premium Coach",
-          upgradeUrl: "https://calciolab.it/premium",
+          upgradeUrl: "https://calciolab.org/premium",
         });
 
         await supabase

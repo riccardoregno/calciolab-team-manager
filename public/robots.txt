@@ -31,4 +31,4 @@ Disallow: /vip
 # Block API and well-known assets
 Disallow: /.well-known/
 
-Sitemap: https://calciolab.it/sitemap.xml
+Sitemap: https://calciolab.org/sitemap.xml

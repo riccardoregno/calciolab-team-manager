@@ -232,7 +232,7 @@ async function handlePaymentFailed(invoice: Record<string, unknown>) {
       type: "payment_failed",
       to: ownerInfo.email,
       firstName: ownerInfo.firstName,
-      manageUrl: "https://calciolab.it/premium",
+      manageUrl: "https://calciolab.org/premium",
     });
   }
 }

@@ -27,7 +27,7 @@ export default function Privacy() {
           <p>
             Il Titolare del trattamento dei dati personali è <strong>CalcioLab</strong>, contattabile
             all'indirizzo{" "}
-            <a href="mailto:info@calciolab.it" style={s.link}>info@calciolab.it</a>.
+            <a href="mailto:info@calciolab.org" style={s.link}>info@calciolab.org</a>.
           </p>
         </Section>
 
@@ -162,7 +162,7 @@ export default function Privacy() {
             <li><strong>Revoca del consenso:</strong> revocare il consenso alla newsletter in qualsiasi momento.</li>
           </ul>
           <p>
-            Per esercitare i propri diritti: <a href="mailto:info@calciolab.it" style={s.link}>info@calciolab.it</a>.
+            Per esercitare i propri diritti: <a href="mailto:info@calciolab.org" style={s.link}>info@calciolab.org</a>.
             Il riscontro sarà fornito entro 30 giorni. In caso di mancata risposta, l'Utente può
             rivolgersi al Garante per la Protezione dei Dati Personali (www.garanteprivacy.it).
           </p>
@@ -199,7 +199,7 @@ export default function Privacy() {
         <Section title="13. Contatti DPO e reclami">
           <p>
             Per qualsiasi questione relativa alla privacy:{" "}
-            <a href="mailto:info@calciolab.it" style={s.link}>info@calciolab.it</a>
+            <a href="mailto:info@calciolab.org" style={s.link}>info@calciolab.org</a>
             <br />
             Autorità di controllo competente: Garante per la Protezione dei Dati Personali,
             Piazza di Monte Citorio 121, 00186 Roma —{" "}

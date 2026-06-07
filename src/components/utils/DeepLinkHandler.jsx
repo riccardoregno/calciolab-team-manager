@@ -12,7 +12,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isNative } from "../../utils/capacitor";
 
-const ALLOWED_HOSTS = ["calciolab.it", "www.calciolab.it"];
+const ALLOWED_HOSTS = ["calciolab.org", "www.calciolab.org", "calciolab.it", "www.calciolab.it"];
 
 export default function DeepLinkHandler() {
   const navigate = useNavigate();

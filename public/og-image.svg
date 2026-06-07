@@ -88,7 +88,7 @@
   <circle cx="717" cy="122" r="6" fill="#4ade80"/>
   <!-- URL bar -->
   <rect x="760" y="112" width="240" height="20" rx="6" fill="rgba(255,255,255,0.05)"/>
-  <text x="880" y="126" text-anchor="middle" font-family="monospace" font-size="10" fill="#334155">calciolab.it/dashboard</text>
+  <text x="880" y="126" text-anchor="middle" font-family="monospace" font-size="10" fill="#334155">calciolab.org/dashboard</text>
 
   <!-- KPI row -->
   <g transform="translate(660, 165)">

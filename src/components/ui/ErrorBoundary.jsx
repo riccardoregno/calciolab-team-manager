@@ -108,7 +108,7 @@ export class ErrorBoundary extends Component {
               {copied ? "✓ Copiato!" : "📋 Copia dettagli"}
             </button>
             <a
-              href={`mailto:info@calciolab.it?subject=Errore%20${errorId}&body=Error%20ID%3A%20${errorId}`}
+              href={`mailto:info@calciolab.org?subject=Errore%20${errorId}&body=Error%20ID%3A%20${errorId}`}
               style={styles.supportLink}
             >
               Contatta supporto →

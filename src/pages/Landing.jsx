@@ -182,7 +182,7 @@ export default function Landing() {
               <span style={{ ...l.mockupDot, background: "#f87171" }} />
               <span style={{ ...l.mockupDot, background: "#fbbf24" }} />
               <span style={{ ...l.mockupDot, background: "#4ade80" }} />
-              <span style={l.mockupUrl}>calciolab.it/dashboard</span>
+              <span style={l.mockupUrl}>calciolab.org/dashboard</span>
             </div>
             <div style={l.mockupBody}>
               <MockDashboard />

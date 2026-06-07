@@ -125,8 +125,8 @@ export default function Terms() {
 
         <Section title="11. Contatti">
           <p>
-            Per domande sui presenti Termini: <a href="mailto:info@calciolab.it" style={s.link}>info@calciolab.it</a><br />
-            Per supporto tecnico: <a href="mailto:info@calciolab.it" style={s.link}>info@calciolab.it</a>
+            Per domande sui presenti Termini: <a href="mailto:info@calciolab.org" style={s.link}>info@calciolab.org</a><br />
+            Per supporto tecnico: <a href="mailto:info@calciolab.org" style={s.link}>info@calciolab.org</a>
           </p>
         </Section>
 

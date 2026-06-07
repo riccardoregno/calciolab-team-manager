@@ -89,7 +89,7 @@ ${previewText ? `<span style="display:none;max-height:0;overflow:hidden;">${prev
           &nbsp;·&nbsp;
           <a href="${APP_URL}/privacy" style="color:#475569;">Privacy</a>
           &nbsp;·&nbsp;
-          <a href="${APP_URL}" style="color:#475569;">calciolab.it</a>
+          <a href="${APP_URL}" style="color:#475569;">calciolab.org</a>
         </p>
       </td></tr>
     </table>
@@ -129,7 +129,7 @@ function templateWelcome(firstName = "Coach") {
     </ul>
     ${btnPrimary("Accedi a CalcioLab →", APP_URL)}
     ${divider()}
-    ${p(`Hai domande? Scrivici a <a href="mailto:info@calciolab.it">info@calciolab.it</a>`)}
+    ${p(`Hai domande? Scrivici a <a href="mailto:info@calciolab.org">info@calciolab.org</a>`)}
   `, `Benvenuto ${firstName}! Il tuo account CalcioLab è pronto.`);
   return { subject, html };
 }
@@ -196,7 +196,7 @@ function templateSubscriptionCanceled(firstName = "Coach", planName = "Premium C
     ${p("Se hai cambiato idea, puoi riattivare un piano Premium o Club in qualsiasi momento.")}
     ${btnPrimary("Riattiva abbonamento →", `${APP_URL}/premium`)}
     ${divider()}
-    ${p("Hai avuto problemi o hai una domanda? Scrivici a <a href=\"mailto:info@calciolab.it\">info@calciolab.it</a>.")}
+    ${p("Hai avuto problemi o hai una domanda? Scrivici a <a href=\"mailto:info@calciolab.org\">info@calciolab.org</a>.")}
   `, `Il piano ${planName} è stato cancellato — il piano Starter è attivo`);
   return { subject, html };
 }
@@ -232,7 +232,7 @@ function templatePaymentFailed(firstName = "Coach", manageUrl = `${APP_URL}/prem
     ${p("Aggiorna il tuo metodo di pagamento per evitare interruzioni del servizio.")}
     ${btnPrimary("Aggiorna metodo di pagamento →", manageUrl)}
     ${divider()}
-    ${p("Se pensi si tratti di un errore o hai bisogno di aiuto, contattaci a <a href=\"mailto:info@calciolab.it\">info@calciolab.it</a>.")}
+    ${p("Se pensi si tratti di un errore o hai bisogno di aiuto, contattaci a <a href=\"mailto:info@calciolab.org\">info@calciolab.org</a>.")}
   `, "Controlla il tuo metodo di pagamento");
   return { subject, html };
 }
