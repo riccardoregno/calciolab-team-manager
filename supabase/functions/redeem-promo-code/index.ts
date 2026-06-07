@@ -36,80 +36,42 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // FIX: la lista dei codici NON vive più nel bundle client (era hardcoded
-    // in src/utils/helpers.js, leggibile da chiunque con devtools) né in
-    // teams.settings (JSON scrivibile dall'owner). Vive in promo_codes,
-    // tabella senza policy RLS per anon/authenticated — leggibile e
-    // scrivibile solo da qui (service role).
-    const { data: promo, error: promoError } = await supabase
-      .from("promo_codes")
-      .select("id, code, plan, permanent, max_uses, expires_at, note")
-      .eq("code", normalizedCode)
-      .maybeSingle();
+    // FIX: il riscatto NON fa più COUNT(*) poi INSERT separati — sotto
+    // concorrenza (due team diversi che riscattano lo stesso codice in
+    // parallelo) entrambe le richieste potevano leggere lo stesso COUNT
+    // sotto il limite e superare max_uses globalmente. L'intero riscatto
+    // (verifica esistenza/scadenza/limite, incremento contatore con UPDATE
+    // condizionale used_count < max_uses, registrazione riscatto,
+    // aggiornamento piano del team) ora avviene in un'unica funzione
+    // Postgres atomica (vedi migrazione 20260607160000_atomic_promo_redeem.sql),
+    // che funge anche da lock ottimistico serializzato dai lock di riga.
+    const { data: rpcRows, error: rpcError } = await supabase
+      .rpc("redeem_promo_code", { p_team_id: teamId, p_code: normalizedCode });
 
-    if (promoError) return json({ success: false, error: promoError.message }, 500);
-    if (!promo) return json({ success: false, error: "Codice non trovato o non valido" }, 404);
+    if (rpcError) return json({ success: false, error: rpcError.message }, 500);
 
-    if (!promo.permanent && promo.expires_at && new Date(promo.expires_at).getTime() < Date.now()) {
-      return json({ success: false, error: "Questo codice è scaduto" }, 410);
-    }
+    const result = rpcRows?.[0];
+    if (!result) return json({ success: false, error: "Errore riscatto codice" }, 500);
 
-    // Già riscattato da questo stesso team? Operazione idempotente — niente
-    // doppio conteggio sul max_uses, ma confermiamo comunque il piano attivo.
-    const { data: existingRedemption, error: existingError } = await supabase
-      .from("promo_redemptions")
-      .select("id, redeemed_at")
-      .eq("code_id", promo.id)
-      .eq("team_id", teamId)
-      .maybeSingle();
-
-    if (existingError) return json({ success: false, error: existingError.message }, 500);
-
-    if (!existingRedemption && promo.max_uses > 0) {
-      const { count, error: countError } = await supabase
-        .from("promo_redemptions")
-        .select("id", { count: "exact", head: true })
-        .eq("code_id", promo.id);
-
-      if (countError) return json({ success: false, error: countError.message }, 500);
-      if ((count || 0) >= promo.max_uses) {
+    switch (result.status) {
+      case "not_found":
+        return json({ success: false, error: "Codice non trovato o non valido" }, 404);
+      case "expired":
+        return json({ success: false, error: "Questo codice è scaduto" }, 410);
+      case "limit_reached":
         return json({ success: false, error: "Questo codice ha raggiunto il limite di utilizzi" }, 409);
-      }
+      case "already_redeemed":
+      case "redeemed":
+        return json({
+          success: true,
+          plan: result.plan,
+          permanent: result.permanent,
+          note: result.note || null,
+          redeemedAt: result.redeemed_at || new Date().toISOString(),
+        });
+      default:
+        return json({ success: false, error: "Errore riscatto codice" }, 500);
     }
-
-    if (!existingRedemption) {
-      // Vincolo UNIQUE (code_id, team_id) rende l'inserimento sicuro anche
-      // sotto richieste concorrenti: un eventuale doppio click produce al
-      // più un conflitto 23505, che trattiamo come "già riscattato".
-      const { error: insertError } = await supabase
-        .from("promo_redemptions")
-        .insert({ code_id: promo.id, team_id: teamId });
-
-      if (insertError && insertError.code !== "23505") {
-        return json({ success: false, error: insertError.message }, 500);
-      }
-    }
-
-    // Aggiorna direttamente le colonne trusted lette da App.jsx
-    // (remoteSubscription / subscriptionOverride) — niente più bisogno di un
-    // "promoOverride" locale che potesse vincere sui dati Stripe reali.
-    const { error: updateError } = await supabase
-      .from("teams")
-      .update({
-        subscription_plan: promo.plan,
-        billing_status: "active",
-      })
-      .eq("id", teamId);
-
-    if (updateError) return json({ success: false, error: updateError.message }, 500);
-
-    return json({
-      success: true,
-      plan: promo.plan,
-      permanent: promo.permanent,
-      note: promo.note || null,
-      redeemedAt: existingRedemption?.redeemed_at || new Date().toISOString(),
-    });
   } catch (error) {
     return json({ success: false, error: error instanceof Error ? error.message : "Errore riscatto codice" }, 500);
   }

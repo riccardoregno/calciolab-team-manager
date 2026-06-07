@@ -278,11 +278,15 @@ async function assignVipPointsFromCheckout({
   if (teamError) throw teamError;
   if (!team) throw new Error("Team non trovato per accredito VIP");
 
-  const previousLevel = team.vip_level || "bronze";
-  const newPoints = Math.max(0, Number(team.vip_points || 0) + points);
-  const newLevel = getVipLevel(newPoints).name;
-  const levelChanged = newLevel !== previousLevel;
-  const candidateReward = levelChanged ? getVipReward(newLevel) : null;
+  // Stima "speculativa" usata solo per i metadata dell'evento (audit log) e
+  // per decidere se vale la pena calcolare una reward candidata: una lieve
+  // imprecisione qui è innocua, perché il valore autoritativo persistito
+  // arriva sempre dall'incremento atomico più sotto.
+  const speculativePreviousLevel = team.vip_level || "bronze";
+  const speculativeNewPoints = Math.max(0, Number(team.vip_points || 0) + points);
+  const speculativeNewLevel = getVipLevel(speculativeNewPoints).name;
+  const speculativeLevelChanged = speculativeNewLevel !== speculativePreviousLevel;
+  const candidateReward = speculativeLevelChanged ? getVipReward(speculativeNewLevel) : null;
   const rewardAlreadyGranted = candidateReward
     ? await hasRewardAlreadyBeenGranted(teamId, candidateReward.promotionCode)
     : false;
@@ -299,26 +303,52 @@ async function assignVipPointsFromCheckout({
       stripeEventId: eventId,
       checkoutSessionId: sessionId || null,
       planId,
-      previousLevel,
-      newLevel,
+      previousLevel: speculativePreviousLevel,
+      newLevel: speculativeNewLevel,
       rewardAlreadyGranted,
     },
   });
 
   if (insertResult.duplicate) return { duplicate: true };
 
-  const { error: updateError } = await supabase!
-    .from("teams")
-    .update({
-      vip_points: newPoints,
-      vip_level: newLevel,
-      vip_updated_at: new Date().toISOString(),
-    })
-    .eq("id", teamId);
+  // FIX: SELECT vip_points → calcolo → UPDATE separati lasciavano una finestra
+  // di race condition — un evento Stripe e una chiamata a update-vip (o due
+  // eventi Stripe ravvicinati per lo stesso team) potevano leggere lo stesso
+  // valore di partenza, con la seconda scrittura che sovrascrive la prima
+  // (lost update). Usiamo la stessa RPC atomica già introdotta per
+  // update-vip (vedi migrazione 20260607150000_atomic_vip_points.sql):
+  // UPDATE ... SET vip_points = vip_points + delta ... RETURNING in
+  // un'unica istruzione, senza finestra. Il valore qui restituito è quello
+  // autoritativo, persistito — eventuali scostamenti dalla stima
+  // "speculativa" sopra restano confinati ai metadata di log.
+  const { data: incrementRows, error: incrementError } = await supabase!
+    .rpc("increment_vip_points", { p_team_id: teamId, p_delta: points });
 
-  if (updateError) {
+  if (incrementError) {
     await rollbackVipEvent(STRIPE_VIP_SOURCE, eventId);
-    throw updateError;
+    throw incrementError;
+  }
+
+  const updatedTeam = incrementRows?.[0];
+  if (!updatedTeam) {
+    await rollbackVipEvent(STRIPE_VIP_SOURCE, eventId);
+    throw new Error("Team non trovato per accredito VIP");
+  }
+
+  const newPoints = Number(updatedTeam.vip_points || 0);
+  const newLevel = getVipLevel(newPoints).name;
+  const levelChanged = newLevel !== (updatedTeam.previous_level || "bronze");
+
+  if (levelChanged) {
+    const { error: levelUpdateError } = await supabase!
+      .from("teams")
+      .update({ vip_level: newLevel })
+      .eq("id", teamId);
+
+    if (levelUpdateError) {
+      await rollbackVipEvent(STRIPE_VIP_SOURCE, eventId);
+      throw levelUpdateError;
+    }
   }
 
   return {
