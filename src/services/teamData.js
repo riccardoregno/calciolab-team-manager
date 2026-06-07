@@ -398,7 +398,14 @@ function mergeAppSettings(remoteSettings = {}, localSettings = {}) {
     developmentPreviewPlan: remoteSettings.developmentPreviewPlan || localSettings.developmentPreviewPlan || "",
     developmentPreviewRole: remoteSettings.developmentPreviewRole || localSettings.developmentPreviewRole || "",
     members: hasArrayItems(remoteSettings.members) ? remoteSettings.members : localSettings.members,
-    pendingInvites: hasArrayItems(remoteSettings.pendingInvites) ? remoteSettings.pendingInvites : localSettings.pendingInvites,
+    // FIX: con `hasArrayItems`, un remote con pendingInvites = [] (es. invito
+    // appena accettato lato Edge Function, che svuota l'array) veniva scartato
+    // a favore della cache locale stantia — facendo ricomparire come "in
+    // attesa" inviti già accettati. A questo punto mergeAppSettings viene
+    // chiamata solo quando il remote è "meaningful" (vedi resolveAppSettings),
+    // quindi un array remoto presente — anche vuoto — è lo stato vero e va
+    // rispettato; il fallback al locale resta solo per remote senza la chiave.
+    pendingInvites: Array.isArray(remoteSettings.pendingInvites) ? remoteSettings.pendingInvites : localSettings.pendingInvites,
     workspaceProfile: mergeWorkspaceProfile(
       remoteSettings.workspaceProfile || {},
       localSettings.workspaceProfile || {}

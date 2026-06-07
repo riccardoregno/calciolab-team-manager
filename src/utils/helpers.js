@@ -209,6 +209,11 @@ export function normalizePhysicalTest(test){
 
 export function normalizeInjuryRecord(r = {}) {
   return {
+    // FIX: spread iniziale — senza, qualsiasi campo non elencato qui sotto
+    // (es. aggiunto in futuro o da un'altra fonte) veniva silenziosamente
+    // perso a ogni normalizzazione, stesso bug già riscontrato e corretto
+    // per `inviteToken` in normalizeAppSettings.
+    ...r,
     id:               r.id               || "",
     playerId:         r.playerId         ? String(r.playerId) : "",
     dateStart:        r.dateStart        || new Date().toISOString().slice(0, 10),
@@ -233,6 +238,9 @@ export function normalizeInjuryRecord(r = {}) {
 
 export function normalizeGpsSession(s = {}) {
   return {
+    // FIX: vedi commento in normalizeInjuryRecord — spread iniziale per non
+    // perdere campi non esplicitamente elencati a ogni normalizzazione.
+    ...s,
     id:     s.id     || "",
     date:   s.date   || new Date().toISOString().slice(0, 10),
     title:  s.title  || "",
@@ -240,6 +248,7 @@ export function normalizeGpsSession(s = {}) {
     source: s.source || "manual_csv",
     notes:  s.notes  || "",
     rows: (s.rows || []).map((r) => ({
+      ...r,
       id:               r.id               || "",
       playerId:         r.playerId         || "",
       playerName:       r.playerName       || "",
@@ -259,6 +268,9 @@ export function normalizeGpsSession(s = {}) {
 
 export function normalizeStaffTask(task = {}) {
   return {
+    // FIX: vedi commento in normalizeInjuryRecord — spread iniziale per non
+    // perdere campi non esplicitamente elencati a ogni normalizzazione.
+    ...task,
     id: task.id || createId("task"),
     title: task.title || "",
     description: task.description || "",
