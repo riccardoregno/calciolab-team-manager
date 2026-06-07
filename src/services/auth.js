@@ -91,8 +91,8 @@ export async function ensureDefaultTeam(user) {
   }
 
   const inviteToken = typeof window !== "undefined"
-    ? sessionStorage.getItem("calciolab_invite_token") || ""
-    : "";
+    ? sessionStorage.getItem("calciolab_invite_token") || user.user_metadata?.invite_token || ""
+    : user.user_metadata?.invite_token || "";
 
   if (inviteToken) {
     const { team: invitedTeam, error: inviteError } = await acceptTeamInvite(inviteToken);

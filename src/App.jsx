@@ -334,6 +334,15 @@ function App() {
   }
 
   if (!auth.user) {
+    const unauthParams = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : new URLSearchParams();
+    const authRequested = unauthParams.has("invite_mode") || unauthParams.has("mode") || unauthParams.has("token");
+
+    if (authRequested) {
+      return <Auth />;
+    }
+
     // Landing pubblica su "/" — Auth su "/login" o con query mode=register
     if (_path === "/" || _path === "") {
       return (

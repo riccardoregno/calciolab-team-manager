@@ -47,7 +47,11 @@ function Auth() {
     const params = new URLSearchParams(window.location.search);
     const inviteMode = params.get("invite_mode");
     const modeParam  = params.get("mode");
+    const inviteToken = params.get("token") || "";
     const resolved   = inviteMode || modeParam;
+    if (inviteToken) {
+      sessionStorage.setItem("calciolab_invite_token", inviteToken);
+    }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (resolved === "register") setMode("register");
     else if (resolved === "login") setMode("login");
