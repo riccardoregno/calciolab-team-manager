@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { Eye, EyeOff } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTabState } from "../hooks/useTabState";
@@ -159,6 +159,7 @@ export default function Settings({
           appSettings={appSettings}
           setAppSettings={setAppSettings}
           currentUserRole={currentUserRole}
+          team={team}
           players={players}
           exercises={exercises}
           sessions={sessions}
@@ -728,7 +729,7 @@ function isInviteExpired(invite) {
   return Boolean(invite.expiresAt && new Date(invite.expiresAt).getTime() < Date.now());
 }
 
-function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], exercises = [], sessions = [], matches = [] }) {
+function ClubTab({ appSettings, setAppSettings, currentUserRole, team, players = [], exercises = [], sessions = [], matches = [] }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -929,6 +930,29 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
       const s = normalizeAppSettings(prev);
       return { ...s, members: (s.members || []).map((m) => String(m.id) === String(memberId) ? { ...m, role } : m) };
     });
+
+    // FIX: il cambio ruolo qui sopra aggiorna SOLO il blob JSON teams.settings.members,
+    // usato per la UI. Il controllo accessi reale (RoleGate, vedi App.jsx/RoleGate.jsx)
+    // legge invece team_members.role su Supabase — la vera fonte di verità — che
+    // restava quindi disallineata: l'utente continuava a vedere "Vista non disponibile"
+    // con il vecchio ruolo anche dopo averlo cambiato da qui.
+    // I membri uniti via invito hanno id nel formato `member-${user.id}` (vedi
+    // accept-team-invite/index.ts); ne ricaviamo lo user_id per l'update mirato.
+    // I membri aggiunti manualmente (senza account Supabase) non hanno una riga
+    // in team_members: l'update sotto semplicemente non troverà righe da aggiornare.
+    const userId = String(memberId).startsWith("member-") ? String(memberId).slice("member-".length) : null;
+    if (userId && team?.id && isSupabaseConfigured) {
+      supabase
+        .from("team_members")
+        .update({ role })
+        .eq("team_id", team.id)
+        .eq("user_id", userId)
+        .then(({ error }) => {
+          if (error && import.meta.env.DEV) {
+            console.warn("[Settings] Sync ruolo team_members fallita:", error.message);
+          }
+        });
+    }
   }
 
   function updateMemberArea(memberId, areaKey, level) {
