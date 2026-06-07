@@ -15,6 +15,7 @@ const PRIMARY = [
 const SECONDARY = [
   { to: "/exercises", labelKey: "navigation.items.exercises", icon: "📚" },
   { to: "/microcycle",       labelKey: "navigation.items.microcycle", icon: "🗓️" },
+  { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾" },
   { to: "/statistics",       labelKey: "navigation.items.statistics", icon: "📊" },
   { to: "/tactical-board",   labelKey: "navigation.items.tacticalBoard", icon: "🧠" },
   { to: "/availability",     labelKey: "navigation.items.availability", icon: "🩺" },

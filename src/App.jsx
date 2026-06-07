@@ -40,6 +40,7 @@ const Players = lazy(() => import("./pages/Players"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail"));
 const MatchStats = lazy(() => import("./pages/MatchStats"));
 const SessionAttendance = lazy(() => import("./pages/SessionAttendance"));
+const AttendanceRegister = lazy(() => import("./pages/AttendanceRegister"));
 const MatchConvocation  = lazy(() => import("./pages/MatchConvocation"));
 const Exercises = lazy(() => import("./pages/Exercises"));
 const Trainings = lazy(() => import("./pages/Trainings"));
@@ -837,6 +838,17 @@ function App() {
                 path="/session-attendance/:id"
                 element={
                   gate(technicalRoles, <SessionAttendance
+                    players={players}
+                    sessions={sessions}
+                    setSessions={setSessions}
+                  />)
+                }
+              />
+
+              <Route
+                path="/attendance-register"
+                element={
+                  gate(technicalRoles, <AttendanceRegister
                     players={players}
                     sessions={sessions}
                     setSessions={setSessions}

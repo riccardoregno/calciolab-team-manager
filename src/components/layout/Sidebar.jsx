@@ -33,6 +33,7 @@ const menuGroups = [
     items: [
       { to: "/exercises", labelKey: "navigation.items.exercises", icon: "📚", roles: technicalRoles },
       { to: "/trainings", labelKey: "navigation.items.trainings", icon: "📋", roles: technicalRoles },
+      { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾", roles: technicalRoles },
       { to: "/microcycle", labelKey: "navigation.items.microcycle", icon: "🗓️", roles: technicalRoles },
       { to: "/tactical-board", labelKey: "navigation.items.tacticalBoard", icon: "🧠", roles: technicalRoles },
     ],
@@ -188,6 +189,7 @@ const ROUTE_PREFETCH_MAP = {
   "/":                  () => import("../../pages/Dashboard"),
   "/players":           () => import("../../pages/Players"),
   "/trainings":         () => import("../../pages/Trainings"),
+  "/attendance-register": () => import("../../pages/AttendanceRegister"),
   "/matches":           () => import("../../pages/Matches"),
   "/calendar":          () => import("../../pages/Calendar"),
   "/physical-tests":    () => import("../../pages/PhysicalTests"),
