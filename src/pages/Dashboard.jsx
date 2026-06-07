@@ -155,7 +155,6 @@ function Dashboard({
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState(null);
   const [showPersonalize, setShowPersonalize] = useState(false);
-  const [promoCheckedAt] = useState(() => Date.now());
   const isMobile = useIsMobile();
 
   // Memoize settings so derived useMemo hooks don't re-run on every render
@@ -174,16 +173,12 @@ function Dashboard({
   }), [players, exercises, sessions, matches, settings]);
 
   const billing = getBillingStatus(settings);
-  const redeemedPromo = settings.redeemedPromo;
-  const promoAccessActive = Boolean(
-    redeemedPromo?.plan &&
-    redeemedPromo.plan !== "free" &&
-    (
-      redeemedPromo.permanent === true ||
-      (redeemedPromo.expiresAt && new Date(redeemedPromo.expiresAt).getTime() > promoCheckedAt)
-    )
-  );
-  const showBillingPrompt = !promoAccessActive && (
+  // FIX: i piani concessi via codice promo arrivano ora da
+  // subscription_plan/billing_status (aggiornati server-side da
+  // redeem-promo-code), quindi billing.billingStatus è già "active" per chi
+  // ha riscattato un codice — non serve più un controllo promo separato per
+  // sopprimere il prompt di billing.
+  const showBillingPrompt = (
     billing.trialActive ||
     billing.trialExpired ||
     billing.billingStatus === "free"

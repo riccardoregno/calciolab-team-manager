@@ -393,8 +393,6 @@ function mergeAppSettings(remoteSettings = {}, localSettings = {}) {
     ...localSettings,
     ...remoteSettings,
     subscription: mergeSubscriptionSettings(remoteSettings.subscription || {}, localSettings.subscription || {}),
-    promoCodes: mergePromoCodeSettings(remoteSettings.promoCodes || [], localSettings.promoCodes || []),
-    redeemedPromo: pickRedeemedPromo(remoteSettings.redeemedPromo, localSettings.redeemedPromo),
     developmentPreviewPlan: remoteSettings.developmentPreviewPlan || localSettings.developmentPreviewPlan || "",
     developmentPreviewRole: remoteSettings.developmentPreviewRole || localSettings.developmentPreviewRole || "",
     members: hasArrayItems(remoteSettings.members) ? remoteSettings.members : localSettings.members,
@@ -449,11 +447,9 @@ function hasMeaningfulAppSettings(settings = {}) {
   if (!settings || typeof settings !== "object") return false;
   if (hasMeaningfulWorkspaceProfile(settings.workspaceProfile)) return true;
   if (hasArrayItems(settings.members)) return true;
-  if (hasMeaningfulPromoCodes(settings.promoCodes)) return true;
   if (hasActiveSubscription(settings.subscription)) return true;
-  if (settings.redeemedPromo) return true;
   return Object.keys(settings).some((key) => {
-    if (["workspaceProfile", "promoCodes", "subscription", "redeemedPromo"].includes(key)) return false;
+    if (["workspaceProfile", "subscription"].includes(key)) return false;
     const value = settings[key];
     if (Array.isArray(value)) return value.length > 0;
     if (value && typeof value === "object") return Object.keys(value).length > 0;
@@ -511,54 +507,11 @@ function mergeSubscriptionSettings(remoteSubscription = {}, localSubscription = 
   };
 }
 
-function pickRedeemedPromo(remotePromo, localPromo) {
-  if (isValidRedeemedPromo(remotePromo)) return remotePromo;
-  if (isValidRedeemedPromo(localPromo)) return localPromo;
-  return remotePromo || localPromo || null;
-}
-
-function isValidRedeemedPromo(promo) {
-  if (!promo || typeof promo !== "object") return false;
-  if (!promo.code || !promo.plan) return false;
-  if (promo.permanent === true) return true;
-  if (!promo.expiresAt) return false;
-  return new Date(promo.expiresAt).getTime() > Date.now();
-}
-
 function hasActiveSubscription(subscription = {}) {
   if (!subscription || typeof subscription !== "object") return false;
   const status = subscription.billingStatus || subscription.billing_status || "";
   const plan = subscription.plan || subscription.subscription_plan || "";
   return ["active", "trialing"].includes(status) && plan && plan !== "free";
-}
-
-function mergePromoCodeSettings(remoteCodes = [], localCodes = []) {
-  const byCode = new Map();
-
-  [...localCodes, ...remoteCodes].forEach((code) => {
-    if (!code?.code) return;
-    const key = String(code.code).toUpperCase();
-    const existing = byCode.get(key);
-    byCode.set(key, {
-      ...(existing || {}),
-      ...code,
-      code: key,
-      uses: Math.max(Number(existing?.uses || 0), Number(code.uses || 0)),
-    });
-  });
-
-  return Array.from(byCode.values());
-}
-
-function hasMeaningfulPromoCodes(codes = []) {
-  if (!Array.isArray(codes)) return false;
-
-  return codes.some((code) => {
-    const normalizedCode = String(code?.code || "").toUpperCase();
-    if (!normalizedCode) return false;
-    if (normalizedCode !== "CALCIOLAB100") return true;
-    return Number(code.uses || 0) > 0 || Boolean(code.note && code.note !== "Accesso gratuito riservato a famiglia, amici stretti e test interni.");
-  });
 }
 
 function hasArrayItems(value) {

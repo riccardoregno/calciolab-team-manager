@@ -144,7 +144,6 @@ function App() {
   const [developmentPlanPreview, setDevelopmentPlanPreview] = useState(getInitialDevelopmentPlanPreview);
   const [developmentRolePreview, setDevelopmentRolePreview] = useState(getInitialDevelopmentRolePreview);
   const [remoteSubscription, setRemoteSubscription] = useState(() => extractRemoteSubscription(auth.team));
-  const [renderStartedAt] = useState(() => Date.now());
 
   // ── Capacitor lifecycle (solo su iOS/Android) ──────────────────────────────
   useEffect(() => {
@@ -211,23 +210,16 @@ function App() {
       subscriptionId: remoteSubscription.stripe_subscription_id,
     } : {};
 
-    // Promo codes are stored locally and Supabase doesn't know about them.
-    // A valid redeemed promo must win over the Supabase subscription values
-    // (Supabase is the source of truth only for Stripe billing, not for promo grants).
-    const redeemedPromo = current.redeemedPromo;
-    const promoIsValid = redeemedPromo && (
-      redeemedPromo.permanent === true ||
-      (redeemedPromo.expiresAt && new Date(redeemedPromo.expiresAt).getTime() > renderStartedAt)
-    );
-    const promoOverride = promoIsValid ? {
-      plan:          redeemedPromo.plan || "premium",
-      billingStatus: "active",
-    } : {};
-
+    // FIX: i codici promo sono ora gestiti interamente lato server
+    // (Edge Function redeem-promo-code aggiorna direttamente
+    // subscription_plan/billing_status su Supabase). Prima un "promoOverride"
+    // letto da appSettings locale (JSON scrivibile dall'owner) vinceva sui
+    // dati Stripe reali — un owner poteva crearsi un codice permanente nella
+    // UI e ottenere un piano "club" gratuito per sempre. Ora Supabase è
+    // l'unica fonte di verità per il piano, promo incluse.
     const merged = {
       ...current,
-      // Order: local defaults → Supabase (Stripe truth) → promo (local truth for promo grants)
-      subscription: { ...current.subscription, ...subscriptionOverride, ...promoOverride },
+      subscription: { ...current.subscription, ...subscriptionOverride },
     };
 
     if (!import.meta.env.DEV || !developmentPreviewPlans.includes(developmentPlanPreview)) {
@@ -239,7 +231,7 @@ function App() {
       developmentPreviewPlan: developmentPlanPreview,
       developmentPreviewRole: developmentRolePreview,
     };
-  }, [state.appSettings, remoteSubscription, developmentPlanPreview, developmentRolePreview, renderStartedAt]);
+  }, [state.appSettings, remoteSubscription, developmentPlanPreview, developmentRolePreview]);
 
   // FIX #9: active flag previene setState su componente smontato (memory leak)
   useEffect(() => {

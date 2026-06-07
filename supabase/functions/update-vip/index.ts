@@ -56,17 +56,23 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data: team, error: teamError } = await supabase
-      .from("teams")
-      .select("id, vip_points, vip_level")
-      .eq("id", teamId)
-      .single();
+    // FIX: SELECT vip_points → calcolo → UPDATE separati lasciavano una
+    // finestra di race condition — chiamate concorrenti potevano leggere lo
+    // stesso valore di partenza e la seconda scrittura sovrascriveva la
+    // prima, perdendo punti (lost update). increment_vip_points esegue
+    // lettura+incremento+scrittura in una singola istruzione atomica
+    // (UPDATE ... SET vip_points = vip_points + delta ... RETURNING),
+    // eliminando del tutto la finestra (vedi migrazione
+    // 20260607150000_atomic_vip_points.sql).
+    const { data: incrementRows, error: incrementError } = await supabase
+      .rpc("increment_vip_points", { p_team_id: teamId, p_delta: pointsDelta });
 
-    if (teamError) throw teamError;
-    if (!team) throw new Error("Team non trovato");
+    if (incrementError) throw incrementError;
+    const updatedTeam = incrementRows?.[0];
+    if (!updatedTeam) throw new Error("Team non trovato");
 
-    const previousLevel = team.vip_level || "bronze";
-    const newPoints = Math.max(0, Number(team.vip_points || 0) + pointsDelta);
+    const previousLevel = updatedTeam.previous_level || "bronze";
+    const newPoints = Number(updatedTeam.vip_points || 0);
     const newLevel = getVipLevel(newPoints).name;
     const levelChanged = newLevel !== previousLevel;
     const candidateReward = levelChanged ? getVipReward(newLevel) : null;
@@ -108,18 +114,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { error: updateError } = await supabase
-      .from("teams")
-      .update({
-        vip_points: newPoints,
-        vip_level: newLevel,
-        vip_updated_at: new Date().toISOString(),
-      })
-      .eq("id", teamId);
+    // vip_points/vip_updated_at sono già stati scritti atomicamente da
+    // increment_vip_points; qui aggiorniamo solo il livello derivato dal
+    // nuovo punteggio (campo puramente derivato, nessuna finestra di lost
+    // update significativa: il valore dipende solo da newPoints, già certo).
+    if (levelChanged) {
+      const { error: levelUpdateError } = await supabase
+        .from("teams")
+        .update({ vip_level: newLevel })
+        .eq("id", teamId);
 
-    if (updateError) {
-      if (eventExternalId) await rollbackVipEvent(supabase, eventSource, eventExternalId);
-      throw updateError;
+      if (levelUpdateError) {
+        if (eventExternalId) await rollbackVipEvent(supabase, eventSource, eventExternalId);
+        throw levelUpdateError;
+      }
     }
 
     if (levelChanged) {

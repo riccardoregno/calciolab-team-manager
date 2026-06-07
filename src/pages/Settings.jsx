@@ -17,7 +17,6 @@ import {
   getSetupProgress,
   memberRoles,
   normalizeAppSettings,
-  normalizePromoCode,
 } from "../utils/helpers";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useNotifications } from "../hooks/useNotifications";
@@ -94,7 +93,6 @@ export default function Settings({
   /* data props */
   appSettings = {},
   setAppSettings,
-  currentUserRole,
   players = [],
   exercises = [],
   sessions = [],
@@ -141,7 +139,7 @@ export default function Settings({
           authError={authError}
           storageSource={storageSource}
           appSettings={appSettings}
-          setAppSettings={setAppSettings}
+          showToast={showToast}
         />
       )}
 
@@ -158,7 +156,6 @@ export default function Settings({
         <ClubTab
           appSettings={appSettings}
           setAppSettings={setAppSettings}
-          currentUserRole={currentUserRole}
           team={team}
           showToast={showToast}
           players={players}
@@ -184,7 +181,7 @@ export default function Settings({
 /* ═══════════════════════════════════════════════════════════════
    TAB 1 — Account
 ═══════════════════════════════════════════════════════════════ */
-function AccountTab({ authConfigured, authLoading, user, team, authError, storageSource, appSettings = {}, setAppSettings }) {
+function AccountTab({ authConfigured, authLoading, user, team, authError, storageSource, appSettings = {}, showToast }) {
   const accountSettings = normalizeAppSettings(appSettings);
   const isVipOwner = Boolean(accountSettings.redeemedPromo?.permanent);
   const { t } = useTranslation();
@@ -452,7 +449,7 @@ function AccountTab({ authConfigured, authLoading, user, team, authError, storag
         </div>
       </AppCard>
 
-      <RedeemPromoCard appSettings={appSettings} setAppSettings={setAppSettings} />
+      <RedeemPromoCard team={team} appSettings={appSettings} showToast={showToast} />
     </div>
   );
 }
@@ -730,7 +727,7 @@ function isInviteExpired(invite) {
   return Boolean(invite.expiresAt && new Date(invite.expiresAt).getTime() < Date.now());
 }
 
-function ClubTab({ appSettings, setAppSettings, currentUserRole, team, showToast, players = [], exercises = [], sessions = [], matches = [] }) {
+function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], exercises = [], sessions = [], matches = [] }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -1425,10 +1422,6 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, team, showToast
         )}
       </AppCard>
 
-      {/* ── Codici promo / accesso founder ── */}
-      {currentUserRole === "owner" && (
-        <PromoCodesCard appSettings={appSettings} setAppSettings={setAppSettings} />
-      )}
 
       {/* ── Modale invito ── */}
       {inviteModal && (
@@ -1533,78 +1526,75 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, team, showToast
 
 /* ═══════════════════════════════════════════════════════════════
    Redeem Promo — shown in Account tab
+   FIX: il riscatto ora passa interamente dall'Edge Function
+   redeem-promo-code (vedi supabase/functions/redeem-promo-code).
+   Prima la lista dei codici (incluso un codice permanente "club"
+   hardcoded nel bundle JS, leggibile da chiunque con devtools) e
+   il riscatto vivevano lato client e scrivevano in teams.settings
+   (JSON owner-writable): bastava conoscere/creare un codice per
+   ottenere un piano premium gratuito per sempre, bypassando Stripe.
+   Ora la validazione e l'aggiornamento del piano avvengono
+   server-side sulle colonne trusted (subscription_plan/billing_status).
 ═══════════════════════════════════════════════════════════════ */
-function RedeemPromoCard({ appSettings = {}, setAppSettings }) {
+function RedeemPromoCard({ team, appSettings = {}, showToast }) {
   const settings = normalizeAppSettings(appSettings);
-  const codes = settings.promoCodes || [];
-  const redeemed = settings.redeemedPromo || null;
+  const plan = settings.subscription?.plan || "free";
+  const billingStatus = settings.subscription?.billingStatus || "free";
+  const alreadyActive = billingStatus === "active" && plan !== "free";
 
   const [input, setInput] = useState("");
   const [feedback, setFeedback] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleRedeem(e) {
+  async function handleRedeem(e) {
     e.preventDefault();
     setFeedback(null);
     const code = input.trim().toUpperCase();
-    const found = codes.find((c) => c.code === code);
-    if (!found) {
-      setFeedback({ ok: false, text: "Codice non trovato o non valido." });
+    if (!code) return;
+
+    if (!team?.id) {
+      setFeedback({ ok: false, text: "Nessun team attivo: impossibile riscattare il codice." });
       return;
     }
-    if (!found.permanent && found.expiresAt && new Date(found.expiresAt) < new Date()) {
-      setFeedback({ ok: false, text: "Questo codice è scaduto." });
-      return;
+
+    setSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("redeem-promo-code", {
+        body: { teamId: team.id, code },
+      });
+
+      if (error || !data?.success) {
+        const message = data?.error || error?.message || "Codice non valido.";
+        setFeedback({ ok: false, text: message });
+        return;
+      }
+
+      setFeedback({ ok: true, text: `Codice applicato! Piano ${String(data.plan || "").toUpperCase()} attivato.` });
+      setInput("");
+      showToast?.(`Piano ${String(data.plan || "").toUpperCase()} attivato tramite codice promozionale.`, "success");
+    } catch (err) {
+      setFeedback({ ok: false, text: err?.message || "Errore durante il riscatto del codice." });
+    } finally {
+      setSubmitting(false);
     }
-    if (found.maxUses > 0 && found.uses >= found.maxUses) {
-      setFeedback({ ok: false, text: "Questo codice ha raggiunto il limite di utilizzi." });
-      return;
-    }
-    const foundCode = found; // capture for closure
-    setAppSettings?.((prev) => {
-      const s = normalizeAppSettings(prev);
-      return {
-        ...s,
-        promoCodes: (s.promoCodes || []).map((c) =>
-          c.id === foundCode.id ? { ...c, uses: c.uses + 1 } : c
-        ),
-        redeemedPromo: {
-          code:       foundCode.code,
-          plan:       foundCode.plan,
-          permanent:  foundCode.permanent,
-          expiresAt:  foundCode.permanent ? null : (foundCode.expiresAt || null),
-          redeemedAt: new Date().toISOString(),
-        },
-        subscription: {
-          ...(s.subscription || {}),
-          plan:          foundCode.plan,
-          billingStatus: "active",
-        },
-      };
-    });
-    setFeedback({ ok: true, text: `✓ Codice applicato! Piano ${found.plan.toUpperCase()} attivato.` });
-    setInput("");
   }
 
   const planColors = { premium: "#38bdf8", club: "#a78bfa" };
 
   return (
     <AppCard>
-      <h3 style={{ margin: "0 0 6px", lineHeight: 1.2 }}>🎟️ Codice promozionale</h3>
+      <h3 style={{ margin: "0 0 6px", lineHeight: 1.2 }}>Codice promozionale</h3>
       <p style={{ color: "#94a3b8", margin: "0 0 16px", fontSize: 13, lineHeight: 1.5 }}>
         Hai ricevuto un codice di accesso? Inseriscilo qui per attivare il piano associato.
       </p>
 
-      {redeemed ? (
+      {alreadyActive ? (
         <div style={promoStyles.redeemedBox}>
-          <span style={{ fontSize: 20 }}>✓</span>
+          <span style={{ fontSize: 20 }}>OK</span>
           <div>
-            <strong style={{ color: planColors[redeemed.plan] || "#22c55e" }}>
-              Accesso attivo — piano {redeemed.plan.toUpperCase()}
+            <strong style={{ color: planColors[plan] || "#22c55e" }}>
+              Accesso attivo — piano {plan.toUpperCase()}
             </strong>
-            <p style={{ margin: "3px 0 0", fontSize: 12, color: "#64748b" }}>
-              Riscattato il {new Date(redeemed.redeemedAt).toLocaleDateString("it-IT")}
-              {redeemed.permanent ? " · accesso permanente" : ""}
-            </p>
           </div>
         </div>
       ) : (
@@ -1613,6 +1603,7 @@ function RedeemPromoCard({ appSettings = {}, setAppSettings }) {
             placeholder="Inserisci il codice..."
             value={input}
             onChange={(e) => setInput(e.target.value.toUpperCase())}
+            disabled={submitting}
             style={{
               ...styles.input,
               flex: "1 1 200px",
@@ -1622,7 +1613,7 @@ function RedeemPromoCard({ appSettings = {}, setAppSettings }) {
               fontWeight: 700,
             }}
           />
-          <Button type="submit">Applica</Button>
+          <Button type="submit" disabled={submitting}>{submitting ? "Verifica..." : "Applica"}</Button>
         </form>
       )}
 
@@ -1639,251 +1630,6 @@ function RedeemPromoCard({ appSettings = {}, setAppSettings }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   Promo Codes — founder/developer permanent access codes
-═══════════════════════════════════════════════════════════════ */
-function PromoCodesCard({ appSettings, setAppSettings }) {
-  const settings = normalizeAppSettings(appSettings);
-  const codes = settings.promoCodes || [];
-  const redeemed = settings.redeemedPromo || null;
-
-  const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ code: "", plan: "club", permanent: true, maxUses: 1, note: "" });
-  const [redeemInput, setRedeemInput] = useState("");
-  const [redeemFeedback, setRedeemFeedback] = useState(null);
-
-  function createCode(e) {
-    e.preventDefault();
-    if (!form.code.trim()) return;
-    const newCode = normalizePromoCode({
-      code:      form.code.trim().toUpperCase(),
-      plan:      form.plan,
-      permanent: form.permanent,
-      maxUses:   Number(form.maxUses) || 0,
-      note:      form.note,
-    });
-    setAppSettings({ ...settings, promoCodes: [...codes, newCode] });
-    setForm({ code: "", plan: "club", permanent: true, maxUses: 1, note: "" });
-    setShowCreate(false);
-  }
-
-  function deleteCode(id) {
-    setAppSettings({ ...settings, promoCodes: codes.filter((c) => c.id !== id) });
-  }
-
-  function validatePromoCode(found) {
-    if (!found) return "Codice non trovato o non valido.";
-    if (!found.permanent && found.expiresAt && new Date(found.expiresAt) < new Date()) {
-      return "Questo codice è scaduto.";
-    }
-    if (found.maxUses > 0 && found.uses >= found.maxUses && redeemed?.code !== found.code) {
-      return "Questo codice ha raggiunto il limite di utilizzi.";
-    }
-    return "";
-  }
-
-  function applyPromoCode(found) {
-    const error = validatePromoCode(found);
-    if (error) {
-      setRedeemFeedback({ ok: false, text: error });
-      return;
-    }
-
-    const alreadyRedeemed = redeemed?.code === found.code;
-    const updatedCodes = codes.map((c) =>
-      c.id === found.id && !alreadyRedeemed ? { ...c, uses: c.uses + 1 } : c
-    );
-    const redeemedPromo = {
-      code:       found.code,
-      plan:       found.plan,
-      permanent:  found.permanent,
-      expiresAt:  found.permanent ? null : (found.expiresAt || null),
-      redeemedAt: alreadyRedeemed ? redeemed.redeemedAt : new Date().toISOString(),
-    };
-
-    setAppSettings({
-      ...settings,
-      promoCodes: updatedCodes,
-      redeemedPromo,
-      subscription: {
-        ...settings.subscription,
-        plan:          found.plan,
-        billingStatus: "active",
-      },
-    });
-    setRedeemFeedback({ ok: true, text: `✓ Codice applicato! Piano ${found.plan.toUpperCase()} attivato.` });
-    setRedeemInput("");
-  }
-
-  function redeemCode(e) {
-    e.preventDefault();
-    setRedeemFeedback(null);
-    const input = redeemInput.trim().toUpperCase();
-    const found = codes.find((c) => c.code === input);
-    applyPromoCode(found);
-  }
-
-  const planColors = { premium: "#38bdf8", club: "#a78bfa" };
-
-  return (
-    <AppCard>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
-        <div>
-          <h3 style={{ margin: 0, lineHeight: 1.2 }}>🎟️ Codici accesso</h3>
-          <p style={{ color: "#94a3b8", margin: "6px 0 0", fontSize: 13, lineHeight: 1.5 }}>
-            Crea codici che garantiscono accesso Premium o Club — permanenti o con scadenza.
-            Condividili con chi vuoi (staff, partner, fondatori).
-          </p>
-        </div>
-        <Button onClick={() => setShowCreate((v) => !v)}>
-          {showCreate ? "Annulla" : "+ Nuovo codice"}
-        </Button>
-      </div>
-
-      {/* Create form */}
-      {showCreate && (
-        <form onSubmit={createCode} style={promoStyles.createForm}>
-          <label style={s.label}>
-            Codice
-            <input
-              required
-              placeholder="es. FOUNDER2025"
-              value={form.code}
-              onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-              style={{ ...styles.input, textTransform: "uppercase", letterSpacing: 2 }}
-            />
-          </label>
-          <label style={s.label}>
-            Piano
-            <select
-              value={form.plan}
-              onChange={(e) => setForm({ ...form, plan: e.target.value })}
-              style={styles.input}
-            >
-              <option value="premium">Premium Coach</option>
-              <option value="club">Club (massimo accesso)</option>
-            </select>
-          </label>
-          <label style={s.label}>
-            Usi massimi
-            <input
-              type="number"
-              min="0"
-              placeholder="0 = illimitati"
-              value={form.maxUses}
-              onChange={(e) => setForm({ ...form, maxUses: e.target.value })}
-              style={styles.input}
-            />
-          </label>
-          <label style={{ ...s.label, gridColumn: "1 / -1" }}>
-            Nota (opzionale)
-            <input
-              placeholder="es. Founder access - Papà"
-              value={form.note}
-              onChange={(e) => setForm({ ...form, note: e.target.value })}
-              style={styles.input}
-            />
-          </label>
-          <div style={{ gridColumn: "1 / -1", display: "flex", gap: 10, alignItems: "center" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#94a3b8", fontSize: 13, cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={form.permanent}
-                onChange={(e) => setForm({ ...form, permanent: e.target.checked })}
-                style={{ width: 16, height: 16, accentColor: "#22c55e" }}
-              />
-              <span>Permanente (no scadenza)</span>
-            </label>
-            <div style={{ flex: 1 }} />
-            <Button type="submit">Crea codice</Button>
-          </div>
-        </form>
-      )}
-
-      {/* Codes list */}
-      {codes.length > 0 && (
-        <div style={{ display: "grid", gap: 8, marginBottom: redeemed ? 16 : 0 }}>
-          {codes.map((c) => {
-            const isRedeemedCode = redeemed?.code === c.code;
-
-            return (
-              <div key={c.id} style={promoStyles.codeRow}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                  <span style={{ ...promoStyles.codeBadge, color: planColors[c.plan] || "#94a3b8", borderColor: (planColors[c.plan] || "#94a3b8") + "40" }}>
-                    {c.code}
-                  </span>
-                  <div>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                      <Badge tone={c.plan === "club" ? "purple" : "blue"}>{c.plan.toUpperCase()}</Badge>
-                      {c.permanent && <Badge tone="green">Permanente</Badge>}
-                      {isRedeemedCode && <Badge tone="green">Attivo su questo account</Badge>}
-                      {c.maxUses > 0 && (
-                        <span style={{ fontSize: 11, color: "#64748b" }}>{c.uses}/{c.maxUses} usi</span>
-                      )}
-                    </div>
-                    <p style={{ margin: "3px 0 0", fontSize: 12, color: isRedeemedCode ? "#86efac" : "#64748b" }}>
-                      {isRedeemedCode
-                        ? "Questo codice è già stato riscattato e abilita il piano corrente."
-                        : (c.note || "Disponibile, ma non ancora applicato a questo account.")}
-                    </p>
-                  </div>
-                </div>
-                {!isRedeemedCode && (
-                  <button type="button" onClick={() => applyPromoCode(c)} style={promoStyles.applyCodeBtn}>
-                    Usa codice
-                  </button>
-                )}
-                <button type="button" onClick={() => deleteCode(c.id)} style={inviteStyles.cancelBtn}>
-                  Elimina
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {codes.length === 0 && !showCreate && (
-        <p style={{ color: "#475569", fontSize: 13, margin: "0 0 16px" }}>Nessun codice creato.</p>
-      )}
-
-      {/* Redeem section */}
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 16, marginTop: codes.length || showCreate ? 16 : 0 }}>
-        <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 900, textTransform: "uppercase", color: "#64748b" }}>
-          Riscatta un codice
-        </p>
-        {redeemed ? (
-          <div style={promoStyles.redeemedBox}>
-            <span style={{ fontSize: 18 }}>✓</span>
-            <div>
-              <strong style={{ color: planColors[redeemed.plan] || "#22c55e" }}>
-                Accesso attivo — piano {redeemed.plan.toUpperCase()}
-              </strong>
-              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
-                Riscattato il {new Date(redeemed.redeemedAt).toLocaleDateString("it-IT")}
-                {redeemed.permanent ? " · accesso permanente" : ""}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={redeemCode} style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
-            <input
-              placeholder="Inserisci il codice..."
-              value={redeemInput}
-              onChange={(e) => setRedeemInput(e.target.value.toUpperCase())}
-              style={{ ...styles.input, flex: "1 1 200px", letterSpacing: 2, textTransform: "uppercase" }}
-            />
-            <Button type="submit" variant="ghost">Applica</Button>
-          </form>
-        )}
-        {redeemFeedback && (
-          <div style={{ ...acctStyles.feedback, marginTop: 10, ...(redeemFeedback.ok ? acctStyles.feedbackOk : acctStyles.feedbackErr) }}>
-            {redeemFeedback.text}
-          </div>
-        )}
-      </div>
-    </AppCard>
-  );
-}
 
 /* ─── shared small components ──────────────────────────────── */
 function InfoItem({ label, value }) {
@@ -2174,47 +1920,6 @@ function VipBadge() {
 
 /* ─── Promo code styles ─────────────────────────────────────── */
 const promoStyles = {
-  createForm: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 12,
-    marginBottom: 18,
-    padding: "16px",
-    borderRadius: 14,
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.08)",
-  },
-  codeRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    padding: "11px 14px",
-    borderRadius: 12,
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.07)",
-    flexWrap: "wrap",
-  },
-  codeBadge: {
-    fontFamily: "monospace",
-    fontSize: 13,
-    fontWeight: 900,
-    letterSpacing: 2,
-    padding: "4px 10px",
-    borderRadius: 8,
-    border: "1px solid",
-    background: "rgba(255,255,255,0.04)",
-    flexShrink: 0,
-  },
-  applyCodeBtn: {
-    border: "1px solid rgba(34,197,94,0.32)",
-    background: "rgba(34,197,94,0.12)",
-    color: "#86efac",
-    borderRadius: 10,
-    padding: "9px 12px",
-    fontWeight: 900,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  },
   redeemedBox: {
     display: "flex",
     alignItems: "center",

@@ -671,8 +671,15 @@ export function normalizeAppSettings(settings = {}){
     communications: (settings.communications || []).map(normalizeComm),
     developmentPreviewPlan: settings.developmentPreviewPlan || "",
     developmentPreviewRole: settings.developmentPreviewRole || "",
-    promoCodes: mergePromoCodes(settings.promoCodes || []),
-    redeemedPromo: settings.redeemedPromo || null,  // { code, plan, redeemedAt }
+    // FIX: il sistema di codici promo è stato spostato lato server
+    // (Edge Function redeem-promo-code + tabelle promo_codes/promo_redemptions,
+    // non leggibili/scrivibili dal client). Prima la lista dei codici era
+    // hardcoded nel bundle JS (leggibile da chiunque con devtools) e il
+    // riscatto scriveva qui, in teams.settings (JSON owner-writable):
+    // un owner poteva crearsi un codice permanente e ottenere un piano
+    // "club" gratuito per sempre, bypassando Stripe. Ora il riscatto
+    // aggiorna direttamente subscription_plan/billing_status — le colonne
+    // trusted lette da App.jsx — quindi questi campi locali non servono più.
   };
 }
 
@@ -701,45 +708,6 @@ export function normalizeMember(member = {}){
     customAreas: member.customAreas || {},
     // VIP — granted via permanent promo code or manually by owner
     vip: Boolean(member.vip),
-  };
-}
-
-const defaultPromoCodes = [
-  {
-    id: "promo-calciolab100",
-    code: "CALCIOLAB100",
-    plan: "club",
-    permanent: true,
-    maxUses: 0,
-    uses: 0,
-    createdAt: "2026-05-22T00:00:00.000Z",
-    expiresAt: "",
-    note: "Accesso gratuito riservato a famiglia, amici stretti e test interni.",
-  },
-];
-
-function mergePromoCodes(codes = []) {
-  const normalized = codes.map(normalizePromoCode);
-  const existing = new Set(normalized.map((item) => item.code));
-  return [
-    ...normalized,
-    ...defaultPromoCodes
-      .filter((item) => !existing.has(item.code))
-      .map(normalizePromoCode),
-  ];
-}
-
-export function normalizePromoCode(code = {}) {
-  return {
-    id:        code.id        || createId("promo"),
-    code:      code.code      || "",
-    plan:      code.plan      || "premium",      // "premium" | "club"
-    permanent: code.permanent === true,           // true = no expiry
-    maxUses:   Number(code.maxUses  || 0),       // 0 = unlimited
-    uses:      Number(code.uses     || 0),
-    createdAt: code.createdAt || new Date().toISOString(),
-    expiresAt: code.expiresAt || "",
-    note:      code.note      || "",
   };
 }
 
@@ -784,9 +752,10 @@ export function getEffectivePlanId(settings = {}){
   }
 
   const normalized = normalizeAppSettings(settings);
-  const promoPlan = getActiveRedeemedPromoPlan(normalized);
-  if (promoPlan) return promoPlan;
-
+  // FIX: i piani concessi via codice promo ora arrivano qui attraverso
+  // subscription_plan/billing_status (aggiornati server-side da
+  // redeem-promo-code), quindi rientrano già nel ramo "billing attivo" sotto
+  // — niente più bisogno di un percorso promo locale separato e bypassabile.
   const subscription = normalized.subscription;
 
   if (subscription.billingStatus === "trialing" && isTrialActive(normalized)) {
@@ -802,19 +771,10 @@ export function getEffectivePlanId(settings = {}){
 
 export function isTrialActive(settings = {}){
   const normalized = normalizeAppSettings(settings);
-  if (getActiveRedeemedPromoPlan(normalized)) return false;
 
   const subscription = normalized.subscription;
   if (subscription.billingStatus !== "trialing" || !subscription.trialEndsAt) return false;
   return new Date(subscription.trialEndsAt).getTime() >= Date.now();
-}
-
-function getActiveRedeemedPromoPlan(settings = {}) {
-  const promo = settings.redeemedPromo;
-  if (!promo?.plan || promo.plan === "free") return "";
-  if (promo.permanent === true) return promo.plan;
-  if (!promo.expiresAt) return "";
-  return new Date(promo.expiresAt).getTime() > Date.now() ? promo.plan : "";
 }
 
 export function getTrialDaysLeft(settings = {}){
