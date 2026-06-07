@@ -1380,6 +1380,8 @@ export const it = {
       clubRoleSaved: "Ruolo aggiornato — l'accesso del membro è ora sincronizzato.",
       clubRoleSyncError: "Ruolo salvato localmente, ma la sincronizzazione con l'account del membro è fallita. Riprova tra poco.",
       clubRoleSavedLocalOnly: "Ruolo aggiornato nell'elenco, ma il membro non risulta collegato a un account: dovrà accettare di nuovo l'invito perché l'accesso si sblocchi.",
+      clubMemberRemoved: "Membro rimosso — anche l'accesso al team è stato revocato.",
+      clubMemberRemoveSyncError: "Membro rimosso dall'elenco, ma la revoca dell'accesso all'account è fallita. Riprova tra poco o contatta il supporto.",
       clubInviteRequestSent: "Richiesta inviata",
       clubInviteExpired: "Scaduto",
       clubNoMembers: "Nessun membro ancora. Usa il link invito o il pulsante \"Invita membro\" per aggiungere staff e giocatori.",

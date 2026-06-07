@@ -988,11 +988,36 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, team, showToast
     });
   }
 
-  function removeMember(memberId) {
+  async function removeMember(memberId) {
     setAppSettings?.((prev) => {
       const s = normalizeAppSettings(prev);
       return { ...s, members: (s.members || []).filter((m) => String(m.id) !== String(memberId)) };
     });
+
+    // FIX: rimuovere il membro solo dal JSON locale lasciava intatta la riga
+    // corrispondente in team_members — l'utente rimosso dalla UI manteneva
+    // l'accesso reale al team (RoleGate/RLS leggono team_members come fonte
+    // di verità). Sincronizziamo la cancellazione, stesso pattern di
+    // updateMemberRole (id "member-<user_id>").
+    const userId = String(memberId).startsWith("member-") ? String(memberId).slice("member-".length) : null;
+
+    if (!userId || !team?.id || !isSupabaseConfigured) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from("team_members")
+      .delete()
+      .eq("team_id", team.id)
+      .eq("user_id", userId);
+
+    if (error) {
+      if (import.meta.env.DEV) console.warn("[Settings] Rimozione membro da team_members fallita:", error.message);
+      showToast?.(t("pages.settings.clubMemberRemoveSyncError"), "error");
+      return;
+    }
+
+    showToast?.(t("pages.settings.clubMemberRemoved"), "success");
   }
 
   function toggleMemberVip(memberId) {
