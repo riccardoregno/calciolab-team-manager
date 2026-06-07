@@ -6,6 +6,7 @@ import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
 import { formatDate, normalizeAppSettings } from "../utils/helpers";
+import { generateDistintaPDF } from "../utils/generateDistintaPDF";
 import { useTranslation } from "../i18n";
 
 const MAX_PLAYERS = 22;
@@ -269,6 +270,12 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
     window.print();
   }
 
+  function downloadDistinta() {
+    const profile = normalizeAppSettings(appSettings).workspaceProfile;
+    const staff   = normalizeAppSettings(appSettings).members || [];
+    generateDistintaPDF(match, players, profile, staff);
+  }
+
   async function copyConvocation(kind, text) {
     await copyText(text);
     setCopiedLabel(kind);
@@ -366,6 +373,9 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
             <Button variant="ghost" onClick={clearAll}>{t("pages.matchConvocation.clearAll")}</Button>
             <Button variant="ghost" onClick={selectAll}>{t("common.selectAll")}</Button>
             <Button variant="ghost" onClick={() => navigate("/matches")}>{t("common.back")}</Button>
+            <Button variant="ghost" onClick={downloadDistinta} title="Scarica distinta FIGC in PDF">
+              📄 {t("pages.matchConvocation.downloadDistinta")}
+            </Button>
             <Button variant="ghost" onClick={() => persistConvocazione(false)} disabled={count === 0}>
               {t("pages.matchConvocation.saveDraft")}
             </Button>

@@ -2996,6 +2996,7 @@ export const it = {
       counterOf: "/ {{max}} convocati",
       badgePublished: "✓ Pubblicata",
       clearAll: "Deseleziona tutti",
+      downloadDistinta: "Distinta FIGC",
       saveDraft: "Salva bozza",
       updatePublication: "Aggiorna pubblicazione",
       publishConvocation: "Pubblica convocazione",

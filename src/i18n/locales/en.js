@@ -2965,6 +2965,7 @@ export const en = {
       counterOf: "/ {{max}} called up",
       badgePublished: "✓ Published",
       clearAll: "Deselect all",
+      downloadDistinta: "Match Sheet PDF",
       saveDraft: "Save draft",
       updatePublication: "Update call-up",
       publishConvocation: "Publish call-up",
