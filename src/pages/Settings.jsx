@@ -818,7 +818,14 @@ function ClubTab({ appSettings, setAppSettings, currentUserRole, players = [], e
   }
 
   function copyPendingInviteLink(invite) {
-    const token = invite.token || inviteToken || generateInviteToken();
+    // FIX: l'Edge Function accept-team-invite valida SOLO il token canonico
+    // del team (teams.settings.inviteToken). invite.token è solo uno snapshot
+    // preso al momento dell'invio e — a causa del bug di normalizzazione ora
+    // corretto — poteva essere rimasto disallineato dal token corrente,
+    // generando link "morti" che rispondevano sempre "Invito non trovato o
+    // non valido". Usiamo sempre il token canonico, mai quello salvato
+    // sull'invito.
+    const token = inviteToken || generateInviteToken();
     const link = getInviteLink(token);
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(link).then(() => {
