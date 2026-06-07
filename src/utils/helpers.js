@@ -652,6 +652,10 @@ export function normalizeAppSettings(settings = {}){
       ? settings.physicalMetrics
       : DEFAULT_PHYSICAL_METRICS,
     members: (settings.members || []).map(normalizeMember),
+    // FIX: inviteToken veniva perso ad ogni normalizzazione (non era riportato
+    // qui), causando "Invito non trovato o non valido" non appena l'utente
+    // toccava qualsiasi altra impostazione dopo aver generato/copiato il link.
+    inviteToken: settings.inviteToken || null,
     communications: (settings.communications || []).map(normalizeComm),
     developmentPreviewPlan: settings.developmentPreviewPlan || "",
     developmentPreviewRole: settings.developmentPreviewRole || "",
