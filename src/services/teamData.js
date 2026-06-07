@@ -237,6 +237,7 @@ async function loadTeamTablesState(teamId) {
     }
 
     const localState = loadLocalState();
+    const emptyIntents = loadEmptyEntityIntents();
     const remoteEntityState = Object.fromEntries(successfulEntries);
     const entityState = Object.fromEntries(
       Object.keys(ENTITY_TABLES).map((stateKey) => {
@@ -250,7 +251,16 @@ async function loadTeamTablesState(teamId) {
         // Protezione perdita dati: se Supabase risponde vuoto ma il browser ha dati,
         // non sovrascriviamo la sorgente locale. Succede facilmente dopo primo login,
         // cambio team o sync remoto non ancora completato.
-        if (remoteRecords.length === 0 && hasUserLocalRecords(stateKey, localRecords)) {
+        //
+        // ECCEZIONE: se esiste un emptyEntityIntent per questa chiave, l'utente ha
+        // intenzionalmente svuotato l'entità (es. cancellato l'ultima partita).
+        // In quel caso rispettiamo il risultato remoto (vuoto = corretto) anche se
+        // localStorage è ancora stale perché requestIdleCallback non ha ancora scritto.
+        if (
+          remoteRecords.length === 0 &&
+          hasUserLocalRecords(stateKey, localRecords) &&
+          !emptyIntents[stateKey]
+        ) {
           return [stateKey, localRecords];
         }
 
