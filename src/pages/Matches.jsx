@@ -312,7 +312,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
                 color: "#93c5fd", fontSize: 13, fontWeight: 700, cursor: "pointer",
               }}
             >
-              + {t("pages.matches.newMatch")}
+              {t("pages.matches.newMatch")}
             </button>
           }
         />
