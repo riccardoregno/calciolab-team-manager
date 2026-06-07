@@ -154,8 +154,6 @@ export function generateDistintaPDF(match, allPlayers, profile = {}, staffList =
   doc.text(`${homeTeam}  vs  ${awayTeam}`, pw / 2, 28, { align: "center" });
 
   // ── Info gara ─────────────────────────────────────────────────────────────
-  let y = 44;
-
   doc.setFillColor(...C.light);
   doc.rect(0, 36, pw, 16, "F");
   doc.setTextColor(...C.dark);
@@ -173,7 +171,7 @@ export function generateDistintaPDF(match, allPlayers, profile = {}, staffList =
   doc.text(infoStr, pw / 2, 43, { align: "center" });
 
   // ── Titolo tabella ────────────────────────────────────────────────────────
-  y = 54;
+  let y = 54;
   doc.setFillColor(...C.accent);
   doc.roundedRect(14, y, pw - 28, 7, 1, 1, "F");
   doc.setTextColor(...C.white);

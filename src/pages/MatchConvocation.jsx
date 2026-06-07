@@ -8,6 +8,7 @@ import MatchTabBar from "../components/match/MatchTabBar";
 import { formatDate, normalizeAppSettings } from "../utils/helpers";
 import { generateDistintaPDF } from "../utils/generateDistintaPDF";
 import { useTranslation } from "../i18n";
+import { createRsvpLink, fetchMatchRsvps } from "../services/rsvp";
 
 const MAX_PLAYERS = 22;
 
@@ -159,7 +160,7 @@ async function copyText(text) {
   document.body.removeChild(textarea);
 }
 
-export default function MatchConvocation({ players = [], matches = [], setMatches, appSettings = {} }) {
+export default function MatchConvocation({ teamId, players = [], matches = [], setMatches, appSettings = {} }) {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -189,6 +190,9 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
   const [published, setPublished] = useState(Boolean(existing.published));
   const [saved, setSaved]       = useState(false);
   const [copiedLabel, setCopiedLabel] = useState("");
+  const [rsvps, setRsvps] = useState([]);
+  const [rsvpError, setRsvpError] = useState("");
+  const [copyingRsvpId, setCopyingRsvpId] = useState("");
 
   // resync se il match cambia dall'esterno
   useEffect(() => {
@@ -203,6 +207,21 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
     setCopiedLabel("");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, defaultNotes, homeVenue, isHomeMatch, match?.time, match?.venueName, match?.venueAddress]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadRsvps() {
+      if (!teamId || !id) return;
+      const { rsvps: rows, error } = await fetchMatchRsvps({ teamId, matchId: id });
+      if (!active) return;
+      setRsvps(rows);
+      setRsvpError(error?.message || "");
+    }
+
+    loadRsvps();
+    return () => { active = false; };
+  }, [teamId, id]);
 
   if (!match) {
     return (
@@ -282,6 +301,31 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
     window.setTimeout(() => setCopiedLabel(""), 1800);
   }
 
+  async function copyRsvpLink(player) {
+    if (!teamId || !match?.id || !player?.id) return;
+
+    const pid = String(player.id);
+    setCopyingRsvpId(pid);
+    setRsvpError("");
+    const { link, error } = await createRsvpLink({
+      teamId,
+      matchId: String(match.id),
+      playerId: pid,
+    });
+
+    if (error) {
+      setRsvpError(error.message);
+    } else {
+      await copyText(link);
+      setCopiedLabel(t("pages.matchConvocation.rsvpLinkCopied"));
+      const { rsvps: rows } = await fetchMatchRsvps({ teamId, matchId: id });
+      setRsvps(rows);
+      window.setTimeout(() => setCopiedLabel(""), 1800);
+    }
+
+    setCopyingRsvpId("");
+  }
+
   function markAsSent(channel = "WhatsApp") {
     const cleanDetails = normalizeConvocationDetails(details, defaultDetails);
     const sentAt = new Date().toISOString();
@@ -316,6 +360,12 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
   const convocati = selectedIds
     .map((pid) => players.find((p) => String(p.id) === pid))
     .filter(Boolean);
+  const rsvpMap = new Map(rsvps.map((rsvp) => [String(rsvp.player_id), rsvp]));
+  const rsvpStats = convocati.reduce((acc, player) => {
+    const response = rsvpMap.get(String(player.id))?.response || "pending";
+    acc[response] = (acc[response] || 0) + 1;
+    return acc;
+  }, { yes: 0, no: 0, pending: 0 });
   const convocatiByRole = groupByRole(convocati);
   const selectedRoleCounts = ROLE_ORDER.reduce((acc, role) => {
     acc[role] = convocati.filter((player) => player.role === role).length;
@@ -363,6 +413,15 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
             <span style={s.countOf}>{t("pages.matchConvocation.counterOf", { max: MAX_PLAYERS })}</span>
             {published && (
               <Badge tone="green" style={{ marginLeft: 8 }}>{t("pages.matchConvocation.badgePublished")}</Badge>
+            )}
+            {count > 0 && (
+              <Badge tone="blue" style={{ marginLeft: 8 }}>
+                {t("pages.matchConvocation.rsvpSummary", {
+                  yes: rsvpStats.yes || 0,
+                  no: rsvpStats.no || 0,
+                  pending: rsvpStats.pending || 0,
+                })}
+              </Badge>
             )}
             {!published && count > 0 && (
               <Badge tone="orange" style={{ marginLeft: 8 }}>{t("pages.matchConvocation.draftLabel")}</Badge>
@@ -600,6 +659,66 @@ export default function MatchConvocation({ players = [], matches = [], setMatche
           })}
         </div>
       </AppCard>
+
+      {/* ── RSVP disponibilità ── */}
+      {convocati.length > 0 && (
+        <AppCard>
+          <div style={s.communicationHeader}>
+            <div>
+              <h3 style={{ margin: "0 0 6px", lineHeight: 1.2 }}>{t("pages.matchConvocation.rsvpTitle")}</h3>
+              <p style={s.muted}>{t("pages.matchConvocation.rsvpSubtitle")}</p>
+            </div>
+            <Badge tone="blue">
+              {t("pages.matchConvocation.rsvpSummary", {
+                yes: rsvpStats.yes || 0,
+                no: rsvpStats.no || 0,
+                pending: rsvpStats.pending || 0,
+              })}
+            </Badge>
+          </div>
+
+          {rsvpError && <p style={s.errorText}>{rsvpError}</p>}
+
+          <div style={s.rsvpList}>
+            {convocati.map((player) => {
+              const pid = String(player.id);
+              const rsvp = rsvpMap.get(pid);
+              const status = rsvp?.response || "pending";
+              const displayName =
+                [player.firstName, player.lastName].filter(Boolean).join(" ") ||
+                player.name || "—";
+
+              return (
+                <div key={pid} style={s.rsvpRow}>
+                  <div style={s.rsvpPlayer}>
+                    <span style={s.shirtNum}>{player.shirtNumber || "—"}</span>
+                    <div>
+                      <strong>{displayName}</strong>
+                      {rsvp?.responded_at && (
+                        <span style={s.rsvpDate}>{formatDate(rsvp.responded_at)}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={s.rsvpActions}>
+                    <Badge tone={status === "yes" ? "green" : status === "no" ? "red" : "orange"}>
+                      {t(`pages.matchConvocation.rsvpStatus.${status}`)}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      onClick={() => copyRsvpLink(player)}
+                      disabled={copyingRsvpId === pid || !teamId}
+                    >
+                      {copyingRsvpId === pid
+                        ? t("pages.matchConvocation.rsvpCopying")
+                        : t("pages.matchConvocation.rsvpCopyLink")}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </AppCard>
+      )}
 
       {/* ── Foglio convocazione ── */}
       {count > 0 && (
@@ -1010,6 +1129,47 @@ const s = {
     whiteSpace: "nowrap",
   },
   checkMark: { color: "#22c55e", fontWeight: 900, fontSize: 14 },
+  errorText: {
+    margin: "10px 0 0",
+    color: "#fecaca",
+    fontSize: 13,
+    fontWeight: 700,
+  },
+  rsvpList: {
+    display: "grid",
+    gap: 8,
+    marginTop: 14,
+  },
+  rsvpRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.04)",
+    flexWrap: "wrap",
+  },
+  rsvpPlayer: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    minWidth: 180,
+  },
+  rsvpDate: {
+    display: "block",
+    marginTop: 3,
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  rsvpActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
 
   sheetToolbar: {
     display: "flex",

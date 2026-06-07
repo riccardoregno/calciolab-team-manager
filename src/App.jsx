@@ -75,6 +75,7 @@ function LegacyPlayerRedirect() {
   return <Navigate to={`/players/${id}`} replace />;
 }
 const JoinTeam = lazy(() => import("./pages/JoinTeam"));
+const Rsvp = lazy(() => import("./pages/Rsvp"));
 const SetPlays = lazy(() => import("./pages/SetPlays"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Terms = lazy(() => import("./pages/Terms"));
@@ -316,6 +317,7 @@ function App() {
   if (_path === "/terms")                  return <BrowserRouter><Suspense fallback={null}><Terms /></Suspense></BrowserRouter>;
   if (_path === "/privacy")                return <BrowserRouter><Suspense fallback={null}><Privacy /></Suspense></BrowserRouter>;
   if (_path.startsWith("/join"))           return <Suspense fallback={null}><JoinTeam /></Suspense>;
+  if (_path.startsWith("/rsvp"))           return <Suspense fallback={null}><Rsvp /></Suspense>;
   if (_path.startsWith("/reset-password")) return <Suspense fallback={null}><ResetPassword /></Suspense>;
 
   if (auth.authLoading) {
@@ -870,6 +872,7 @@ function App() {
                 path="/match-convocation/:id"
                 element={
                   gate(technicalRoles, <MatchConvocation
+                    teamId={auth.team?.id}
                     players={players}
                     matches={matches}
                     setMatches={setMatches}
