@@ -87,30 +87,25 @@ Deno.serve(async (req) => {
       return json({ error: existingError.message }, 500);
     }
 
-    if (existingMembership) {
-      if (pendingInvite?.role && existingMembership.role !== pendingInvite.role) {
-        const { error: updateRoleError } = await serviceClient
-          .from("team_members")
-          .update({ role: pendingInvite.role })
-          .eq("team_id", team.id)
-          .eq("user_id", user.id);
+    // FIX: SELECT + INSERT separati lasciavano una finestra di race condition —
+    // un doppio click / reload sul link invito durante quella finestra produceva
+    // righe duplicate per lo stesso (team_id, user_id) (vedi migrazione
+    // 20260607130000_team_members_unique_dedupe.sql, che ha anche aggiunto il
+    // vincolo UNIQUE usato qui come onConflict). upsert è atomico e idempotente:
+    // chiamate concorrenti convergono su un'unica riga.
+    const nextRole = existingMembership?.role && pendingInvite?.role
+      ? (existingMembership.role !== pendingInvite.role ? pendingInvite.role : existingMembership.role)
+      : (existingMembership?.role || role);
 
-        if (updateRoleError) {
-          return json({ error: updateRoleError.message }, 500);
-        }
-      }
-    } else {
-      const { error: insertError } = await serviceClient
-        .from("team_members")
-        .insert({
-          team_id: team.id,
-          user_id: user.id,
-          role,
-        });
+    const { error: upsertError } = await serviceClient
+      .from("team_members")
+      .upsert(
+        { team_id: team.id, user_id: user.id, role: nextRole },
+        { onConflict: "team_id,user_id" },
+      );
 
-      if (insertError) {
-        return json({ error: insertError.message }, 500);
-      }
+    if (upsertError) {
+      return json({ error: upsertError.message }, 500);
     }
 
     const nextPendingInvites = pendingInvite
