@@ -20,6 +20,7 @@ const ENTITY_TABLES = {
   injuryRecords: "injury_records",
 };
 const STORAGE_BACKUP_KEY = `${STORAGE_KEY}:backup`;
+const EMPTY_ENTITY_INTENT_KEY = `${STORAGE_KEY}:empty-entities`;
 
 // FIX #7: regex che ammette solo caratteri sicuri negli ID usati nelle query Supabase.
 // Previene injection nella lista passata a .not("id","in", rawString).
@@ -48,7 +49,7 @@ export function loadLocalState() {
     if (!backup) return state;
 
     const backupState = normalizeAppState(JSON.parse(backup));
-    return recoverMissingLocalEntities(state, backupState);
+    return recoverMissingLocalEntities(state, backupState, loadEmptyEntityIntents());
   } catch (error) {
     if (import.meta.env.DEV) console.error("Errore caricamento dati locali:", error);
     return getInitialState();
@@ -62,11 +63,21 @@ export function saveLocalState(state) {
   const normalized = normalizeAppState(state);
   const serialized  = JSON.stringify(normalized);
   _lastSerialized   = serialized;
+  let previous = null;
+
+  try {
+    previous = localStorage.getItem(STORAGE_KEY);
+    const previousState = parseStoredState(previous);
+    if (previousState) updateEmptyEntityIntents(normalized, previousState);
+  } catch {
+    previous = null;
+  }
 
   function write() {
     try {
-      const previous = localStorage.getItem(STORAGE_KEY);
-      if (previous) localStorage.setItem(STORAGE_BACKUP_KEY, previous);
+      if (previous) {
+        localStorage.setItem(STORAGE_BACKUP_KEY, previous);
+      }
       localStorage.setItem(STORAGE_KEY, serialized);
     } catch (error) {
       if (import.meta.env.DEV) console.error("Errore salvataggio localStorage:", error);
@@ -90,6 +101,9 @@ if (typeof window !== "undefined") {
       const previous = localStorage.getItem(STORAGE_KEY);
       if (previous && previous !== _lastSerialized) {
         localStorage.setItem(STORAGE_BACKUP_KEY, previous);
+        const nextState = parseStoredState(_lastSerialized);
+        const previousState = parseStoredState(previous);
+        if (nextState && previousState) updateEmptyEntityIntents(nextState, previousState);
       }
       localStorage.setItem(STORAGE_KEY, _lastSerialized);
     } catch {
@@ -113,7 +127,9 @@ export async function saveTeamTablesState(state, teamId) {
 
     const entityResults = await Promise.allSettled(
       Object.entries(ENTITY_TABLES).map(async ([stateKey, table]) => {
-        await syncEntityTable(table, teamId, normalized[stateKey] || []);
+        await syncEntityTable(table, teamId, normalized[stateKey] || [], {
+          allowEmptyDelete: hasEmptyEntityIntent(stateKey),
+        });
         return { key: stateKey, table };
       })
     );
@@ -283,7 +299,7 @@ function hasUserLocalRecords(stateKey, records = []) {
   return records.length > 0;
 }
 
-function recoverMissingLocalEntities(state, backupState) {
+function recoverMissingLocalEntities(state, backupState, emptyIntents = {}) {
   const appSettings = recoverMissingAppSettings(state.appSettings, backupState.appSettings);
 
   return normalizeAppState({
@@ -293,6 +309,9 @@ function recoverMissingLocalEntities(state, backupState) {
       Object.keys(ENTITY_TABLES).map((stateKey) => {
         const currentRecords = state[stateKey] || [];
         const backupRecords = backupState[stateKey] || [];
+        if (emptyIntents[stateKey]) {
+          return [stateKey, currentRecords];
+        }
         if (currentRecords.length === 0 && hasUserLocalRecords(stateKey, backupRecords)) {
           return [stateKey, backupRecords];
         }
@@ -530,8 +549,14 @@ function hasArrayItems(value) {
 }
 
 // ─── Sync singola tabella ──────────────────────────────────────────────────
-async function syncEntityTable(table, teamId, records) {
+async function syncEntityTable(table, teamId, records, { allowEmptyDelete = false } = {}) {
   if (!Array.isArray(records) || records.length === 0) {
+    if (allowEmptyDelete) {
+      const { error } = await supabase.from(table).delete().eq("team_id", teamId);
+      if (error) throw error;
+      return;
+    }
+
     if (import.meta.env.DEV) {
       console.warn(`[teamData] Delete remoto vuoto bloccato per ${table}: nessun record locale da sincronizzare.`);
     }
@@ -582,6 +607,66 @@ async function syncEntityTable(table, teamId, records) {
 
   const { error: deleteError } = await deleteQuery;
   if (deleteError) throw deleteError;
+}
+
+function loadEmptyEntityIntents() {
+  if (typeof localStorage === "undefined") return {};
+
+  try {
+    const parsed = JSON.parse(localStorage.getItem(EMPTY_ENTITY_INTENT_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveEmptyEntityIntents(intents) {
+  if (typeof localStorage === "undefined") return;
+
+  try {
+    localStorage.setItem(EMPTY_ENTITY_INTENT_KEY, JSON.stringify(intents));
+  } catch {
+    /* best-effort local marker */
+  }
+}
+
+function parseStoredState(serialized) {
+  if (!serialized) return null;
+
+  try {
+    return normalizeAppState(JSON.parse(serialized));
+  } catch {
+    return null;
+  }
+}
+
+function hasEmptyEntityIntent(stateKey) {
+  return Boolean(loadEmptyEntityIntents()[stateKey]);
+}
+
+function updateEmptyEntityIntents(nextState, previousState) {
+  const intents = loadEmptyEntityIntents();
+  let changed = false;
+
+  Object.keys(ENTITY_TABLES).forEach((stateKey) => {
+    const nextRecords = nextState[stateKey] || [];
+    const previousRecords = previousState[stateKey] || [];
+    const shouldMarkEmpty =
+      nextRecords.length === 0 &&
+      hasUserLocalRecords(stateKey, previousRecords);
+
+    if (shouldMarkEmpty && !intents[stateKey]) {
+      intents[stateKey] = new Date().toISOString();
+      changed = true;
+    }
+
+    if (nextRecords.length > 0 && intents[stateKey]) {
+      delete intents[stateKey];
+      changed = true;
+    }
+  });
+
+  if (changed) saveEmptyEntityIntents(intents);
 }
 
 // FIX #7: funzione di escape più sicura — lancia eccezione se l'ID non supera la regex.
