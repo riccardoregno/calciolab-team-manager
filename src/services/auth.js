@@ -2,6 +2,24 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 const acceptTeamInviteUrl = import.meta.env.VITE_ACCEPT_TEAM_INVITE_URL ||
   "https://sglevvqhlzpllrjrgbod.functions.supabase.co/accept-team-invite";
+const INVITE_TOKEN_KEY = "calciolab_invite_token";
+
+function getStoredInviteToken(user) {
+  if (typeof window === "undefined") {
+    return user?.user_metadata?.invite_token || "";
+  }
+
+  return sessionStorage.getItem(INVITE_TOKEN_KEY) ||
+    localStorage.getItem(INVITE_TOKEN_KEY) ||
+    user?.user_metadata?.invite_token ||
+    "";
+}
+
+function clearStoredInviteToken() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(INVITE_TOKEN_KEY);
+  localStorage.removeItem(INVITE_TOKEN_KEY);
+}
 
 export async function getAuthSession() {
   if (!isSupabaseConfigured) {
@@ -79,7 +97,7 @@ export async function acceptTeamInvite(token) {
   }
 
   if (typeof window !== "undefined") {
-    sessionStorage.removeItem("calciolab_invite_token");
+    clearStoredInviteToken();
   }
 
   return { team: payload.team || null, error: null };
@@ -90,9 +108,7 @@ export async function ensureDefaultTeam(user) {
     return { team: null };
   }
 
-  const inviteToken = typeof window !== "undefined"
-    ? sessionStorage.getItem("calciolab_invite_token") || user.user_metadata?.invite_token || ""
-    : user.user_metadata?.invite_token || "";
+  const inviteToken = getStoredInviteToken(user);
 
   if (inviteToken) {
     const { team: invitedTeam, error: inviteError } = await acceptTeamInvite(inviteToken);

@@ -51,6 +51,7 @@ function Auth() {
     const resolved   = inviteMode || modeParam;
     if (inviteToken) {
       sessionStorage.setItem("calciolab_invite_token", inviteToken);
+      localStorage.setItem("calciolab_invite_token", inviteToken);
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (resolved === "register") setMode("register");
@@ -148,7 +149,7 @@ function Auth() {
       if (mode === "register") {
         // Legge eventuale token invito salvato da JoinTeam
         const inviteToken = typeof window !== "undefined"
-          ? sessionStorage.getItem("calciolab_invite_token") || ""
+          ? sessionStorage.getItem("calciolab_invite_token") || localStorage.getItem("calciolab_invite_token") || ""
           : "";
 
         const { data, error } = await supabase.auth.signUp({

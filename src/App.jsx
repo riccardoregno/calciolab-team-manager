@@ -367,6 +367,7 @@ function App() {
           <Button
             onClick={() => {
               sessionStorage.removeItem("calciolab_invite_token");
+              localStorage.removeItem("calciolab_invite_token");
               window.location.href = "/";
             }}
           >

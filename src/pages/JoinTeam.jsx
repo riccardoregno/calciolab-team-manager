@@ -24,7 +24,10 @@ export default function JoinTeam() {
     const t = params.get("token") || "";
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setToken(t);
-    if (t) sessionStorage.setItem("calciolab_invite_token", t);
+    if (t) {
+      sessionStorage.setItem("calciolab_invite_token", t);
+      localStorage.setItem("calciolab_invite_token", t);
+    }
   }, []);
 
   function goTo(mode) {
