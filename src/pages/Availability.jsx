@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
@@ -7,8 +7,57 @@ import Modal from "../components/ui/Modal";
 import EmptyState from "../components/ui/EmptyState";
 import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
-import { createId } from "../utils/helpers";
+import { createId, getPlayerUnavailabilityOnDate } from "../utils/helpers";
 import { useTranslation } from "../i18n";
+
+// Limite di giorni renderizzati nella pianificazione "giorno per giorno" —
+// evita di costruire liste enormi se l'utente seleziona un range troppo ampio.
+const PREP_PLANNING_MAX_DAYS = 62;
+// Soglia sotto la quale un giorno viene segnalato come "critico"
+// (percentuale di rosa disponibile).
+const PREP_CRITICAL_RATIO = 0.7;
+
+function getDefaultPrepRange() {
+  const now = new Date();
+  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const nextMonthEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+  return {
+    start: nextMonthStart.toISOString().slice(0, 10),
+    end: nextMonthEnd.toISOString().slice(0, 10),
+  };
+}
+
+function buildPrepDays(players, start, end) {
+  if (!start || !end) return { days: [], truncated: false };
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) {
+    return { days: [], truncated: false };
+  }
+
+  const days = [];
+  const cursor = new Date(startDate);
+  let truncated = false;
+  while (cursor <= endDate) {
+    if (days.length >= PREP_PLANNING_MAX_DAYS) {
+      truncated = true;
+      break;
+    }
+    const dateStr = cursor.toISOString().slice(0, 10);
+    const absentEntries = players
+      .map((player) => ({ player, info: getPlayerUnavailabilityOnDate(player, dateStr) }))
+      .filter((entry) => entry.info);
+
+    days.push({
+      date: dateStr,
+      total: players.length,
+      available: players.length - absentEntries.length,
+      absentEntries,
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return { days, truncated };
+}
 
 // ─────────────────────────────────────────────
 // Costanti
@@ -178,6 +227,21 @@ export default function Availability({
   const [form, setForm]                 = useState(() => loadAvailabilityDraft(`${AVAILABILITY_DRAFT_KEY}:new`, emptyForm(players)));
   const [historyPlayerId, setHistoryPlayerId] = useState(null);
   const [recoveryDate, setRecoveryDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [prepRange, setPrepRange] = useState(() => getDefaultPrepRange());
+
+  // Pianificazione "giorno per giorno": per ogni data del periodo selezionato,
+  // stima quanti giocatori saranno disponibili incrociando infortuni attivi
+  // (player.injuries) e assenze programmate (player.absences, vedi scheda
+  // giocatore → Permessi). Aiuta a capire dove servono doppi allenamenti o
+  // spostamenti di giorno durante la preparazione.
+  const { days: prepDays, truncated: prepTruncated } = useMemo(
+    () => buildPrepDays(players, prepRange.start, prepRange.end),
+    [players, prepRange.start, prepRange.end]
+  );
+  const prepCriticalDays = useMemo(
+    () => prepDays.filter((day) => day.total > 0 && day.available / day.total < PREP_CRITICAL_RATIO),
+    [prepDays]
+  );
 
   const injuredPlayers = players.filter((p) => UNAVAILABLE.includes(p.status || "Disponibile"));
   const availablePlayers = players.filter((p) => !UNAVAILABLE.includes(p.status || "Disponibile"));
@@ -410,6 +474,87 @@ export default function Availability({
         })}
         <div style={{ flex: 1 }} />
       </div>
+
+      {/* Pianificazione preparazione: disponibilità giorno per giorno */}
+      <AppCard>
+        <div style={av.sectionHeader}>
+          <div>
+            <h3 style={av.sectionTitle}>{t("pages.availability.prepTitle")}</h3>
+            <p style={av.muted}>{t("pages.availability.prepSub")}</p>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginBottom: 16 }}>
+          <div style={{ display: "grid", gap: 6 }}>
+            <label style={av.fieldLabel}>{t("pages.availability.prepFromLabel")}</label>
+            <input
+              type="date"
+              value={prepRange.start}
+              onChange={(e) => setPrepRange((r) => ({ ...r, start: e.target.value }))}
+              style={styles.input}
+            />
+          </div>
+          <div style={{ display: "grid", gap: 6 }}>
+            <label style={av.fieldLabel}>{t("pages.availability.prepToLabel")}</label>
+            <input
+              type="date"
+              value={prepRange.end}
+              onChange={(e) => setPrepRange((r) => ({ ...r, end: e.target.value }))}
+              style={styles.input}
+            />
+          </div>
+        </div>
+
+        {prepCriticalDays.length > 0 && (
+          <div style={{ marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <span style={av.fieldLabel}>{t("pages.availability.prepCriticalLabel")}</span>
+            {prepCriticalDays.map((day) => (
+              <span
+                key={day.date}
+                style={{ ...av.badge, color: "#f87171", background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.3)" }}
+              >
+                {new Date(day.date).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" })} · {day.available}/{day.total}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {prepDays.length === 0 ? (
+          <p style={av.muted}>{t("pages.availability.prepEmpty")}</p>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {prepDays.map((day) => {
+              const ratio = day.total ? day.available / day.total : 1;
+              const tone = ratio < PREP_CRITICAL_RATIO ? "#f87171" : ratio < 0.9 ? "#fb923c" : "#22c55e";
+              const label = new Date(day.date).toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "2-digit" });
+              return (
+                <div key={day.date} style={av.prepDayRow}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0", minWidth: 88 }}>{label}</span>
+                    <span style={{ ...av.badge, color: tone, background: `${tone}18`, border: `1px solid ${tone}55` }}>
+                      {t("pages.availability.prepAvailableCount", { available: day.available, total: day.total })}
+                    </span>
+                  </div>
+                  {day.absentEntries.length > 0 && (
+                    <p style={{ ...av.muted, margin: "6px 0 0" }}>
+                      {day.absentEntries.map(({ player, info }) => {
+                        const name = [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "—";
+                        return `${name} (${info.label})`;
+                      }).join(" · ")}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {prepTruncated && (
+          <p style={{ ...av.muted, marginTop: 10 }}>
+            {t("pages.availability.prepTruncated", { days: PREP_PLANNING_MAX_DAYS })}
+          </p>
+        )}
+      </AppCard>
 
       <AppCard>
         <div style={av.sectionHeader}>
@@ -790,6 +935,7 @@ const av = {
   historyTitle:{ margin: "0 0 6px", fontSize: 13, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 0 },
   historyRow: { paddingBottom: 10, borderBottom: "1px solid rgba(255,255,255,0.05)" },
   pastPlayerRow: { display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "center", padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", flexWrap: "wrap" },
+  prepDayRow: { padding: "10px 14px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" },
   recoverySummary: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", padding: 14, borderRadius: 14, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.22)" },
   recoveryStats: { display: "flex", gap: 10, flexWrap: "wrap", padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" },
   muted:      { color: "#64748b", margin: "3px 0 0", fontSize: 12, lineHeight: 1.35 },

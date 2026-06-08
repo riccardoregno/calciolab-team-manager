@@ -8,6 +8,7 @@ import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/Toast";
 
 import {
+  PlayerAbsencesSection,
   PlayerDevelopmentTab,
   PlayerKpiStrip,
   PlayerMedicalTab,
@@ -24,6 +25,17 @@ import { styles } from "../styles/index.js";
 import { createId, getPlayerSummary } from "../utils/helpers";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
+
+const ABSENCE_TYPES = ["ferie", "permesso", "studio", "lavoro", "altro"];
+
+function emptyAbsenceForm() {
+  return {
+    type: ABSENCE_TYPES[0],
+    dateStart: new Date().toISOString().slice(0, 10),
+    dateEnd: new Date().toISOString().slice(0, 10),
+    notes: "",
+  };
+}
 
 const DIFFERENTIATED_TYPES = [
   "Defaticante",
@@ -77,6 +89,8 @@ function PlayerDetail({
   const [activeTab, setActiveTab] = useTabState("tab", "cartella");
   const [form, setForm] = useState({ ...player });
   const [medicalModal, setMedicalModal] = useState(null);
+  const [absenceModal, setAbsenceModal] = useState(false);
+  const [absenceForm, setAbsenceForm] = useState(() => emptyAbsenceForm());
   const [conflictModal, setConflictModal] = useState(false);
   const [medicalForm, setMedicalForm] = useState({
     differentiatedType: DIFFERENTIATED_TYPES[1],
@@ -106,6 +120,10 @@ function PlayerDetail({
   );
   const injuryHistory = useMemo(
     () => [...(player?.injuries || [])].sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0)),
+    [player]
+  );
+  const absenceHistory = useMemo(
+    () => [...(player?.absences || [])].sort((a, b) => new Date(a.dateStart || 0) - new Date(b.dateStart || 0)),
     [player]
   );
   const activeInjuries = injuryHistory.filter((injury) => !injury.endDate);
@@ -180,6 +198,7 @@ function PlayerDetail({
     setForm((prevForm) => ({
       ...prevForm,
       injuries:          nextPlayer.injuries,
+      absences:          nextPlayer.absences,
       injuryNotes:       nextPlayer.injuryNotes       ?? "",
       injuryType:        nextPlayer.injuryType        ?? "",
       injuryStartDate:   nextPlayer.injuryStartDate   ?? "",
@@ -354,6 +373,43 @@ function PlayerDetail({
     setMedicalModal(null);
   }
 
+  function openAddAbsenceModal() {
+    setAbsenceForm(emptyAbsenceForm());
+    setAbsenceModal(true);
+  }
+
+  function saveAbsenceRecord() {
+    if (!absenceForm.dateStart || !absenceForm.dateEnd) {
+      showToast(t("pages.playerDetail.absences.toastDatesRequired"), "warn");
+      return;
+    }
+    if (absenceForm.dateEnd < absenceForm.dateStart) {
+      showToast(t("pages.playerDetail.absences.toastInvalidRange"), "warn");
+      return;
+    }
+    const record = {
+      id: createId("absence"),
+      type: absenceForm.type,
+      dateStart: absenceForm.dateStart,
+      dateEnd: absenceForm.dateEnd,
+      notes: absenceForm.notes.trim(),
+    };
+    updateMedicalRecord((current) => ({
+      ...current,
+      absences: [...(current.absences || []), record],
+    }));
+    setAbsenceModal(false);
+    showToast(t("pages.playerDetail.absences.toastAdded"), "ok");
+  }
+
+  function removeAbsenceRecord(absenceId) {
+    updateMedicalRecord((current) => ({
+      ...current,
+      absences: (current.absences || []).filter((a) => String(a.id) !== String(absenceId)),
+    }));
+    showToast(t("pages.playerDetail.absences.toastRemoved"), "ok");
+  }
+
   function createDevelopmentTask() {
     if (!setStaffTasks || !player) return;
     const description = [
@@ -469,6 +525,14 @@ function PlayerDetail({
             />
           )}
 
+          {activeTab === "medico" && (
+            <PlayerAbsencesSection
+              absences={absenceHistory}
+              onAddAbsence={openAddAbsenceModal}
+              onRemoveAbsence={removeAbsenceRecord}
+            />
+          )}
+
           {activeTab === "sviluppo" && (
             <PlayerDevelopmentTab
               form={form}
@@ -503,6 +567,59 @@ function PlayerDetail({
                 : saveMedicalNote
             }
           />
+        </Modal>
+      )}
+
+      {absenceModal && (
+        <Modal title={t("pages.playerDetail.absences.modalTitle")} onClose={() => setAbsenceModal(false)}>
+          <div style={modalStyles.stack}>
+            <label style={modalStyles.field}>
+              <span style={modalStyles.label}>{t("pages.playerDetail.absences.fieldType")}</span>
+              <select
+                value={absenceForm.type}
+                onChange={(event) => setAbsenceForm((prev) => ({ ...prev, type: event.target.value }))}
+                style={styles.input}
+              >
+                {ABSENCE_TYPES.map((type) => (
+                  <option key={type} value={type}>{t(`pages.playerDetail.absences.type${type.charAt(0).toUpperCase()}${type.slice(1)}`)}</option>
+                ))}
+              </select>
+            </label>
+
+            <label style={modalStyles.field}>
+              <span style={modalStyles.label}>{t("pages.playerDetail.absences.fieldStart")}</span>
+              <input
+                type="date"
+                value={absenceForm.dateStart}
+                onChange={(event) => setAbsenceForm((prev) => ({ ...prev, dateStart: event.target.value }))}
+                style={styles.input}
+              />
+            </label>
+
+            <label style={modalStyles.field}>
+              <span style={modalStyles.label}>{t("pages.playerDetail.absences.fieldEnd")}</span>
+              <input
+                type="date"
+                value={absenceForm.dateEnd}
+                onChange={(event) => setAbsenceForm((prev) => ({ ...prev, dateEnd: event.target.value }))}
+                style={styles.input}
+              />
+            </label>
+
+            <label style={modalStyles.field}>
+              <span style={modalStyles.label}>{t("pages.playerDetail.absences.fieldNotes")}</span>
+              <textarea
+                value={absenceForm.notes}
+                onChange={(event) => setAbsenceForm((prev) => ({ ...prev, notes: event.target.value }))}
+                style={{ ...styles.input, minHeight: 72, resize: "vertical" }}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+            <Button variant="ghost" onClick={() => setAbsenceModal(false)}>{t("common.cancel")}</Button>
+            <Button onClick={saveAbsenceRecord}>{t("pages.playerDetail.absences.saveBtn")}</Button>
+          </div>
         </Modal>
       )}
 

@@ -560,6 +560,88 @@ export function PlayerMedicalTab({
   );
 }
 
+const ABSENCE_TYPE_LABEL_KEYS = {
+  ferie:    "pages.playerDetail.absences.typeFerie",
+  permesso: "pages.playerDetail.absences.typePermesso",
+  studio:   "pages.playerDetail.absences.typeStudio",
+  lavoro:   "pages.playerDetail.absences.typeLavoro",
+  altro:    "pages.playerDetail.absences.typeAltro",
+};
+
+function getAbsenceStatus(absence) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (absence.dateEnd && absence.dateEnd < today) return "past";
+  if (absence.dateStart && absence.dateStart > today) return "upcoming";
+  return "ongoing";
+}
+
+export function PlayerAbsencesSection({ absences = [], onAddAbsence, onRemoveAbsence }) {
+  const { t } = useTranslation();
+  const sorted = [...absences].sort((a, b) => new Date(a.dateStart || 0) - new Date(b.dateStart || 0));
+  const upcomingOrOngoing = sorted.filter((a) => getAbsenceStatus(a) !== "past");
+
+  return (
+    <AppCard>
+      <div style={sectionStyles.cardHeader}>
+        <div>
+          <h3 style={{ margin: 0 }}>{t("pages.playerDetail.absences.title")}</h3>
+          <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.absences.subtitle")}</p>
+        </div>
+        <Badge tone={upcomingOrOngoing.length ? "orange" : "green"}>
+          {upcomingOrOngoing.length
+            ? t("pages.playerDetail.absences.plannedCount", { count: upcomingOrOngoing.length })
+            : t("pages.playerDetail.absences.noneActive")}
+        </Badge>
+      </div>
+
+      <div style={sectionStyles.quickActions}>
+        <Button onClick={onAddAbsence}>{t("pages.playerDetail.absences.addBtn")}</Button>
+      </div>
+
+      {sorted.length ? (
+        <div style={sectionStyles.injuryTimeline}>
+          {sorted.map((absence, index) => {
+            const status = getAbsenceStatus(absence);
+            const tone = status === "past" ? "green" : status === "upcoming" ? "blue" : "orange";
+            const statusLabel = status === "past"
+              ? t("pages.playerDetail.absences.statusPast")
+              : status === "upcoming"
+              ? t("pages.playerDetail.absences.statusUpcoming")
+              : t("pages.playerDetail.absences.statusOngoing");
+            const typeLabel = ABSENCE_TYPE_LABEL_KEYS[absence.type]
+              ? t(ABSENCE_TYPE_LABEL_KEYS[absence.type])
+              : (absence.type || t("pages.playerDetail.absences.typeAltro"));
+
+            return (
+              <div key={absence.id || `${absence.dateStart}-${absence.dateEnd}-${index}`} style={sectionStyles.injuryItem}>
+                <div style={sectionStyles.injuryItemTop}>
+                  <div>
+                    <strong style={sectionStyles.injuryTitle}>{typeLabel}</strong>
+                    <p style={sectionStyles.injuryDates}>
+                      {absence.dateStart || "—"} → {absence.dateEnd || "—"}
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Badge tone={tone}>{statusLabel}</Badge>
+                    {onRemoveAbsence && (
+                      <Button variant="ghost" onClick={() => onRemoveAbsence(absence.id)}>
+                        {t("pages.playerDetail.absences.removeBtn")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {absence.notes && <p style={sectionStyles.injuryNotes}>{absence.notes}</p>}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p style={sectionStyles.muted}>{t("pages.playerDetail.absences.noAbsences")}</p>
+      )}
+    </AppCard>
+  );
+}
+
 export function PlayerStatsTab({ summary }) {
   const { t } = useTranslation();
   return (

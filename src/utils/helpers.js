@@ -84,7 +84,8 @@ export function normalizePlayer(player){
   if (
     player?._normalized === true &&
     typeof player.id === "string" &&
-    Array.isArray(player.injuries)
+    Array.isArray(player.injuries) &&
+    Array.isArray(player.absences)
   ) return player;
 
   return {
@@ -111,8 +112,54 @@ export function normalizePlayer(player){
     photoOffsetX: Math.min(50, Math.max(-50, Number(player.photoOffsetX || 0))),
     photoOffsetY: Math.min(50, Math.max(-50, Number(player.photoOffsetY || 0))),
     injuries: Array.isArray(player.injuries) ? player.injuries : [],
+    // Periodi di assenza programmata (ferie, permessi, studio, lavoro, ecc.)
+    // — usati nella scheda giocatore (sezione "Permessi e assenze") e nella
+    // pianificazione preparazione di Availability.jsx per stimare quanti
+    // giocatori saranno disponibili giorno per giorno.
+    absences: Array.isArray(player.absences) ? player.absences : [],
     _normalized: true,
   };
+}
+
+/**
+ * Determina se un giocatore è indisponibile in una certa data, controllando
+ * sia gli infortuni attivi (injuries, senza data di fine o con scadenza
+ * futura) sia i periodi di assenza programmata (absences). Restituisce un
+ * oggetto { type: "injury" | "absence", label } con il motivo, oppure null
+ * se il giocatore risulta disponibile quel giorno.
+ *
+ * Usata per la pianificazione "giorno per giorno" della preparazione
+ * (Availability.jsx) — una stima, non un dato definitivo: un infortunio
+ * senza data di rientro nota viene considerato indisponibile a oltranza.
+ */
+export function getPlayerUnavailabilityOnDate(player, dateStr) {
+  if (!dateStr) return null;
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return null;
+
+  for (const injury of player?.injuries || []) {
+    if (!injury?.startDate) continue;
+    const start = new Date(injury.startDate);
+    if (Number.isNaN(start.getTime()) || date < start) continue;
+
+    const endRaw = injury.endDate || injury.expectedReturn || null;
+    const end = endRaw ? new Date(endRaw) : null;
+    if (end && !Number.isNaN(end.getTime()) && date > end) continue;
+
+    return { type: "injury", label: injury.injuryType || injury.differentiatedType || "Infortunio" };
+  }
+
+  for (const absence of player?.absences || []) {
+    if (!absence?.dateStart || !absence?.dateEnd) continue;
+    const start = new Date(absence.dateStart);
+    const end = new Date(absence.dateEnd);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue;
+    if (date >= start && date <= end) {
+      return { type: "absence", label: absence.type || "Assenza" };
+    }
+  }
+
+  return null;
 }
 
 export function normalizeExercise(exercise){
