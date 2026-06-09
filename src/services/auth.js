@@ -71,36 +71,45 @@ export async function signOut() {
 
 export async function acceptTeamInvite(token) {
   if (!isSupabaseConfigured || !token) {
-    return { team: null, error: null };
+    return { team: null, error: null, status: null };
   }
 
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   const accessToken = sessionData?.session?.access_token;
 
   if (sessionError || !accessToken) {
-    return { team: null, error: sessionError || new Error("Sessione non disponibile") };
+    return { team: null, error: sessionError || new Error("Sessione non disponibile"), status: null };
   }
 
-  const response = await fetch(acceptTeamInviteUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ token }),
-  });
+  let response;
+  try {
+    response = await fetch(acceptTeamInviteUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ token }),
+    });
+  } catch (networkError) {
+    return { team: null, error: networkError, status: null };
+  }
 
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok || payload?.error) {
-    return { team: null, error: new Error(payload?.error || "Invito non valido") };
+    return {
+      team: null,
+      error: new Error(payload?.error || "Invito non valido"),
+      status: response.status,
+    };
   }
 
   if (typeof window !== "undefined") {
     clearStoredInviteToken();
   }
 
-  return { team: payload.team || null, error: null };
+  return { team: payload.team || null, error: null, status: response.status };
 }
 
 export async function ensureDefaultTeam(user) {
@@ -111,15 +120,31 @@ export async function ensureDefaultTeam(user) {
   const inviteToken = getStoredInviteToken(user);
 
   if (inviteToken) {
-    const { team: invitedTeam, error: inviteError } = await acceptTeamInvite(inviteToken);
+    const { team: invitedTeam, error: inviteError, status: inviteStatus } = await acceptTeamInvite(inviteToken);
+
     if (invitedTeam) {
       return { team: invitedTeam };
     }
-    if (import.meta.env.DEV && inviteError) {
-      console.warn("[auth] Invito non applicato:", inviteError.message);
-    }
+
+    // Errori "soft": token non trovato (404), invito riservato ad altra email (403),
+    // invito scaduto (410), o già membro (il team è stato restituito comunque).
+    // In questi casi puliamo il token invalido/stale e proseguiamo normalmente
+    // al lookup delle membership esistenti dell'utente — così non si blocca chi
+    // ha già un team o ha già accettato l'invito in precedenza.
+    // Errori "hard" (rete, 500): restituiamo l'errore perché c'è un problema
+    // infrastrutturale che vale la pena segnalare.
+    const isSoftError = inviteStatus === 404 || inviteStatus === 403 || inviteStatus === 410;
+
     if (inviteError) {
-      return { team: null, error: inviteError };
+      if (import.meta.env.DEV) {
+        console.warn("[auth] Invito non applicato (status=%d):", inviteStatus, inviteError.message);
+      }
+      if (!isSoftError) {
+        // Errore hard (rete null/500): blocca e segnala
+        return { team: null, error: inviteError };
+      }
+      // Errore soft: pulisci il token e prosegui al fallback membership
+      clearStoredInviteToken();
     }
   }
 

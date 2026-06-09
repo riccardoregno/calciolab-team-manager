@@ -805,13 +805,36 @@ function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], e
     return token;
   }
 
+  /**
+   * FIX: flush immediato di inviteToken su Supabase.
+   * generateInviteToken() aggiorna solo lo stato locale (debounced): se il
+   * debounce non ha ancora scritto su Supabase quando il destinatario clicca
+   * il link, l'Edge Function accept-team-invite non trova il token in
+   * teams.settings e risponde 404. Questo flush bypassa il debounce e scrive
+   * direttamente, bloccando l'azione (invio email / copia link) finché il
+   * token non è persistito.
+   */
+  async function flushInviteToken(token) {
+    if (!team?.id || !isSupabaseConfigured) return { error: null };
+    const currentSettings = normalizeAppSettings(appSettings) || {};
+    const { error } = await supabase
+      .from("teams")
+      .update({ settings: { ...currentSettings, inviteToken: token } })
+      .eq("id", team.id);
+    return { error };
+  }
+
   function getInviteLink(token) {
     const base = typeof window !== "undefined" ? window.location.origin : "https://calciolab.org";
     return `${base}/join?token=${token}`;
   }
 
-  function copyInviteLink() {
+  async function copyInviteLink() {
+    const isNew = !inviteToken;
     const token = inviteToken || generateInviteToken();
+    // Se il token è appena stato generato, flush immediato (fire-and-forget:
+    // l'utente deve ancora incollare e inviare il link, quindi c'è tempo).
+    if (isNew) flushInviteToken(token).catch(() => {});
     const link = getInviteLink(token);
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(link).then(() => {
@@ -821,7 +844,7 @@ function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], e
     }
   }
 
-  function copyPendingInviteLink(invite) {
+  async function copyPendingInviteLink(invite) {
     // FIX: l'Edge Function accept-team-invite valida SOLO il token canonico
     // del team (teams.settings.inviteToken). invite.token è solo uno snapshot
     // preso al momento dell'invio e — a causa del bug di normalizzazione ora
@@ -829,7 +852,9 @@ function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], e
     // generando link "morti" che rispondevano sempre "Invito non trovato o
     // non valido". Usiamo sempre il token canonico, mai quello salvato
     // sull'invito.
+    const isNew = !inviteToken;
     const token = inviteToken || generateInviteToken();
+    if (isNew) flushInviteToken(token).catch(() => {});
     const link = getInviteLink(token);
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(link).then(() => {
@@ -839,10 +864,23 @@ function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], e
     }
   }
 
-  function sendInvite(e) {
+  async function sendInvite(e) {
     e.preventDefault();
     if (!inviteForm.email) return;
     const token = inviteToken || generateInviteToken();
+
+    // FIX (bug inviti): flush immediato e bloccante del token su Supabase.
+    // Se il token era appena stato generato e il debounce di setAppSettings
+    // non aveva ancora scritto su Supabase, l'Edge Function accept-team-invite
+    // non trovava il token (SELECT ... WHERE settings->>inviteToken = ?) e
+    // rispondeva 404, rendendo il link nell'email sempre invalido.
+    // Aspettiamo che il token sia persistito prima di inviare l'email.
+    const { error: flushError } = await flushInviteToken(token);
+    if (flushError) {
+      showToast?.(t("pages.settings.inviteFlushError"), "error");
+      return;
+    }
+
     const pending = {
       id:          createId("invite"),
       name:        inviteForm.name,

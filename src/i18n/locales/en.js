@@ -1397,6 +1397,7 @@ export const en = {
       clubRoleSaved: "Role updated — the member's access is now in sync.",
       clubRoleSyncError: "Role saved locally, but syncing with the member's account failed. Please try again shortly.",
       clubRoleSavedLocalOnly: "Role updated in the list, but this member isn't linked to an account yet: they'll need to accept the invite again for access to unlock.",
+      inviteFlushError: "Error saving invite token. Please try again.",
       clubMemberRemoved: "Member removed — their team access has been revoked too.",
       clubMemberRemoveSyncError: "Member removed from the list, but revoking their account access failed. Please try again shortly or contact support.",
       clubInviteRequestSent: "Request sent",
