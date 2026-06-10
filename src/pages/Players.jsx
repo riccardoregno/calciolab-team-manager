@@ -8,6 +8,7 @@ import SearchBar from "../components/ui/SearchBar";
 import EmptyState from "../components/ui/EmptyState";
 import Modal from "../components/ui/Modal";
 import AppCard from "../components/ui/AppCard";
+import MetricStrip from "../components/ui/MetricStrip";
 import { useToast } from "../components/ui/Toast";
 
 import PlayerCard from "../components/players/PlayerCard";
@@ -200,6 +201,38 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
     { P: 0, D: 0, C: 0, A: 0 }
   );
 
+  const rosterMetricItems = [
+    { key: "total", label: t("pages.players.totalPlayers"), value: players.length, color: "#60a5fa" },
+    {
+      key: "available",
+      label: t("pages.players.available"),
+      value: players.filter((p) => (p.status || "Disponibile") === "Disponibile").length,
+      color: "#22c55e",
+    },
+    {
+      key: "injured",
+      label: t("pages.players.injured"),
+      value: players.filter((p) => p.status === "Infortunato").length,
+      color: "#f87171",
+    },
+    averageAge !== null && {
+      key: "average-age",
+      label: t("pages.players.averageAge"),
+      value: averageAge,
+      color: "#a78bfa",
+    },
+    ...Object.entries(countByGroup).map(([g, n]) => ({
+      key: `group-${g}`,
+      label: GROUP_LABELS[g] || g,
+      value: n,
+      color: "#cbd5e1",
+    })),
+    { key: "role-gk", label: `🧤 ${t("pages.players.posGK")}`, value: countByPosition.P, color: "#cbd5e1" },
+    { key: "role-def", label: `🛡️ ${t("pages.players.posDEF")}`, value: countByPosition.D, color: "#60a5fa" },
+    { key: "role-mid", label: `⚙️ ${t("pages.players.posMID")}`, value: countByPosition.C, color: "#22c55e" },
+    { key: "role-fwd", label: `⚡ ${t("pages.players.posFWD")}`, value: countByPosition.A, color: "#fb923c" },
+  ];
+
   function handlePhotoUpload(file) {
     if (!file) return;
 
@@ -364,29 +397,7 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
 
       <AppCard style={{ marginBottom: 22 }}>
         <div style={pStyles.toolbar}>
-          <div style={pStyles.counterGrid}>
-            <MetricCard label={t("pages.players.totalPlayers")} value={players.length} tone="blue" />
-            <MetricCard
-              label={t("pages.players.available")}
-              value={players.filter((p) => (p.status || "Disponibile") === "Disponibile").length}
-              tone="green"
-            />
-            <MetricCard
-              label={t("pages.players.injured")}
-              value={players.filter((p) => p.status === "Infortunato").length}
-              tone="red"
-            />
-            {averageAge !== null && (
-              <MetricCard label={t("pages.players.averageAge")} value={averageAge} tone="purple" />
-            )}
-            {Object.entries(countByGroup).map(([g, n]) => (
-              <MetricCard key={g} label={GROUP_LABELS[g] || g} value={n} />
-            ))}
-            <MetricCard label={`🧤 ${t("pages.players.posGK")}`}  value={countByPosition.P} tone="slate" />
-            <MetricCard label={`🛡️ ${t("pages.players.posDEF")}`} value={countByPosition.D} tone="blue" />
-            <MetricCard label={`⚙️ ${t("pages.players.posMID")}`} value={countByPosition.C} tone="green" />
-            <MetricCard label={`⚡ ${t("pages.players.posFWD")}`} value={countByPosition.A} tone="orange" />
-          </div>
+          <MetricStrip items={rosterMetricItems} min={isMobile ? 104 : 124} style={pStyles.counterGrid} />
 
           <div style={pStyles.searchWrap}>
             <SearchBar
@@ -903,25 +914,6 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete }) {
   );
 }
 
-function MetricCard({ label, value, tone = "slate" }) {
-  const tones = {
-    blue: "#60a5fa",
-    green: "#22c55e",
-    red: "#f87171",
-    purple: "#a78bfa",
-    slate: "#cbd5e1",
-  };
-
-  return (
-    <div style={pStyles.metricCard}>
-      <strong style={{ ...pStyles.metricValue, color: tones[tone] }}>
-        {value}
-      </strong>
-      <span style={pStyles.metricLabel}>{label}</span>
-    </div>
-  );
-}
-
 const pStyles = {
   birthdayBanner: {
     display: "flex",
@@ -948,42 +940,11 @@ const pStyles = {
     flexWrap: "wrap",
   },
   counterGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(124px,1fr))",
-    gap: 10,
     flex: "1 1 520px",
   },
   searchWrap: {
     flex: "0 1 360px",
     width: "100%",
-  },
-  metricCard: {
-    minHeight: 70,
-    padding: "12px 13px",
-    borderRadius: 12,
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    minWidth: 0,
-  },
-  metricValue: {
-    fontSize: 20,
-    fontWeight: 900,
-    lineHeight: 1,
-  },
-  metricLabel: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: "#94a3b8",
-    textTransform: "uppercase",
-    letterSpacing: 0,
-    marginTop: 7,
-    lineHeight: 1.2,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
   },
   tabs: {
     display: "flex",

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "../i18n";
 
 import PageHeader from "../components/ui/PageHeader";
+import ActionBar from "../components/ui/ActionBar";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
@@ -265,25 +266,12 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
         }
       />
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 20,
-          alignItems: "flex-start",
-          marginBottom: 22,
-          flexWrap: "wrap",
-          padding: 16,
-          borderRadius: 18,
-          background: "rgba(255,255,255,0.035)",
-          border: "1px solid rgba(255,255,255,0.08)",
-        }}
-      >
-        <Badge tone="blue">{matches.length} {t("pages.matches.matchesCount")}</Badge>
-        <p style={{ color: "#94a3b8", margin: 0, lineHeight: 1.45 }}>
-          {t("pages.matches.archiveSubtitle")}
-        </p>
-      </div>
+      <ActionBar
+        eyebrow={t("pages.matches.title")}
+        title={`${matches.length} ${t("pages.matches.matchesCount")}`}
+        subtitle={t("pages.matches.archiveSubtitle")}
+        meta={<Badge tone="blue">{matches.length} {t("pages.matches.matchesCount")}</Badge>}
+      />
 
       {importSummary && (
         <AppCard>
