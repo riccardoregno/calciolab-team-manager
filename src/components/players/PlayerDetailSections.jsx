@@ -228,7 +228,7 @@ export function PlayerTechnicalOverview({
           </div>
           <div style={sectionStyles.readinessBox}>
             <strong>{availabilityScore}%</strong>
-            <span>readiness</span>
+            <span>{t("pages.playerDetail.overview.readiness")}</span>
           </div>
         </div>
 

@@ -1015,6 +1015,7 @@ export const it = {
         eyebrow:               "Cartella giocatore",
         title:                 "Quadro generale",
         subtitle:              "Disponibilità, carico, tendenze recenti e priorità staff",
+        readiness:             "disponibilità",
         availability:          "Disponibilità",
         load:                  "Carico",
         minutes:               "Minuti",
@@ -3433,7 +3434,7 @@ export const it = {
       foot: "Piede",
       age: "Età",
       appearances: "Presenze",
-      trainingPct: "% Allenamenti",
+      trainingPct: "Allenamenti",
       noRole: "Ruolo non impostato",
     },
     trainingTimeline: {

@@ -1015,6 +1015,7 @@ export const en = {
         eyebrow:               "Player file",
         title:                 "Overview",
         subtitle:              "Availability, load, recent trends and staff priorities",
+        readiness:             "readiness",
         availability:          "Availability",
         load:                  "Load",
         minutes:               "Minutes",
@@ -3402,7 +3403,7 @@ export const en = {
       foot: "Foot",
       age: "Age",
       appearances: "Apps",
-      trainingPct: "Training %",
+      trainingPct: "Training",
       noRole: "Role not set",
     },
     trainingTimeline: {
