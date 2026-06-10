@@ -137,6 +137,17 @@ function Players({ players, setPlayers }) {
     return matchesSearch && matchesGroup && matchesStatus && matchesRole && matchesFoot && matchesAge;
   });
 
+  // Ordinamento di default per ruolo: Portiere, Difensore, Centrocampista, Attaccante
+  const ROLE_ORDER = { Portiere: 0, Difensore: 1, Centrocampista: 2, Attaccante: 3 };
+  filteredPlayers.sort((a, b) => {
+    const orderA = ROLE_ORDER[a.role] ?? 99;
+    const orderB = ROLE_ORDER[b.role] ?? 99;
+    if (orderA !== orderB) return orderA - orderB;
+    const nameA = `${a.first_name || a.firstName || ""} ${a.last_name || a.lastName || ""}`.trim() || a.name || "";
+    const nameB = `${b.first_name || b.firstName || ""} ${b.last_name || b.lastName || ""}`.trim() || b.name || "";
+    return nameA.localeCompare(nameB);
+  });
+
   // Contatori per gruppo
   const countByGroup = players.reduce((acc, p) => {
     const g = p.gruppo || "prima";
