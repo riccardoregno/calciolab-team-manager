@@ -3,10 +3,24 @@ import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
 import Badge from "../ui/Badge";
 import { useTranslation } from "../../i18n";
+import { calcPlayerAge } from "../../utils/helpers";
+
+const GROUP_LABEL_KEYS = {
+  prima:        "pages.players.groupPrima",
+  juniores:     "pages.players.groupJuniores",
+  allievi:      "pages.players.groupAllievi",
+  giovanissimi: "pages.players.groupGiovanissimi",
+  esordienti:   "pages.players.groupEsordienti",
+};
 
 function PlayerCard({ player, onDelete }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  const computedAge = calcPlayerAge(player.birthDate);
+  const ageValue = computedAge ?? player.age ?? "-";
+  const groupLabelKey = GROUP_LABEL_KEYS[player.gruppo || "prima"];
+  const groupValue = groupLabelKey ? t(groupLabelKey) : "-";
 
   const initials = player.name
     ? player.name
@@ -116,9 +130,9 @@ function PlayerCard({ player, onDelete }) {
             gap: 10,
           }}
         >
-          <MiniValue label={t("components.playerCard.shirtNumber")} value={player.shirtNumber || player.number || "-"} />
+          <MiniValue label={t("components.playerCard.group")} value={groupValue} />
           <MiniValue label={t("components.playerCard.foot")} value={player.foot || "-"} />
-          <MiniValue label={t("components.playerCard.age")} value={player.age || "-"} />
+          <MiniValue label={t("components.playerCard.age")} value={ageValue} />
         </div>
 
         <div

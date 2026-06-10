@@ -11,11 +11,12 @@ import AppCard from "../components/ui/AppCard";
 import { useToast } from "../components/ui/Toast";
 
 import PlayerCard from "../components/players/PlayerCard";
+import Badge from "../components/ui/Badge";
 import ImportPlayersModal from "../components/players/ImportPlayersModal";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
-import { createId, isBirthdayToday, getTeamAverageAge } from "../utils/helpers";
+import { createId, isBirthdayToday, getTeamAverageAge, calcPlayerAge } from "../utils/helpers";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
 const PLAYER_MODAL_QUERY = "new-player";
@@ -73,6 +74,22 @@ function Players({ players, setPlayers }) {
   const [filterFoot, setFilterFoot] = useState("tutti");
   const [filterAge, setFilterAge] = useState("tutti");
   const [gruppoFilter, setGruppoFilter] = useState(urlGruppo);
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem("calciolab_players_view") === "list" ? "list" : "grid";
+    } catch {
+      return "grid";
+    }
+  });
+
+  function changeViewMode(mode) {
+    setViewMode(mode);
+    try {
+      localStorage.setItem("calciolab_players_view", mode);
+    } catch {
+      /* localStorage can be unavailable in restricted browsers */
+    }
+  }
 
   const [form, setForm] = useState(() => loadNewPlayerDraft(getEmptyPlayerForm(urlGruppo)));
 
@@ -394,6 +411,34 @@ function Players({ players, setPlayers }) {
               )}
               <span style={{ fontSize: 10, opacity: 0.7 }}>{showFilters ? "▲" : "▼"}</span>
             </button>
+
+            {/* Toggle vista griglia / elenco */}
+            <div style={{ display: "inline-flex", gap: 4, marginTop: 8, marginLeft: 8, padding: 3, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <button
+                onClick={() => changeViewMode("grid")}
+                title={t("pages.players.viewGrid")}
+                style={{
+                  padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  background: viewMode === "grid" ? "rgba(96,165,250,0.18)" : "transparent",
+                  border: viewMode === "grid" ? "1px solid rgba(96,165,250,0.4)" : "1px solid transparent",
+                  color: viewMode === "grid" ? "#93c5fd" : "#94a3b8",
+                }}
+              >
+                ▦ {t("pages.players.viewGrid")}
+              </button>
+              <button
+                onClick={() => changeViewMode("list")}
+                title={t("pages.players.viewList")}
+                style={{
+                  padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  background: viewMode === "list" ? "rgba(96,165,250,0.18)" : "transparent",
+                  border: viewMode === "list" ? "1px solid rgba(96,165,250,0.4)" : "1px solid transparent",
+                  color: viewMode === "list" ? "#93c5fd" : "#94a3b8",
+                }}
+              >
+                ☰ {t("pages.players.viewList")}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -588,6 +633,16 @@ function Players({ players, setPlayers }) {
             )
           }
         />
+      ) : viewMode === "list" ? (
+        <div style={{ display: "grid", gap: 8 }}>
+          {filteredPlayers.map((player) => (
+            <PlayerListRow
+              key={player.id}
+              player={player}
+              onDelete={() => deletePlayer(player.id)}
+            />
+          ))}
+        </div>
       ) : (
         <div
           style={{
@@ -747,6 +802,82 @@ function Players({ players, setPlayers }) {
           </div>
         </Modal>
       )}
+    </div>
+  );
+}
+
+function PlayerListRow({ player, onDelete }) {
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+  const age = calcPlayerAge(player.birthDate) ?? player.age ?? "-";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        padding: "10px 14px",
+        borderRadius: 12,
+        background: "rgba(15,23,42,0.6)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        flexWrap: "wrap",
+      }}
+    >
+      <div
+        style={{
+          width: 40, height: 40, borderRadius: 10,
+          background: "linear-gradient(135deg, rgba(56,189,248,0.28), rgba(37,99,235,0.18))",
+          border: "1px solid rgba(255,255,255,0.16)",
+          display: "grid", placeItems: "center",
+          fontSize: 13, fontWeight: 900, color: "white", overflow: "hidden", flexShrink: 0,
+        }}
+      >
+        {player.photo ? (
+          <img src={player.photo} alt={player.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          (player.name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+        )}
+      </div>
+
+      <div style={{ flex: "2 1 160px", minWidth: 0 }}>
+        <strong style={{ display: "block", fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {player.name}
+        </strong>
+        <span style={{ color: "#94a3b8", fontSize: 12, fontWeight: 700 }}>
+          {player.role || t("components.playerCard.noRole")}
+        </span>
+      </div>
+
+      <div style={{ flex: "0 0 60px", textAlign: "center" }}>
+        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>{t("components.playerCard.age")}</div>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>{age}</div>
+      </div>
+
+      <div style={{ flex: "0 0 80px", textAlign: "center" }}>
+        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>{t("components.playerCard.foot")}</div>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>{player.foot || "-"}</div>
+      </div>
+
+      <div style={{ flex: "0 0 90px" }}>
+        <Badge tone={
+          player.status === "Infortunato" ? "red" :
+          player.status === "Squalificato" ? "purple" :
+          player.status === "Recupero" || player.status === "Differenziato" ? "orange" :
+          "green"
+        }>
+          {player.status || "Disponibile"}
+        </Badge>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flex: "0 0 auto" }}>
+        <Button variant="ghost" onClick={() => navigate(`/players/${player.id}`)}>
+          {t("components.playerCard.profile")}
+        </Button>
+        <Button variant="danger" onClick={onDelete}>
+          {t("common.delete")}
+        </Button>
+      </div>
     </div>
   );
 }
