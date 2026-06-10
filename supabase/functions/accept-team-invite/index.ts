@@ -60,6 +60,14 @@ Deno.serve(async (req) => {
     const user = authData.user;
     const userEmail = String(user.email || "").trim().toLowerCase();
     const settings = team.settings || {};
+
+    // Controlla la scadenza del token canonico (teams.settings.inviteTokenExpiresAt).
+    // Se il token è scaduto rispondiamo 410 — stesso codice usato per i pendingInvites
+    // scaduti, così auth.js lo tratta come soft-error e prosegue al lookup membership.
+    if (settings.inviteTokenExpiresAt && new Date(settings.inviteTokenExpiresAt).getTime() < Date.now()) {
+      return json({ error: "Il link di invito è scaduto" }, 410);
+    }
+
     const pendingInvites = Array.isArray(settings.pendingInvites) ? settings.pendingInvites : [];
     const pendingInvite = pendingInvites.find((invite) =>
       String(invite.email || "").trim().toLowerCase() === userEmail

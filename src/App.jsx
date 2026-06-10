@@ -462,13 +462,25 @@ function App() {
   //   - team caricato → usa supabaseRole come fonte di verità (sicuro)
   //   - team null (DB in pausa / errore RLS / rete) → fallback a appSettings
   //     per non bloccare tutta l'app su problemi temporanei di Supabase.
-  function gate(allowedRoles, children) {
+  //
+  // currentMember: voce del membro corrente in settings.members, usata da RoleGate
+  // per applicare override customAreas (permessi per-area configurati nell'invito).
+  const currentMember = (() => {
+    const email = auth.user?.email?.toLowerCase?.() || "";
+    if (!email) return null;
+    const members = Array.isArray(previewAppSettings?.members) ? previewAppSettings.members : [];
+    return members.find((m) => String(m.email || "").trim().toLowerCase() === email) || null;
+  })();
+
+  function gate(allowedRoles, children, featureKey = null) {
     return (
       <RoleGate
         allowedRoles={allowedRoles}
         appSettings={previewAppSettings}
         supabaseRole={auth.team?.role || null}
         authConfigured={!!auth.authConfigured && auth.team !== null}
+        member={currentMember}
+        featureKey={featureKey}
       >
         {children}
       </RoleGate>
@@ -560,7 +572,7 @@ function App() {
                 }
               />
 
-              <Route path="/sessions" element={gate(technicalRoles, <Sessions />)} />
+              <Route path="/sessions" element={gate(technicalRoles, <Sessions />, "sessions")} />
 
               <Route
                 path="/settings"
@@ -590,7 +602,7 @@ function App() {
                       physicalTests={physicalTests}
                       appSettings={previewAppSettings}
                     />
-                  </FeatureGate>)
+                  </FeatureGate>, "physical")
                 }
               />
 
@@ -801,7 +813,7 @@ function App() {
                       setPhysicalTests={setPhysicalTests}
                       appSettings={previewAppSettings}
                     />
-                  </FeatureGate>)
+                  </FeatureGate>, "physical")
                 }
               />
 
@@ -884,7 +896,7 @@ function App() {
               <Route
                 path="/statistics"
                 element={
-                  gate(coachRoles, <Statistics events={[...sessions, ...matches]} players={players} appSettings={previewAppSettings} setAppSettings={setAppSettings} />)
+                  gate(coachRoles, <Statistics events={[...sessions, ...matches]} players={players} appSettings={previewAppSettings} setAppSettings={setAppSettings} />, "statistics")
                 }
               />
 
@@ -896,7 +908,7 @@ function App() {
                     setPlayers={setPlayers}
                     sessions={sessions}
                     matches={matches}
-                  />)
+                  />, "players")
                 }
               />
 
@@ -911,7 +923,7 @@ function App() {
                     setMatches={setMatches}
                     sessions={sessions}
                     matches={matches}
-                  />)
+                  />, "calendar")
                 }
               />
 
@@ -925,7 +937,7 @@ function App() {
                     matches={matches}
                     physicalTests={physicalTests}
                     setStaffTasks={setStaffTasks}
-                  />)
+                  />, "players")
                 }
               />
 
@@ -974,7 +986,7 @@ function App() {
                     setMatches={setMatches}
                     players={players}
                     appSettings={previewAppSettings}
-                  />)
+                  />, "matches")
                 }
               />
 
@@ -986,7 +998,7 @@ function App() {
                     setPlays={state.setPlays || {}}
                     setSetPlays={setSetPlays}
                     appSettings={previewAppSettings}
-                  />)
+                  />, "setPlays")
                 }
               />
 

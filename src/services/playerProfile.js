@@ -163,48 +163,19 @@ export async function savePlayerMatchStats(teamId, playerId, matchId, newStats, 
     p_new_appearance:  isNew,
   });
 
-  // 4. Fallback read-modify-write se la DB function non esiste ancora
+  // La DB function increment_player_stats è deployata in produzione
+  // (migrazione 20260515_security_hardening.sql). Se l'RPC fallisce per un
+  // motivo inaspettato (permessi, rete) restituiamo l'errore esplicitamente:
+  // silenziosamente cadere sul fallback non-atomico nasconde bugs reali e
+  // può corrompere le statistiche con lost-updates concorrenti.
   if (rpcError) {
     if (import.meta.env.DEV) {
-      console.warn("[playerProfile] increment_player_stats RPC non disponibile, uso fallback:", rpcError.message);
+      console.error("[playerProfile] increment_player_stats RPC fallito:", rpcError.message);
     }
-    return savePlayerMatchStatsFallback(teamId, pid, season, delta, isNew);
+    return { error: rpcError };
   }
 
   return { error: null };
-}
-
-// Fallback read-modify-write (NON atomico — da rimuovere dopo deploy SQL function)
-async function savePlayerMatchStatsFallback(teamId, pid, season, delta, isNew) {
-  const { data: currentStats } = await supabase
-    .from("player_stats")
-    .select("*")
-    .eq("team_id", teamId)
-    .eq("player_id", pid)
-    .maybeSingle();
-
-  const base = currentStats || {};
-  const updated = {
-    team_id:        teamId,
-    player_id:      pid,
-    season,
-    goals:          Math.max(0, (base.goals          ?? 0) + delta.goals),
-    assists:        Math.max(0, (base.assists         ?? 0) + delta.assists),
-    minutes_played: Math.max(0, (base.minutes_played  ?? 0) + delta.minutes_played),
-    yellow_cards:   Math.max(0, (base.yellow_cards    ?? 0) + delta.yellow_cards),
-    red_cards:      Math.max(0, (base.red_cards       ?? 0) + delta.red_cards),
-    appearances:    Math.max(0, (base.appearances     ?? 0) + (isNew ? 1 : 0)),
-    updated_at:     new Date().toISOString(),
-  };
-
-  const { error: statsError } = await supabase
-    .from("player_stats")
-    .upsert(updated, { onConflict: "team_id,player_id,season" });
-
-  if (statsError && import.meta.env.DEV) {
-    console.error("[playerProfile] fallback stats:", statsError.message);
-  }
-  return { error: statsError };
 }
 
 export async function upsertPlayerMatch(teamId, playerId, matchId, fields) {

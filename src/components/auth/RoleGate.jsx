@@ -10,8 +10,21 @@ import { getCurrentUserRole, isRoleAllowed, memberRoles } from "../../utils/help
 //   - supabaseRole presente → ok, usalo
 //   - supabaseRole null con Supabase attivo → accesso negato (no fallback localStorage)
 //   - supabaseRole null senza Supabase (locale) → fallback a appSettings accettabile
-export default function RoleGate({ allowedRoles = [], appSettings = {}, supabaseRole = null, authConfigured = false, children }) {
+//
+// customAreas support (featureKey + member props):
+//   Se featureKey è fornito e member.customAreas[featureKey] è "view" o "manage",
+//   l'accesso è garantito indipendentemente dal ruolo — permette override per-area
+//   configurati dall'owner nell'invito (e modificabili in Settings).
+export default function RoleGate({ allowedRoles = [], appSettings = {}, supabaseRole = null, authConfigured = false, member = null, featureKey = null, children }) {
   const navigate = useNavigate();
+
+  // Controlla override customAreas PRIMA della verifica ruolo
+  if (featureKey && member?.customAreas) {
+    const areaAccess = member.customAreas[featureKey];
+    if (areaAccess === "view" || areaAccess === "manage") {
+      return children;
+    }
+  }
 
   const currentRole = authConfigured
     ? (supabaseRole ?? "")                         // Supabase attivo: usa solo il ruolo Supabase

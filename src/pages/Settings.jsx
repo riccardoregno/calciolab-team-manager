@@ -817,9 +817,16 @@ function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], e
   async function flushInviteToken(token) {
     if (!team?.id || !isSupabaseConfigured) return { error: null };
     const currentSettings = normalizeAppSettings(appSettings) || {};
+    // Se il token è diverso da quello corrente (o non c'è ancora), assegna una
+    // nuova scadenza. Se stiamo solo persistendo lo stesso token (es. secondo
+    // click su "copia link"), preserviamo la scadenza originale.
+    const isNewToken = currentSettings.inviteToken !== token;
+    const inviteTokenExpiresAt = isNewToken || !currentSettings.inviteTokenExpiresAt
+      ? getInviteExpiryDate()
+      : currentSettings.inviteTokenExpiresAt;
     const { error } = await supabase
       .from("teams")
-      .update({ settings: { ...currentSettings, inviteToken: token } })
+      .update({ settings: { ...currentSettings, inviteToken: token, inviteTokenExpiresAt } })
       .eq("id", team.id);
     return { error };
   }
