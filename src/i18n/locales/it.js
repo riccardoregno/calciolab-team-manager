@@ -11,6 +11,7 @@ export const it = {
     loadingData: "Caricamento dati",
     localSave: "Modalità offline",
     syncPartial: "Sync parziale",
+    syncPendingUpload: "Upload in attesa",
     syncNow: "Sincronizza ora",
     syncingNow: "Sincronizzo...",
     syncJustNow: "Aggiornato ora",

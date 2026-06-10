@@ -513,13 +513,15 @@ function App() {
           <BillingBanner appSettings={previewAppSettings} />
 
           <div style={styles.storageStatus}>
-            <Badge tone={storageSource === "supabase" ? "green" : storageSource === "partial" ? "orange" : "red"}>
+            <Badge tone={storageSource === "supabase" ? "green" : storageSource === "partial" || storageSource === "pending-upload" ? "orange" : "red"}>
               {loading || auth.authLoading
                 ? t("common.loadingData")
                 : storageSource === "supabase"
                 ? `Sync ${auth.team?.name || "Supabase"}`
                 : storageSource === "partial"
                 ? t("common.syncPartial")
+                : storageSource === "pending-upload"
+                ? t("common.syncPendingUpload")
                 : `⚡ ${t("common.localSave")}`}
             </Badge>
 

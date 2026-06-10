@@ -46,7 +46,8 @@ export function useTeamData({ teamId } = {}) {
     setState(loadedState);
     setStorageSource(source);
     setStorageError(error?.message || null);
-    remoteSyncReady.current = source === "supabase" && !error;
+    const canSyncRemote = (source === "supabase" || source === "pending-upload") && !error;
+    remoteSyncReady.current = canSyncRemote;
     skipNextRemoteSave.current = source === "supabase" && !error;
     if (source === "supabase" && !error) {
       setLastSyncedAt(new Date().toISOString());
@@ -59,6 +60,21 @@ export function useTeamData({ teamId } = {}) {
 
     setRefreshing(true);
     const result = await loadRemoteState({ teamId });
+    if (result.pendingUpload && !result.error) {
+      const saveResult = await saveTeamTablesState(result.state, teamId);
+      applyLoadedState({
+        ...result,
+        source: saveResult.source,
+        error: saveResult.error,
+        failures: saveResult.failures || result.failures,
+        pendingUpload: false,
+      });
+      if (saveResult.source === "supabase" && !saveResult.error) {
+        setLastSyncedAt(new Date().toISOString());
+      }
+      setRefreshing(false);
+      return saveResult;
+    }
     applyLoadedState(result);
     setRefreshing(false);
     return result;

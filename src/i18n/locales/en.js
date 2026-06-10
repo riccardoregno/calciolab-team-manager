@@ -11,6 +11,7 @@ export const en = {
     loadingData: "Loading data",
     localSave: "Offline mode",
     syncPartial: "Partial sync",
+    syncPendingUpload: "Upload pending",
     syncNow: "Sync now",
     syncingNow: "Syncing...",
     syncJustNow: "Updated now",

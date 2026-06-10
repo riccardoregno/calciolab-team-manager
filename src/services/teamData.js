@@ -239,6 +239,7 @@ async function loadTeamTablesState(teamId) {
     const localState = loadLocalState();
     const emptyIntents = loadEmptyEntityIntents();
     const remoteEntityState = Object.fromEntries(successfulEntries);
+    const retainedLocalEntityKeys = [];
     const entityState = Object.fromEntries(
       Object.keys(ENTITY_TABLES).map((stateKey) => {
         const remoteRecords = remoteEntityState[stateKey];
@@ -261,6 +262,7 @@ async function loadTeamTablesState(teamId) {
           hasUserLocalRecords(stateKey, localRecords) &&
           !emptyIntents[stateKey]
         ) {
+          retainedLocalEntityKeys.push(stateKey);
           return [stateKey, localRecords];
         }
 
@@ -277,13 +279,17 @@ async function loadTeamTablesState(teamId) {
     });
 
     saveLocalState(state);
+    const hasPendingUpload = failures.length === 0 && retainedLocalEntityKeys.length > 0;
+
     return {
       state,
-      source: failures.length > 0 ? "partial" : "supabase",
+      source: failures.length > 0 ? "partial" : hasPendingUpload ? "pending-upload" : "supabase",
       error: failures.length > 0
         ? new Error(`Sync parziale: ${failures.map((failure) => failure.table).join(", ")}`)
         : null,
       failures,
+      pendingUpload: hasPendingUpload,
+      retainedLocalEntityKeys,
     };
   } catch (error) {
     if (import.meta.env.DEV) {
