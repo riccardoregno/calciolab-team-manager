@@ -96,24 +96,64 @@
   </p>
 
   <script>
+    // FIX: questa pagina può essere mostrata da un service worker OBSOLETO
+    // (precedente al deploy con selfDestroying:true) che intercetta la
+    // navigazione (es. /join?token=xxx, link invito) e serve offline.html
+    // dalla cache anche quando la rete è disponibile. Per auto-ripararsi:
+    // disregistriamo qualsiasi SW residuo e svuotiamo le cache, poi
+    // ricarichiamo la pagina ORIGINALE (window.location.href mantiene il
+    // path/query richiesto, es. /join?token=xxx — non torniamo a "/" per
+    // non perdere il token di invito).
+    async function unregisterStaleServiceWorkers() {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((r) => r.unregister()));
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((key) => caches.delete(key)));
+        }
+      } catch (e) {
+        // best-effort: se fallisce, l'utente può comunque premere "Riprova"
+      }
+    }
+
+    function reloadCurrentPage() {
+      // location.reload() non basta dopo unregister di un SW che ha già
+      // intercettato la navigazione: forziamo una ricarica "pulita" dello
+      // stesso URL (path + query, incluso eventuale ?token=xxx).
+      window.location.replace(window.location.href);
+    }
+
     function retryConnection() {
       const btn = document.getElementById('retry-btn');
       btn.innerHTML = '<span class="spinner">⟳</span> Connessione…';
       btn.disabled = true;
 
-      setTimeout(() => {
-        if (navigator.onLine) {
-          window.location.href = '/';
-        } else {
-          btn.innerHTML = '⟳ Riprova';
-          btn.disabled = false;
-        }
-      }, 1200);
+      unregisterStaleServiceWorkers().finally(() => {
+        setTimeout(() => {
+          if (navigator.onLine) {
+            reloadCurrentPage();
+          } else {
+            btn.innerHTML = '⟳ Riprova';
+            btn.disabled = false;
+          }
+        }, 800);
+      });
+    }
+
+    // Al caricamento: se siamo online ma il SW ci ha mostrato comunque
+    // questa pagina (SW obsoleto), ripuliamo subito senza attendere il click.
+    if (navigator.onLine) {
+      unregisterStaleServiceWorkers().then(() => {
+        reloadCurrentPage();
+      });
     }
 
     // Auto-ricarica quando torna la connessione
     window.addEventListener('online', () => {
-      window.location.href = '/';
+      unregisterStaleServiceWorkers().finally(reloadCurrentPage);
     });
   </script>
 </body>
