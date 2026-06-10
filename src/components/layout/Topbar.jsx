@@ -149,8 +149,6 @@ export default function Topbar({
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <LanguageSelector compact />
-
         <div style={{ position: "relative" }}>
           <button
             type="button"
