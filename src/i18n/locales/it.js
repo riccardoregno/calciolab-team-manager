@@ -3432,6 +3432,8 @@ export const it = {
       group: "Categoria",
       foot: "Piede",
       age: "Età",
+      appearances: "Presenze",
+      trainingPct: "% Allenamenti",
       noRole: "Ruolo non impostato",
     },
     trainingTimeline: {

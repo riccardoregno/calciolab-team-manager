@@ -1270,6 +1270,38 @@ export function getTeamAverageAge(players = []) {
   return Math.round((ages.reduce((sum, a) => sum + a, 0) / ages.length) * 10) / 10;
 }
 
+/**
+ * Statistiche rapide per la card/elenco giocatore, calcolate dai blob
+ * attendance di sessions/matches già caricati lato client (nessuna query
+ * aggiuntiva a Supabase). Usate al posto di "Categoria"/"Piede" nelle viste
+ * Players: presenze in partita e % presenza agli allenamenti.
+ *   - appearances: numero di partite in cui il giocatore non risulta "Assente"
+ *   - trainingPct: % di allenamenti con status "Presente" sul totale delle
+ *     sedute con dato registrato per quel giocatore (null = nessun dato)
+ */
+export function getPlayerQuickStats(player, sessions = [], matches = []) {
+  const pid = player?.id;
+
+  const appearances = matches.reduce((count, match) => {
+    const data = match?.attendance?.[pid];
+    if (!data || data.status === "Assente") return count;
+    return count + 1;
+  }, 0);
+
+  let registered = 0;
+  let present = 0;
+  sessions.forEach((session) => {
+    const data = session?.attendance?.[pid];
+    if (!data) return;
+    registered += 1;
+    if (data.status === "Presente") present += 1;
+  });
+
+  const trainingPct = registered > 0 ? Math.round((present / registered) * 100) : null;
+
+  return { appearances, trainingPct };
+}
+
 export function getCoachAlerts({ players = [], matches = [], physicalTests = [], sessions = [], playerStatsMap = {}, t } = {}){
   // Fallback identity if t is not provided (avoids crashes if called without i18n context)
   const tr = t || ((key, vars = {}) => {

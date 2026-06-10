@@ -3401,6 +3401,8 @@ export const en = {
       group: "Category",
       foot: "Foot",
       age: "Age",
+      appearances: "Apps",
+      trainingPct: "Training %",
       noRole: "Role not set",
     },
     trainingTimeline: {

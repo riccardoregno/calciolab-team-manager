@@ -16,7 +16,7 @@ import ImportPlayersModal from "../components/players/ImportPlayersModal";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
-import { createId, isBirthdayToday, getTeamAverageAge, calcPlayerAge } from "../utils/helpers";
+import { createId, isBirthdayToday, getTeamAverageAge, calcPlayerAge, getPlayerQuickStats } from "../utils/helpers";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
 const PLAYER_MODAL_QUERY = "new-player";
@@ -51,7 +51,7 @@ function loadNewPlayerDraft(fallback) {
   }
 }
 
-function Players({ players, setPlayers }) {
+function Players({ players, setPlayers, sessions = [], matches = [] }) {
   const { t } = useTranslation();
   const GROUP_LABELS = {
     prima:        t("pages.players.groupPrima"),
@@ -639,6 +639,8 @@ function Players({ players, setPlayers }) {
             <PlayerListRow
               key={player.id}
               player={player}
+              sessions={sessions}
+              matches={matches}
               onDelete={() => deletePlayer(player.id)}
             />
           ))}
@@ -655,6 +657,8 @@ function Players({ players, setPlayers }) {
             <PlayerCard
               key={player.id}
               player={player}
+              sessions={sessions}
+              matches={matches}
               onDelete={() => deletePlayer(player.id)}
             />
           ))}
@@ -806,10 +810,12 @@ function Players({ players, setPlayers }) {
   );
 }
 
-function PlayerListRow({ player, onDelete }) {
+function PlayerListRow({ player, sessions = [], matches = [], onDelete }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const age = calcPlayerAge(player.birthDate) ?? player.age ?? "-";
+  const { appearances, trainingPct } = getPlayerQuickStats(player, sessions, matches);
+  const trainingPctValue = trainingPct === null ? "-" : `${trainingPct}%`;
 
   return (
     <div
@@ -855,8 +861,13 @@ function PlayerListRow({ player, onDelete }) {
       </div>
 
       <div style={{ flex: "0 0 80px", textAlign: "center" }}>
-        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>{t("components.playerCard.foot")}</div>
-        <div style={{ fontSize: 14, fontWeight: 700 }}>{player.foot || "-"}</div>
+        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>{t("components.playerCard.appearances")}</div>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>{appearances}</div>
+      </div>
+
+      <div style={{ flex: "0 0 80px", textAlign: "center" }}>
+        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>{t("components.playerCard.trainingPct")}</div>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>{trainingPctValue}</div>
       </div>
 
       <div style={{ flex: "0 0 90px" }}>
