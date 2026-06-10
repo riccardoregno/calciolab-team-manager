@@ -3,6 +3,7 @@ import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
+import MetricStrip from "../components/ui/MetricStrip";
 import PageHeader from "../components/ui/PageHeader";
 import { useToast } from "../components/ui/Toast";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -92,6 +93,13 @@ export default function StaffTasks({
       high: staffTasks.filter((task) => task.priority === "high" && task.status !== "done").length,
     };
   }, [staffTasks]);
+
+  const boardMetricItems = [
+    { key: "todo", label: t("pages.staffTasks.statTodo"), value: boardStats.todo, color: "#38bdf8" },
+    { key: "doing", label: t("pages.staffTasks.statDoing"), value: boardStats.doing, color: "#38bdf8" },
+    { key: "high", label: t("pages.staffTasks.statHighPriority"), value: boardStats.high, color: "#fb7185" },
+    { key: "done", label: t("pages.staffTasks.statCompleted"), value: boardStats.done, color: "#86efac" },
+  ];
 
   const weekDays = useMemo(() => getWeekDays(weekAnchor), [weekAnchor]);
   const agendaTasks = useMemo(() => {
@@ -189,12 +197,7 @@ export default function StaffTasks({
         badge={t("pages.staffTasks.badge", { count: staffTasks.length })}
       />
 
-      <div style={st.statsGrid}>
-        <StatCard label={t("pages.staffTasks.statTodo")}         value={boardStats.todo} />
-        <StatCard label={t("pages.staffTasks.statDoing")}        value={boardStats.doing} />
-        <StatCard label={t("pages.staffTasks.statHighPriority")} value={boardStats.high} tone="red" />
-        <StatCard label={t("pages.staffTasks.statCompleted")}    value={boardStats.done} tone="green" />
-      </div>
+      <MetricStrip items={boardMetricItems} min={isMobile ? 118 : 150} style={st.statsGrid} />
 
       <div style={{ ...st.layout, gridTemplateColumns: isMobile ? "1fr" : st.layout.gridTemplateColumns }}>
         <AppCard title={t("pages.staffTasks.cardNewTitle")} subtitle={t("pages.staffTasks.cardNewSubtitle")}>
@@ -468,16 +471,6 @@ function AgendaTask({ task, player, onStatusChange }) {
   );
 }
 
-function StatCard({ label, value, tone = "blue" }) {
-  const color = tone === "red" ? "#fb7185" : tone === "green" ? "#86efac" : "#38bdf8";
-  return (
-    <div style={st.statCard}>
-      <span style={st.statLabel}>{label}</span>
-      <strong style={{ ...st.statValue, color }}>{value}</strong>
-    </div>
-  );
-}
-
 function sortTasksForAgenda(a, b) {
   const priorityOrder = { high: 0, medium: 1, low: 2 };
   const statusOrder = { doing: 0, todo: 1, done: 2 };
@@ -527,28 +520,7 @@ const st = {
   inputError: { border: "1px solid #f87171", boxShadow: "0 0 0 2px rgba(248,113,113,0.15)" },
   errorMsg:   { display: "block", marginTop: 4, fontSize: 11, fontWeight: 700, color: "#f87171" },
   statsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-    gap: 12,
     marginBottom: 18,
-  },
-  statCard: {
-    padding: 18,
-    borderRadius: 18,
-    background: "rgba(15,23,42,0.78)",
-    border: "1px solid rgba(148,163,184,0.18)",
-  },
-  statLabel: {
-    display: "block",
-    color: "#94a3b8",
-    fontSize: 12,
-    fontWeight: 800,
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 28,
-    lineHeight: 1,
   },
   layout: {
     display: "grid",

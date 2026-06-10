@@ -9,6 +9,7 @@ import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
+import MetricStrip from "../components/ui/MetricStrip";
 import { SkeletonStatCard } from "../components/ui/Skeleton";
 import { useAuth } from "../hooks/useAuth";
 import { loadAllPlayerStats } from "../services/playerProfile";
@@ -1535,6 +1536,33 @@ function CoachControlRoom({
     },
   ].filter(Boolean).slice(0, 3);
 
+  const controlMetricItems = [
+    {
+      key: "today",
+      label: t("pages.dashboard.today"),
+      value: todayEvents.length,
+      color: todayEvents.length ? "#86efac" : "#7dd3fc",
+    },
+    {
+      key: "week",
+      label: t("pages.dashboard.days7"),
+      value: upcomingWeekEvents,
+      color: "#7dd3fc",
+    },
+    {
+      key: "available",
+      label: t("pages.dashboard.availableCount"),
+      value: `${availablePlayers}/${playersCount}`,
+      color: "#86efac",
+    },
+    {
+      key: "monitor",
+      label: t("pages.dashboard.monitor"),
+      value: unavailablePlayers,
+      color: unavailablePlayers ? "#fdba74" : "#86efac",
+    },
+  ];
+
   return (
     <AppCard>
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0,1.25fr) minmax(280px,0.75fr)", gap: 22, alignItems: "stretch" }}>
@@ -1553,12 +1581,7 @@ function CoachControlRoom({
               : t("pages.dashboard.noOperationalUrgencyHint")}
           </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10, marginTop: 18 }}>
-            <ControlRoomMetric label={t("pages.dashboard.today")} value={todayEvents.length} tone={todayEvents.length ? "green" : "blue"} />
-            <ControlRoomMetric label={t("pages.dashboard.days7")} value={upcomingWeekEvents} tone="blue" />
-            <ControlRoomMetric label={t("pages.dashboard.availableCount")} value={`${availablePlayers}/${playersCount}`} tone="green" />
-            <ControlRoomMetric label={t("pages.dashboard.monitor")} value={unavailablePlayers} tone={unavailablePlayers ? "orange" : "green"} />
-          </div>
+          <MetricStrip items={controlMetricItems} min={130} style={{ marginTop: 18 }} />
         </div>
 
         <div style={{ display: "grid", gap: 10, alignContent: "space-between" }}>
@@ -1587,24 +1610,6 @@ function CoachControlRoom({
         </div>
       </div>
     </AppCard>
-  );
-}
-
-function ControlRoomMetric({ label, value, tone }) {
-  const colors = {
-    green: { bg: "rgba(34,197,94,0.1)", border: "rgba(34,197,94,0.2)", text: "#86efac" },
-    blue: { bg: "rgba(56,189,248,0.1)", border: "rgba(56,189,248,0.2)", text: "#7dd3fc" },
-    orange: { bg: "rgba(251,146,60,0.1)", border: "rgba(251,146,60,0.22)", text: "#fdba74" },
-  };
-  const color = colors[tone] || colors.blue;
-
-  return (
-    <div style={{ borderRadius: 12, padding: "12px 13px", background: color.bg, border: `1px solid ${color.border}` }}>
-      <p style={{ margin: "0 0 7px", color: "#94a3b8", fontSize: 11, fontWeight: 900, textTransform: "uppercase" }}>
-        {label}
-      </p>
-      <strong style={{ color: color.text, fontSize: 22, lineHeight: 1 }}>{value}</strong>
-    </div>
   );
 }
 

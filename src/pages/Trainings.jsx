@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import ActionBar from "../components/ui/ActionBar";
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
+import MetricStrip from "../components/ui/MetricStrip";
 import SearchBar from "../components/ui/SearchBar";
 import SortableTrainingTimeline from "../components/trainings/SortableTrainingTimeline";
 import { useToast } from "../components/ui/Toast";
@@ -144,6 +146,32 @@ function Trainings({
     (player) => !UNAVAILABLE_STATUSES.includes(player.status || "Disponibile")
   ).length;
   const objectiveStatusMeta = getObjectiveStatusMeta(form.objectiveStatus);
+  const trainingMetricItems = [
+    {
+      key: "duration",
+      label: t("pages.trainings.printMetaDuration"),
+      value: `${totalMinutes} min`,
+      color: "#60a5fa",
+    },
+    {
+      key: "exercises",
+      label: t("pages.trainings.previewMetaExercises"),
+      value: selectedExercises.length,
+      color: "#a78bfa",
+    },
+    {
+      key: "rpe",
+      label: t("pages.trainings.printRpeTarget"),
+      value: `${rpeTarget.min}-${rpeTarget.max}`,
+      color: "#fb923c",
+    },
+    {
+      key: "available",
+      label: t("pages.trainings.printAvailablePlayers"),
+      value: players.length ? `${availablePlayersCount}/${players.length}` : "-",
+      color: "#22c55e",
+    },
+  ];
 
   function toggleExercise(exercise) {
     const alreadySelected = form.exercises.some(
@@ -278,6 +306,15 @@ function Trainings({
           </div>
         }
       />
+
+      <ActionBar
+        eyebrow={clubName}
+        title={form.title || t("pages.trainings.printTitlePlaceholder")}
+        subtitle={`${getThemeLabel(form.theme, t)} · ${form.matchDayDistance}`}
+        meta={<Badge tone="blue">{t("pages.trainings.savedCount", { count: sessions.length })}</Badge>}
+      >
+        <MetricStrip items={trainingMetricItems} min={isMobile ? 118 : 132} style={{ marginTop: 14 }} />
+      </ActionBar>
 
       <div
         className="calciolab-two-column"
