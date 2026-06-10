@@ -72,48 +72,50 @@ textarea:focus-visible {
     max-width: 100% !important;
     min-height: 100vh !important;
     margin: 0 !important;
-    padding: 16px 14px 96px !important;
+    padding: 12px 14px 90px !important;
     overflow-x: hidden !important;
   }
 
-  .app-content header {
+  .app-content header:not(.mobile-topbar):not(.mobile-hide) {
     display: grid !important;
     grid-template-columns: 1fr !important;
     gap: 14px !important;
     align-items: stretch !important;
   }
 
-  .app-content header > div {
+  .app-content header:not(.mobile-topbar):not(.mobile-hide) > div {
     width: 100% !important;
   }
 
-  .app-content header h1 {
+  .app-content header:not(.mobile-topbar):not(.mobile-hide) h1 {
     font-size: 24px !important;
     line-height: 1.15 !important;
   }
 
-  .app-content header p {
+  .app-content header:not(.mobile-topbar):not(.mobile-hide) p {
     font-size: 12px !important;
   }
 
-  .app-content header input {
+  .app-content header:not(.mobile-topbar):not(.mobile-hide) input {
     width: 100% !important;
   }
 
   .mobile-bottom-nav {
     position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: max(12px, env(safe-area-inset-bottom));
+    left: 50%;
+    right: auto;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    width: min(360px, calc(100vw - 30px));
+    transform: translateX(-50%);
     z-index: 9999;
     display: grid !important;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 4px;
-    padding: 7px;
-    border-radius: 18px;
-    background: rgba(15, 23, 42, 0.96);
+    gap: 3px;
+    padding: 5px;
+    border-radius: 20px;
+    background: rgba(15, 23, 42, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 16px 38px rgba(0, 0, 0, 0.44);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
     backdrop-filter: blur(16px);
   }
 
@@ -122,11 +124,11 @@ textarea:focus-visible {
     place-items: center;
     gap: 2px;
     min-width: 0;
-    padding: 7px 3px;
+    padding: 5px 2px;
     border-radius: 12px;
     color: #94a3b8;
     text-decoration: none;
-    font-size: 17px;
+    font-size: 15px;
     line-height: 1;
   }
 
@@ -134,7 +136,7 @@ textarea:focus-visible {
     width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 9px;
+    font-size: 8.5px;
     line-height: 1;
     text-align: center;
     white-space: nowrap;
@@ -190,7 +192,10 @@ textarea:focus-visible {
 
 @media (max-width: 1024px) {
   .mobile-only  { display: block !important; }
-  .mobile-hide  { display: none  !important; }
+  .mobile-hide,
+  .app-content .mobile-hide {
+    display: none !important;
+  }
   .mobile-stack { display: flex  !important; flex-direction: column !important; }
 
   .mobile-topbar {
