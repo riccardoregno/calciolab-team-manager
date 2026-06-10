@@ -154,8 +154,8 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
           </p>
         </AppCard>
       ) : (
-        <div style={chatStyles.shell}>
-          <div style={chatStyles.presenceBar}>
+        <div style={{ ...chatStyles.shell, borderRadius: isMobile ? 14 : chatStyles.shell.borderRadius }}>
+          <div style={{ ...chatStyles.presenceBar, padding: isMobile ? "8px 10px" : chatStyles.presenceBar.padding }}>
             <div style={chatStyles.presenceTitle}>
               <span style={chatStyles.onlineDot} />
               <span>{t("pages.staffChat.onlineNow")}</span>
@@ -177,7 +177,7 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
           </div>
 
           {/* Lista messaggi */}
-          <div style={chatStyles.messageList}>
+          <div style={{ ...chatStyles.messageList, padding: isMobile ? "14px 10px 6px" : chatStyles.messageList.padding }}>
             {loading && (
               <div style={chatStyles.centered}>
                 <span style={{ color: "#64748b" }}>{t("common.loading")}</span>
@@ -223,6 +223,7 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
                   <div
                     style={{
                       ...chatStyles.avatar,
+                      ...(isMobile ? chatStyles.avatarMobile : {}),
                       background: isOwn
                         ? "linear-gradient(135deg, #2563eb, #1d4ed8)"
                         : "linear-gradient(135deg, #374151, #1f2937)",
@@ -235,6 +236,8 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
                   <div
                     style={{
                       ...chatStyles.bubble,
+                      maxWidth: isMobile ? "86%" : chatStyles.bubble.maxWidth,
+                      padding: isMobile ? "9px 11px" : chatStyles.bubble.padding,
                       background: isOwn
                         ? "linear-gradient(135deg, #1e40af, #1d4ed8)"
                         : "rgba(255,255,255,0.06)",
@@ -299,7 +302,7 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
           </div>
 
           {/* Input */}
-          <div style={chatStyles.inputBar}>
+          <div style={{ ...chatStyles.inputBar, padding: isMobile ? "10px" : chatStyles.inputBar.padding, gap: isMobile ? 8 : chatStyles.inputBar.gap }}>
             <textarea
               ref={inputRef}
               value={input}
@@ -308,13 +311,14 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
               placeholder={t("pages.staffChat.placeholder")}
               rows={1}
               disabled={sending}
-              style={chatStyles.textarea}
+              style={{ ...chatStyles.textarea, fontSize: isMobile ? 16 : chatStyles.textarea.fontSize }}
             />
             <button
               onClick={handleSend}
               disabled={!input.trim() || sending}
               style={{
                 ...chatStyles.sendBtn,
+                ...(isMobile ? chatStyles.sendBtnMobile : {}),
                 opacity: !input.trim() || sending ? 0.45 : 1,
                 cursor: !input.trim() || sending ? "not-allowed" : "pointer",
               }}
@@ -450,6 +454,12 @@ const chatStyles = {
     color: "white",
     marginBottom: 4,
   },
+  avatarMobile: {
+    width: 28,
+    height: 28,
+    minWidth: 28,
+    fontSize: 11,
+  },
   bubble: {
     maxWidth: "72%",
     borderRadius: 16,
@@ -528,5 +538,10 @@ const chatStyles = {
     alignItems: "center",
     justifyContent: "center",
     transition: "opacity 0.15s",
+  },
+  sendBtnMobile: {
+    width: 42,
+    height: 42,
+    minWidth: 42,
   },
 };

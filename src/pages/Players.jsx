@@ -13,6 +13,7 @@ import { useToast } from "../components/ui/Toast";
 import PlayerCard from "../components/players/PlayerCard";
 import Badge from "../components/ui/Badge";
 import ImportPlayersModal from "../components/players/ImportPlayersModal";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
@@ -53,6 +54,7 @@ function loadNewPlayerDraft(fallback) {
 
 function Players({ players, setPlayers, sessions = [], matches = [] }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const GROUP_LABELS = {
     prima:        t("pages.players.groupPrima"),
     juniores:     t("pages.players.groupJuniores"),
@@ -311,11 +313,13 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
         title={t("pages.players.title")}
         subtitle={t("pages.players.subtitle")}
         action={
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", width: isMobile ? "100%" : "auto" }}>
             <Link
               to="/player-compare"
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
+                flex: isMobile ? "1 1 100%" : "0 0 auto",
+                justifyContent: "center",
                 padding: "8px 14px", borderRadius: 12,
                 background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.35)",
                 color: "#c4b5fd", fontWeight: 800, fontSize: 13, textDecoration: "none",
@@ -327,6 +331,8 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
               onClick={() => setShowImport(true)}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
+                flex: isMobile ? "1 1 0" : "0 0 auto",
+                justifyContent: "center",
                 padding: "8px 14px", borderRadius: 12,
                 background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.35)",
                 color: "#6ee7b7", fontWeight: 800, fontSize: 13, cursor: "pointer",
@@ -334,7 +340,9 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
             >
               📥 {t("pages.importPlayers.btnLabel")}
             </button>
-            <Button onClick={openNewPlayerModal}>{t("pages.players.newPlayer")}</Button>
+            <Button onClick={openNewPlayerModal} style={{ flex: isMobile ? "1 1 0" : "0 0 auto" }}>
+              {t("pages.players.newPlayer")}
+            </Button>
           </div>
         }
       />
@@ -413,11 +421,12 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
             </button>
 
             {/* Toggle vista griglia / elenco */}
-            <div style={{ display: "inline-flex", gap: 4, marginTop: 8, marginLeft: 8, padding: 3, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <div style={{ display: "inline-flex", gap: 4, marginTop: 8, marginLeft: isMobile ? 0 : 8, padding: 3, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", width: isMobile ? "100%" : "auto" }}>
               <button
                 onClick={() => changeViewMode("grid")}
                 title={t("pages.players.viewGrid")}
                 style={{
+                  flex: isMobile ? 1 : "0 0 auto",
                   padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer",
                   background: viewMode === "grid" ? "rgba(96,165,250,0.18)" : "transparent",
                   border: viewMode === "grid" ? "1px solid rgba(96,165,250,0.4)" : "1px solid transparent",
@@ -430,6 +439,7 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
                 onClick={() => changeViewMode("list")}
                 title={t("pages.players.viewList")}
                 style={{
+                  flex: isMobile ? 1 : "0 0 auto",
                   padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer",
                   background: viewMode === "list" ? "rgba(96,165,250,0.18)" : "transparent",
                   border: viewMode === "list" ? "1px solid rgba(96,165,250,0.4)" : "1px solid transparent",
@@ -649,8 +659,8 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
-            gap: 18,
+            gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit,minmax(280px,1fr))",
+            gap: isMobile ? 12 : 18,
           }}
         >
           {filteredPlayers.map((player) => (

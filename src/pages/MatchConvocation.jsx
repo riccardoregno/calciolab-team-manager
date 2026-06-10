@@ -9,6 +9,7 @@ import { formatDate, normalizeAppSettings } from "../utils/helpers";
 import { generateDistintaPDF } from "../utils/generateDistintaPDF";
 import { useTranslation } from "../i18n";
 import { createRsvpLink, fetchMatchRsvps } from "../services/rsvp";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 const MAX_PLAYERS = 22;
 
@@ -162,6 +163,7 @@ async function copyText(text) {
 
 export default function MatchConvocation({ teamId, players = [], matches = [], setMatches, appSettings = {} }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -626,7 +628,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
                   </span>
                 </div>
 
-                <div style={s.playerGrid}>
+                <div style={{ ...s.playerGrid, gridTemplateColumns: isMobile ? "1fr" : s.playerGrid.gridTemplateColumns }}>
                   {rolePlayers.map((player) => {
                     const pid      = String(player.id);
                     const selected = selectedIds.includes(pid);
@@ -689,8 +691,8 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
                 player.name || "—";
 
               return (
-                <div key={pid} style={s.rsvpRow}>
-                  <div style={s.rsvpPlayer}>
+                <div key={pid} style={{ ...s.rsvpRow, alignItems: isMobile ? "stretch" : s.rsvpRow.alignItems }}>
+                  <div style={{ ...s.rsvpPlayer, minWidth: isMobile ? 0 : s.rsvpPlayer.minWidth }}>
                     <span style={s.shirtNum}>{player.shirtNumber || "—"}</span>
                     <div>
                       <strong>{displayName}</strong>
@@ -699,7 +701,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
                       )}
                     </div>
                   </div>
-                  <div style={s.rsvpActions}>
+                  <div style={{ ...s.rsvpActions, width: isMobile ? "100%" : "auto" }}>
                     <Badge tone={status === "yes" ? "green" : status === "no" ? "red" : "orange"}>
                       {t(`pages.matchConvocation.rsvpStatus.${status}`)}
                     </Badge>
@@ -707,6 +709,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
                       variant="ghost"
                       onClick={() => copyRsvpLink(player)}
                       disabled={copyingRsvpId === pid || !teamId}
+                      style={{ flex: isMobile ? 1 : "0 0 auto" }}
                     >
                       {copyingRsvpId === pid
                         ? t("pages.matchConvocation.rsvpCopying")

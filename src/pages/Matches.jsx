@@ -9,6 +9,7 @@ import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/Toast";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
 import { createId, formatDate, normalizeAppSettings, parseMatchResult } from "../utils/helpers";
@@ -44,6 +45,7 @@ function translateLocation(location, t) {
 
 function Matches({ matches, setMatches, players = [], appSettings = {} }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
@@ -320,8 +322,8 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
-            gap: 18,
+            gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit,minmax(320px,1fr))",
+            gap: isMobile ? 12 : 18,
           }}
         >
           {matches.map((match) => (
@@ -329,10 +331,10 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr auto 1fr",
-                  gap: 14,
+                  gridTemplateColumns: isMobile ? "minmax(0,1fr) auto minmax(0,1fr)" : "1fr auto 1fr",
+                  gap: isMobile ? 8 : 14,
                   alignItems: "center",
-                  marginBottom: 20,
+                  marginBottom: isMobile ? 14 : 20,
                 }}
               >
                 <TeamBox
@@ -346,7 +348,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
                 <div style={{ textAlign: "center" }}>
                   <div
                     style={{
-                      fontSize: 32,
+                      fontSize: isMobile ? 24 : 32,
                       fontWeight: 900,
                       lineHeight: 1,
                       marginBottom: 6,
@@ -377,8 +379,8 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(3, 1fr)",
-                  gap: 12,
-                  marginBottom: 18,
+                  gap: isMobile ? 8 : 12,
+                  marginBottom: isMobile ? 12 : 18,
                 }}
               >
                   <MiniInfo label={t("pages.matches.field")} value={formatMatchVenue(match, t)} />
@@ -432,10 +434,10 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
                 </div>
               )}
 
-              <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fit, minmax(90px, 1fr))", gap: isMobile ? 8 : 10, marginTop: 14 }}>
                 <Link
                   to={`/match-convocation/${match.id}`}
-                  style={{ flex: 1, textDecoration: "none", minWidth: 110 }}
+                  style={{ textDecoration: "none", minWidth: 0 }}
                 >
                   <Button
                     variant={match.convocazione?.published ? "ghost" : "primary"}
@@ -447,7 +449,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
 
                 <Link
                   to={`/match-day/${match.id}`}
-                  style={{ flex: 1, textDecoration: "none", minWidth: 100 }}
+                  style={{ textDecoration: "none", minWidth: 0 }}
                 >
                   <Button variant="ghost" style={{ width: "100%" }}>
                     {t("pages.matches.matchSheet")}
@@ -456,7 +458,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
 
                 <Link
                   to={`/match-stats/${match.id}`}
-                  style={{ flex: 1, textDecoration: "none", minWidth: 100 }}
+                  style={{ textDecoration: "none", minWidth: 0 }}
                 >
                   <Button variant="ghost" style={{ width: "100%" }}>
                     {t("pages.matches.statistics")}
@@ -466,7 +468,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
                 <Button
                   variant="ghost"
                   onClick={() => editMatch(match)}
-                  style={{ flex: 1, minWidth: 90 }}
+                  style={{ minWidth: 0 }}
                 >
                   {t("common.edit")}
                 </Button>
@@ -474,7 +476,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
                 <Button
                   variant="danger"
                   onClick={() => deleteMatch(match.id)}
-                  style={{ flex: 1, minWidth: 80 }}
+                  style={{ minWidth: 0 }}
                 >
                   {t("common.delete")}
                 </Button>

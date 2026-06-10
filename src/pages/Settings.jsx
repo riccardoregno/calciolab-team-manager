@@ -21,6 +21,7 @@ import {
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useNotifications } from "../hooks/useNotifications";
 import { useTranslation } from "../i18n";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 /* ─── tab list ─────────────────────────────────────────────── */
 const TABS = [
@@ -729,6 +730,7 @@ function isInviteExpired(invite) {
 
 function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], exercises = [], sessions = [], matches = [] }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
   const inviteModal = new URLSearchParams(location.search).get("modal") === INVITE_MEMBER_MODAL;
@@ -1335,6 +1337,7 @@ function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], e
                     ...inviteStyles.memberRow,
                     border: "none",
                     borderRadius: 0,
+                    alignItems: isMobile ? "stretch" : inviteStyles.memberRow.alignItems,
                     ...(member.vip ? inviteStyles.memberRowVip : {}),
                   }}
                 >
@@ -1367,7 +1370,7 @@ function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], e
                         return { ...prev, [member.id]: nextRole };
                       });
                     }}
-                    style={{ ...styles.input, marginTop: 0, width: "auto", minWidth: 140 }}
+                    style={{ ...styles.input, marginTop: 0, width: isMobile ? "100%" : "auto", minWidth: isMobile ? 0 : 140 }}
                   >
                     {Object.entries(memberRoles).map(([key, role]) => (
                       <option key={key} value={key}>{role.label}</option>
@@ -1390,7 +1393,7 @@ function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], e
                           setSavingMemberRole("");
                         }
                       }}
-                      style={{ ...inviteStyles.copySmallBtn, whiteSpace: "nowrap", opacity: savingMemberRole === member.id ? 0.6 : 1 }}
+                      style={{ ...inviteStyles.copySmallBtn, whiteSpace: "nowrap", width: isMobile ? "100%" : "auto", opacity: savingMemberRole === member.id ? 0.6 : 1 }}
                     >
                       {savingMemberRole === member.id ? t("common.saving") : t("common.save")}
                     </button>
@@ -1398,7 +1401,7 @@ function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], e
                   <button
                     type="button"
                     onClick={() => setExpandedMemberPerms((prev) => ({ ...prev, [member.id]: !prev[member.id] }))}
-                    style={{ ...inviteStyles.copySmallBtn, whiteSpace: "nowrap" }}
+                    style={{ ...inviteStyles.copySmallBtn, whiteSpace: "nowrap", flex: isMobile ? "1 1 100%" : "0 0 auto" }}
                   >
                     {expandedMemberPerms[member.id] ? "▲ Permessi" : "▼ Permessi"}
                   </button>
@@ -1408,6 +1411,7 @@ function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], e
                     title={member.vip ? "Rimuovi VIP" : "Assegna VIP"}
                     style={{
                       ...inviteStyles.cancelBtn,
+                      flex: isMobile ? "1 1 0" : "0 0 auto",
                       ...(member.vip ? inviteStyles.vipActiveBtn : {}),
                     }}
                   >
@@ -1416,7 +1420,7 @@ function ClubTab({ appSettings, setAppSettings, team, showToast, players = [], e
                   <button
                     type="button"
                     onClick={() => removeMember(member.id)}
-                    style={inviteStyles.cancelBtn}
+                    style={{ ...inviteStyles.cancelBtn, flex: isMobile ? "1 1 0" : "0 0 auto" }}
                   >
                     {t("pages.settings.clubBtnRemove")}
                   </button>
