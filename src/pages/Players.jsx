@@ -74,6 +74,7 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
   const [showFilters, setShowFilters] = useState(false);
   const [filterStatus, setFilterStatus] = useState("tutti");
   const [filterRole, setFilterRole] = useState("tutti");
+  const [filterRoleFamily, setFilterRoleFamily] = useState("tutti");
   const [filterFoot, setFilterFoot] = useState("tutti");
   const [filterAge, setFilterAge] = useState("tutti");
   const [gruppoFilter, setGruppoFilter] = useState(urlGruppo);
@@ -130,7 +131,7 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
     return age;
   }
 
-  const activeFilterCount = [filterStatus, filterRole, filterFoot, filterAge].filter(
+  const activeFilterCount = [filterStatus, filterRole, filterRoleFamily, filterFoot, filterAge].filter(
     (f) => f !== "tutti"
   ).length;
 
@@ -144,6 +145,8 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
     const matchesStatus =
       filterStatus === "tutti" || (player.status || "Disponibile") === filterStatus;
     const matchesRole = filterRole === "tutti" || (player.role || "") === filterRole;
+    const matchesRoleFamily =
+      filterRoleFamily === "tutti" || getRoleFamily(player.role) === filterRoleFamily;
     const matchesFoot =
       filterFoot === "tutti" ||
       (player.foot || player.preferredFoot || "").toLowerCase() === filterFoot.toLowerCase();
@@ -154,7 +157,7 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
       (filterAge === "18-23" && age !== null && age >= 18 && age <= 23) ||
       (filterAge === "24-30" && age !== null && age >= 24 && age <= 30) ||
       (filterAge === "o30" && age !== null && age > 30);
-    return matchesSearch && matchesGroup && matchesStatus && matchesRole && matchesFoot && matchesAge;
+    return matchesSearch && matchesGroup && matchesStatus && matchesRole && matchesRoleFamily && matchesFoot && matchesAge;
   });
 
   // Ordinamento di default per ruolo: Portiere, Difensore, Centrocampista, Attaccante
@@ -201,19 +204,53 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
     { P: 0, D: 0, C: 0, A: 0 }
   );
 
+  function resetRosterFilters() {
+    setSearch("");
+    setFilterStatus("tutti");
+    setFilterRole("tutti");
+    setFilterRoleFamily("tutti");
+    setFilterFoot("tutti");
+    setFilterAge("tutti");
+    setGruppoFilter("tutti");
+  }
+
+  function filterByStatus(status) {
+    setFilterStatus(status);
+  }
+
+  function filterByGroup(group) {
+    setGruppoFilter(group);
+  }
+
+  function filterByRoleFamily(family) {
+    setFilterRole("tutti");
+    setFilterRoleFamily(family);
+  }
+
   const rosterMetricItems = [
-    { key: "total", label: t("pages.players.totalPlayers"), value: players.length, color: "#60a5fa" },
+    {
+      key: "total",
+      label: t("pages.players.totalPlayers"),
+      value: players.length,
+      color: "#60a5fa",
+      onClick: resetRosterFilters,
+      active: activeFilterCount === 0 && gruppoFilter === "tutti" && !search,
+    },
     {
       key: "available",
       label: t("pages.players.available"),
       value: players.filter((p) => (p.status || "Disponibile") === "Disponibile").length,
       color: "#22c55e",
+      onClick: () => filterByStatus("Disponibile"),
+      active: filterStatus === "Disponibile",
     },
     {
       key: "injured",
       label: t("pages.players.injured"),
       value: players.filter((p) => p.status === "Infortunato").length,
       color: "#f87171",
+      onClick: () => filterByStatus("Infortunato"),
+      active: filterStatus === "Infortunato",
     },
     averageAge !== null && {
       key: "average-age",
@@ -226,11 +263,41 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
       label: GROUP_LABELS[g] || g,
       value: n,
       color: "#cbd5e1",
+      onClick: () => filterByGroup(g),
+      active: gruppoFilter === g,
     })),
-    { key: "role-gk", label: `🧤 ${t("pages.players.posGK")}`, value: countByPosition.P, color: "#cbd5e1" },
-    { key: "role-def", label: `🛡️ ${t("pages.players.posDEF")}`, value: countByPosition.D, color: "#60a5fa" },
-    { key: "role-mid", label: `⚙️ ${t("pages.players.posMID")}`, value: countByPosition.C, color: "#22c55e" },
-    { key: "role-fwd", label: `⚡ ${t("pages.players.posFWD")}`, value: countByPosition.A, color: "#fb923c" },
+    {
+      key: "role-gk",
+      label: `🧤 ${t("pages.players.posGK")}`,
+      value: countByPosition.P,
+      color: "#cbd5e1",
+      onClick: () => filterByRoleFamily("P"),
+      active: filterRoleFamily === "P",
+    },
+    {
+      key: "role-def",
+      label: `🛡️ ${t("pages.players.posDEF")}`,
+      value: countByPosition.D,
+      color: "#60a5fa",
+      onClick: () => filterByRoleFamily("D"),
+      active: filterRoleFamily === "D",
+    },
+    {
+      key: "role-mid",
+      label: `⚙️ ${t("pages.players.posMID")}`,
+      value: countByPosition.C,
+      color: "#22c55e",
+      onClick: () => filterByRoleFamily("C"),
+      active: filterRoleFamily === "C",
+    },
+    {
+      key: "role-fwd",
+      label: `⚡ ${t("pages.players.posFWD")}`,
+      value: countByPosition.A,
+      color: "#fb923c",
+      onClick: () => filterByRoleFamily("A"),
+      active: filterRoleFamily === "A",
+    },
   ];
 
   function handlePhotoUpload(file) {
@@ -507,7 +574,10 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
                 </div>
                 <select
                   value={filterRole}
-                  onChange={(e) => setFilterRole(e.target.value)}
+                  onChange={(e) => {
+                    setFilterRole(e.target.value);
+                    setFilterRoleFamily("tutti");
+                  }}
                   style={{
                     padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700,
                     background: filterRole !== "tutti" ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.06)",
@@ -574,7 +644,7 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
             {/* Reset */}
             {activeFilterCount > 0 && (
               <button
-                onClick={() => { setFilterStatus("tutti"); setFilterRole("tutti"); setFilterFoot("tutti"); setFilterAge("tutti"); }}
+                onClick={resetRosterFilters}
                 style={{
                   alignSelf: "flex-end", padding: "5px 13px", borderRadius: 8,
                   background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
@@ -629,8 +699,10 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
                   setSearch("");
                   setFilterStatus("tutti");
                   setFilterRole("tutti");
+                  setFilterRoleFamily("tutti");
                   setFilterFoot("tutti");
                   setFilterAge("tutti");
+                  setGruppoFilter("tutti");
                 }}
                 style={{
                   marginTop: 12, padding: "8px 18px", borderRadius: 10,
