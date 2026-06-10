@@ -91,6 +91,7 @@ const coachRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "
 const technicalRoles = ["owner", "headCoach", "assistantCoach"];
 const physicalRoles = ["owner", "headCoach", "athleticTrainer"];
 const managementRoles = ["owner", "headCoach", "director"];
+const onboardingRoles = ["owner", "headCoach"];
 const playerCalendarRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"];
 
 function getInitialDevelopmentPlanPreview() {
@@ -385,7 +386,8 @@ function App() {
   const onboardingDone = auth.team
     ? auth.team.onboarding_completed === true
     : previewAppSettings?.onboarding?.completed === true;
-  if (!loading && !onboardingDone) {
+  const canManageOnboarding = !auth.team || onboardingRoles.includes(auth.team.role);
+  if (!loading && canManageOnboarding && !onboardingDone) {
     return (
       <BrowserRouter>
         <Suspense fallback={null}>
@@ -491,7 +493,7 @@ function App() {
     <BrowserRouter>
       <div className="app-shell" style={styles.appShell}>
         <div className="desktop-sidebar">
-          <Sidebar appSettings={previewAppSettings} chatUnread={chatUnread} />
+          <Sidebar appSettings={previewAppSettings} currentRole={auth.team?.role || null} chatUnread={chatUnread} />
         </div>
 
         <main className="app-content" style={styles.content}>
@@ -745,9 +747,10 @@ function App() {
               <Route
                 path="/onboarding"
                 element={
-                  gate(managementRoles, <Onboarding
+                  gate(onboardingRoles, <Onboarding
                     appSettings={previewAppSettings}
                     setAppSettings={setAppSettings}
+                    team={auth.team}
                   />)
                 }
               />
@@ -1015,7 +1018,7 @@ function App() {
       {/* Deep link handler — intercetta Universal Links / App Links su iOS/Android */}
       <DeepLinkHandler />
 
-      <MobileBottomNav />
+      <MobileBottomNav currentRole={auth.team?.role || null} />
       <PWAInstallBanner />
       <PushBanner />
       {/* Push notifications — dentro BrowserRouter perché il hook usa useNavigate */}

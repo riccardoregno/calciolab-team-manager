@@ -1,37 +1,48 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "../../i18n";
+import { isRoleAllowed } from "../../utils/helpers";
+
+const allRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"];
+const coachRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"];
+const technicalRoles = ["owner", "headCoach", "assistantCoach"];
+const physicalRoles = ["owner", "headCoach", "athleticTrainer"];
+const managementRoles = ["owner", "headCoach", "director"];
+const playerCalendarRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"];
 
 // ── Voci principali sempre visibili ──────────────────────────────
 const PRIMARY = [
-  { to: "/",          labelKey: "navigation.mobile.home", icon: "🏠" },
-  { to: "/players",   labelKey: "navigation.mobile.roster", icon: "👥" },
-  { to: "/trainings", labelKey: "navigation.mobile.trainings", icon: "📋" },
-  { to: "/matches",   labelKey: "navigation.mobile.matches", icon: "⚽" },
-  { to: "/calendar",  labelKey: "navigation.mobile.calendar", icon: "📅" },
+  { to: "/",          labelKey: "navigation.mobile.home", icon: "🏠", roles: allRoles },
+  { to: "/players",   labelKey: "navigation.mobile.roster", icon: "👥", roles: coachRoles },
+  { to: "/trainings", labelKey: "navigation.mobile.trainings", icon: "📋", roles: technicalRoles },
+  { to: "/matches",   labelKey: "navigation.mobile.matches", icon: "⚽", roles: coachRoles },
+  { to: "/calendar",  labelKey: "navigation.mobile.calendar", icon: "📅", roles: playerCalendarRoles },
 ];
 
 // ── Voci nel drawer "Altro" ───────────────────────────────────────
 const SECONDARY = [
-  { to: "/exercises", labelKey: "navigation.items.exercises", icon: "📚" },
-  { to: "/microcycle",       labelKey: "navigation.items.microcycle", icon: "🗓️" },
-  { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾" },
-  { to: "/statistics",       labelKey: "navigation.items.statistics", icon: "📊" },
-  { to: "/tactical-board",   labelKey: "navigation.items.tacticalBoard", icon: "🧠" },
-  { to: "/availability",     labelKey: "navigation.items.availability", icon: "🩺" },
-  { to: "/physical-tests",   labelKey: "navigation.items.physicalTests", icon: "⏱️" },
-  { to: "/physical-workouts",labelKey: "navigation.items.physicalWorkouts", icon: "🏃" },
-  { to: "/gps-load",         labelKey: "navigation.items.gpsLoad", icon: "📡" },
-  { to: "/staff-tasks",      labelKey: "navigation.items.staffTasks", icon: "✅" },
-  { to: "/exports",          labelKey: "navigation.items.exports", icon: "🖨️" },
-  { to: "/settings",         labelKey: "navigation.items.settings", icon: "⚙️" },
-  { to: "/premium",          labelKey: "navigation.items.premium", icon: "💎" },
+  { to: "/exercises", labelKey: "navigation.items.exercises", icon: "📚", roles: technicalRoles },
+  { to: "/microcycle",       labelKey: "navigation.items.microcycle", icon: "🗓️", roles: technicalRoles },
+  { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾", roles: technicalRoles },
+  { to: "/statistics",       labelKey: "navigation.items.statistics", icon: "📊", roles: coachRoles },
+  { to: "/tactical-board",   labelKey: "navigation.items.tacticalBoard", icon: "🧠", roles: technicalRoles },
+  { to: "/availability",     labelKey: "navigation.items.availability", icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
+  { to: "/physical-tests",   labelKey: "navigation.items.physicalTests", icon: "⏱️", roles: physicalRoles },
+  { to: "/physical-workouts",labelKey: "navigation.items.physicalWorkouts", icon: "🏃", roles: physicalRoles },
+  { to: "/gps-load",         labelKey: "navigation.items.gpsLoad", icon: "📡", roles: physicalRoles },
+  { to: "/staff-tasks",      labelKey: "navigation.items.staffTasks", icon: "✅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
+  { to: "/exports",          labelKey: "navigation.items.exports", icon: "🖨️", roles: managementRoles },
+  { to: "/settings",         labelKey: "navigation.items.settings", icon: "⚙️", roles: allRoles },
+  { to: "/premium",          labelKey: "navigation.items.premium", icon: "💎", roles: managementRoles },
 ];
 
-export default function MobileBottomNav() {
+export default function MobileBottomNav({ currentRole = "headCoach" }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const effectiveRole = currentRole || "headCoach";
+  const primaryItems = PRIMARY.filter((item) => isRoleAllowed(effectiveRole, item.roles));
+  const secondaryItems = SECONDARY.filter((item) => isRoleAllowed(effectiveRole, item.roles));
 
   function goTo(path) {
     navigate(path);
@@ -84,7 +95,7 @@ export default function MobileBottomNav() {
               gridTemplateColumns: "repeat(3, 1fr)",
               gap: 8,
             }}>
-              {SECONDARY.map((item) => (
+              {secondaryItems.map((item) => (
                 <button
                   key={item.to}
                   onClick={() => goTo(item.to)}
@@ -114,7 +125,7 @@ export default function MobileBottomNav() {
 
       {/* ── Bottom nav bar ─────────────────────────────────────── */}
       <nav className="mobile-bottom-nav">
-        {PRIMARY.map((item) => (
+        {primaryItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

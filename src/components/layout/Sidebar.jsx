@@ -7,13 +7,14 @@ const coachRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "
 const technicalRoles = ["owner", "headCoach", "assistantCoach"];
 const physicalRoles = ["owner", "headCoach", "athleticTrainer"];
 const managementRoles = ["owner", "headCoach", "director"];
+const onboardingRoles = ["owner", "headCoach"];
 
 const menuGroups = [
   {
     titleKey: "navigation.groups.home",
     items: [
       { to: "/", labelKey: "navigation.items.dashboard", icon: "🏠", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
-      { to: "/onboarding", labelKey: "navigation.items.onboarding", icon: "🚀", roles: managementRoles },
+      { to: "/onboarding", labelKey: "navigation.items.onboarding", icon: "🚀", roles: onboardingRoles },
       { to: "/calendar", labelKey: "navigation.items.calendar", icon: "📅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"] },
     ],
   },
@@ -71,10 +72,10 @@ const menuGroups = [
   },
 ];
 
-export default function Sidebar({ appSettings = {}, chatUnread = 0 }) {
+export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp = null, chatUnread = 0 }) {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
-  const currentRole = getCurrentUserRole(appSettings);
+  const currentRole = currentRoleProp || getCurrentUserRole(appSettings);
   const profile = normalizeAppSettings(appSettings).workspaceProfile;
   const managesJuniores = profile.managesJuniores && profile.teamLevel === "prima";
 

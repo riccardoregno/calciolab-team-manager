@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { Eye, EyeOff } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -15,6 +15,7 @@ import { styles } from "../styles/index.js";
 import {
   createId,
   getSetupProgress,
+  isRoleAllowed,
   memberRoles,
   normalizeAppSettings,
 } from "../utils/helpers";
@@ -27,7 +28,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 const TABS = [
   { key: "account",       labelKey: "pages.settings.account" },
   { key: "coach",         labelKey: "pages.settings.coachParams" },
-  { key: "club",          labelKey: "pages.settings.clubProfile" },
+  { key: "club",          labelKey: "pages.settings.clubProfile", roles: ["owner", "headCoach", "director"] },
   { key: "notifications", labelKey: "pages.settings.notifications" },
 ];
 
@@ -91,6 +92,7 @@ export default function Settings({
   team,
   authError,
   storageSource,
+  currentUserRole,
   /* data props */
   appSettings = {},
   setAppSettings,
@@ -103,6 +105,17 @@ export default function Settings({
   const [activeTab, setActiveTab] = useTabState("tab", "account");
   const [confirmState, setConfirmState] = useState(null);
   const { showToast, ToastContainer } = useToast();
+  const effectiveRole = currentUserRole || team?.role || normalizeAppSettings(appSettings).workspaceProfile.userRole || "headCoach";
+  const visibleTabs = useMemo(
+    () => TABS.filter((tab) => !tab.roles || isRoleAllowed(effectiveRole, tab.roles)),
+    [effectiveRole]
+  );
+
+  useEffect(() => {
+    if (!visibleTabs.some((tab) => tab.key === activeTab)) {
+      setActiveTab("account");
+    }
+  }, [activeTab, setActiveTab, visibleTabs]);
 
   return (
     <div style={{ display: "grid", gap: 0 }}>
@@ -115,7 +128,7 @@ export default function Settings({
 
       {/* ── Tab bar ── */}
       <div style={s.tabBar}>
-        {TABS.map((tab) => {
+        {visibleTabs.map((tab) => {
           const active = activeTab === tab.key;
           return (
             <button
