@@ -212,10 +212,27 @@ function ZoneSelect({ value, onChange, options }) {
 
 function DefTaskControl({ value, onChange }) {
   return (
-    <div style={{ display: "grid", gap: 5 }}>
-      <ZoneSelect value={value} onChange={onChange} options={DEF_TASKS} />
-      {value && <span style={{ ...taskBadge, ...getTaskBadgeStyle(value) }}>{value}</span>}
-    </div>
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      style={{
+        padding: "7px 10px",
+        borderRadius: 8,
+        border: "1px solid",
+        fontSize: 13,
+        fontWeight: 700,
+        width: "100%",
+        cursor: "pointer",
+        ...(value ? getTaskBadgeStyle(value) : {
+          background: "#1e293b",
+          borderColor: "rgba(255,255,255,0.12)",
+          color: "#f1f5f9",
+        }),
+      }}
+    >
+      <option value="">—</option>
+      {DEF_TASKS.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>
   );
 }
 
@@ -521,17 +538,6 @@ const viewButtonActive = {
   background: "rgba(59,130,246,0.2)",
   color: "#bfdbfe",
   boxShadow: "inset 0 0 0 1px rgba(147,197,253,0.16)",
-};
-
-const taskBadge = {
-  justifySelf: "start",
-  border: "1px solid",
-  borderRadius: 999,
-  padding: "2px 7px",
-  fontSize: 10,
-  fontWeight: 900,
-  textTransform: "uppercase",
-  letterSpacing: 0,
 };
 
 const presetBar = {
@@ -947,6 +953,8 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
           borderRadius: 14,
           padding: 6,
           width: "fit-content",
+          maxWidth: "100%",
+          overflowX: "auto",
         }}
       >
         {tabs.map(t => (
@@ -965,6 +973,8 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
               cursor: "pointer",
               fontWeight: 700,
               fontSize: 13,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
               transition: "all 0.2s",
               background: activeTab === t.key
                 ? "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)"

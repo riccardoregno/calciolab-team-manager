@@ -5,6 +5,7 @@ import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
+import MetricStrip from "../components/ui/MetricStrip";
 import PageHeader from "../components/ui/PageHeader";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useToast } from "../components/ui/Toast";
@@ -251,13 +252,17 @@ export default function PhysicalTests({
   const modalKeyRef = useRef("");
   // FIX #13: memoizzato via hook
   const settings = useAppSettings(appSettings);
-  const METRICS  = settings.physicalMetrics.filter((m) => m.enabled);
+  const METRICS = useMemo(
+    () => settings.physicalMetrics.filter((m) => m.enabled),
+    [settings.physicalMetrics]
+  );
 
   const [modal, setModal]               = useState(null);       // null | { mode, form, testId? }
   const [openHistory, setOpenHistory]   = useState(null);       // playerId
   const [rankMetric, setRankMetric]     = useState(null);       // null = grid
   const [chartPlayerId, setChartPlayerId] = useState(null);     // playerId per modale grafico
   const [confirmState, setConfirmState] = useState(null);
+  const [formErrors, setFormErrors]     = useState({});
 
   // Per ogni giocatore: tutti i test ordinati per data DESC
   const testsByPlayer = useMemo(() => {
@@ -289,8 +294,32 @@ export default function PhysicalTests({
       return;
     }
 
-    setModal(loadPhysicalTestDraft(key, { mode: "add", form: emptyForm(String(modalPlayerId)) }));
-  }, [isTestModalOpen, modalPlayerId, modalTestId, physicalTests]);
+    {
+      const fallback = { mode: "add", form: emptyForm(String(modalPlayerId)) };
+      let stored = null;
+      try { stored = localStorage.getItem(key); } catch { /* noop */ }
+      setModal(loadPhysicalTestDraft(key, fallback));
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          const f = parsed.form || {};
+          const hasContent = METRICS.some((m) => f[m.key] !== "" && f[m.key] != null) || (f.notes || "").trim();
+          if (hasContent) {
+            showToast(t("pages.physicalTests.draftRestored"), "info", {
+              action: {
+                label: t("pages.physicalTests.discardDraft"),
+                fn: () => {
+                  clearPhysicalTestDraft(keyId);
+                  setModal({ ...fallback });
+                },
+              },
+              duration: 6000,
+            });
+          }
+        } catch { /* noop */ }
+      }
+    }
+  }, [isTestModalOpen, modalPlayerId, modalTestId, physicalTests, METRICS, showToast, t]);
 
   useEffect(() => {
     if (!isTestModalOpen || !modal || !modalKeyRef.current) return;
@@ -321,6 +350,7 @@ export default function PhysicalTests({
   function closeModal({ resetDraft = false } = {}) {
     const draftId = modal?.testId || modal?.form?.playerId || modalTestId || modalPlayerId || "new";
     if (resetDraft) clearPhysicalTestDraft(draftId);
+    setFormErrors({});
     const params = new URLSearchParams(location.search);
     params.delete("modal");
     params.delete("playerId");
@@ -332,12 +362,13 @@ export default function PhysicalTests({
 
   function saveTest() {
     const f = modal.form;
-    if (!f.playerId) {
-      showToast(t("pages.physicalTests.noPlayerToast"), "warn");
-      return;
-    }
-    if (!f.date) {
-      showToast(t("pages.physicalTests.noDateToast"), "warn");
+    const errors = {};
+    if (!f.playerId) errors.playerId = true;
+    if (!f.date) errors.date = true;
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      if (errors.playerId) showToast(t("pages.physicalTests.noPlayerToast"), "warn");
+      else showToast(t("pages.physicalTests.noDateToast"), "warn");
       return;
     }
     // Reject negative numeric values (browser min=0 can be bypassed programmatically)
@@ -411,11 +442,16 @@ export default function PhysicalTests({
       />
 
       {/* Stats bar */}
-      <div style={pt.statsBar}>
-        <StatChip label={t("pages.physicalTests.statTotal")}        value={totalTests}     color="#60a5fa" />
-        <StatChip label={t("pages.physicalTests.statTested")}  value={`${playersTested}/${players.length}`} color="#34d399" />
-        {lastTestDate && <StatChip label={t("pages.physicalTests.statLastTest")} value={formatShortDate(lastTestDate)} color="#a78bfa" />}
-        <div style={{ flex: 1 }} />
+      <MetricStrip
+        className="mobile-scroll-x"
+        style={{ marginBottom: 22 }}
+        items={[
+          { key: "total", label: t("pages.physicalTests.statTotal"), value: totalTests, color: "#60a5fa" },
+          { key: "tested", label: t("pages.physicalTests.statTested"), value: `${playersTested}/${players.length}`, color: "#34d399" },
+          lastTestDate && { key: "lastTest", label: t("pages.physicalTests.statLastTest"), value: formatShortDate(lastTestDate), color: "#a78bfa" },
+        ]}
+      />
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 22, marginTop: -12 }}>
 
         {/* Ranking toggle */}
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -608,8 +644,8 @@ export default function PhysicalTests({
                                   <Badge tone="blue">{formatShortDate(test.date)}</Badge>
                                   {idx === 0 && <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 700 }}>● {t("pages.physicalTests.latestBadge")}</span>}
                                   <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
-                                    <button onClick={() => openEdit(test)} style={pt.iconBtn} title="Modifica">✏️</button>
-                                    <button onClick={() => deleteTest(test.id)} style={{ ...pt.iconBtn, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }} title="Elimina">🗑️</button>
+                                    <button onClick={() => openEdit(test)} style={pt.iconBtn} title="Modifica" aria-label="Modifica">✏️</button>
+                                    <button onClick={() => deleteTest(test.id)} style={{ ...pt.iconBtn, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }} title="Elimina" aria-label="Elimina">🗑️</button>
                                   </div>
                                 </div>
                                 {/* metriche con confronto */}
@@ -682,8 +718,8 @@ export default function PhysicalTests({
                   <label style={pt.fieldLabel}>{t("pages.physicalTests.fieldPlayer")}</label>
                   <select
                     value={modal.form.playerId}
-                    onChange={(e) => setModal({ ...modal, form: { ...modal.form, playerId: e.target.value } })}
-                    style={styles.input}
+                    onChange={(e) => { setModal({ ...modal, form: { ...modal.form, playerId: e.target.value } }); if (formErrors.playerId) setFormErrors((p) => ({ ...p, playerId: false })); }}
+                    style={{ ...styles.input, ...(formErrors.playerId ? pt.inputError : {}) }}
                     disabled={modal.mode === "edit"}
                   >
                     <option value="">{t("pages.physicalTests.playerPlaceholder")}</option>
@@ -692,15 +728,17 @@ export default function PhysicalTests({
                       return <option key={p.id} value={String(p.id)}>{n}</option>;
                     })}
                   </select>
+                  {formErrors.playerId && <span style={pt.errorMsg}>{t("pages.physicalTests.noPlayerToast")}</span>}
                 </div>
                 <div style={{ display: "grid", gap: 6 }}>
                   <label style={pt.fieldLabel}>{t("pages.physicalTests.fieldDate")}</label>
                   <input
                     type="date"
                     value={modal.form.date}
-                    onChange={(e) => setModal({ ...modal, form: { ...modal.form, date: e.target.value } })}
-                    style={styles.input}
+                    onChange={(e) => { setModal({ ...modal, form: { ...modal.form, date: e.target.value } }); if (formErrors.date) setFormErrors((p) => ({ ...p, date: false })); }}
+                    style={{ ...styles.input, ...(formErrors.date ? pt.inputError : {}) }}
                   />
+                  {formErrors.date && <span style={pt.errorMsg}>{t("pages.physicalTests.noDateToast")}</span>}
                 </div>
               </div>
 
@@ -769,21 +807,11 @@ export default function PhysicalTests({
 }
 
 // ─── UI helpers ───────────────────────────────
-function StatChip({ label, value, color }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 14px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-      <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
-      <span style={{ fontSize: 13, color: "#94a3b8", fontWeight: 600 }}>{label}</span>
-      <strong style={{ fontSize: 14, color: "#e2e8f0" }}>{value}</strong>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────
 // Stili
 // ─────────────────────────────────────────────
 const pt = {
-  statsBar:    { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 22 },
   grid:        { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 },
   playerCard:  { borderRadius: 14, padding: 18, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "grid", gap: 14 },
   cardHeader:  { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
@@ -809,4 +837,6 @@ const pt = {
   overlay:     { position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 },
   modalBox:    { background: "#0f172a", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 18, padding: 24, width: "100%", maxWidth: 520, boxShadow: "0 24px 60px rgba(0,0,0,0.5)", maxHeight: "90vh", overflowY: "auto" },
   fieldLabel:  { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0, color: "#64748b" },
+  inputError:  { border: "1px solid #f87171", boxShadow: "0 0 0 2px rgba(248,113,113,0.15)" },
+  errorMsg:    { display: "block", marginTop: 4, fontSize: 11, fontWeight: 700, color: "#f87171" },
 };

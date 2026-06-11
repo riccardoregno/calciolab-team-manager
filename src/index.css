@@ -75,50 +75,67 @@ textarea:focus-visible {
     max-width: 100% !important;
     min-height: 100vh !important;
     margin: 0 !important;
-    padding: 12px 14px 86px !important;
+    padding: 12px 14px 112px !important;
     overflow-x: hidden !important;
   }
 
-  .app-content header:not(.mobile-topbar):not(.mobile-hide) {
+  .app-content header:not(.mobile-topbar):not(.mobile-hide):not(.print-header) {
     display: grid !important;
     grid-template-columns: 1fr !important;
     gap: 14px !important;
     align-items: stretch !important;
   }
 
-  .app-content header:not(.mobile-topbar):not(.mobile-hide) > div {
+  .app-content header:not(.mobile-topbar):not(.mobile-hide):not(.print-header) > div {
     width: 100% !important;
   }
 
-  .app-content header:not(.mobile-topbar):not(.mobile-hide) h1 {
-    font-size: 24px !important;
+  .app-content header:not(.mobile-topbar):not(.mobile-hide):not(.print-header) h1 {
+    font-size: 28px !important;
+    font-weight: 800 !important;
     line-height: 1.15 !important;
   }
 
-  .app-content header:not(.mobile-topbar):not(.mobile-hide) p {
+  .app-content header:not(.mobile-topbar):not(.mobile-hide):not(.print-header) p {
     font-size: 12px !important;
   }
 
-  .app-content header:not(.mobile-topbar):not(.mobile-hide) input {
+  .app-content header:not(.mobile-topbar):not(.mobile-hide):not(.print-header) input {
     width: 100% !important;
+  }
+
+  .metric-strip-item {
+    min-height: 58px !important;
+  }
+
+  .metric-strip-value {
+    font-size: 19px !important;
+  }
+
+  .metric-strip-label {
+    font-size: 10px !important;
+    font-weight: 750 !important;
   }
 
   .mobile-bottom-nav {
     position: fixed;
-    left: 50%;
-    right: auto;
-    bottom: max(18px, env(safe-area-inset-bottom));
-    width: min(330px, calc(100vw - 48px));
-    transform: translateX(-50%);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    padding-bottom: env(safe-area-inset-bottom);
     z-index: 9999;
     display: grid !important;
     grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 2px;
-    padding: 4px;
-    border-radius: 18px;
-    background: rgba(15, 23, 42, 0.90);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+    padding-left: 4px;
+    padding-right: 4px;
+    padding-top: 6px;
+    border-radius: 0;
+    background: rgba(15, 23, 42, 0.96);
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(16px);
   }
 
@@ -131,7 +148,7 @@ textarea:focus-visible {
     border-radius: 11px;
     color: #94a3b8;
     text-decoration: none;
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1;
   }
 
@@ -139,7 +156,7 @@ textarea:focus-visible {
     width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 8px;
+    font-size: 7.5px;
     line-height: 1;
     text-align: center;
     white-space: nowrap;
@@ -166,6 +183,12 @@ textarea:focus-visible {
   .calciolab-two-column,
   .export-workspace {
     grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-topbar-subtitle {
+    display: none !important;
   }
 }
 
@@ -201,6 +224,37 @@ textarea:focus-visible {
   }
   .mobile-stack { display: flex  !important; flex-direction: column !important; }
 
+  .sync-now-button {
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+  }
+
+  .players-list-wrap {
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    gap: 14px;
+  }
+
+  .players-toolbar {
+    margin-bottom: 0 !important;
+  }
+
+  .setup-progress-title {
+    font-size: 18px !important;
+    margin: 8px 0 4px !important;
+  }
+
+  .setup-progress-bar {
+    height: 6px !important;
+    margin-top: 8px !important;
+  }
+
+  .action-bar-title {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
   .mobile-topbar {
     display: flex !important;
   }
@@ -212,9 +266,20 @@ textarea:focus-visible {
     -webkit-overflow-scrolling: touch;
   }
 
+  .metric-strip.mobile-scroll-x {
+    display: flex !important;
+    gap: 8px !important;
+    padding-bottom: 4px;
+  }
+
+  .metric-strip.mobile-scroll-x .metric-strip-item {
+    flex: 0 0 auto;
+    min-width: 104px;
+  }
+
   /* Collassa griglie inline a singola colonna, eccetto quelle marcate .no-mobile-override */
   [style*="grid-template-columns"]:not(.no-mobile-override) {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
   .training-variant-row {

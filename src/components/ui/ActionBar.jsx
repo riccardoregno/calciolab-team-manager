@@ -14,7 +14,7 @@ export default function ActionBar({
       <div style={barStyles.inner}>
         <div style={barStyles.copy}>
           {eyebrow && <span style={barStyles.eyebrow}>{eyebrow}</span>}
-          {title && <h3 style={barStyles.title}>{title}</h3>}
+          {title && <h3 className="action-bar-title" style={barStyles.title}>{title}</h3>}
           {subtitle && <p style={barStyles.subtitle}>{subtitle}</p>}
           {children}
         </div>

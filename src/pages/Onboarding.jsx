@@ -187,6 +187,17 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
     navigate(path);
   }
 
+  // Rimanda l'onboarding: l'utente può proseguire più tardi dal banner
+  // di "setup progress" in Dashboard. Non marca onboarding_completed —
+  // resta come fonte di verità per riproporre l'onboarding completo
+  // se l'utente non lo riprende mai.
+  function skipForNow() {
+    if (typeof window !== "undefined") {
+      try { window.localStorage.setItem("calciolab_onboarding_deferred", "1"); } catch { /* storage unavailable */ }
+    }
+    navigate("/");
+  }
+
   const layoutStyle = isMobile
     ? { ...ob.root, gridTemplateColumns: "1fr" }
     : ob.root;
@@ -196,7 +207,7 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
 
       {/* ── Sidebar desktop / Progress bar mobile ── */}
       {isMobile ? (
-        <MobileProgress step={step} total={STEP_COUNT} labels={stepLabels} />
+        <MobileProgress step={step} total={STEP_COUNT} labels={stepLabels} onSkip={!showSuccess ? skipForNow : null} />
       ) : (
         <aside style={ob.aside}>
           <div style={ob.asideLogo}>⚽ CalcioLab</div>
@@ -233,6 +244,11 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
             <p style={{ margin: 0, color: "#334155", fontSize: 12 }}>
               {t("pages.onboarding.settingsNote")}
             </p>
+            {!showSuccess && (
+              <button type="button" onClick={skipForNow} style={ob.skipLink}>
+                {t("pages.onboarding.skipForNow")}
+              </button>
+            )}
           </div>
         </aside>
       )}
@@ -271,13 +287,20 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
 // ─────────────────────────────────────────────
 // Mobile progress bar
 // ─────────────────────────────────────────────
-function MobileProgress({ step, total, labels }) {
+function MobileProgress({ step, total, labels, onSkip }) {
   const { t } = useTranslation();
   return (
     <div style={ob.mobileProgress}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontWeight: 900, fontSize: 16 }}>⚽ CalcioLab</span>
-        <span style={{ color: "#64748b", fontSize: 13 }}>{t("pages.onboarding.mobileProgress", { step, total, label: labels[step - 1] })}</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontWeight: 900, fontSize: 16 }}>⚽ CalcioLab</span>
+          <span style={{ color: "#64748b", fontSize: 13 }}>{t("pages.onboarding.mobileProgress", { step, total, label: labels[step - 1] })}</span>
+        </div>
+        {onSkip && (
+          <button type="button" onClick={onSkip} style={ob.skipLink}>
+            {t("pages.onboarding.skipForNow")}
+          </button>
+        )}
       </div>
       <div style={ob.progressBar}>
         <div style={{ ...ob.progressFill, width: `${(step / total) * 100}%` }} />
@@ -1029,6 +1052,18 @@ const ob = {
   stepLabel: { margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 },
   stepName:  { margin: "2px 0 0", fontSize: 14, fontWeight: 700 },
   asideFooter: { marginTop: "auto", paddingTop: 24 },
+  skipLink: {
+    background: "none",
+    border: "none",
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: 700,
+    textDecoration: "underline",
+    cursor: "pointer",
+    padding: 0,
+    marginTop: 10,
+    flexShrink: 0,
+  },
   /* Main */
   main:       { padding: "48px 56px", overflowY: "auto", maxWidth: 780 },
   mainMobile: { padding: "24px 20px", overflowY: "auto" },

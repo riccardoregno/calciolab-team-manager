@@ -315,7 +315,7 @@ const os = {
   detail: { display: "grid", gap: 18, minWidth: 0 },
   hero: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" },
   heroActions: { display: "flex", gap: 10, flexWrap: "wrap" },
-  eyebrow: { margin: "0 0 6px", color: "#38bdf8", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.6 },
+  eyebrow: { margin: "0 0 6px", color: "#38bdf8", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 },
   title: { margin: "0 0 6px", fontSize: 34, lineHeight: 1.05 },
   muted: { color: "#94a3b8", margin: 0, lineHeight: 1.5 },
   kpiGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10, marginTop: 16 },

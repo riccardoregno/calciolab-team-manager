@@ -5,6 +5,8 @@ import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import Modal from "../components/ui/Modal";
 import EmptyState from "../components/ui/EmptyState";
+import { SkeletonList } from "../components/ui/Skeleton";
+import MetricStrip from "../components/ui/MetricStrip";
 import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { createId, getPlayerUnavailabilityOnDate } from "../utils/helpers";
@@ -212,7 +214,7 @@ function getMedicalType(status, injuryType, differentiatedType) {
 // Componente principale
 // ─────────────────────────────────────────────
 export default function Availability({
-  players = [], setPlayers, sessions = [], matches = [] }) {
+  players = [], setPlayers, sessions = [], matches = [], loading = false }) {
 
   const { t } = useTranslation();
   const location = useLocation();
@@ -466,14 +468,17 @@ export default function Availability({
       />
 
       {/* KPI + azione */}
-      <div style={av.kpiRow}>
-        <KpiPill label={t("pages.availability.kpiAvailable")} value={availablePlayers.length} color="#22c55e" />
-        {STATUS_OPTIONS.map((s) => {
-          const n = players.filter((p) => p.status === s.value).length;
-          return n > 0 ? <KpiPill key={s.value} label={t(s.labelKey)} value={n} color={s.color} /> : null;
-        })}
-        <div style={{ flex: 1 }} />
-      </div>
+      <MetricStrip
+        className="mobile-scroll-x"
+        style={{ marginBottom: 20 }}
+        items={[
+          { key: "available", label: t("pages.availability.kpiAvailable"), value: availablePlayers.length, color: "#22c55e" },
+          ...STATUS_OPTIONS.map((s) => {
+            const n = players.filter((p) => p.status === s.value).length;
+            return n > 0 ? { key: s.value, label: t(s.labelKey), value: n, color: s.color } : null;
+          }),
+        ]}
+      />
 
       {/* Pianificazione preparazione: disponibilità giorno per giorno */}
       <AppCard>
@@ -583,7 +588,9 @@ export default function Availability({
       </AppCard>
 
       {/* Lista infortuni attivi */}
-      {injuredPlayers.length === 0 ? (
+      {loading && players.length === 0 ? (
+        <SkeletonList rows={3} cols={2} />
+      ) : injuredPlayers.length === 0 ? (
         <EmptyState icon="🏥" title={t("pages.availability.emptyTitle")} text={t("pages.availability.emptyText")} />
       ) : (
         <div style={av.grid}>
@@ -892,15 +899,6 @@ export default function Availability({
 }
 
 // ─── UI helpers ───────────────────────────────
-function KpiPill({ label, value, color }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-      <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
-      <span style={{ fontSize: 13, fontWeight: 700, color: "#94a3b8" }}>{label}</span>
-      <strong style={{ fontSize: 15, color: "#e2e8f0" }}>{value}</strong>
-    </div>
-  );
-}
 
 function StatPill({ label, value, color }) {
   return (
@@ -922,7 +920,6 @@ function InfoRow({ icon, label, value, extra }) {
 }
 
 const av = {
-  kpiRow:     { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 20, padding: 16, borderRadius: 18, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" },
   grid:       { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 },
   card:       { borderRadius: 14, padding: 18, border: "1px solid", display: "grid", gap: 14 },
   cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
@@ -946,6 +943,6 @@ const av = {
   preventionCard: { padding: 14, borderRadius: 13, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" },
   preventionTop: { display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", marginBottom: 10 },
   preventionTitle: { color: "#e2e8f0", fontSize: 13, lineHeight: 1.25 },
-  preventionTag: { border: "1px solid", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 900, textTransform: "uppercase", whiteSpace: "nowrap" },
+  preventionTag: { border: "1px solid", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", whiteSpace: "nowrap" },
   preventionList: { margin: 0, paddingLeft: 18, color: "#94a3b8", fontSize: 12, lineHeight: 1.5, display: "grid", gap: 4 },
 };

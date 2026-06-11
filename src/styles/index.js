@@ -12,6 +12,7 @@ export const styles = {
   // ─── Page wrapper: standard gap between sections ─────────────────────
   page: {
     display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr)",
     gap: 22,
   },
 
@@ -150,8 +151,8 @@ exerciseLibraryItem: {
   },
 
   cardTitle: {
-    fontSize: 18,
-    fontWeight: 600,
+    fontSize: 16,
+    fontWeight: 750,
   },
 
   mutedText: {

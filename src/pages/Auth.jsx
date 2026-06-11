@@ -550,7 +550,7 @@ const s = {
   },
   eyebrow: {
     margin: 0, color: "#7dd3fc", fontSize: 12,
-    fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.8,
+    fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8,
   },
   heroTitle: { margin: "12px 0 10px", fontSize: 46, lineHeight: 1 },
   heroText:  { maxWidth: 520, color: "#cbd5e1", lineHeight: 1.6, margin: 0, fontSize: 14 },

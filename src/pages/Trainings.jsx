@@ -7,10 +7,12 @@ import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
+import { SkeletonList } from "../components/ui/Skeleton";
 import MetricStrip from "../components/ui/MetricStrip";
 import SearchBar from "../components/ui/SearchBar";
 import SortableTrainingTimeline from "../components/trainings/SortableTrainingTimeline";
 import { useToast } from "../components/ui/Toast";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 import { styles } from "../styles/index.js";
 import { createId, formatDate, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
@@ -50,13 +52,14 @@ function getRpeDisplayMeta(md, rpe, t) {
 }
 
 function Trainings({
-  exercises, sessions, setSessions, players = [], appSettings = {} }) {
+  exercises, sessions, setSessions, players = [], appSettings = {}, loading = false }) {
 
   const { t } = useTranslation();
   const isMobile = useIsMobile(760);
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast, ToastContainer } = useToast();
+  const [confirmState, setConfirmState] = useState(null);
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
   const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
   const [search, setSearch] = useState("");
@@ -272,16 +275,23 @@ function Trainings({
   function deleteTraining(id) {
     const removed = sessions.find((s) => s.id === id);
     if (!removed) return;
-    setSessions((prev) => prev.filter((s) => s.id !== id));
-    if (editingId === id) {
-      setEditingId(null);
-      setForm(emptyTraining());
-    }
-    showToast(t("pages.trainings.sessionDeleted"), "info", {
-      duration: 5000,
-      action: {
-        label: t("common.undo"),
-        fn: () => setSessions((prev) => [...prev, removed]),
+    setConfirmState({
+      message: t("pages.trainings.deleteConfirm"),
+      confirmLabel: t("common.delete"),
+      confirmTone: "red",
+      onConfirm: () => {
+        setSessions((prev) => prev.filter((s) => s.id !== id));
+        if (editingId === id) {
+          setEditingId(null);
+          setForm(emptyTraining());
+        }
+        showToast(t("pages.trainings.sessionDeleted"), "info", {
+          duration: 5000,
+          action: {
+            label: t("common.undo"),
+            fn: () => setSessions((prev) => [...prev, removed]),
+          },
+        });
       },
     });
   }
@@ -295,6 +305,7 @@ function Trainings({
   return (
     <div style={styles.page}>
       <ToastContainer />
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
         title={t("pages.trainings.title")}
         subtitle={t("pages.trainings.subtitle")}
@@ -313,7 +324,7 @@ function Trainings({
         subtitle={`${getThemeLabel(form.theme, t)} · ${form.matchDayDistance}`}
         meta={<Badge tone="blue">{t("pages.trainings.savedCount", { count: sessions.length })}</Badge>}
       >
-        <MetricStrip items={trainingMetricItems} min={isMobile ? 118 : 132} style={{ marginTop: 14 }} />
+        <MetricStrip items={trainingMetricItems} min={isMobile ? 118 : 132} style={{ marginTop: isMobile ? 8 : 14 }} className="mobile-scroll-x" />
       </ActionBar>
 
       <div
@@ -852,7 +863,9 @@ function Trainings({
             <Badge tone="blue">{t("pages.trainings.savedCount", { count: sessions.length })}</Badge>
           </div>
 
-          {sessions.length === 0 ? (
+          {loading && sessions.length === 0 ? (
+            <SkeletonList rows={3} cols={2} />
+          ) : sessions.length === 0 ? (
             <EmptyState
               icon="📋"
               title={t("pages.trainings.noSavedTitle")}

@@ -20,6 +20,10 @@ export default function Topbar({
   onDevelopmentPlanPreviewChange,
   developmentRolePreview = "headCoach",
   onDevelopmentRolePreviewChange,
+  storageSource = null,
+  refreshing = false,
+  loading = false,
+  onSyncNow = null,
 }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
@@ -144,11 +148,34 @@ export default function Topbar({
         <div style={mobileTopbarStyles.logo}>CL</div>
         <div style={{ minWidth: 0 }}>
           <strong style={mobileTopbarStyles.appName}>CalcioLab</strong>
-          <span style={mobileTopbarStyles.subtitle}>{t("topbar.title")}</span>
+          <span className="mobile-topbar-subtitle" style={mobileTopbarStyles.subtitle}>{t("topbar.title")}</span>
         </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {onSyncNow && (
+          <button
+            type="button"
+            onClick={onSyncNow}
+            disabled={refreshing || loading}
+            title={t("common.syncNow")}
+            style={{
+              ...mobileTopbarStyles.syncDot,
+              background:
+                storageSource === "supabase" ? "rgba(34,197,94,0.14)"
+                : storageSource === "partial" || storageSource === "pending-upload" ? "rgba(251,146,60,0.14)"
+                : "rgba(248,113,113,0.14)",
+              color:
+                storageSource === "supabase" ? "#4ade80"
+                : storageSource === "partial" || storageSource === "pending-upload" ? "#fb923c"
+                : "#f87171",
+              opacity: refreshing || loading ? 0.55 : 1,
+            }}
+          >
+            {refreshing ? "⏳" : "🔄"}
+          </button>
+        )}
+
         <div style={{ position: "relative" }}>
           <button
             type="button"
@@ -370,6 +397,17 @@ const mobileTopbarStyles = {
     color: "white",
     fontSize: 13,
     fontWeight: 950,
+    flexShrink: 0,
+  },
+  syncDot: {
+    width: 36,
+    height: 36,
+    borderRadius: 13,
+    border: "none",
+    display: "grid",
+    placeItems: "center",
+    fontSize: 15,
+    cursor: "pointer",
     flexShrink: 0,
   },
   appName: {

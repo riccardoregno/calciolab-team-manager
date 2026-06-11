@@ -8,6 +8,8 @@ import { styles } from "../styles/index.js";
 import { createId, normalizeAppSettings, normalizeSponsor } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { useToast } from "../components/ui/Toast";
 
 const emptySponsor = {
   name: "",
@@ -36,6 +38,8 @@ export default function Sponsors({
   const hub = settings.sponsorHub;
   const [form, setForm] = useState(emptySponsor);
   const [editingId, setEditingId] = useState("");
+  const [confirmState, setConfirmState] = useState(null);
+  const { showToast, ToastContainer } = useToast();
 
   const activeSponsors = hub.sponsors.filter((sponsor) => sponsor.active);
   const yearlyValue = activeSponsors.reduce(
@@ -85,8 +89,29 @@ export default function Sponsors({
     });
   }
 
+  function deleteSponsor(sponsor) {
+    setConfirmState({
+      message: t("pages.sponsors.deleteConfirm"),
+      confirmLabel: t("common.delete"),
+      confirmTone: "red",
+      onConfirm: () => {
+        updateHub({
+          sponsors: hub.sponsors.filter((item) => String(item.id) !== String(sponsor.id)),
+          mainSponsorId: String(hub.mainSponsorId) === String(sponsor.id) ? "" : hub.mainSponsorId,
+        });
+        if (editingId === sponsor.id) {
+          setEditingId("");
+          setForm(emptySponsor);
+        }
+        showToast(t("pages.sponsors.sponsorDeleted"), "info");
+      },
+    });
+  }
+
   return (
     <div style={sponsorStyles.page}>
+      <ToastContainer />
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
         title={t("pages.sponsors.title")}
         subtitle={t("pages.sponsors.subtitle")}
@@ -190,6 +215,9 @@ export default function Sponsors({
                       <Button variant="ghost" onClick={() => toggleSponsor(sponsor)}>
                         {sponsor.active ? t("pages.sponsors.pauseSponsor") : t("pages.sponsors.reactivateSponsor")}
                       </Button>
+                      <Button variant="ghost" onClick={() => deleteSponsor(sponsor)}>
+                        {t("common.delete")}
+                      </Button>
                     </div>
                   </div>
                   <p style={sponsorStyles.bodyText}>{sponsor.offer || t("pages.sponsors.noOffer")}</p>
@@ -249,7 +277,7 @@ const sponsorStyles = {
   grid: { display: "grid", gridTemplateColumns: "390px 1fr", gap: 22, alignItems: "start" },
   form: { display: "grid", gap: 12 },
   two: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
-  label: { display: "grid", gap: 6, color: "#94a3b8", fontSize: 12, fontWeight: 900, textTransform: "uppercase" },
+  label: { display: "grid", gap: 6, color: "#94a3b8", fontSize: 12, fontWeight: 700, textTransform: "uppercase" },
   muted: { color: "#94a3b8", margin: 0 },
   sponsorList: { display: "grid", gap: 14 },
   sponsorCard: { padding: 16, borderRadius: 18, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" },

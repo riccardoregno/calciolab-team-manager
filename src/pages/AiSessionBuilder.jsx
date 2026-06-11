@@ -323,7 +323,7 @@ const builderStyles = {
   page: { display: "grid", gap: 22 },
   grid: { display: "grid", gridTemplateColumns: "360px 1fr", gap: 22, alignItems: "start" },
   formGrid: { display: "grid", gap: 12 },
-  field: { display: "grid", gap: 4, color: "#94a3b8", fontSize: 12, fontWeight: 900, textTransform: "uppercase" },
+  field: { display: "grid", gap: 4, color: "#94a3b8", fontSize: 12, fontWeight: 700, textTransform: "uppercase" },
   aiActions: { display: "grid", gap: 10, marginTop: 4 },
   previewHeader: { display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" },
   badges: { display: "flex", gap: 8, flexWrap: "wrap" },

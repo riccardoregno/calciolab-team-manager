@@ -243,7 +243,7 @@ const clubStyles = {
   page: { display: "grid", gap: 20 },
   grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" },
   formGrid: { display: "grid", gap: 12 },
-  field: { display: "grid", gap: 4, color: "#94a3b8", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0 },
+  field: { display: "grid", gap: 4, color: "#94a3b8", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0 },
   progressTrack: { height: 12, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 14 },
   progressBar: { height: "100%", borderRadius: 999, background: "linear-gradient(135deg,#22c55e,#38bdf8)" },
   checkList: { display: "grid", gap: 9 },

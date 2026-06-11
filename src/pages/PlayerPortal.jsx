@@ -879,7 +879,7 @@ const ps = {
   metric:  { padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", textAlign: "center" },
   twoCol:  { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 },
   infoBlock: { padding: 14, borderRadius: 12, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(255,255,255,0.07)" },
-  infoTitle: { margin: "0 0 6px", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0, color: "#475569" },
+  infoTitle: { margin: "0 0 6px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0, color: "#475569" },
   infoValue: { margin: 0, color: "#cbd5e1", fontSize: 14, lineHeight: 1.5 },
   programBox: { padding: 14, borderRadius: 12, background: "rgba(34,197,94,0.07)", border: "1px solid rgba(34,197,94,0.18)" },
   eventRow: {

@@ -93,6 +93,33 @@ topbarProfileLogout: {
     fontWeight: 700,
   },
 
+  offlineBannerMobile: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    padding: "8px 12px",
+    marginBottom: 12,
+    borderRadius: 10,
+    background: "rgba(251,146,60,0.12)",
+    border: "1px solid rgba(251,146,60,0.30)",
+    color: "#fdba74",
+    fontSize: 12,
+    fontWeight: 700,
+  },
+
+  offlineBannerAction: {
+    border: "1px solid rgba(251,146,60,0.40)",
+    background: "rgba(251,146,60,0.16)",
+    color: "#fdba74",
+    borderRadius: 8,
+    padding: "4px 10px",
+    fontSize: 11,
+    fontWeight: 800,
+    cursor: "pointer",
+    flexShrink: 0,
+  },
+
   syncNowButton: {
     border: "1px solid rgba(96,165,250,0.32)",
     background: "rgba(37,99,235,0.12)",

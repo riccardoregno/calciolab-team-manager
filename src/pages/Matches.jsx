@@ -8,8 +8,10 @@ import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
+import { SkeletonList } from "../components/ui/Skeleton";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/Toast";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
@@ -44,12 +46,13 @@ function translateLocation(location, t) {
   return t(LOCATION_LABEL_KEYS[location] || LOCATION_LABEL_KEYS.Casa);
 }
 
-function Matches({ matches, setMatches, players = [], appSettings = {} }) {
+function Matches({ matches, setMatches, players = [], appSettings = {}, loading = false }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
+  const [confirmState, setConfirmState] = useState(null);
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
   const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
   const clubLogo = workspaceProfile.logo || "";
@@ -85,8 +88,28 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
     }
 
     setEditingId(null);
-    setForm(loadMatchDraft(draftKey, emptyMatch(clubLogo)));
-  }, [clubLogo, matches, modalEditId, openModal]);
+    const fallback = emptyMatch(clubLogo);
+    let stored = null;
+    try { stored = localStorage.getItem(draftKey); } catch { /* noop */ }
+    setForm(loadMatchDraft(draftKey, fallback));
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if ((parsed.opponent || "").trim() || parsed.date) {
+          showToast(t("pages.matches.draftRestored"), "info", {
+            action: {
+              label: t("pages.matches.discardDraft"),
+              fn: () => {
+                try { localStorage.removeItem(draftKey); } catch { /* noop */ }
+                setForm(emptyMatch(clubLogo));
+              },
+            },
+            duration: 6000,
+          });
+        }
+      } catch { /* noop */ }
+    }
+  }, [clubLogo, matches, modalEditId, openModal, showToast, t]);
 
   useEffect(() => {
     if (!openModal || !modalKeyRef.current) return;
@@ -228,12 +251,19 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
   function deleteMatch(id) {
     const removed = matches.find((m) => m.id === id);
     if (!removed) return;
-    setMatches((prev) => prev.filter((m) => m.id !== id));
-    showToast(t("pages.matches.matchDeleted"), "info", {
-      duration: 5000,
-      action: {
-        label: t("common.undo"),
-        fn: () => setMatches((prev) => [...prev, removed].sort(sortMatchesByDate)),
+    setConfirmState({
+      message: t("pages.matches.deleteConfirm"),
+      confirmLabel: t("common.delete"),
+      confirmTone: "red",
+      onConfirm: () => {
+        setMatches((prev) => prev.filter((m) => m.id !== id));
+        showToast(t("pages.matches.matchDeleted"), "info", {
+          duration: 5000,
+          action: {
+            label: t("common.undo"),
+            fn: () => setMatches((prev) => [...prev, removed].sort(sortMatchesByDate)),
+          },
+        });
       },
     });
   }
@@ -241,6 +271,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
   return (
     <div style={styles.page}>
       <ToastContainer />
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
         title={t("pages.matches.title")}
         subtitle={t("pages.matches.subtitle")}
@@ -288,7 +319,9 @@ function Matches({ matches, setMatches, players = [], appSettings = {} }) {
         </AppCard>
       )}
 
-      {matches.length === 0 ? (
+      {loading && matches.length === 0 ? (
+        <SkeletonList rows={4} cols={3} />
+      ) : matches.length === 0 ? (
         <EmptyState
           icon="🏟️"
           title={t("pages.matches.noMatchesTitle")}

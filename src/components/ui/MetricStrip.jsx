@@ -1,9 +1,10 @@
-export default function MetricStrip({ items = [], min = 118, style = {} }) {
+export default function MetricStrip({ items = [], min = 118, style = {}, className = "" }) {
   const visibleItems = items.filter(Boolean);
   if (!visibleItems.length) return null;
 
   return (
     <div
+      className={`metric-strip ${className}`.trim()}
       style={{
         ...stripStyles.grid,
         gridTemplateColumns: `repeat(auto-fit,minmax(${min}px,1fr))`,
@@ -20,16 +21,17 @@ export default function MetricStrip({ items = [], min = 118, style = {} }) {
             onClick={item.onClick}
             aria-pressed={item.onClick ? Boolean(item.active) : undefined}
             title={item.title || item.label}
+            className="metric-strip-item"
             style={{
               ...stripStyles.item,
               ...(item.onClick ? stripStyles.clickable : {}),
               ...(item.active ? stripStyles.active : {}),
             }}
           >
-            <span style={{ ...stripStyles.value, color: item.color || "#e2e8f0" }}>
+            <span className="metric-strip-value" style={{ ...stripStyles.value, color: item.color || "#e2e8f0" }}>
               {item.value}
             </span>
-            <span style={stripStyles.label}>{item.label}</span>
+            <span className="metric-strip-label" style={stripStyles.label}>{item.label}</span>
           </Component>
         );
       })}
@@ -66,15 +68,15 @@ const stripStyles = {
     boxShadow: "inset 0 0 0 1px rgba(147,197,253,0.08)",
   },
   value: {
-    fontSize: 21,
+    fontSize: 20,
     lineHeight: 1,
-    fontWeight: 950,
+    fontWeight: 800,
   },
   label: {
     color: "#94a3b8",
     fontSize: 11,
     lineHeight: 1.2,
-    fontWeight: 850,
+    fontWeight: 700,
     textTransform: "uppercase",
     letterSpacing: 0,
     overflow: "hidden",

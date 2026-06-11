@@ -272,7 +272,7 @@ function KpiBox({ label, value, icon, color }) {
     <div style={{ ...pw.kpiBox, borderColor: `${color}33` }}>
       <span style={{ fontSize: 22 }}>{icon}</span>
       <div>
-        <p style={{ margin: 0, fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "#475569" }}>{label}</p>
+        <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#475569" }}>{label}</p>
         <strong style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1.1 }}>{value}</strong>
       </div>
     </div>
@@ -282,7 +282,7 @@ function KpiBox({ label, value, icon, color }) {
 function InfoChip({ label, value, color }) {
   return (
     <div style={pw.infoChip}>
-      <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase", color: "#475569" }}>{label}</span>
+      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "#475569" }}>{label}</span>
       <span style={{ fontSize: 13, fontWeight: 800, color: color || "#e2e8f0" }}>{value}</span>
     </div>
   );

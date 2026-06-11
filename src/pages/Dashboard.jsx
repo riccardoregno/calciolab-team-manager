@@ -91,6 +91,7 @@ function SortableSection({ id, children }) {
       <div
         {...attributes}
         {...listeners}
+        className="mobile-hide"
         style={{
           position: "absolute",
           top: 14,
@@ -1080,15 +1081,16 @@ function Dashboard({
                 {t("pages.dashboard.setupPercent", { percent: setup.percent })}
               </Badge>
 
-              <h2 style={{ margin: "12px 0 6px" }}>
+              <h2 className="setup-progress-title" style={{ margin: "12px 0 6px" }}>
                 {setup.next ? t(setup.next.labelKey) : t("pages.dashboard.workspaceReady")}
               </h2>
 
-              <p style={{ color: "#94a3b8", margin: 0 }}>
+              <p className="mobile-hide" style={{ color: "#94a3b8", margin: 0 }}>
                 {t("pages.dashboard.setupStepsCompleted", { completed: setup.completed, total: setup.total })}
               </p>
 
               <div
+                className="setup-progress-bar"
                 style={{
                   height: 10,
                   borderRadius: 999,

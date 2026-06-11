@@ -9,7 +9,9 @@ import EmptyState from "../components/ui/EmptyState";
 import Modal from "../components/ui/Modal";
 import AppCard from "../components/ui/AppCard";
 import MetricStrip from "../components/ui/MetricStrip";
+import { SkeletonGrid } from "../components/ui/Skeleton";
 import { useToast } from "../components/ui/Toast";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 import PlayerCard from "../components/players/PlayerCard";
 import Badge from "../components/ui/Badge";
@@ -53,7 +55,7 @@ function loadNewPlayerDraft(fallback) {
   }
 }
 
-function Players({ players, setPlayers, sessions = [], matches = [] }) {
+function Players({ players, setPlayers, sessions = [], matches = [], loading = false }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const GROUP_LABELS = {
@@ -69,6 +71,7 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
   const openModal = new URLSearchParams(location.search).get("modal") === PLAYER_MODAL_QUERY;
 
   const { showToast, ToastContainer } = useToast();
+  const [confirmState, setConfirmState] = useState(null);
   const [showImport, setShowImport] = useState(false);
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -105,6 +108,24 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
       /* localStorage can be unavailable in restricted browsers */
     }
   }, [form, openModal]);
+
+  // Avvisa l'utente quando il modal si apre con una bozza ripristinata da una sessione precedente
+  useEffect(() => {
+    if (!openModal) return;
+    const hasDraftContent = (form.firstName || "").trim() || (form.lastName || "").trim();
+    if (!hasDraftContent) return;
+    showToast(t("pages.players.draftRestored"), "info", {
+      action: {
+        label: t("pages.players.discardDraft"),
+        fn: () => {
+          try { localStorage.removeItem(NEW_PLAYER_DRAFT_KEY); } catch { /* noop */ }
+          setForm(getEmptyPlayerForm(gruppoFilter));
+        },
+      },
+      duration: 6000,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openModal]);
 
   // Birthday players (today)
   const birthdayPlayers = players.filter((p) => isBirthdayToday(p.birthDate));
@@ -382,12 +403,19 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
   function deletePlayer(id) {
     const removed = players.find((p) => String(p.id) === String(id));
     if (!removed) return;
-    setPlayers((prev) => prev.filter((p) => String(p.id) !== String(id)));
-    showToast(t("pages.players.playerDeleted"), "info", {
-      duration: 5000,
-      action: {
-        label: t("common.undo"),
-        fn: () => setPlayers((prev) => [...prev, removed]),
+    setConfirmState({
+      message: t("pages.players.deleteConfirm"),
+      confirmLabel: t("common.delete"),
+      confirmTone: "red",
+      onConfirm: () => {
+        setPlayers((prev) => prev.filter((p) => String(p.id) !== String(id)));
+        showToast(t("pages.players.playerDeleted"), "info", {
+          duration: 5000,
+          action: {
+            label: t("common.undo"),
+            fn: () => setPlayers((prev) => [...prev, removed]),
+          },
+        });
       },
     });
   }
@@ -395,6 +423,7 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
   return (
     <div style={styles.page}>
       <ToastContainer />
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
 
       {showImport && (
         <ImportPlayersModal
@@ -419,6 +448,7 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
                 flex: isMobile ? "1 1 100%" : "0 0 auto",
+                minWidth: 0,
                 justifyContent: "center",
                 padding: "8px 14px", borderRadius: 12,
                 background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.35)",
@@ -431,7 +461,8 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
               onClick={() => setShowImport(true)}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
-                flex: isMobile ? "1 1 0" : "0 0 auto",
+                flex: isMobile ? "1 1 100%" : "0 0 auto",
+                minWidth: 0,
                 justifyContent: "center",
                 padding: "8px 14px", borderRadius: 12,
                 background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.35)",
@@ -440,7 +471,7 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
             >
               📥 {t("pages.importPlayers.btnLabel")}
             </button>
-            <Button onClick={openNewPlayerModal} style={{ flex: isMobile ? "1 1 0" : "0 0 auto" }}>
+            <Button onClick={openNewPlayerModal} style={{ flex: isMobile ? "1 1 100%" : "0 0 auto", minWidth: 0 }}>
               {t("pages.players.newPlayer")}
             </Button>
           </div>
@@ -462,9 +493,13 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
         </div>
       )}
 
-      <AppCard style={{ marginBottom: 22 }}>
+      {loading && players.length === 0 ? (
+        <SkeletonGrid count={isMobile ? 4 : 8} />
+      ) : (
+      <div className="players-list-wrap">
+      <AppCard style={{ marginBottom: 22 }} className="players-toolbar">
         <div style={pStyles.toolbar}>
-          <MetricStrip items={rosterMetricItems} min={isMobile ? 104 : 124} style={pStyles.counterGrid} />
+          <MetricStrip items={rosterMetricItems} min={isMobile ? 104 : 124} style={pStyles.counterGrid} className="mobile-scroll-x" />
 
           <div style={pStyles.searchWrap}>
             <SearchBar
@@ -757,6 +792,8 @@ function Players({ players, setPlayers, sessions = [], matches = [] }) {
           ))}
         </div>
       )}
+      </div>
+      )}
 
       {openModal && (
         <Modal title={t("pages.players.modalTitle")} onClose={() => closeNewPlayerModal()}>
@@ -939,7 +976,7 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete }) {
         )}
       </div>
 
-      <div style={{ flex: "2 1 160px", minWidth: 0 }}>
+      <div style={{ flex: "2 1 140px", minWidth: 0 }}>
         <strong style={{ display: "block", fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {player.name}
         </strong>
@@ -948,22 +985,22 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete }) {
         </span>
       </div>
 
-      <div style={{ flex: "0 0 60px", textAlign: "center" }}>
+      <div style={{ flex: "1 1 50px", minWidth: 0, textAlign: "center" }}>
         <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>{t("components.playerCard.age")}</div>
         <div style={{ fontSize: 14, fontWeight: 700 }}>{age}</div>
       </div>
 
-      <div style={{ flex: "0 0 80px", textAlign: "center" }}>
+      <div style={{ flex: "1 1 60px", minWidth: 0, textAlign: "center" }}>
         <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>{t("components.playerCard.appearances")}</div>
         <div style={{ fontSize: 14, fontWeight: 700 }}>{appearances}</div>
       </div>
 
-      <div style={{ flex: "0 0 80px", textAlign: "center" }}>
+      <div style={{ flex: "1 1 60px", minWidth: 0, textAlign: "center" }}>
         <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>{t("components.playerCard.trainingPct")}</div>
         <div style={{ fontSize: 14, fontWeight: 700 }}>{trainingPctValue}</div>
       </div>
 
-      <div style={{ flex: "0 0 90px" }}>
+      <div style={{ flex: "1 1 70px", minWidth: 0 }}>
         <Badge tone={
           player.status === "Infortunato" ? "red" :
           player.status === "Squalificato" ? "purple" :
@@ -974,7 +1011,7 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete }) {
         </Badge>
       </div>
 
-      <div style={{ display: "flex", gap: 8, flex: "0 0 auto" }}>
+      <div style={{ display: "flex", gap: 8, flex: "1 1 100%", flexWrap: "wrap", justifyContent: "flex-end" }}>
         <Button variant="ghost" onClick={() => navigate(`/players/${player.id}`)}>
           {t("components.playerCard.profile")}
         </Button>

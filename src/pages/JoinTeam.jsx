@@ -189,7 +189,7 @@ const s = {
   },
   eyebrow: {
     margin: 0, color: "#4ade80", fontSize: 11,
-    fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.8,
+    fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8,
   },
   hero: {
     textAlign: "center",
@@ -214,7 +214,7 @@ const s = {
     gap: 8,
   },
   tokenLabel: {
-    fontSize: 10, fontWeight: 900, textTransform: "uppercase",
+    fontSize: 10, fontWeight: 700, textTransform: "uppercase",
     letterSpacing: 0.7, color: "#4ade80",
   },
   tokenRow: {

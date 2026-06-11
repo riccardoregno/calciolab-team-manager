@@ -387,7 +387,9 @@ function App() {
     ? auth.team.onboarding_completed === true
     : previewAppSettings?.onboarding?.completed === true;
   const canManageOnboarding = !auth.team || onboardingRoles.includes(auth.team.role);
-  if (!loading && canManageOnboarding && !onboardingDone) {
+  const onboardingDeferred = typeof window !== "undefined"
+    && window.localStorage.getItem("calciolab_onboarding_deferred") === "1";
+  if (!loading && canManageOnboarding && !onboardingDone && !onboardingDeferred) {
     return (
       <BrowserRouter>
         <Suspense fallback={null}>
@@ -509,12 +511,39 @@ function App() {
             onDevelopmentPlanPreviewChange={updateDevelopmentPlanPreview}
             developmentRolePreview={developmentRolePreview}
             onDevelopmentRolePreviewChange={updateDevelopmentRolePreview}
+            storageSource={storageSource}
+            refreshing={refreshing}
+            loading={loading}
+            onSyncNow={auth.team?.id ? refreshTeamData : null}
           />
 
           {/* Banner globale trial / billing — visibile su tutte le pagine */}
           <BillingBanner appSettings={previewAppSettings} />
 
-          <div style={styles.storageStatus}>
+          {/* Banner mobile: avvisa quando i dati non sono sincronizzati con Supabase */}
+          {!loading && storageSource && storageSource !== "supabase" && (
+            <div className="mobile-only" style={styles.offlineBannerMobile}>
+              <span>
+                {storageSource === "partial"
+                  ? t("common.syncPartial")
+                  : storageSource === "pending-upload"
+                  ? t("common.syncPendingUpload")
+                  : t("common.offlineHint")}
+              </span>
+              {auth.team?.id && (
+                <button
+                  type="button"
+                  onClick={refreshTeamData}
+                  disabled={refreshing}
+                  style={styles.offlineBannerAction}
+                >
+                  {refreshing ? t("common.syncingNow") : t("common.syncNow")}
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="mobile-hide" style={styles.storageStatus}>
             <Badge tone={storageSource === "supabase" ? "green" : storageSource === "partial" || storageSource === "pending-upload" ? "orange" : "red"}>
               {loading || auth.authLoading
                 ? t("common.loadingData")
@@ -528,7 +557,7 @@ function App() {
             </Badge>
 
             {lastSyncedAt && storageSource === "supabase" && (
-              <span style={styles.storageStatusText}>
+              <span className="mobile-hide" style={styles.storageStatusText}>
                 {formatSyncAge(lastSyncedAt, t)}
               </span>
             )}
@@ -538,6 +567,7 @@ function App() {
                 type="button"
                 onClick={refreshTeamData}
                 disabled={refreshing || loading}
+                className="sync-now-button"
                 style={{
                   ...styles.syncNowButton,
                   opacity: refreshing || loading ? 0.55 : 1,
@@ -805,7 +835,7 @@ function App() {
 
               <Route
                 path="/availability"
-                element={gate(["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"], <Availability players={players} setPlayers={setPlayers} sessions={sessions} matches={matches} />)}
+                element={gate(["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"], <Availability players={players} setPlayers={setPlayers} sessions={sessions} matches={matches} loading={loading} />)}
               />
 
               <Route
@@ -913,6 +943,7 @@ function App() {
                     setPlayers={setPlayers}
                     sessions={sessions}
                     matches={matches}
+                    loading={loading}
                   />, "players")
                 }
               />
@@ -967,6 +998,7 @@ function App() {
                     setSessions={setSessions}
                     players={players}
                     appSettings={previewAppSettings}
+                    loading={loading}
                   />)
                 }
               />
@@ -991,6 +1023,7 @@ function App() {
                     setMatches={setMatches}
                     players={players}
                     appSettings={previewAppSettings}
+                    loading={loading}
                   />, "matches")
                 }
               />

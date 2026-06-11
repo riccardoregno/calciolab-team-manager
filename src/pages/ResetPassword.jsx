@@ -137,7 +137,8 @@ export default function ResetPassword() {
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="new-password"
                 />
-                <button type="button" tabIndex={-1} onClick={() => setShowPwd((p) => !p)} style={s.eyeBtn}>
+                <button type="button" tabIndex={-1} onClick={() => setShowPwd((p) => !p)} style={s.eyeBtn}
+                  aria-label={showPwd ? "Nascondi password" : "Mostra password"}>
                   {showPwd ? <EyeOff size={16} color="#64748b" /> : <Eye size={16} color="#64748b" />}
                 </button>
               </div>
@@ -156,7 +157,8 @@ export default function ResetPassword() {
                   onChange={(e) => setConfirm(e.target.value)}
                   autoComplete="new-password"
                 />
-                <button type="button" tabIndex={-1} onClick={() => setShowConfirm((p) => !p)} style={s.eyeBtn}>
+                <button type="button" tabIndex={-1} onClick={() => setShowConfirm((p) => !p)} style={s.eyeBtn}
+                  aria-label={showConfirm ? "Nascondi password" : "Mostra password"}>
                   {showConfirm ? <EyeOff size={16} color="#64748b" /> : <Eye size={16} color="#64748b" />}
                 </button>
               </div>
@@ -243,7 +245,7 @@ const s = {
   },
   eyebrow: {
     margin: 0, color: "#7dd3fc", fontSize: 11,
-    fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.8,
+    fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8,
   },
   stateBox: {
     display: "flex", flexDirection: "column", alignItems: "center",
