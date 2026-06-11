@@ -389,7 +389,7 @@ function App() {
   const canManageOnboarding = !auth.team || onboardingRoles.includes(auth.team.role);
   const onboardingDeferred = typeof window !== "undefined"
     && window.localStorage.getItem("calciolab_onboarding_deferred") === "1";
-  if (!loading && canManageOnboarding && !onboardingDone && !onboardingDeferred) {
+  if (!auth.teamLoading && !loading && canManageOnboarding && !onboardingDone && !onboardingDeferred) {
     return (
       <BrowserRouter>
         <Suspense fallback={null}>
