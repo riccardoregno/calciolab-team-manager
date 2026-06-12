@@ -1169,7 +1169,7 @@ export const en = {
         trendTitle:    "📈 Season trend",
         masTrendTitle: "🏃 MAS trend (km/h)",
         minutes: "Minutes",
-        rpe:     "Session RPE",
+        rpe:     "RPE",
         load:    "Load",
       },
       video: {

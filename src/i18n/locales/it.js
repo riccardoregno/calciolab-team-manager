@@ -1169,7 +1169,7 @@ export const it = {
         trendTitle:    "📈 Andamento stagionale",
         masTrendTitle: "🏃 Andamento MAS (km/h)",
         minutes: "Minuti",
-        rpe:     "RPE seduta",
+        rpe:     "RPE",
         load:    "Carico",
       },
       video: {

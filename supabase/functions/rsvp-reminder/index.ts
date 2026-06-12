@@ -114,7 +114,11 @@ Deno.serve(async (req: Request) => {
         .update({ reminder_sent_at: new Date().toISOString() })
         .eq("id", row.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("[rsvp-reminder] update failed", row.id, updateError);
+        results.push({ id: row.id, sent: true, reason: "reminder_sent_at update failed" });
+        continue;
+      }
       results.push({ id: row.id, sent: true });
     }
 
