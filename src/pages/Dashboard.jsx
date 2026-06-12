@@ -11,6 +11,7 @@ import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
 import MetricStrip from "../components/ui/MetricStrip";
 import { SkeletonStatCard } from "../components/ui/Skeleton";
+import { fetchMatchRsvps } from "../services/rsvp";
 import { useAuth } from "../hooks/useAuth";
 import { loadAllPlayerStats } from "../services/playerProfile";
 import { useTranslation } from "../i18n";
@@ -241,6 +242,37 @@ function Dashboard({
   const nextMatch = [...matches]
     .filter((m) => new Date(m.date) >= today)
     .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+
+  const [nextMatchRsvps, setNextMatchRsvps] = useState([]);
+  useEffect(() => {
+    if (!auth.team?.id || !nextMatch?.id) {
+      setNextMatchRsvps([]);
+      return;
+    }
+    let active = true;
+    fetchMatchRsvps({ teamId: auth.team.id, matchId: String(nextMatch.id) }).then(({ rsvps }) => {
+      if (!active) return;
+      setNextMatchRsvps(rsvps || []);
+    });
+    return () => { active = false; };
+  }, [auth.team?.id, nextMatch?.id]);
+
+  const nextMatchRsvpSummary = useMemo(() => {
+    const convocatiIds = Array.isArray(nextMatch?.convocazione?.playerIds)
+      ? nextMatch.convocazione.playerIds.map(String)
+      : [];
+    if (!convocatiIds.length) return null;
+
+    const byPlayer = new Map(nextMatchRsvps.map((r) => [String(r.player_id), r.response]));
+    let available = 0, unavailable = 0, pending = 0;
+    for (const id of convocatiIds) {
+      const response = byPlayer.get(id);
+      if (response === "yes") available += 1;
+      else if (response === "no") unavailable += 1;
+      else pending += 1;
+    }
+    return { total: convocatiIds.length, available, unavailable, pending };
+  }, [nextMatch, nextMatchRsvps]);
   const todayEvents = events.filter((event) => {
     const date = new Date(event.date);
     return date >= today && date < new Date(today.getTime() + 24 * 60 * 60 * 1000);
@@ -338,7 +370,7 @@ function Dashboard({
             {widgets.nextEvent && (
               <AppCard>
                 {nextEvent?.type === "Partita" ? (
-                  <NextMatchCard match={nextEvent} navigate={navigate} clubName={settings.workspaceProfile?.clubName || t("common.appName")} />
+                  <NextMatchCard match={nextEvent} navigate={navigate} clubName={settings.workspaceProfile?.clubName || t("common.appName")} rsvpSummary={nextMatchRsvpSummary} />
                 ) : (
                   <>
                     <h3 style={{ marginTop: 0 }}>{t("pages.dashboard.nextEvent")}</h3>
@@ -1980,7 +2012,7 @@ const srStyles = {
 };
 
 /* ─── NextMatchCard ─────────────────────────────────────────── */
-function NextMatchCard({ match, navigate, clubName }) {
+function NextMatchCard({ match, navigate, clubName, rsvpSummary }) {
   const { t } = useTranslation();
   const starterCount = (match.lineup?.starterIds || []).length;
   const benchCount   = (match.lineup?.benchIds   || []).length;
@@ -2005,6 +2037,14 @@ function NextMatchCard({ match, navigate, clubName }) {
           {lineupReady ? t("pages.dashboard.lineupReady") : t("pages.dashboard.lineupDraft")}
         </Badge>
       </div>
+
+      {rsvpSummary && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+          <Badge tone="green">{t("pages.dashboard.rsvpAvailable", { count: rsvpSummary.available })}</Badge>
+          <Badge tone="red">{t("pages.dashboard.rsvpUnavailable", { count: rsvpSummary.unavailable })}</Badge>
+          <Badge tone="orange">{t("pages.dashboard.rsvpPending", { count: rsvpSummary.pending })}</Badge>
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(90px,1fr))", gap: 8, marginBottom: 16 }}>
         {[

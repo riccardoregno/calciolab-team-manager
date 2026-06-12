@@ -351,6 +351,9 @@ export const en = {
       // NextMatchCard
       nextMatchLabel: "Next match",
       lineupReady: "Lineup ready",
+      rsvpAvailable: "✅ Available: {{count}}",
+      rsvpUnavailable: "❌ Unavailable: {{count}}",
+      rsvpPending: "⏳ Pending: {{count}}",
       lineupDraft: "Draft",
       starters: "Starters",
       bench: "Bench",

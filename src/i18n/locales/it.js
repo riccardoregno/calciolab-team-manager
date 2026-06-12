@@ -351,6 +351,9 @@ export const it = {
       // NextMatchCard
       nextMatchLabel: "Prossima partita",
       lineupReady: "Distinta pronta",
+      rsvpAvailable: "✅ Disponibili: {{count}}",
+      rsvpUnavailable: "❌ Non disponibili: {{count}}",
+      rsvpPending: "⏳ In attesa: {{count}}",
       lineupDraft: "Bozza",
       starters: "Titolari",
       bench: "Panchina",
