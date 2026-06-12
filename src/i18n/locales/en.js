@@ -1122,6 +1122,14 @@ export const en = {
         matchesMissedCount:  "{{count}} matches missed",
         differentiatedWork:  "Differentiated: {{type}}",
         noInjuries:          "No injuries recorded.",
+        comparePrePost:      "🔍 Compare pre/post injury",
+        compareBefore:       "Before the injury",
+        compareAfter:        "After the injury",
+        compareDelta:        "Change",
+        compareDate:         "Test date",
+        compareGroup:        "Group",
+        compareMas:          "MAS",
+        compareNoData:       "Data not available",
       },
       absences: {
         title:            "Leave & planned absences",
@@ -1153,6 +1161,10 @@ export const en = {
       stats: {
         title:    "Individual statistics",
         noEvents: "No events recorded for this player.",
+        trendTitle:    "📈 Season trend",
+        masTrendTitle: "🏃 MAS trend (km/h)",
+        minutes: "Minutes",
+        load:    "Load",
       },
       video: {
         title:      "Video review",

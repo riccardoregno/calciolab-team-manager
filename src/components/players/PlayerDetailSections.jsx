@@ -1,3 +1,15 @@
+import { useState } from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import AppCard from "../ui/AppCard";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
@@ -5,6 +17,17 @@ import Button from "../ui/Button";
 import { useTranslation } from "../../i18n";
 import { styles } from "../../styles/index.js";
 import { formatShortDate, getPhysicalReference, parsePlayerBirthDate } from "../../utils/helpers";
+
+const TT = {
+  contentStyle: {
+    background: "#0f172a",
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 10,
+    fontSize: 12,
+    color: "#e2e8f0",
+  },
+  cursor: { fill: "rgba(255,255,255,0.04)" },
+};
 
 const PLAYER_TABS = [
   { key: "cartella",    labelKey: "pages.playerDetail.tabs.cartella" },
@@ -482,6 +505,7 @@ export function PlayerMedicalTab({
   totalSessionsMissed,
   totalMatchesMissed,
   generalInjuryNotes,
+  injuryComparisons = [],
   preventionRecommendations,
   onAddInjuryRecord,
   onCreateDifferentiatedWork,
@@ -489,6 +513,7 @@ export function PlayerMedicalTab({
   onMarkRecovered,
 }) {
   const { t } = useTranslation();
+  const [expandedInjury, setExpandedInjury] = useState(null);
   return (
     <AppCard>
       <div style={sectionStyles.cardHeader}>
@@ -573,6 +598,24 @@ export function PlayerMedicalTab({
               </div>
 
               {injury.notes && <p style={sectionStyles.injuryNotes}>{injury.notes}</p>}
+
+              {injury.endDate && (
+                <>
+                  <Button
+                    variant="ghost"
+                    style={{ marginTop: 8 }}
+                    onClick={() => setExpandedInjury(expandedInjury === index ? null : index)}
+                  >
+                    {t("pages.playerDetail.medical.comparePrePost")}
+                  </Button>
+                  {expandedInjury === index && (
+                    <InjuryComparisonPanel
+                      comparison={injuryComparisons.find((c) => c.injury === injury)}
+                      t={t}
+                    />
+                  )}
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -580,6 +623,55 @@ export function PlayerMedicalTab({
         <p style={sectionStyles.muted}>{t("pages.playerDetail.medical.noInjuries")}</p>
       )}
     </AppCard>
+  );
+}
+
+function InjuryComparisonPanel({ comparison, t }) {
+  const pre = comparison?.pre;
+  const post = comparison?.post;
+  const naLabel = t("pages.playerDetail.medical.compareNoData");
+
+  const masPre = pre ? Number(pre.reference?.mas) : null;
+  const masPost = post ? Number(post.reference?.mas) : null;
+  const masDelta = (masPre != null && !isNaN(masPre) && masPost != null && !isNaN(masPost))
+    ? Math.round((masPost - masPre) * 100) / 100
+    : null;
+
+  return (
+    <div style={sectionStyles.compareBox}>
+      <div style={sectionStyles.compareCol}>
+        <strong style={sectionStyles.compareTitle}>{t("pages.playerDetail.medical.compareBefore")}</strong>
+        {pre ? (
+          <>
+            <p style={sectionStyles.compareRow}>{t("pages.playerDetail.medical.compareDate")}: {pre.test.date}</p>
+            <p style={sectionStyles.compareRow}>{t("pages.playerDetail.medical.compareGroup")}: {pre.reference?.group || "—"}</p>
+            <p style={sectionStyles.compareRow}>{t("pages.playerDetail.medical.compareMas")}: {pre.reference?.mas ? `${pre.reference.mas} km/h` : "—"}</p>
+          </>
+        ) : (
+          <p style={sectionStyles.muted}>{naLabel}</p>
+        )}
+      </div>
+      <div style={sectionStyles.compareCol}>
+        <strong style={sectionStyles.compareTitle}>{t("pages.playerDetail.medical.compareAfter")}</strong>
+        {post ? (
+          <>
+            <p style={sectionStyles.compareRow}>{t("pages.playerDetail.medical.compareDate")}: {post.test.date}</p>
+            <p style={sectionStyles.compareRow}>{t("pages.playerDetail.medical.compareGroup")}: {post.reference?.group || "—"}</p>
+            <p style={sectionStyles.compareRow}>{t("pages.playerDetail.medical.compareMas")}: {post.reference?.mas ? `${post.reference.mas} km/h` : "—"}</p>
+          </>
+        ) : (
+          <p style={sectionStyles.muted}>{naLabel}</p>
+        )}
+      </div>
+      {masDelta != null && (
+        <div style={sectionStyles.compareCol}>
+          <strong style={sectionStyles.compareTitle}>{t("pages.playerDetail.medical.compareDelta")}</strong>
+          <p style={{ ...sectionStyles.compareRow, color: masDelta >= 0 ? "#22c55e" : "#ef4444", fontWeight: 700 }}>
+            MAS {masDelta >= 0 ? "+" : ""}{masDelta} km/h
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -665,11 +757,54 @@ export function PlayerAbsencesSection({ absences = [], onAddAbsence, onRemoveAbs
   );
 }
 
-export function PlayerStatsTab({ summary }) {
+export function PlayerStatsTab({ summary, seasonSeries }) {
   const { t } = useTranslation();
+
+  const chartData = (seasonSeries?.events || []).map((event) => ({
+    date: formatShortDate(event.date),
+    minuti: event.minutes,
+    carico: event.load,
+  }));
+
+  const masData = (seasonSeries?.tests || [])
+    .filter((test) => test.mas)
+    .map((test) => ({
+      date: formatShortDate(test.date),
+      mas: test.mas,
+    }));
+
   return (
     <AppCard>
       <h3 style={{ marginTop: 0 }}>{t("pages.playerDetail.stats.title")}</h3>
+      {chartData.length > 1 && (
+        <div style={{ marginBottom: 24 }}>
+          <p style={sectionStyles.sectionLabel}>{t("pages.playerDetail.stats.trendTitle")}</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} />
+              <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} />
+              <Tooltip {...TT} />
+              <Area type="monotone" dataKey="minuti" name={t("pages.playerDetail.stats.minutes")} stroke="#38bdf8" fill="rgba(56,189,248,0.18)" strokeWidth={2} />
+              <Area type="monotone" dataKey="carico" name={t("pages.playerDetail.stats.load")} stroke="#fb923c" fill="rgba(251,146,60,0.12)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      {masData.length > 1 && (
+        <div style={{ marginBottom: 24 }}>
+          <p style={sectionStyles.sectionLabel}>{t("pages.playerDetail.stats.masTrendTitle")}</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <LineChart data={masData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} />
+              <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} domain={["auto", "auto"]} />
+              <Tooltip {...TT} />
+              <Line type="monotone" dataKey="mas" name="MAS (km/h)" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
       {summary.recentEvents.length ? (
         <div style={sectionStyles.list}>
           {summary.recentEvents.map(({ event, data }) => (
@@ -929,6 +1064,7 @@ const sectionStyles = {
   videoMeta: { display: "flex", flexWrap: "wrap", gap: 8, color: "#94a3b8", fontSize: 12 },
   alertList: { display: "flex", flexWrap: "wrap", gap: 8 },
   muted: { color: "#94a3b8", margin: 0 },
+  sectionLabel: { margin: "0 0 8px", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0, color: "#475569" },
   injuryTimeline: { display: "grid", gap: 10 },
   generalNotes: { display: "grid", gap: 6, padding: 14, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#cbd5e1", marginBottom: 16 },
   injuryItem: { padding: 14, borderRadius: 14, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" },
@@ -937,4 +1073,8 @@ const sectionStyles = {
   injuryDates: { margin: "4px 0 0", color: "#94a3b8", fontSize: 12 },
   injuryMeta: { display: "flex", flexWrap: "wrap", gap: 8, color: "#94a3b8", fontSize: 12 },
   injuryNotes: { margin: "10px 0 0", color: "#64748b", fontSize: 12, lineHeight: 1.5 },
+  compareBox: { display: "flex", flexWrap: "wrap", gap: 16, marginTop: 10, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" },
+  compareCol: { flex: "1 1 140px", minWidth: 140 },
+  compareTitle: { display: "block", fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#475569", marginBottom: 6 },
+  compareRow: { margin: "2px 0", fontSize: 13, color: "#cbd5e1" },
 };

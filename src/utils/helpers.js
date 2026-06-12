@@ -1436,6 +1436,42 @@ export function getRpeFromIntensity(intensity) {
   return 6;
 }
 
+/**
+ * Serie storica completa (non troncata) di minuti/carico per evento e
+ * test fisici, ordinata per data crescente, per i grafici di andamento.
+ */
+export function getPlayerSeasonSeries(player, { sessions = [], matches = [], physicalTests = [] } = {}){
+  if(!player){
+    return { events: [], tests: [] };
+  }
+
+  const events = [...sessions, ...matches]
+    .map((event) => {
+      const data = event.attendance?.[player.id];
+      if(!data) return null;
+      return {
+        date: event.date,
+        title: event.title || event.opponent || "",
+        type: event.opponent ? "Partita" : "Allenamento",
+        minutes: Number(data.minutes || 0),
+        rpe: Number(data.rpe || 0),
+        load: Number(data.minutes || event.duration || 0) * Number(data.rpe || 0),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const tests = physicalTests
+    .filter((test) => String(test.playerId) === String(player.id))
+    .map((test) => ({
+      date: test.date,
+      mas: estimateMasFromGacon(test.gaconLevel) || Number(test.mas) || null,
+    }))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  return { events, tests };
+}
+
 export function getPlayerSummary(player, { sessions = [], matches = [], physicalTests = [] } = {}){
   if(!player){
     return {

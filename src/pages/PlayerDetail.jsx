@@ -22,7 +22,7 @@ import {
 } from "../components/players/PlayerDetailSections";
 import { getPreventionRecommendations } from "../components/players/playerDetailLogic";
 import { styles } from "../styles/index.js";
-import { createId, getPlayerSummary, normalizeAppSettings } from "../utils/helpers";
+import { createId, getPhysicalReference, getPlayerSeasonSeries, getPlayerSummary, normalizeAppSettings } from "../utils/helpers";
 import { getInviteExpiryDate } from "../utils/settingsHelpers";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -140,6 +140,11 @@ function PlayerDetail({
     () => getPlayerSummary(player, { sessions, matches, physicalTests }),
     [player, sessions, matches, physicalTests]
   );
+
+  const seasonSeries = useMemo(
+    () => getPlayerSeasonSeries(player, { sessions, matches, physicalTests }),
+    [player, sessions, matches, physicalTests]
+  );
   const injuryHistory = useMemo(
     () => [...(player?.injuries || [])].sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0)),
     [player]
@@ -157,6 +162,25 @@ function PlayerDetail({
     () => getPreventionRecommendations(injuryHistory, player),
     [injuryHistory, player]
   );
+
+  const coachParameters = normalizeAppSettings(appSettings)?.coachParameters;
+  const injuryComparisons = useMemo(() => {
+    const playerTests = physicalTests
+      .filter((test) => String(test.playerId) === String(player?.id))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    return pastInjuries.map((injury) => {
+      const startDate = new Date(injury.startDate || 0);
+      const endDate = new Date(injury.endDate || 0);
+      const pre = [...playerTests].reverse().find((test) => new Date(test.date) < startDate) || null;
+      const post = playerTests.find((test) => new Date(test.date) > endDate) || null;
+      return {
+        injury,
+        pre: pre ? { test: pre, reference: getPhysicalReference(pre, coachParameters) } : null,
+        post: post ? { test: post, reference: getPhysicalReference(post, coachParameters) } : null,
+      };
+    });
+  }, [pastInjuries, physicalTests, player, coachParameters]);
   const playerVideoClips = useMemo(
     () => getPlayerVideoClips(matches, player?.id),
     [matches, player?.id]
@@ -623,7 +647,7 @@ function PlayerDetail({
             />
           )}
 
-          {activeTab === "statistiche" && <PlayerStatsTab summary={summary} />}
+          {activeTab === "statistiche" && <PlayerStatsTab summary={summary} seasonSeries={seasonSeries} />}
 
           {activeTab === "video" && <PlayerVideoTab clips={playerVideoClips} />}
 
@@ -645,6 +669,7 @@ function PlayerDetail({
               totalSessionsMissed={totalSessionsMissed}
               totalMatchesMissed={totalMatchesMissed}
               generalInjuryNotes={player.injuryNotes}
+              injuryComparisons={injuryComparisons}
               preventionRecommendations={preventionRecommendations}
               onAddInjuryRecord={openInjuryModal}
               onCreateDifferentiatedWork={openDifferentiatedModal}

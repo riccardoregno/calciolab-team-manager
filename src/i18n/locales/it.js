@@ -1122,6 +1122,14 @@ export const it = {
         matchesMissedCount:  "{{count}} gare saltate",
         differentiatedWork:  "Differenziato: {{type}}",
         noInjuries:          "Nessun infortunio registrato.",
+        comparePrePost:      "🔍 Confronta pre/post infortunio",
+        compareBefore:       "Prima dell'infortunio",
+        compareAfter:        "Dopo l'infortunio",
+        compareDelta:        "Variazione",
+        compareDate:         "Data test",
+        compareGroup:        "Gruppo",
+        compareMas:          "MAS",
+        compareNoData:       "Dato non disponibile",
       },
       absences: {
         title:            "Permessi e assenze programmate",
@@ -1153,6 +1161,10 @@ export const it = {
       stats: {
         title:    "Statistiche individuali",
         noEvents: "Nessun evento registrato per questo giocatore.",
+        trendTitle:    "📈 Andamento stagionale",
+        masTrendTitle: "🏃 Andamento MAS (km/h)",
+        minutes: "Minuti",
+        load:    "Carico",
       },
       video: {
         title:      "Video review",
