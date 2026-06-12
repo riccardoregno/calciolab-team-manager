@@ -79,47 +79,52 @@ Deno.serve(async (req: Request) => {
     const results: Array<{ id: string; sent: boolean; reason?: string }> = [];
 
     for (const row of tokens || []) {
-      const [{ data: team }, { data: matchRow }, { data: playerRow }] = await Promise.all([
-        supabase.from("teams").select("name").eq("id", row.team_id).maybeSingle(),
-        supabase.from("matches").select("data").eq("team_id", row.team_id).eq("id", row.match_id).maybeSingle(),
-        supabase.from("players").select("data").eq("team_id", row.team_id).eq("id", row.player_id).maybeSingle(),
-      ]);
+      try {
+        const [{ data: team }, { data: matchRow }, { data: playerRow }] = await Promise.all([
+          supabase.from("teams").select("name").eq("id", row.team_id).maybeSingle(),
+          supabase.from("matches").select("data").eq("team_id", row.team_id).eq("id", row.match_id).maybeSingle(),
+          supabase.from("players").select("data").eq("team_id", row.team_id).eq("id", row.player_id).maybeSingle(),
+        ]);
 
-      const playerData = (playerRow?.data || {}) as Record<string, unknown>;
-      const matchData = (matchRow?.data || {}) as Record<string, unknown>;
-      const to = String(playerData.email || "").trim();
+        const playerData = (playerRow?.data || {}) as Record<string, unknown>;
+        const matchData = (matchRow?.data || {}) as Record<string, unknown>;
+        const to = String(playerData.email || "").trim();
 
-      if (!to) {
-        results.push({ id: row.id, sent: false, reason: "email giocatore mancante" });
-        continue;
+        if (!to) {
+          results.push({ id: row.id, sent: false, reason: "email giocatore mancante" });
+          continue;
+        }
+
+        const rsvpUrl = `${APP_URL}/rsvp?t=${encodeURIComponent(row.token)}`;
+        await sendReminderEmail({
+          type: "custom",
+          to,
+          subject: `Promemoria convocazione ${team?.name || "CalcioLab"}`,
+          html: `
+            <h1 style="margin:0 0 16px;font-size:24px;color:white;">Promemoria disponibilità</h1>
+            <p style="color:#94a3b8;line-height:1.7;">Ciao ${playerName(playerData)}, non abbiamo ancora ricevuto la tua risposta per la convocazione di ${team?.name || "CalcioLab"}.</p>
+            <p style="color:#e2e8f0;line-height:1.7;">${matchLabel(matchData)}</p>
+            <p style="color:#94a3b8;line-height:1.7;">Conferma se sei disponibile o non disponibile dal link qui sotto.</p>
+            <p><a href="${rsvpUrl}" style="display:inline-block;background:#2563eb;color:white;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:800;">Rispondi alla convocazione</a></p>
+            <p style="color:#64748b;font-size:12px;word-break:break-all;">${rsvpUrl}</p>
+          `,
+        });
+
+        const { error: updateError } = await supabase
+          .from("rsvp_tokens")
+          .update({ reminder_sent_at: new Date().toISOString() })
+          .eq("id", row.id);
+
+        if (updateError) {
+          console.error("[rsvp-reminder] update failed", row.id, updateError);
+          results.push({ id: row.id, sent: true, reason: "reminder_sent_at update failed" });
+          continue;
+        }
+        results.push({ id: row.id, sent: true });
+      } catch (error) {
+        console.error("[rsvp-reminder] row failed", row.id, error);
+        results.push({ id: row.id, sent: false, reason: error instanceof Error ? error.message : "errore invio" });
       }
-
-      const rsvpUrl = `${APP_URL}/rsvp?t=${encodeURIComponent(row.token)}`;
-      await sendReminderEmail({
-        type: "custom",
-        to,
-        subject: `Promemoria convocazione ${team?.name || "CalcioLab"}`,
-        html: `
-          <h1 style="margin:0 0 16px;font-size:24px;color:white;">Promemoria disponibilità</h1>
-          <p style="color:#94a3b8;line-height:1.7;">Ciao ${playerName(playerData)}, non abbiamo ancora ricevuto la tua risposta per la convocazione di ${team?.name || "CalcioLab"}.</p>
-          <p style="color:#e2e8f0;line-height:1.7;">${matchLabel(matchData)}</p>
-          <p style="color:#94a3b8;line-height:1.7;">Conferma se sei disponibile o non disponibile dal link qui sotto.</p>
-          <p><a href="${rsvpUrl}" style="display:inline-block;background:#2563eb;color:white;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:800;">Rispondi alla convocazione</a></p>
-          <p style="color:#64748b;font-size:12px;word-break:break-all;">${rsvpUrl}</p>
-        `,
-      });
-
-      const { error: updateError } = await supabase
-        .from("rsvp_tokens")
-        .update({ reminder_sent_at: new Date().toISOString() })
-        .eq("id", row.id);
-
-      if (updateError) {
-        console.error("[rsvp-reminder] update failed", row.id, updateError);
-        results.push({ id: row.id, sent: true, reason: "reminder_sent_at update failed" });
-        continue;
-      }
-      results.push({ id: row.id, sent: true });
     }
 
     return json({ ok: true, checked: tokens?.length || 0, sent: results.filter((item) => item.sent).length, results });
