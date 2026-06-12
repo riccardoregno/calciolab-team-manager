@@ -106,7 +106,9 @@ function PlayerDetail({
   const isMobile = useIsMobile();
   const [invitingPortal, setInvitingPortal] = useState(false);
   const [revokingPortal, setRevokingPortal] = useState(false);
-  const [portalAccountId, setPortalAccountId] = useState(null);
+  const [portalAccountState, setPortalAccountState] = useState({ playerId: "", accountId: null });
+  const currentPlayerId = String(player?.id || "");
+  const portalAccountId = portalAccountState.playerId === currentPlayerId ? portalAccountState.accountId : null;
 
   useEffect(() => {
     if (!player) return;
@@ -121,20 +123,19 @@ function PlayerDetail({
   }, [player?.id]);
 
   useEffect(() => {
-    setPortalAccountId(null);
-    if (!player || !team?.id || !isSupabaseConfigured) return;
+    if (!currentPlayerId || !team?.id || !isSupabaseConfigured) return;
     let cancelled = false;
     supabase
       .from("player_accounts")
       .select("id")
       .eq("team_id", team.id)
-      .eq("player_id", String(player.id))
+      .eq("player_id", currentPlayerId)
       .maybeSingle()
       .then(({ data }) => {
-        if (!cancelled) setPortalAccountId(data?.id || null);
+        if (!cancelled) setPortalAccountState({ playerId: currentPlayerId, accountId: data?.id || null });
       });
     return () => { cancelled = true; };
-  }, [player?.id, team?.id]);
+  }, [currentPlayerId, team?.id]);
 
   const summary = useMemo(
     () => getPlayerSummary(player, { sessions, matches, physicalTests }),
@@ -578,7 +579,7 @@ function PlayerDetail({
         showToast(t("pages.playerDetail.portalRevokeError"), "error");
         return;
       }
-      setPortalAccountId(null);
+      setPortalAccountState({ playerId: currentPlayerId, accountId: null });
       showToast(t("pages.playerDetail.portalRevokeSuccess"), "ok");
     } catch {
       showToast(t("pages.playerDetail.portalRevokeError"), "error");

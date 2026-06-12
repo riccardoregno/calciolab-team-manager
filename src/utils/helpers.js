@@ -1445,27 +1445,43 @@ export function getPlayerSeasonSeries(player, { sessions = [], matches = [], phy
     return { events: [], tests: [] };
   }
 
-  const events = [...sessions, ...matches]
+  const sessionEvents = sessions
+    .map((session) => {
+      const data = session.attendance?.[player.id];
+      if(!data) return null;
+      const rpe = Number(data.rpe || 0);
+      const duration = Number(data.minutes || session.duration || 0);
+      return {
+        date: session.date,
+        title: session.title || "",
+        type: "session",
+        sessionRpe: rpe || null,
+        sessionLoad: rpe && duration ? duration * rpe : null,
+      };
+    })
+    .filter(Boolean);
+
+  const matchEvents = matches
     .map((event) => {
       const data = event.attendance?.[player.id];
       if(!data) return null;
       return {
         date: event.date,
         title: event.title || event.opponent || "",
-        type: event.opponent ? "Partita" : "Allenamento",
-        minutes: Number(data.minutes || 0),
-        rpe: Number(data.rpe || 0),
-        load: Number(data.minutes || event.duration || 0) * Number(data.rpe || 0),
+        type: "match",
+        matchMinutes: Number(data.minutes || 0),
       };
     })
-    .filter(Boolean)
+    .filter(Boolean);
+
+  const events = [...sessionEvents, ...matchEvents]
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const tests = physicalTests
     .filter((test) => String(test.playerId) === String(player.id))
     .map((test) => ({
       date: test.date,
-      mas: estimateMasFromGacon(test.gaconLevel) || Number(test.mas) || null,
+      mas: estimateMasFromGacon(test.gaconLevel) || estimateMasFromYoYo(test.yoYo) || Number(test.mas || 0) || null,
     }))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 

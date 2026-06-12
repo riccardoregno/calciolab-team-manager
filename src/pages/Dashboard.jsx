@@ -243,19 +243,21 @@ function Dashboard({
     .filter((m) => new Date(m.date) >= today)
     .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
 
-  const [nextMatchRsvps, setNextMatchRsvps] = useState([]);
+  const [nextMatchRsvpState, setNextMatchRsvpState] = useState({ matchId: "", rsvps: [] });
+  const nextMatchId = String(nextMatch?.id || "");
+  const nextMatchRsvps = useMemo(
+    () => nextMatchRsvpState.matchId === nextMatchId ? nextMatchRsvpState.rsvps : [],
+    [nextMatchId, nextMatchRsvpState]
+  );
   useEffect(() => {
-    if (!auth.team?.id || !nextMatch?.id) {
-      setNextMatchRsvps([]);
-      return;
-    }
+    if (!auth.team?.id || !nextMatchId) return;
     let active = true;
-    fetchMatchRsvps({ teamId: auth.team.id, matchId: String(nextMatch.id) }).then(({ rsvps }) => {
+    fetchMatchRsvps({ teamId: auth.team.id, matchId: nextMatchId }).then(({ rsvps }) => {
       if (!active) return;
-      setNextMatchRsvps(rsvps || []);
+      setNextMatchRsvpState({ matchId: nextMatchId, rsvps: rsvps || [] });
     });
     return () => { active = false; };
-  }, [auth.team?.id, nextMatch?.id]);
+  }, [auth.team?.id, nextMatchId]);
 
   const nextMatchRsvpSummary = useMemo(() => {
     const convocatiIds = Array.isArray(nextMatch?.convocazione?.playerIds)

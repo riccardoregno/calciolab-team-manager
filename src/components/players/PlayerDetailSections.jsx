@@ -1,8 +1,7 @@
 import { useState } from "react";
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -631,11 +630,15 @@ function InjuryComparisonPanel({ comparison, t }) {
   const post = comparison?.post;
   const naLabel = t("pages.playerDetail.medical.compareNoData");
 
-  const masPre = pre ? Number(pre.reference?.mas) : null;
-  const masPost = post ? Number(post.reference?.mas) : null;
-  const masDelta = (masPre != null && !isNaN(masPre) && masPost != null && !isNaN(masPost))
-    ? Math.round((masPost - masPre) * 100) / 100
-    : null;
+  const metricRows = [
+    { key: "mas", label: t("pages.playerDetail.medical.compareMas"), pre: pre?.reference?.mas, post: post?.reference?.mas, unit: "km/h" },
+    { key: "gacon", label: t("pages.playerDetail.medical.compareGacon"), pre: pre?.test?.gaconLevel, post: post?.test?.gaconLevel },
+    { key: "yoyo", label: t("pages.playerDetail.medical.compareYoYo"), pre: pre?.test?.yoYo, post: post?.test?.yoYo, unit: "m" },
+    { key: "sprint10", label: t("pages.playerDetail.medical.compareSprint10"), pre: pre?.test?.sprint10m, post: post?.test?.sprint10m, unit: "s", lowerIsBetter: true },
+    { key: "sprint30", label: t("pages.playerDetail.medical.compareSprint30"), pre: pre?.test?.sprint30m, post: post?.test?.sprint30m, unit: "s", lowerIsBetter: true },
+    { key: "jump", label: t("pages.playerDetail.medical.compareJump"), pre: pre?.test?.jumpCm, post: post?.test?.jumpCm, unit: "cm" },
+  ].filter((row) => hasMetricValue(row.pre) || hasMetricValue(row.post));
+  const deltaRows = metricRows.filter((row) => Number.isFinite(Number(row.pre)) && Number.isFinite(Number(row.post)));
 
   return (
     <div style={sectionStyles.compareBox}>
@@ -646,6 +649,11 @@ function InjuryComparisonPanel({ comparison, t }) {
             <p style={sectionStyles.compareRow}>{t("pages.playerDetail.medical.compareDate")}: {pre.test.date}</p>
             <p style={sectionStyles.compareRow}>{t("pages.playerDetail.medical.compareGroup")}: {pre.reference?.group || "—"}</p>
             <p style={sectionStyles.compareRow}>{t("pages.playerDetail.medical.compareMas")}: {pre.reference?.mas ? `${pre.reference.mas} km/h` : "—"}</p>
+            {metricRows.filter((row) => row.key !== "mas").map((row) => (
+              <p key={row.key} style={sectionStyles.compareRow}>
+                {row.label}: {formatMetricValue(row.pre, row.unit)}
+              </p>
+            ))}
           </>
         ) : (
           <p style={sectionStyles.muted}>{naLabel}</p>
@@ -658,21 +666,41 @@ function InjuryComparisonPanel({ comparison, t }) {
             <p style={sectionStyles.compareRow}>{t("pages.playerDetail.medical.compareDate")}: {post.test.date}</p>
             <p style={sectionStyles.compareRow}>{t("pages.playerDetail.medical.compareGroup")}: {post.reference?.group || "—"}</p>
             <p style={sectionStyles.compareRow}>{t("pages.playerDetail.medical.compareMas")}: {post.reference?.mas ? `${post.reference.mas} km/h` : "—"}</p>
+            {metricRows.filter((row) => row.key !== "mas").map((row) => (
+              <p key={row.key} style={sectionStyles.compareRow}>
+                {row.label}: {formatMetricValue(row.post, row.unit)}
+              </p>
+            ))}
           </>
         ) : (
           <p style={sectionStyles.muted}>{naLabel}</p>
         )}
       </div>
-      {masDelta != null && (
+      {deltaRows.length > 0 && (
         <div style={sectionStyles.compareCol}>
           <strong style={sectionStyles.compareTitle}>{t("pages.playerDetail.medical.compareDelta")}</strong>
-          <p style={{ ...sectionStyles.compareRow, color: masDelta >= 0 ? "#22c55e" : "#ef4444", fontWeight: 700 }}>
-            MAS {masDelta >= 0 ? "+" : ""}{masDelta} km/h
-          </p>
+          {deltaRows.map((row) => {
+            const delta = Math.round((Number(row.post) - Number(row.pre)) * 100) / 100;
+            const improved = row.lowerIsBetter ? delta <= 0 : delta >= 0;
+            return (
+              <p key={row.key} style={{ ...sectionStyles.compareRow, color: improved ? "#22c55e" : "#ef4444", fontWeight: 700 }}>
+                {row.label} {delta >= 0 ? "+" : ""}{delta}{row.unit ? ` ${row.unit}` : ""}
+              </p>
+            );
+          })}
         </div>
       )}
     </div>
   );
+}
+
+function hasMetricValue(value) {
+  return value !== undefined && value !== null && value !== "";
+}
+
+function formatMetricValue(value, unit = "") {
+  if (!hasMetricValue(value)) return "—";
+  return `${value}${unit ? ` ${unit}` : ""}`;
 }
 
 const ABSENCE_TYPE_LABEL_KEYS = {
@@ -762,8 +790,9 @@ export function PlayerStatsTab({ summary, seasonSeries }) {
 
   const chartData = (seasonSeries?.events || []).map((event) => ({
     date: formatShortDate(event.date),
-    minuti: event.minutes,
-    carico: event.load,
+    minuti: event.matchMinutes,
+    rpe: event.sessionRpe,
+    carico: event.sessionLoad,
   }));
 
   const masData = (seasonSeries?.tests || [])
@@ -779,15 +808,18 @@ export function PlayerStatsTab({ summary, seasonSeries }) {
       {chartData.length > 1 && (
         <div style={{ marginBottom: 24 }}>
           <p style={sectionStyles.sectionLabel}>{t("pages.playerDetail.stats.trendTitle")}</p>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData}>
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={chartData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} />
-              <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} />
+              <YAxis yAxisId="left" tick={{ fontSize: 11, fill: "#94a3b8" }} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: "#94a3b8" }} />
               <Tooltip {...TT} />
-              <Area type="monotone" dataKey="minuti" name={t("pages.playerDetail.stats.minutes")} stroke="#38bdf8" fill="rgba(56,189,248,0.18)" strokeWidth={2} />
-              <Area type="monotone" dataKey="carico" name={t("pages.playerDetail.stats.load")} stroke="#fb923c" fill="rgba(251,146,60,0.12)" strokeWidth={2} />
-            </AreaChart>
+              <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} />
+              <Line yAxisId="left" type="monotone" connectNulls dataKey="minuti" name={t("pages.playerDetail.stats.minutes")} stroke="#38bdf8" strokeWidth={2} dot={{ r: 3 }} />
+              <Line yAxisId="left" type="monotone" connectNulls dataKey="rpe" name={t("pages.playerDetail.stats.rpe")} stroke="#a78bfa" strokeWidth={2} dot={{ r: 3 }} />
+              <Line yAxisId="right" type="monotone" connectNulls dataKey="carico" name={t("pages.playerDetail.stats.load")} stroke="#fb923c" strokeWidth={2} dot={{ r: 3 }} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       )}
@@ -800,6 +832,7 @@ export function PlayerStatsTab({ summary, seasonSeries }) {
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} />
               <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} domain={["auto", "auto"]} />
               <Tooltip {...TT} />
+              <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} />
               <Line type="monotone" dataKey="mas" name="MAS (km/h)" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>

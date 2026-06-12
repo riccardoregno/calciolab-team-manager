@@ -1129,6 +1129,11 @@ export const it = {
         compareDate:         "Data test",
         compareGroup:        "Gruppo",
         compareMas:          "MAS",
+        compareGacon:        "Gacon",
+        compareYoYo:         "Yo-Yo",
+        compareSprint10:     "Sprint 10m",
+        compareSprint30:     "Sprint 30m",
+        compareJump:         "Salto",
         compareNoData:       "Dato non disponibile",
       },
       absences: {
@@ -1164,6 +1169,7 @@ export const it = {
         trendTitle:    "📈 Andamento stagionale",
         masTrendTitle: "🏃 Andamento MAS (km/h)",
         minutes: "Minuti",
+        rpe:     "RPE seduta",
         load:    "Carico",
       },
       video: {
