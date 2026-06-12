@@ -22,7 +22,9 @@ import {
 } from "../components/players/PlayerDetailSections";
 import { getPreventionRecommendations } from "../components/players/playerDetailLogic";
 import { styles } from "../styles/index.js";
-import { createId, getPlayerSummary } from "../utils/helpers";
+import { createId, getPlayerSummary, normalizeAppSettings } from "../utils/helpers";
+import { getInviteExpiryDate } from "../utils/settingsHelpers";
+import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
 
@@ -72,7 +74,8 @@ const DIFF_TYPE_LABEL_KEYS = {
 };
 
 function PlayerDetail({
-  players, setPlayers, sessions = [], matches = [], physicalTests = [], setStaffTasks }) {
+  players, setPlayers, sessions = [], matches = [], physicalTests = [], setStaffTasks,
+  appSettings, setAppSettings, team }) {
 
   const { t } = useTranslation();
   const { id } = useParams();
@@ -101,6 +104,9 @@ function PlayerDetail({
     returnDate: new Date().toISOString().slice(0, 10),
   });
   const isMobile = useIsMobile();
+  const [invitingPortal, setInvitingPortal] = useState(false);
+  const [revokingPortal, setRevokingPortal] = useState(false);
+  const [portalAccountId, setPortalAccountId] = useState(null);
 
   useEffect(() => {
     if (!player) return;
@@ -113,6 +119,22 @@ function PlayerDetail({
     // Reset intenzionale solo al cambio atleta: includere l'intero player sovrascriverebbe edit/modali dopo ogni update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player?.id]);
+
+  useEffect(() => {
+    setPortalAccountId(null);
+    if (!player || !team?.id || !isSupabaseConfigured) return;
+    let cancelled = false;
+    supabase
+      .from("player_accounts")
+      .select("id")
+      .eq("team_id", team.id)
+      .eq("player_id", String(player.id))
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setPortalAccountId(data?.id || null);
+      });
+    return () => { cancelled = true; };
+  }, [player?.id, team?.id]);
 
   const summary = useMemo(
     () => getPlayerSummary(player, { sessions, matches, physicalTests }),
@@ -441,6 +463,106 @@ function PlayerDetail({
     ]);
   }
 
+  const playerSettings = normalizeAppSettings(appSettings) || {};
+  const portalInvitePending = (playerSettings.pendingInvites || []).some(
+    (invite) => String(invite.playerId) === String(player.id) && invite.role === "player"
+  );
+
+  async function invitePlayerToPortal() {
+    if (!team?.id || !player?.email || !isSupabaseConfigured) return;
+    setInvitingPortal(true);
+    try {
+      const settings = normalizeAppSettings(appSettings) || {};
+      const token = settings.inviteToken || createId("invite").replace("invite-", "");
+      const isNewToken = !settings.inviteToken;
+      const inviteTokenExpiresAt = isNewToken || !settings.inviteTokenExpiresAt
+        ? getInviteExpiryDate()
+        : settings.inviteTokenExpiresAt;
+
+      const pending = {
+        id: createId("invite"),
+        name: player.name,
+        email: player.email,
+        role: "player",
+        playerId: String(player.id),
+        customAreas: {},
+        status: "In attesa",
+        token,
+        sentAt: new Date().toISOString(),
+        expiresAt: getInviteExpiryDate(),
+      };
+
+      const nextSettings = {
+        ...settings,
+        inviteToken: token,
+        inviteTokenExpiresAt,
+        pendingInvites: [...(settings.pendingInvites || []), pending],
+      };
+
+      const { error: flushError } = await supabase
+        .from("teams")
+        .update({ settings: nextSettings })
+        .eq("id", team.id);
+      if (flushError) {
+        showToast(t("pages.playerDetail.portalInviteError"), "error");
+        return;
+      }
+      setAppSettings?.(() => nextSettings);
+
+      const base = typeof window !== "undefined" ? window.location.origin : "https://calciolab.org";
+      const inviteUrl = `${base}/join?token=${token}`;
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL || ""}/functions/v1/send-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY || "",
+        },
+        body: JSON.stringify({
+          type: "player_invite",
+          to: player.email,
+          playerName: player.name,
+          teamName: team.name,
+          inviteUrl,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data?.error) {
+        showToast(t("pages.playerDetail.portalInviteError"), "error");
+        return;
+      }
+      showToast(t("pages.playerDetail.portalInviteSent"), "ok");
+    } catch {
+      showToast(t("pages.playerDetail.portalInviteError"), "error");
+    } finally {
+      setInvitingPortal(false);
+    }
+  }
+
+  async function revokePlayerPortalAccess() {
+    if (!portalAccountId || !isSupabaseConfigured) return;
+    setRevokingPortal(true);
+    try {
+      const { error } = await supabase
+        .from("player_accounts")
+        .delete()
+        .eq("id", portalAccountId);
+      if (error) {
+        showToast(t("pages.playerDetail.portalRevokeError"), "error");
+        return;
+      }
+      setPortalAccountId(null);
+      showToast(t("pages.playerDetail.portalRevokeSuccess"), "ok");
+    } catch {
+      showToast(t("pages.playerDetail.portalRevokeError"), "error");
+    } finally {
+      setRevokingPortal(false);
+    }
+  }
+
   return (
     <div style={styles.page}>
       <PageHeader title={player.name} subtitle={t("pages.playerDetail.subtitle")} />
@@ -492,6 +614,12 @@ function PlayerDetail({
               }}
               onSave={savePlayer}
               onFieldChange={updateField}
+              onInvitePortal={invitePlayerToPortal}
+              invitingPortal={invitingPortal}
+              portalInvitePending={portalInvitePending}
+              portalAccountLinked={Boolean(portalAccountId)}
+              onRevokePortal={revokePlayerPortalAccess}
+              revokingPortal={revokingPortal}
             />
           )}
 

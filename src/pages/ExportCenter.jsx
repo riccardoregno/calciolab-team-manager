@@ -14,6 +14,7 @@ import {
   RPE_BY_MATCH_DAY,
 } from "../utils/helpers";
 import { generateSeasonReport } from "../utils/generateSeasonReport";
+import { generateMatchReportPDF } from "../utils/generateMatchReportPDF";
 
 const EXPORT_TYPE_KEYS = [
   { id: "season",    labelKey: "pages.exportCenter.typeSeason",    descKey: "pages.exportCenter.typeSeasonDesc" },
@@ -64,6 +65,17 @@ export default function ExportCenter({
   const selectedPlayer = players.find((player) => sameId(player.id, effectivePlayerId));
 
   const activeType = exportTypes.find((item) => item.id === type) || exportTypes[0];
+
+  const [generatingMatchPDF, setGeneratingMatchPDF] = useState(false);
+
+  async function handleMatchReportDownload() {
+    setGeneratingMatchPDF(true);
+    try {
+      generateMatchReportPDF({ match: selectedMatch, players, appSettings });
+    } finally {
+      setTimeout(() => setGeneratingMatchPDF(false), 800);
+    }
+  }
 
   return (
     <div style={pageStyles.page}>
@@ -160,7 +172,23 @@ export default function ExportCenter({
           <AppCard
             title={t("pages.exportCenter.previewTitle", { label: activeType.label })}
             subtitle={t("pages.exportCenter.previewSubtitle")}
-            rightContent={<Button variant="ghost" onClick={() => window.print()}>{t("pages.exportCenter.pdfBtn")}</Button>}
+            rightContent={
+              type === "postmatch" ? (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <Button variant="ghost" onClick={() => window.print()}>{t("pages.exportCenter.pdfBtn")}</Button>
+                  <Button
+                    onClick={handleMatchReportDownload}
+                    disabled={!selectedMatch || generatingMatchPDF}
+                  >
+                    {generatingMatchPDF
+                      ? t("pages.exportCenter.tpl.postmatch.btnGenerating")
+                      : t("pages.exportCenter.tpl.postmatch.btnDownload")}
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="ghost" onClick={() => window.print()}>{t("pages.exportCenter.pdfBtn")}</Button>
+              )
+            }
           >
             <div className="print-area print-template">
               {type === "training" && (

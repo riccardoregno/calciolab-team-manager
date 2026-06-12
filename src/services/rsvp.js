@@ -65,6 +65,47 @@ export async function submitRsvpResponse({ token, response }) {
   return callRsvpFunction({ action: "respond", token, response });
 }
 
+export async function sendMatchConvocationEmail({
+  to, playerName, teamName, opponent, matchDate, matchTime, matchVenue, rsvpUrl,
+}) {
+  if (!isSupabaseConfigured) {
+    return { error: new Error("Supabase non configurato") };
+  }
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+  if (sessionError || !accessToken) {
+    return { error: sessionError || new Error("Sessione non disponibile") };
+  }
+
+  const url = `${import.meta.env.VITE_SUPABASE_URL || ""}/functions/v1/send-email`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY || "",
+    },
+    body: JSON.stringify({
+      type: "match_convocation",
+      to,
+      playerName,
+      teamName,
+      opponent,
+      matchDate,
+      matchTime,
+      matchVenue,
+      rsvpUrl,
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok || data?.error) {
+    return { error: new Error(data?.error || "Invio email non riuscito") };
+  }
+  return { error: null };
+}
+
 export async function fetchMatchRsvps({ teamId, matchId }) {
   if (!isSupabaseConfigured || !teamId || !matchId) {
     return { rsvps: [], error: null };

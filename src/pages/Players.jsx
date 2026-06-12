@@ -376,6 +376,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
       firstName:   form.firstName.trim(),
       lastName:    form.lastName.trim(),
       role:        form.role        || "",
+      email:       form.email       || "",
       birthDate:   form.birthDate   || "",
       shirtNumber: "",
       status:      form.status      || "Disponibile",
@@ -818,6 +819,16 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               value={form.lastName}
               onChange={(e) =>
                 setForm({ ...form, lastName: e.target.value })
+              }
+              style={styles.input}
+            />
+
+            <input
+              type="email"
+              placeholder={t("pages.playerDetail.profile.fieldEmail")}
+              value={form.email || ""}
+              onChange={(e) =>
+                setForm({ ...form, email: e.target.value })
               }
               style={styles.input}
             />

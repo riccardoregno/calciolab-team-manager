@@ -147,7 +147,7 @@ export function PlayerKpiStrip({ summary }) {
   );
 }
 
-export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSave, onFieldChange }) {
+export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSave, onFieldChange, onInvitePortal, invitingPortal, portalInvitePending, portalAccountLinked, onRevokePortal, revokingPortal }) {
   const { t } = useTranslation();
   return (
     <AppCard>
@@ -164,7 +164,29 @@ export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSa
               <Button onClick={onSave}>{t("pages.playerDetail.profile.save")}</Button>
             </>
           ) : (
-            <Button onClick={() => onEdit(player)}>{t("pages.playerDetail.profile.edit")}</Button>
+            <>
+              {portalAccountLinked && onRevokePortal ? (
+                <Button variant="ghost" onClick={onRevokePortal} disabled={revokingPortal}>
+                  {revokingPortal
+                    ? t("pages.playerDetail.profile.invitePortalSending")
+                    : t("pages.playerDetail.profile.revokePortal")}
+                </Button>
+              ) : onInvitePortal && (
+                <Button
+                  variant="ghost"
+                  onClick={onInvitePortal}
+                  disabled={invitingPortal || !form.email}
+                  title={!form.email ? t("pages.playerDetail.profile.invitePortalNoEmail") : undefined}
+                >
+                  {invitingPortal
+                    ? t("pages.playerDetail.profile.invitePortalSending")
+                    : portalInvitePending
+                    ? t("pages.playerDetail.profile.invitePortalPending")
+                    : t("pages.playerDetail.profile.invitePortal")}
+                </Button>
+              )}
+              <Button onClick={() => onEdit(player)}>{t("pages.playerDetail.profile.edit")}</Button>
+            </>
           )}
         </div>
       </div>
@@ -177,6 +199,7 @@ export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSa
         <Field label={t("pages.playerDetail.profile.fieldHeight")}      value={form.height}      editing={editing} onChange={(v) => onFieldChange("height", v)} />
         <Field label={t("pages.playerDetail.profile.fieldWeight")}      value={form.weight}      editing={editing} onChange={(v) => onFieldChange("weight", v)} />
         <Field label={t("pages.playerDetail.profile.fieldNationality")} value={form.nationality} editing={editing} onChange={(v) => onFieldChange("nationality", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldEmail")} type="email" value={form.email} editing={editing} onChange={(v) => onFieldChange("email", v)} />
         <Field
           label={t("pages.playerDetail.profile.fieldBirthDate")}
           type="date"

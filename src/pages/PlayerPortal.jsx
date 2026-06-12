@@ -25,6 +25,7 @@ export default function PlayerPortal({
   physicalTests = [],
   appSettings = {},
   setAppSettings,
+  myPlayerId = null,
 }) {
   const { t } = useTranslation();
   const settings     = normalizeAppSettings(appSettings);
@@ -39,9 +40,9 @@ export default function PlayerPortal({
   const [draftNote,    setDraftNote]    = useState("");
   const isMobile = useIsMobile();
 
-  const selectedPlayer = players.find((p) =>
-    sameId(p.id, selectedPlayerId || players[0]?.id)
-  );
+  const selectedPlayer = isPlayerView
+    ? players.find((p) => sameId(p.id, myPlayerId)) || (myPlayerId ? null : players.find((p) => sameId(p.id, players[0]?.id)))
+    : players.find((p) => sameId(p.id, selectedPlayerId || players[0]?.id));
 
   const summary          = getPlayerSummary(selectedPlayer, { sessions, matches, physicalTests });
   const latestTest       = summary.latestTests[0];

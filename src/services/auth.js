@@ -162,10 +162,22 @@ export async function ensureDefaultTeam(user) {
   const existingMembership = await pickBestMembership(memberships || []);
 
   if (existingMembership?.teams) {
+    let playerId = null;
+    if (existingMembership.role === "player") {
+      const { data: playerAccount } = await supabase
+        .from("player_accounts")
+        .select("player_id")
+        .eq("auth_user_id", user.id)
+        .eq("team_id", existingMembership.team_id)
+        .maybeSingle();
+      playerId = playerAccount?.player_id || null;
+    }
+
     return {
       team: {
         ...existingMembership.teams,
         role: existingMembership.role,
+        playerId,
       },
     };
   }

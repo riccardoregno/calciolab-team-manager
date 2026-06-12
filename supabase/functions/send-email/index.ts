@@ -223,6 +223,66 @@ function templateTeamInvite(
   return { subject, html };
 }
 
+/* ── Template: Player portal invite ──────────────── */
+function templatePlayerInvite(
+  playerName = "Giocatore",
+  teamName   = "CalcioLab",
+  inviteUrl  = APP_URL,
+) {
+  const subject = `Attiva il tuo accesso al portale giocatore di ${teamName}`;
+  const html = baseLayout(`
+    ${h1(`Benvenuto nel portale giocatore di <span style="color:#60a5fa;">${teamName}</span>! ⚽`)}
+    ${p(`Ciao ${playerName}, lo staff di <strong style="color:white;">${teamName}</strong> ti ha invitato ad attivare il tuo accesso personale a CalcioLab.`)}
+    ${p("Dal portale giocatore potrai consultare le tue convocazioni, i tuoi obiettivi e i programmi personalizzati assegnati dallo staff.")}
+    ${btnPrimary("Attiva il tuo accesso →", inviteUrl)}
+    ${divider()}
+    ${p("Se non riesci a cliccare il bottone, copia e incolla questo link nel browser:")}
+    <p style="margin:0;font-size:12px;color:#475569;word-break:break-all;">${inviteUrl}</p>
+    ${divider()}
+    ${p("Se non aspettavi questo invito, puoi ignorare questa email.")}
+  `, `${teamName} ti invita ad attivare il portale giocatore`);
+  return { subject, html };
+}
+
+/* ── Template: Match convocation ─────────────────── */
+function templateMatchConvocation(
+  playerName  = "Giocatore",
+  teamName    = "CalcioLab",
+  opponent    = "",
+  matchDate   = "",
+  matchTime   = "",
+  matchVenue  = "",
+  rsvpUrl     = APP_URL,
+) {
+  const subject = opponent
+    ? `Convocazione: ${teamName} vs ${opponent}`
+    : `Convocazione ${teamName}`;
+  const matchInfoLines = [
+    opponent   ? `vs <strong style="color:white;">${opponent}</strong>` : null,
+    matchDate  ? matchDate : null,
+    matchTime  ? `ore ${matchTime}` : null,
+    matchVenue ? matchVenue : null,
+  ].filter(Boolean).join(" · ");
+
+  const html = baseLayout(`
+    ${h1(`Sei stato convocato! 📋`)}
+    ${p(`Ciao ${playerName}, lo staff di <strong style="color:white;">${teamName}</strong> ti ha convocato per la prossima partita.`)}
+    ${matchInfoLines ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+      <tr>
+        <td style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px;">
+          <p style="margin:0;font-size:14px;color:#e2e8f0;line-height:1.7;">${matchInfoLines}</p>
+        </td>
+      </tr>
+    </table>` : ""}
+    ${p("Conferma la tua presenza cliccando il pulsante qui sotto.")}
+    ${btnPrimary("Conferma disponibilità →", rsvpUrl)}
+    ${divider()}
+    ${p("Se non riesci a cliccare il bottone, copia e incolla questo link nel browser:")}
+    <p style="margin:0;font-size:12px;color:#475569;word-break:break-all;">${rsvpUrl}</p>
+  `, `Sei stato convocato da ${teamName}${opponent ? ` per la sfida contro ${opponent}` : ""}`);
+  return { subject, html };
+}
+
 /* ── Template: Payment failed ────────────────────── */
 function templatePaymentFailed(firstName = "Coach", manageUrl = `${APP_URL}/premium`) {
   const subject = "⚠️ Problema con il tuo pagamento CalcioLab";
@@ -288,6 +348,13 @@ Deno.serve(async (req: Request) => {
     teamName?: string;
     roleName?: string;
     inviteUrl?: string;
+    // player_invite
+    playerName?: string;
+    opponent?: string;
+    matchDate?: string;
+    matchTime?: string;
+    matchVenue?: string;
+    rsvpUrl?: string;
   };
   try { body = await req.json(); }
   catch { return json({ error: "Body JSON non valido" }, 400); }
@@ -308,7 +375,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── Limita i tipi permessi agli utenti anonimi ─────────────────────────────
-  const ANON_ALLOWED_TYPES = ["welcome", "trial_expiring", "team_invite"];
+  const ANON_ALLOWED_TYPES = ["welcome", "trial_expiring", "team_invite", "match_convocation", "player_invite"];
   if (isAnon && !ANON_ALLOWED_TYPES.includes(type)) {
     return json({ error: `Tipo '${type}' non permesso dalle chiamate frontend` }, 403);
   }
@@ -331,6 +398,15 @@ Deno.serve(async (req: Request) => {
       break;
     case "team_invite":
       ({ subject, html } = templateTeamInvite(body.inviterName, body.teamName, body.roleName, body.inviteUrl));
+      break;
+    case "player_invite":
+      ({ subject, html } = templatePlayerInvite(body.playerName, body.teamName, body.inviteUrl));
+      break;
+    case "match_convocation":
+      ({ subject, html } = templateMatchConvocation(
+        body.playerName, body.teamName, body.opponent,
+        body.matchDate, body.matchTime, body.matchVenue, body.rsvpUrl,
+      ));
       break;
     case "payment_failed":
       ({ subject, html } = templatePaymentFailed(body.firstName, body.manageUrl));

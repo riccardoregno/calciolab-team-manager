@@ -814,6 +814,7 @@ function App() {
                       physicalTests={physicalTests}
                       appSettings={previewAppSettings}
                       setAppSettings={setAppSettings}
+                      myPlayerId={auth.team?.role === "player" ? auth.team?.playerId : null}
                     />
                   </FeatureGate>)
                 }
@@ -973,6 +974,9 @@ function App() {
                     matches={matches}
                     physicalTests={physicalTests}
                     setStaffTasks={setStaffTasks}
+                    appSettings={previewAppSettings}
+                    setAppSettings={setAppSettings}
+                    team={auth.team}
                   />, "players")
                 }
               />

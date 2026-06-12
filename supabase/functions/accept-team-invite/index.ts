@@ -116,6 +116,19 @@ Deno.serve(async (req) => {
       return json({ error: upsertError.message }, 500);
     }
 
+    if (pendingInvite?.role === "player" && pendingInvite?.playerId) {
+      const { error: playerAccountError } = await serviceClient
+        .from("player_accounts")
+        .upsert(
+          { auth_user_id: user.id, team_id: team.id, player_id: String(pendingInvite.playerId) },
+          { onConflict: "auth_user_id" },
+        );
+
+      if (playerAccountError) {
+        return json({ error: playerAccountError.message }, 500);
+      }
+    }
+
     const nextPendingInvites = pendingInvite
       ? pendingInvites.filter((invite) =>
         String(invite.email || "").trim().toLowerCase() !== userEmail

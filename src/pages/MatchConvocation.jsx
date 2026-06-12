@@ -8,7 +8,7 @@ import MatchTabBar from "../components/match/MatchTabBar";
 import { formatDate, normalizeAppSettings } from "../utils/helpers";
 import { generateDistintaPDF } from "../utils/generateDistintaPDF";
 import { useTranslation } from "../i18n";
-import { createRsvpLink, fetchMatchRsvps } from "../services/rsvp";
+import { createRsvpLink, fetchMatchRsvps, sendMatchConvocationEmail } from "../services/rsvp";
 import { useIsMobile } from "../hooks/useIsMobile";
 
 const MAX_PLAYERS = 22;
@@ -195,6 +195,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   const [rsvps, setRsvps] = useState([]);
   const [rsvpError, setRsvpError] = useState("");
   const [copyingRsvpId, setCopyingRsvpId] = useState("");
+  const [sendingConvocations, setSendingConvocations] = useState(false);
 
   // resync se il match cambia dall'esterno
   useEffect(() => {
@@ -326,6 +327,79 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
     }
 
     setCopyingRsvpId("");
+  }
+
+  async function sendConvocations() {
+    if (!teamId || !match?.id || sendingConvocations) return;
+
+    const targets = convocati.filter((p) => String(p.email || "").trim());
+    const skipped = convocati.filter((p) => !String(p.email || "").trim());
+
+    if (targets.length === 0) {
+      setRsvpError(t("pages.matchConvocation.sendConvocationsNoEmails"));
+      return;
+    }
+
+    setSendingConvocations(true);
+    setRsvpError("");
+
+    let sentCount = 0;
+    const failed = [];
+
+    try {
+      for (const player of targets) {
+        let link = "";
+        try {
+          const result = await createRsvpLink({
+            teamId,
+            matchId: String(match.id),
+            playerId: String(player.id),
+          });
+          if (result.error) throw result.error;
+          link = result.link;
+        } catch {
+          failed.push(getPlayerDisplayName(player));
+          continue;
+        }
+
+        try {
+          const { error: emailError } = await sendMatchConvocationEmail({
+            to: player.email,
+            playerName: getPlayerDisplayName(player),
+            teamName: clubName,
+            opponent: match.opponent || "",
+            matchDate: formatDate(match.date),
+            matchTime: match.time || "",
+            matchVenue: matchVenue || match.location || "",
+            rsvpUrl: link,
+          });
+          if (emailError) throw emailError;
+          sentCount += 1;
+        } catch {
+          failed.push(getPlayerDisplayName(player));
+        }
+      }
+
+      const { rsvps: rows } = await fetchMatchRsvps({ teamId, matchId: id });
+      setRsvps(rows);
+    } finally {
+      const messages = [];
+      if (sentCount > 0) {
+        messages.push(t("pages.matchConvocation.sendConvocationsSuccess", { count: sentCount }));
+      }
+      if (skipped.length > 0) {
+        messages.push(t("pages.matchConvocation.sendConvocationsSkipped", {
+          count: skipped.length,
+          names: skipped.map(getPlayerDisplayName).join(", "),
+        }));
+      }
+      if (failed.length > 0) {
+        messages.push(t("pages.matchConvocation.sendConvocationsFailed", { names: failed.join(", ") }));
+      }
+      setRsvpError(messages.join(" "));
+      setCopiedLabel("");
+      setSendingConvocations(false);
+    }
   }
 
   function markAsSent(channel = "WhatsApp") {
@@ -665,18 +739,29 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
       {/* ── RSVP disponibilità ── */}
       {convocati.length > 0 && (
         <AppCard>
-          <div style={s.communicationHeader}>
+          <div style={{ ...s.communicationHeader, flexWrap: "wrap" }}>
             <div>
               <h3 style={{ margin: "0 0 6px", lineHeight: 1.2 }}>{t("pages.matchConvocation.rsvpTitle")}</h3>
               <p style={s.muted}>{t("pages.matchConvocation.rsvpSubtitle")}</p>
             </div>
-            <Badge tone="blue">
-              {t("pages.matchConvocation.rsvpSummary", {
-                yes: rsvpStats.yes || 0,
-                no: rsvpStats.no || 0,
-                pending: rsvpStats.pending || 0,
-              })}
-            </Badge>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <Badge tone="blue">
+                {t("pages.matchConvocation.rsvpSummary", {
+                  yes: rsvpStats.yes || 0,
+                  no: rsvpStats.no || 0,
+                  pending: rsvpStats.pending || 0,
+                })}
+              </Badge>
+              <Button
+                onClick={sendConvocations}
+                disabled={sendingConvocations || !teamId}
+                style={{ flex: isMobile ? "1 1 100%" : "0 0 auto" }}
+              >
+                {sendingConvocations
+                  ? t("pages.matchConvocation.sendConvocationsSending")
+                  : t("pages.matchConvocation.sendConvocationsButton")}
+              </Button>
+            </div>
           </div>
 
           {rsvpError && <p style={s.errorText}>{rsvpError}</p>}

@@ -22,6 +22,7 @@ export function emptyPlayer() {
     height: "",
     weight: "",
     nationality: "",
+    email: "",
     shirtNumber: "",
     injuryType: "",
     expectedReturn: "",
