@@ -7,6 +7,7 @@ import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
 import { formatDate, normalizeAppSettings } from "../utils/helpers";
 import { generateDistintaPDF } from "../utils/generateDistintaPDF";
+import { generateMatchReportPDF } from "../utils/generateMatchReportPDF";
 import { useTranslation } from "../i18n";
 import { createRsvpLink, fetchMatchRsvps, sendMatchConvocationEmail } from "../services/rsvp";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -298,6 +299,15 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
     generateDistintaPDF(match, players, profile, staff);
   }
 
+  function downloadMatchPackage() {
+    const profile = normalizeAppSettings(appSettings).workspaceProfile;
+    const staff   = normalizeAppSettings(appSettings).members || [];
+    generateDistintaPDF(match, players, profile, staff);
+    window.setTimeout(() => {
+      generateMatchReportPDF({ match, players, appSettings });
+    }, 600);
+  }
+
   async function copyConvocation(kind, text) {
     await copyText(text);
     setCopiedLabel(kind);
@@ -510,6 +520,9 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
             <Button variant="ghost" onClick={() => navigate("/matches")}>{t("common.back")}</Button>
             <Button variant="ghost" onClick={downloadDistinta} title="Scarica distinta FIGC in PDF">
               📄 {t("pages.matchConvocation.downloadDistinta")}
+            </Button>
+            <Button variant="ghost" onClick={downloadMatchPackage} title={t("pages.matchConvocation.downloadPackage")}>
+              🗂️ {t("pages.matchConvocation.downloadPackage")}
             </Button>
             <Button variant="ghost" onClick={() => persistConvocazione(false)} disabled={count === 0}>
               {t("pages.matchConvocation.saveDraft")}

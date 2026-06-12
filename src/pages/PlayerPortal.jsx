@@ -716,6 +716,7 @@ function PlayerPreviewCard({
 
           {/* KPI */}
           <div style={ps.kpiGrid}>
+            <MiniMetric label={t("pages.playerPortal.kpiPresences")} value={summary.stats.presences} />
             <MiniMetric label={t("pages.playerPortal.kpiMinutes")}   value={summary.stats.minutes} />
             <MiniMetric label={t("pages.playerPortal.kpiGoals")}      value={summary.stats.goals} />
             <MiniMetric label={t("pages.playerPortal.kpiAssists")}   value={summary.stats.assists} />
