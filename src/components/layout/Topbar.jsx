@@ -145,7 +145,7 @@ export default function Topbar({
     <>
     <header className="mobile-only mobile-topbar" style={mobileTopbarStyles.header}>
       <div style={mobileTopbarStyles.brand}>
-        <div style={mobileTopbarStyles.logo}>CL</div>
+        <img src="/favicon.svg" alt="CalcioLab" style={mobileTopbarStyles.logo} />
         <div style={{ minWidth: 0 }}>
           <strong style={mobileTopbarStyles.appName}>CalcioLab</strong>
           <span className="mobile-topbar-subtitle" style={mobileTopbarStyles.subtitle}>{t("topbar.title")}</span>
@@ -391,8 +391,9 @@ const mobileTopbarStyles = {
     width: 36,
     height: 36,
     borderRadius: 13,
-    display: "grid",
-    placeItems: "center",
+    display: "block",
+    objectFit: "contain",
+    flexShrink: 0,
     background: "linear-gradient(135deg, #2563eb, #38bdf8)",
     color: "white",
     fontSize: 13,

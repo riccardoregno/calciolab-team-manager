@@ -7,7 +7,7 @@ import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
 import { formatDate, normalizeAppSettings } from "../utils/helpers";
 import { generateDistintaPDF } from "../utils/generateDistintaPDF";
-import { generateMatchReportPDF } from "../utils/generateMatchReportPDF";
+import { generateMatchPackagePDF } from "../utils/generateMatchPackagePDF";
 import { useTranslation } from "../i18n";
 import { createRsvpLink, fetchMatchRsvps, sendMatchConvocationEmail } from "../services/rsvp";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -302,10 +302,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   function downloadMatchPackage() {
     const profile = normalizeAppSettings(appSettings).workspaceProfile;
     const staff   = normalizeAppSettings(appSettings).members || [];
-    generateDistintaPDF(match, players, profile, staff);
-    window.setTimeout(() => {
-      generateMatchReportPDF({ match, players, appSettings });
-    }, 600);
+    generateMatchPackagePDF({ match, allPlayers: players, profile, staffList: staff, appSettings });
   }
 
   async function copyConvocation(kind, text) {

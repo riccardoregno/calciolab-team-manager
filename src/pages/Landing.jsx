@@ -112,7 +112,7 @@ export default function Landing() {
       <header style={l.nav}>
         <div style={l.navInner}>
           <div style={l.logo}>
-            <div style={l.logoBolt}>⚡</div>
+            <img src="/favicon.svg" alt="CalcioLab" style={l.logoBolt} />
             <span style={l.logoText}>CalcioLab</span>
           </div>
 
@@ -372,7 +372,7 @@ export default function Landing() {
         <div style={l.footerInner}>
           <div style={l.footerBrand}>
             <div style={l.logo}>
-              <div style={l.logoBolt}>⚡</div>
+              <img src="/favicon.svg" alt="CalcioLab" style={l.logoBolt} />
               <span style={{ ...l.logoText, fontSize: 16 }}>CalcioLab</span>
             </div>
             <p style={l.footerTagline}>La piattaforma per allenatori di calcio.</p>
@@ -465,10 +465,10 @@ const l = {
   logo: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0 },
   logoBolt: {
     width: 34, height: 34,
-    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     borderRadius: 9,
-    display: "grid", placeItems: "center",
-    fontSize: 16,
+    display: "block",
+    objectFit: "contain",
+    flexShrink: 0,
   },
   logoText: { fontWeight: 900, fontSize: 18, color: "white" },
   navLinks: { display: "flex", gap: 28, flex: 1 },

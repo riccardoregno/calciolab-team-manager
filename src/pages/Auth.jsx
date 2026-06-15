@@ -255,7 +255,7 @@ function Auth() {
         {/* ── Brand panel — hidden on mobile, replaced by compact header ── */}
         {isMobile ? (
           <div style={s.mobileHeader}>
-            <div style={s.brandMarkSm}>CL</div>
+            <img src="/favicon.svg" alt="CalcioLab" style={s.brandMarkSm} />
             <div>
               <p style={{ ...s.eyebrow, margin: 0 }}>{t("pages.auth.coachWorkspace")}</p>
               <strong style={{ fontSize: 20, lineHeight: 1.1 }}>CalcioLab</strong>
@@ -264,7 +264,7 @@ function Auth() {
         ) : (
           <section style={s.panel}>
             <div>
-              <div style={s.brandMark}>CL</div>
+              <img src="/favicon.svg" alt="CalcioLab" style={s.brandMark} />
               <p style={{ ...s.eyebrow, marginTop: 22 }}>{t("pages.auth.coachWorkspace")}</p>
               <h1 style={s.heroTitle}>CalcioLab</h1>
               <p style={s.heroText}>
@@ -518,14 +518,9 @@ const s = {
   brandMarkSm: {
     width: 40,
     height: 40,
-    display: "grid",
-    placeItems: "center",
+    display: "block",
+    objectFit: "contain",
     borderRadius: 12,
-    background: "rgba(255,255,255,0.1)",
-    border: "1px solid rgba(255,255,255,0.16)",
-    color: "#e0f2fe",
-    fontWeight: 900,
-    fontSize: 14,
     flexShrink: 0,
   },
   /* Brand panel */
@@ -542,11 +537,9 @@ const s = {
   },
   brandMark: {
     width: 54, height: 54,
-    display: "grid", placeItems: "center",
+    display: "block",
+    objectFit: "contain",
     borderRadius: 16,
-    background: "rgba(255,255,255,0.12)",
-    border: "1px solid rgba(255,255,255,0.18)",
-    color: "#e0f2fe", fontWeight: 950, fontSize: 18,
   },
   eyebrow: {
     margin: 0, color: "#7dd3fc", fontSize: 12,

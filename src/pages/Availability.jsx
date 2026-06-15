@@ -247,6 +247,32 @@ export default function Availability({
 
   const injuredPlayers = players.filter((p) => UNAVAILABLE.includes(p.status || "Disponibile"));
   const availablePlayers = players.filter((p) => !UNAVAILABLE.includes(p.status || "Disponibile"));
+
+  const injuryReport = useMemo(() => {
+    const today = new Date();
+    const byType = new Map();
+    let totalDays = 0;
+
+    for (const player of players) {
+      for (const inj of player.injuries || []) {
+        const type = inj.injuryType || t("pages.availability.reportUnknownType");
+        const days = inj.endDate
+          ? Number(inj.daysOut || 0)
+          : inj.startDate
+            ? Math.max(0, Math.floor((today - new Date(inj.startDate)) / 86400000))
+            : 0;
+
+        totalDays += days;
+        const entry = byType.get(type) || { type, count: 0, days: 0 };
+        entry.count += 1;
+        entry.days += days;
+        byType.set(type, entry);
+      }
+    }
+
+    const types = [...byType.values()].sort((a, b) => b.days - a.days);
+    return { totalDays, types, activeCount: injuredPlayers.length };
+  }, [players, injuredPlayers.length, t]);
   const recoveryPlayer = players.find((p) => String(p.id) === String(recoveryPlayerId));
   const recoveryActiveInjury = (recoveryPlayer?.injuries || []).find((i) => !i.endDate);
   const recoveryStartDate = recoveryActiveInjury?.startDate || recoveryPlayer?.injuryStartDate || "";
@@ -479,6 +505,42 @@ export default function Availability({
           }),
         ]}
       />
+
+      {/* Report infortuni squadra */}
+      {injuryReport.types.length > 0 && (
+        <AppCard>
+          <div style={av.sectionHeader}>
+            <div>
+              <h3 style={av.sectionTitle}>{t("pages.availability.reportTitle")}</h3>
+              <p style={av.muted}>{t("pages.availability.reportSub")}</p>
+            </div>
+          </div>
+          <MetricStrip
+            className="mobile-scroll-x"
+            style={{ marginBottom: 16 }}
+            items={[
+              { key: "activeNow", label: t("pages.availability.reportActiveNow"), value: injuryReport.activeCount, color: "#f87171" },
+              { key: "totalDays", label: t("pages.availability.reportTotalDays"), value: injuryReport.totalDays, color: "#fb923c" },
+              { key: "types", label: t("pages.availability.reportTypesCount"), value: injuryReport.types.length, color: "#a78bfa" },
+            ]}
+          />
+          <div style={{ display: "grid", gap: 8 }}>
+            {injuryReport.types.map((row) => (
+              <div key={row.type} style={av.prepDayRow}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{row.type}</span>
+                  <span style={{ ...av.badge, color: "#94a3b8", background: "rgba(148,163,184,0.12)", border: "1px solid rgba(148,163,184,0.3)" }}>
+                    {t("pages.availability.reportEpisodes", { count: row.count })}
+                  </span>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#fb923c" }}>
+                  {t("pages.availability.reportDaysOut", { days: row.days })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </AppCard>
+      )}
 
       {/* Pianificazione preparazione: disponibilità giorno per giorno */}
       <AppCard>

@@ -81,8 +81,8 @@ function getRoleSortOrder(role = "") {
  * @param {object} profile       - workspaceProfile da appSettings
  * @param {object[]} [staffList] - membri dello staff (opzionale)
  */
-export function generateDistintaPDF(match, allPlayers, profile = {}, staffList = []) {
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+export function generateDistintaPDF(match, allPlayers, profile = {}, staffList = [], options = {}) {
+  const doc = options.doc || new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pw  = doc.internal.pageSize.width;   // 210
   const ph  = doc.internal.pageSize.height;  // 297
 
@@ -309,6 +309,7 @@ export function generateDistintaPDF(match, allPlayers, profile = {}, staffList =
   );
 
   // ── Salva ─────────────────────────────────────────────────────────────────
+  if (options.save === false) return doc;
   const dateStr = match.date ? match.date.slice(0, 10) : "senza-data";
   const opponentSlug = (match.opponent || "avversario").replace(/\s+/g, "-").toLowerCase();
   doc.save(`distinta-${opponentSlug}-${dateStr}.pdf`);

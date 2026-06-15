@@ -83,14 +83,15 @@ function getLineup(match) {
  * @param {array}  opts.players
  * @param {object} opts.appSettings
  */
-export function generateMatchReportPDF({ match, players = [], appSettings = {} }) {
+export function generateMatchReportPDF({ match, players = [], appSettings = {}, doc: sharedDoc, save = true }) {
   if (!match) return;
 
-  const doc = new jsPDF({ unit: "mm", format: "a4", putOnlyUsedFonts: true });
+  const doc = sharedDoc || new jsPDF({ unit: "mm", format: "a4", putOnlyUsedFonts: true });
   const W = doc.internal.pageSize.width;
   const teamName = appSettings?.workspaceProfile?.clubName || "La mia squadra";
   const report = match.postMatch || {};
 
+  if (sharedDoc) doc.addPage();
   addPageChrome(doc, teamName);
   let y = 22;
 
@@ -226,6 +227,7 @@ export function generateMatchReportPDF({ match, players = [], appSettings = {} }
   }
 
   // ── Salva ─────────────────────────────────────────────────────────────────
+  if (!save) return doc;
   const safeOpponent = (match.opponent || "Avversario").replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_");
   const dateStr = (match.date || new Date().toISOString()).slice(0, 10);
   doc.save(`Referto_${safeOpponent}_${dateStr}.pdf`);

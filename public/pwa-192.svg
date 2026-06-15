@@ -1,14 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="40" fill="#0f172a"/>
-  <rect width="192" height="192" rx="40" fill="url(#grad)"/>
-  <defs>
-    <linearGradient id="grad" x1="0" y1="0" x2="192" y2="192" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1e293b"/>
-      <stop offset="100%" stop-color="#0f172a"/>
-    </linearGradient>
-  </defs>
-  <!-- CalcioLab bolt icon scaled to ~96x92 centered -->
-  <g transform="translate(48, 50) scale(2)">
-    <path fill="#863bff" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="20" fill="#0F172A"/>
+  <path d="M50 12 L80 22 V48 C80 68 67 82 50 90 C33 82 20 68 20 48 V22 Z"
+        fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round"/>
+  <g fill="#FFFFFF">
+    <rect x="31" y="50" width="8" height="18" rx="1.5"/>
+    <rect x="43" y="42" width="8" height="26" rx="1.5"/>
+    <rect x="55" y="34" width="8" height="34" rx="1.5"/>
+  </g>
+  <circle cx="50" cy="62" r="0" fill="none"/>
+  <g transform="translate(67,60)">
+    <circle r="11" fill="#FFFFFF"/>
+    <path d="M0 -11 L9.5 -3.4 6 7.4 H-6 L-9.5 -3.4 Z" fill="none" stroke="#0F172A" stroke-width="1.4" stroke-linejoin="round"/>
   </g>
 </svg>
