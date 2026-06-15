@@ -41,6 +41,12 @@ export function useTeamData({ teamId } = {}) {
   // Tracks in-flight debounced saves — remote refresh is blocked while > 0
   // to prevent stale Supabase state from overwriting unsaved local changes.
   const pendingSaveCount = useRef(0);
+  const hasUnsyncedLocalChanges = useRef(false);
+  const stateRef = useRef(state);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const applyLoadedState = useCallback(({ state: loadedState, source, error }) => {
     setState(loadedState);
@@ -50,6 +56,7 @@ export function useTeamData({ teamId } = {}) {
     remoteSyncReady.current = canSyncRemote;
     skipNextRemoteSave.current = source === "supabase" && !error;
     if (source === "supabase" && !error) {
+      hasUnsyncedLocalChanges.current = false;
       setLastSyncedAt(new Date().toISOString());
     }
     hydrated.current = true;
@@ -59,6 +66,24 @@ export function useTeamData({ teamId } = {}) {
     if (!isSupabaseConfigured || !teamId) return { source: "local" };
 
     setRefreshing(true);
+    if (hasUnsyncedLocalChanges.current) {
+      const retryResult = await saveTeamTablesState(stateRef.current, teamId);
+      setStorageSource((prev) => retryResult.source !== prev ? retryResult.source : prev);
+      setStorageError((prev) => {
+        const next = retryResult.error?.message || null;
+        return next !== prev ? next : prev;
+      });
+
+      if (retryResult.source !== "supabase" || retryResult.error) {
+        hasUnsyncedLocalChanges.current = true;
+        setRefreshing(false);
+        return retryResult;
+      }
+
+      hasUnsyncedLocalChanges.current = false;
+      setLastSyncedAt(new Date().toISOString());
+    }
+
     const result = await loadRemoteState({ teamId });
     if (result.pendingUpload && !result.error) {
       const saveResult = await saveTeamTablesState(result.state, teamId);
@@ -70,7 +95,10 @@ export function useTeamData({ teamId } = {}) {
         pendingUpload: false,
       });
       if (saveResult.source === "supabase" && !saveResult.error) {
+        hasUnsyncedLocalChanges.current = false;
         setLastSyncedAt(new Date().toISOString());
+      } else {
+        hasUnsyncedLocalChanges.current = true;
       }
       setRefreshing(false);
       return saveResult;
@@ -89,6 +117,7 @@ export function useTeamData({ teamId } = {}) {
     hydrated.current = false;
     remoteSyncReady.current = false;
     skipNextRemoteSave.current = false;
+    hasUnsyncedLocalChanges.current = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
@@ -115,6 +144,7 @@ export function useTeamData({ teamId } = {}) {
       // Skip refresh while a debounced Supabase save is pending — the local
       // state is newer than what remote would return.
       if (pendingSaveCount.current > 0) return;
+      if (hasUnsyncedLocalChanges.current) return;
       refreshing = true;
       const result = await loadRemoteState({ teamId });
       if (active) applyLoadedState(result);
@@ -161,12 +191,16 @@ export function useTeamData({ teamId } = {}) {
     }
 
     const normalized = normalizeAppState(state);
+    hasUnsyncedLocalChanges.current = true;
     pendingSaveCount.current += 1;
     const timeoutId = window.setTimeout(async () => {
       const result = await saveTeamTablesState(normalized, teamId);
       pendingSaveCount.current = Math.max(0, pendingSaveCount.current - 1);
       if (result.source === "supabase" && !result.error) {
+        hasUnsyncedLocalChanges.current = false;
         setLastSyncedAt(new Date().toISOString());
+      } else {
+        hasUnsyncedLocalChanges.current = true;
       }
       // Aggiorna solo se il valore cambia — React esce comunque se uguale (Object.is),
       // ma la forma funzionale evita closure stale e rende l'intento esplicito.
