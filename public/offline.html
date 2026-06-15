@@ -133,21 +133,19 @@
 
       unregisterStaleServiceWorkers().finally(() => {
         setTimeout(() => {
-          if (navigator.onLine) {
-            reloadCurrentPage();
-          } else {
-            btn.innerHTML = '⟳ Riprova';
-            btn.disabled = false;
-          }
+          reloadCurrentPage();
         }, 800);
       });
     }
 
-    // Al caricamento: se siamo online ma il SW ci ha mostrato comunque
-    // questa pagina (SW obsoleto), ripuliamo subito senza attendere il click.
-    if (navigator.onLine) {
+    // Al caricamento ripuliamo sempre eventuali SW/cache obsolete. Alcuni
+    // browser mobile/PWA possono riportare navigator.onLine=false anche con
+    // rete disponibile, quindi non ci basiamo su quel flag per riparare.
+    const AUTO_REPAIR_KEY = 'calciolab-offline-auto-repair-v1';
+    if (!sessionStorage.getItem(AUTO_REPAIR_KEY)) {
+      sessionStorage.setItem(AUTO_REPAIR_KEY, '1');
       unregisterStaleServiceWorkers().then(() => {
-        reloadCurrentPage();
+        setTimeout(reloadCurrentPage, 800);
       });
     }
 
