@@ -5,6 +5,7 @@ import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { supabase } from "../lib/supabaseClient";
 import {
   VIP_LEVELS,
@@ -123,6 +124,7 @@ export default function Premium({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const auth = useAuth();
+  const isMobile = useIsMobile();
   const settings        = normalizeAppSettings(appSettings);
   const currentPlan     = getSubscriptionPlan(settings);
   const billing         = getBillingStatus(settings);
@@ -419,7 +421,7 @@ export default function Premium({
           </div>
         </div>
 
-        <div style={ps.vipProgressGrid}>
+        <div style={{ ...ps.vipProgressGrid, gridTemplateColumns: isMobile ? "1fr" : ps.vipProgressGrid.gridTemplateColumns }}>
           <div>
             <div style={ps.vipProgressTop}>
               <span>{vipCurrent.label}</span>
@@ -489,7 +491,7 @@ export default function Premium({
       </div>
 
       {/* ── Pricing cards ── */}
-      <div style={ps.cardGrid}>
+      <div style={{ ...ps.cardGrid, gridTemplateColumns: isMobile ? "1fr" : ps.cardGrid.gridTemplateColumns }}>
         {PLANS.map((plan) => {
           const isActive    = currentPlan.id === plan.id;
           const isPending   = pendingPlan?.includes(plan.id);
@@ -502,7 +504,7 @@ export default function Premium({
               key={plan.id}
               style={{
                 ...ps.planCard,
-                ...(isFeatured ? ps.planCardFeatured : {}),
+                ...(isFeatured && !isMobile ? ps.planCardFeatured : {}),
               }}
             >
               {/* Colored header */}
@@ -737,7 +739,7 @@ export default function Premium({
       </AppCard>
 
       {/* ── Reward coach ── */}
-      <div style={ps.heroGrid}>
+      <div style={{ ...ps.heroGrid, gridTemplateColumns: isMobile ? "1fr" : ps.heroGrid.gridTemplateColumns }}>
         <AppCard>
           <Badge tone="purple">{t("pages.premium.rewardCoach")}</Badge>
           <div style={{ fontSize: 52, fontWeight: 900, margin: "14px 0 0", lineHeight: 1 }}>{reward.points}</div>
