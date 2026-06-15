@@ -73,6 +73,56 @@ function publicMatchPayload(matchData: Record<string, unknown> = {}) {
   };
 }
 
+function pushBody(matchData: Record<string, unknown> = {}) {
+  const opponent = String(matchData.opponent || "").trim();
+  const date = String(matchData.date || "").trim();
+  if (opponent && date) return `Sei stato convocato per ${opponent} il ${date}`;
+  if (opponent) return `Sei stato convocato per ${opponent}`;
+  if (date) return `Sei stato convocato per la partita del ${date}`;
+  return "Sei stato convocato per una nuova partita";
+}
+
+async function notifyPlayerConvocation(
+  serviceClient: ReturnType<typeof createClient>,
+  params: { teamId: string; matchId: string; playerId: string; matchData?: Record<string, unknown> },
+) {
+  try {
+    const { data: account, error } = await serviceClient
+      .from("player_accounts")
+      .select("auth_user_id")
+      .eq("team_id", params.teamId)
+      .eq("player_id", params.playerId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[rsvp-match] player account lookup failed", params.playerId, error);
+      return;
+    }
+    if (!account?.auth_user_id) return;
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({
+        userId: account.auth_user_id,
+        title: "Nuova convocazione",
+        body: pushBody(params.matchData || {}),
+        data: { path: "/player-portal" },
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      console.error("[rsvp-match] push notification failed", params.playerId, response.status, detail);
+    }
+  } catch (error) {
+    console.error("[rsvp-match] push notification failed", params.playerId, error);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ error: "Metodo non consentito" }, 405);
@@ -98,7 +148,7 @@ Deno.serve(async (req: Request) => {
       if (auth.error) return json({ error: auth.error }, auth.status!);
 
       const [{ data: matchRow, error: matchError }, { data: playerRow, error: playerError }] = await Promise.all([
-        serviceClient.from("matches").select("id").eq("team_id", teamId).eq("id", matchId).maybeSingle(),
+        serviceClient.from("matches").select("id, data").eq("team_id", teamId).eq("id", matchId).maybeSingle(),
         serviceClient.from("players").select("id").eq("team_id", teamId).eq("id", playerId).maybeSingle(),
       ]);
 
@@ -138,6 +188,12 @@ Deno.serve(async (req: Request) => {
         .single();
 
       if (saveError) return json({ error: "Errore creazione token RSVP" }, 500);
+      await notifyPlayerConvocation(serviceClient, {
+        teamId,
+        matchId,
+        playerId,
+        matchData: (matchRow.data || {}) as Record<string, unknown>,
+      });
       return json({ token: saved.token, expiresAt: saved.expires_at, response: saved.response });
     }
 
