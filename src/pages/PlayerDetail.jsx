@@ -6,6 +6,7 @@ import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/Toast";
+import { useAreaPermission } from "../components/auth/permissionContext";
 
 import {
   PlayerAbsencesSection,
@@ -80,6 +81,7 @@ function PlayerDetail({
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canManage } = useAreaPermission();
 
   const player = useMemo(
     () => players.find((item) => String(item.id) === String(id)),
@@ -196,6 +198,7 @@ function PlayerDetail({
   }
 
   function updateField(field, value) {
+    if (!canManage) return;
     setForm((prev) => ({
       ...prev,
       [field]: value,
@@ -203,6 +206,7 @@ function PlayerDetail({
   }
 
   function handleImageUpload(file) {
+    if (!canManage) return;
     if (!file) return;
 
     const reader = new FileReader();
@@ -216,6 +220,7 @@ function PlayerDetail({
   }
 
   function savePlayer() {
+    if (!canManage) return;
     if (hasPlayerConflict(player, editBaseUpdatedAt)) {
       setConflictModal(true);
       return;
@@ -224,6 +229,7 @@ function PlayerDetail({
   }
 
   function commitPlayerSave(nextForm) {
+    if (!canManage) return;
     // Stampa un nuovo _updatedAt affinché la conflict detection funzioni nei salvataggi successivi.
     const stamped = { ...nextForm, _updatedAt: new Date().toISOString() };
     setPlayers((prev) => prev.map((item) => String(item.id) === String(id) ? stamped : item));
@@ -233,11 +239,13 @@ function PlayerDetail({
   }
 
   function forceSavePlayer() {
+    if (!canManage) return;
     commitPlayerSave(form);
     setConflictModal(false);
   }
 
   function updateMedicalRecord(updater) {
+    if (!canManage) return;
     const nextPlayer = updater(player);
     setPlayers((prev) => prev.map((item) => String(item.id) === String(id) ? nextPlayer : item));
     // Sync sempre i campi medici nel form, anche se l'utente sta modificando il profilo.
@@ -256,6 +264,7 @@ function PlayerDetail({
   }
 
   function openDifferentiatedModal() {
+    if (!canManage) return;
     setMedicalForm({
       differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
       injuryType: player.injuryType || INJURY_TYPES[0],
@@ -268,6 +277,7 @@ function PlayerDetail({
   }
 
   function openInjuryModal() {
+    if (!canManage) return;
     setMedicalForm({
       differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
       injuryType: player.injuryType || INJURY_TYPES[0],
@@ -280,6 +290,7 @@ function PlayerDetail({
   }
 
   function saveInjuryRecord() {
+    if (!canManage) return;
     const injuryType = medicalForm.injuryType || INJURY_TYPES[0];
     const startDate = medicalForm.startDate || new Date().toISOString().slice(0, 10);
     const expectedReturn = medicalForm.expectedReturn || "";
@@ -312,6 +323,7 @@ function PlayerDetail({
   }
 
   function saveDifferentiatedWork() {
+    if (!canManage) return;
     const differentiatedType = medicalForm.differentiatedType || DIFFERENTIATED_TYPES[1];
     const note = medicalForm.note.trim();
     updateMedicalRecord((current) => ({
@@ -339,6 +351,7 @@ function PlayerDetail({
   }
 
   function openRecoveredModal() {
+    if (!canManage) return;
     if (!activeInjuries.length) return;
     setMedicalForm({
       differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
@@ -352,6 +365,7 @@ function PlayerDetail({
   }
 
   function saveRecovered() {
+    if (!canManage) return;
     if (!activeInjuries.length) return;
     const returnDate = medicalForm.returnDate || new Date().toISOString().slice(0, 10);
     updateMedicalRecord((current) => {
@@ -382,6 +396,7 @@ function PlayerDetail({
   }
 
   function openNoteModal() {
+    if (!canManage) return;
     setMedicalForm({
       differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
       injuryType: player.injuryType || INJURY_TYPES[0],
@@ -394,6 +409,7 @@ function PlayerDetail({
   }
 
   function saveMedicalNote() {
+    if (!canManage) return;
     const note = medicalForm.note.trim();
     if (!note) return;
     updateMedicalRecord((current) => {
@@ -421,11 +437,13 @@ function PlayerDetail({
   }
 
   function openAddAbsenceModal() {
+    if (!canManage) return;
     setAbsenceForm(emptyAbsenceForm());
     setAbsenceModal(true);
   }
 
   function saveAbsenceRecord() {
+    if (!canManage) return;
     if (!absenceForm.dateStart || !absenceForm.dateEnd) {
       showToast(t("pages.playerDetail.absences.toastDatesRequired"), "warn");
       return;
@@ -450,6 +468,7 @@ function PlayerDetail({
   }
 
   function removeAbsenceRecord(absenceId) {
+    if (!canManage) return;
     updateMedicalRecord((current) => ({
       ...current,
       absences: (current.absences || []).filter((a) => String(a.id) !== String(absenceId)),
@@ -458,6 +477,7 @@ function PlayerDetail({
   }
 
   function createDevelopmentTask() {
+    if (!canManage) return;
     if (!setStaffTasks || !player) return;
     const description = [
       form.trainingActions && `Azioni: ${form.trainingActions}`,
@@ -494,6 +514,7 @@ function PlayerDetail({
   );
 
   async function invitePlayerToPortal() {
+    if (!canManage) return;
     if (!team?.id || !player?.email || !isSupabaseConfigured) return;
     setInvitingPortal(true);
     try {
@@ -568,6 +589,7 @@ function PlayerDetail({
   }
 
   async function revokePlayerPortalAccess() {
+    if (!canManage) return;
     if (!portalAccountId || !isSupabaseConfigured) return;
     setRevokingPortal(true);
     try {
@@ -596,10 +618,10 @@ function PlayerDetail({
         <div style={pageStyles.sidebar}>
           <PlayerSidebar
             form={form}
-            editing={editing}
-            onImageUpload={handleImageUpload}
-            onPhotoSizeChange={(value) => updateField("photoSize", value)}
-            onPhotoOffsetChange={(field, value) => updateField(field, value)}
+            editing={editing && canManage}
+            onImageUpload={canManage ? handleImageUpload : undefined}
+            onPhotoSizeChange={canManage ? (value) => updateField("photoSize", value) : undefined}
+            onPhotoOffsetChange={canManage ? (field, value) => updateField(field, value) : undefined}
             summary={summary}
           />
         </div>
@@ -626,24 +648,24 @@ function PlayerDetail({
             <PlayerProfileTab
               form={form}
               player={player}
-              editing={editing}
-              onEdit={(selectedPlayer) => {
+              editing={editing && canManage}
+              onEdit={canManage ? (selectedPlayer) => {
                 setForm({ ...selectedPlayer });
                 setEditBaseUpdatedAt(selectedPlayer._updatedAt || null);
                 setEditing(true);
-              }}
+              } : undefined}
               onCancel={() => {
                 setEditing(false);
                 setForm({ ...player });
                 setEditBaseUpdatedAt(player._updatedAt || null);
               }}
               onSave={savePlayer}
-              onFieldChange={updateField}
-              onInvitePortal={invitePlayerToPortal}
+              onFieldChange={canManage ? updateField : undefined}
+              onInvitePortal={canManage ? invitePlayerToPortal : undefined}
               invitingPortal={invitingPortal}
               portalInvitePending={portalInvitePending}
               portalAccountLinked={Boolean(portalAccountId)}
-              onRevokePortal={revokePlayerPortalAccess}
+              onRevokePortal={canManage ? revokePlayerPortalAccess : undefined}
               revokingPortal={revokingPortal}
             />
           )}
@@ -655,9 +677,9 @@ function PlayerDetail({
           {activeTab === "fisico" && (
             <PlayerPhysicalTab
               form={form}
-              editing={editing}
+              editing={editing && canManage}
               latestTests={summary.latestTests}
-              onFieldChange={updateField}
+              onFieldChange={canManage ? updateField : undefined}
             />
           )}
 
@@ -672,29 +694,29 @@ function PlayerDetail({
               generalInjuryNotes={player.injuryNotes}
               injuryComparisons={injuryComparisons}
               preventionRecommendations={preventionRecommendations}
-              onAddInjuryRecord={openInjuryModal}
-              onCreateDifferentiatedWork={openDifferentiatedModal}
-              onAddMedicalNote={openNoteModal}
-              onMarkRecovered={openRecoveredModal}
+              onAddInjuryRecord={canManage ? openInjuryModal : undefined}
+              onCreateDifferentiatedWork={canManage ? openDifferentiatedModal : undefined}
+              onAddMedicalNote={canManage ? openNoteModal : undefined}
+              onMarkRecovered={canManage ? openRecoveredModal : undefined}
             />
           )}
 
           {activeTab === "medico" && (
             <PlayerAbsencesSection
               absences={absenceHistory}
-              onAddAbsence={openAddAbsenceModal}
-              onRemoveAbsence={removeAbsenceRecord}
+              onAddAbsence={canManage ? openAddAbsenceModal : undefined}
+              onRemoveAbsence={canManage ? removeAbsenceRecord : undefined}
             />
           )}
 
           {activeTab === "sviluppo" && (
             <PlayerDevelopmentTab
               form={form}
-              editing={editing}
+              editing={editing && canManage}
               summary={summary}
               videoClips={playerVideoClips}
-              onCreateStaffTask={createDevelopmentTask}
-              onFieldChange={updateField}
+              onCreateStaffTask={canManage ? createDevelopmentTask : undefined}
+              onFieldChange={canManage ? updateField : undefined}
             />
           )}
 

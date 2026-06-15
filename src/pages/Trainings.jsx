@@ -13,6 +13,7 @@ import SearchBar from "../components/ui/SearchBar";
 import SortableTrainingTimeline from "../components/trainings/SortableTrainingTimeline";
 import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { useAreaPermission } from "../components/auth/permissionContext";
 
 import { styles } from "../styles/index.js";
 import { createId, formatDate, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
@@ -58,6 +59,7 @@ function Trainings({
   const isMobile = useIsMobile(760);
   const navigate = useNavigate();
   const location = useLocation();
+  const { canManage } = useAreaPermission();
   const { showToast, ToastContainer } = useToast();
   const [confirmState, setConfirmState] = useState(null);
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
@@ -177,6 +179,7 @@ function Trainings({
   ];
 
   function toggleExercise(exercise) {
+    if (!canManage) return;
     const alreadySelected = form.exercises.some(
       (item) => item.exerciseId === exercise.id
     );
@@ -207,6 +210,7 @@ function Trainings({
   }
 
   function updateVariant(exerciseId, field, value) {
+    if (!canManage) return;
     setForm((prev) => ({
       ...prev,
       exercises: prev.exercises.map((item) =>
@@ -216,6 +220,7 @@ function Trainings({
   }
 
   function saveTraining() {
+    if (!canManage) return;
     const errors = {};
     if (!form.title.trim()) errors.title = true;
     if (!form.date) errors.date = true;
@@ -248,6 +253,7 @@ function Trainings({
   }
 
   function editTraining(session) {
+    if (!canManage) return;
     setEditingId(session.id);
 
     setForm({
@@ -273,6 +279,7 @@ function Trainings({
   }
 
   function deleteTraining(id) {
+    if (!canManage) return;
     const removed = sessions.find((s) => s.id === id);
     if (!removed) return;
     setConfirmState({
@@ -313,7 +320,7 @@ function Trainings({
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <Button variant="ghost" onClick={() => navigate("/exports")}>{t("pages.trainings.exportPdf")}</Button>
             <Button variant="ghost" onClick={() => navigate("/attendance-register")}>{t("pages.trainings.attendanceRegister")}</Button>
-            <Button onClick={() => navigate("/ai-session-builder")}>{t("pages.trainings.generateAi")}</Button>
+            {canManage && <Button onClick={() => navigate("/ai-session-builder")}>{t("pages.trainings.generateAi")}</Button>}
           </div>
         }
       />
@@ -831,9 +838,11 @@ function Trainings({
                 </Button>
               )}
 
-              <Button onClick={saveTraining}>
-                {editingId ? t("pages.trainings.updateSession") : t("pages.trainings.saveSession")}
-              </Button>
+              {canManage && (
+                <Button onClick={saveTraining}>
+                  {editingId ? t("pages.trainings.updateSession") : t("pages.trainings.saveSession")}
+                </Button>
+              )}
               <Button variant="ghost" onClick={() => navigate("/exports")}>
                 {t("pages.trainings.exportPdfAction")}
               </Button>
@@ -872,7 +881,7 @@ function Trainings({
               text={t("pages.trainings.noSavedText")}
               action={
                 <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap", justifyContent: "center" }}>
-                  <button
+                  {canManage && <button
                     onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                     style={{
                       padding: "9px 20px", borderRadius: 10,
@@ -881,7 +890,7 @@ function Trainings({
                     }}
                   >
                     ⬆ {t("pages.trainings.scrollToBuilder")}
-                  </button>
+                  </button>}
                 </div>
               }
             />
@@ -969,19 +978,23 @@ function Trainings({
                           {t("pages.trainings.attendance")}
                         </Button>
 
-                        <Button
-                          variant="ghost"
-                          onClick={() => editTraining(session)}
-                        >
-                          {t("pages.trainings.edit")}
-                        </Button>
+                        {canManage && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              onClick={() => editTraining(session)}
+                            >
+                              {t("pages.trainings.edit")}
+                            </Button>
 
-                        <Button
-                          variant="danger"
-                          onClick={() => deleteTraining(session.id)}
-                        >
-                          {t("pages.trainings.delete")}
-                        </Button>
+                            <Button
+                              variant="danger"
+                              onClick={() => deleteTraining(session.id)}
+                            >
+                              {t("pages.trainings.delete")}
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -12,6 +12,7 @@ import MetricStrip from "../components/ui/MetricStrip";
 import { SkeletonGrid } from "../components/ui/Skeleton";
 import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { useAreaPermission } from "../components/auth/permissionContext";
 
 import PlayerCard from "../components/players/PlayerCard";
 import Badge from "../components/ui/Badge";
@@ -67,6 +68,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   };
   const location = useLocation();
   const navigate = useNavigate();
+  const { canManage } = useAreaPermission();
   const urlGruppo = new URLSearchParams(location.search).get("gruppo") || "tutti";
   const openModal = new URLSearchParams(location.search).get("modal") === PLAYER_MODAL_QUERY;
 
@@ -322,6 +324,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   ];
 
   function handlePhotoUpload(file) {
+    if (!canManage) return;
     if (!file) return;
 
     const reader = new FileReader();
@@ -337,6 +340,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   }
 
   function openNewPlayerModal() {
+    if (!canManage) return;
     const params = new URLSearchParams(location.search);
     params.set("modal", PLAYER_MODAL_QUERY);
     navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
@@ -364,6 +368,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   // Quegli insert bypassavano useTeamData e usavano un schema diverso da { id, team_id, data }.
   // Ora usiamo setPlayers() — la persistenza Supabase avviene tramite useTeamData con schema corretto.
   function addPlayer() {
+    if (!canManage) return;
     if (!form.firstName.trim() || !form.lastName.trim()) {
       showToast(t("pages.players.missingName"), "warn");
       return;
@@ -402,6 +407,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   }
 
   function deletePlayer(id) {
+    if (!canManage) return;
     const removed = players.find((p) => String(p.id) === String(id));
     if (!removed) return;
     setConfirmState({
@@ -430,6 +436,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
         <ImportPlayersModal
           onClose={() => setShowImport(false)}
           onImport={(newPlayers) => {
+            if (!canManage) return;
             setPlayers((prev) => [...prev, ...newPlayers]);
             showToast(
               t("pages.importPlayers.successToast", { count: newPlayers.length }),
@@ -458,23 +465,27 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
             >
               ⚡ {t("navigation.items.playerCompare")}
             </Link>
-            <button
-              onClick={() => setShowImport(true)}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                flex: isMobile ? "1 1 100%" : "0 0 auto",
-                minWidth: 0,
-                justifyContent: "center",
-                padding: "8px 14px", borderRadius: 12,
-                background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.35)",
-                color: "#6ee7b7", fontWeight: 800, fontSize: 13, cursor: "pointer",
-              }}
-            >
-              📥 {t("pages.importPlayers.btnLabel")}
-            </button>
-            <Button onClick={openNewPlayerModal} style={{ flex: isMobile ? "1 1 100%" : "0 0 auto", minWidth: 0 }}>
-              {t("pages.players.newPlayer")}
-            </Button>
+            {canManage && (
+              <>
+                <button
+                  onClick={() => setShowImport(true)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    flex: isMobile ? "1 1 100%" : "0 0 auto",
+                    minWidth: 0,
+                    justifyContent: "center",
+                    padding: "8px 14px", borderRadius: 12,
+                    background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.35)",
+                    color: "#6ee7b7", fontWeight: 800, fontSize: 13, cursor: "pointer",
+                  }}
+                >
+                  📥 {t("pages.importPlayers.btnLabel")}
+                </button>
+                <Button onClick={openNewPlayerModal} style={{ flex: isMobile ? "1 1 100%" : "0 0 auto", minWidth: 0 }}>
+                  {t("pages.players.newPlayer")}
+                </Button>
+              </>
+            )}
           </div>
         }
       />
@@ -748,7 +759,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               >
                 ✕ {t("pages.players.resetFilters")}
               </button>
-            ) : (
+            ) : canManage ? (
               <button
                 onClick={openNewPlayerModal}
                 style={{
@@ -759,7 +770,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               >
                 {t("pages.players.newPlayer")}
               </button>
-            )
+            ) : null
           }
         />
       ) : viewMode === "list" ? (
@@ -770,7 +781,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               player={player}
               sessions={sessions}
               matches={matches}
-              onDelete={() => deletePlayer(player.id)}
+              onDelete={canManage ? () => deletePlayer(player.id) : null}
             />
           ))}
         </div>
@@ -788,7 +799,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               player={player}
               sessions={sessions}
               matches={matches}
-              onDelete={() => deletePlayer(player.id)}
+              onDelete={canManage ? () => deletePlayer(player.id) : null}
             />
           ))}
         </div>
@@ -1026,9 +1037,11 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete }) {
         <Button variant="ghost" onClick={() => navigate(`/players/${player.id}`)}>
           {t("components.playerCard.profile")}
         </Button>
-        <Button variant="danger" onClick={onDelete}>
-          {t("common.delete")}
-        </Button>
+        {onDelete && (
+          <Button variant="danger" onClick={onDelete}>
+            {t("common.delete")}
+          </Button>
+        )}
       </div>
     </div>
   );

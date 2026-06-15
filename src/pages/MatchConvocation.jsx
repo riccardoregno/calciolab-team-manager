@@ -5,6 +5,7 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
+import { useAreaPermission } from "../components/auth/permissionContext";
 import { formatDate, normalizeAppSettings } from "../utils/helpers";
 import { generateDistintaPDF } from "../utils/generateDistintaPDF";
 import { generateMatchPackagePDF } from "../utils/generateMatchPackagePDF";
@@ -167,6 +168,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   const isMobile = useIsMobile();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canManage } = useAreaPermission();
 
   const match = matches.find((m) => String(m.id) === String(id));
   const existing = match?.convocazione || {};
@@ -245,6 +247,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   const full   = count >= MAX_PLAYERS;
 
   function toggle(pid) {
+    if (!canManage) return;
     const key = String(pid);
     setSaved(false);
     setSelectedIds((prev) =>
@@ -255,21 +258,25 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   }
 
   function selectAll() {
+    if (!canManage) return;
     setSaved(false);
     setSelectedIds(players.slice(0, MAX_PLAYERS).map((p) => String(p.id)));
   }
 
   function clearAll() {
+    if (!canManage) return;
     setSaved(false);
     setSelectedIds([]);
   }
 
   function updateDetails(field, value) {
+    if (!canManage) return;
     setSaved(false);
     setDetails((prev) => ({ ...prev, [field]: value }));
   }
 
   function persistConvocazione(pub) {
+    if (!canManage) return;
     const cleanDetails = normalizeConvocationDetails(details, defaultDetails);
     const newConv = {
       playerIds:   selectedIds,
@@ -312,6 +319,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   }
 
   async function copyRsvpLink(player) {
+    if (!canManage) return;
     if (!teamId || !match?.id || !player?.id) return;
 
     const pid = String(player.id);
@@ -337,6 +345,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   }
 
   async function sendConvocations() {
+    if (!canManage) return;
     if (!teamId || !match?.id || sendingConvocations) return;
 
     const targets = convocati.filter((p) => String(p.email || "").trim());
@@ -410,6 +419,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   }
 
   function markAsSent(channel = "WhatsApp") {
+    if (!canManage) return;
     const cleanDetails = normalizeConvocationDetails(details, defaultDetails);
     const sentAt = new Date().toISOString();
     const newConv = {
@@ -512,8 +522,12 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
           </div>
 
           <div style={s.topActions}>
-            <Button variant="ghost" onClick={clearAll}>{t("pages.matchConvocation.clearAll")}</Button>
-            <Button variant="ghost" onClick={selectAll}>{t("common.selectAll")}</Button>
+            {canManage && (
+              <>
+                <Button variant="ghost" onClick={clearAll}>{t("pages.matchConvocation.clearAll")}</Button>
+                <Button variant="ghost" onClick={selectAll}>{t("common.selectAll")}</Button>
+              </>
+            )}
             <Button variant="ghost" onClick={() => navigate("/matches")}>{t("common.back")}</Button>
             <Button variant="ghost" onClick={downloadDistinta} title="Scarica distinta FIGC in PDF">
               📄 {t("pages.matchConvocation.downloadDistinta")}
@@ -521,12 +535,16 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
             <Button variant="ghost" onClick={downloadMatchPackage} title={t("pages.matchConvocation.downloadPackage")}>
               🗂️ {t("pages.matchConvocation.downloadPackage")}
             </Button>
-            <Button variant="ghost" onClick={() => persistConvocazione(false)} disabled={count === 0}>
-              {t("pages.matchConvocation.saveDraft")}
-            </Button>
-            <Button onClick={() => persistConvocazione(true)} disabled={count === 0}>
-              {published ? t("pages.matchConvocation.updatePublication") : t("pages.matchConvocation.publishConvocation")}
-            </Button>
+            {canManage && (
+              <>
+                <Button variant="ghost" onClick={() => persistConvocazione(false)} disabled={count === 0}>
+                  {t("pages.matchConvocation.saveDraft")}
+                </Button>
+                <Button onClick={() => persistConvocazione(true)} disabled={count === 0}>
+                  {published ? t("pages.matchConvocation.updatePublication") : t("pages.matchConvocation.publishConvocation")}
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -565,6 +583,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
               type="time"
               value={details.matchTime}
               onChange={(e) => updateDetails("matchTime", e.target.value)}
+              disabled={!canManage}
               style={s.input}
             />
           </label>
@@ -574,6 +593,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
               type="time"
               value={details.meetingTime}
               onChange={(e) => updateDetails("meetingTime", e.target.value)}
+              disabled={!canManage}
               style={s.input}
             />
           </label>
@@ -582,6 +602,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
             <input
               value={details.meetingPlace}
               onChange={(e) => updateDetails("meetingPlace", e.target.value)}
+              disabled={!canManage}
               placeholder={matchVenue || homeVenue || t("pages.matchConvocation.meetingPlacePlaceholder")}
               style={s.input}
             />
@@ -591,6 +612,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
             <input
               value={details.lockerRoom}
               onChange={(e) => updateDetails("lockerRoom", e.target.value)}
+              disabled={!canManage}
               placeholder={t("pages.matchConvocation.lockerRoomPlaceholder")}
               style={s.input}
             />
@@ -600,6 +622,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
             <input
               value={details.kit}
               onChange={(e) => updateDetails("kit", e.target.value)}
+              disabled={!canManage}
               placeholder={t("pages.matchConvocation.kitPlaceholder")}
               style={s.input}
             />
@@ -609,6 +632,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
             <input
               value={details.staffContact}
               onChange={(e) => updateDetails("staffContact", e.target.value)}
+              disabled={!canManage}
               placeholder={t("pages.matchConvocation.staffContactPlaceholder")}
               style={s.input}
             />
@@ -621,6 +645,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
               placeholder={t("pages.matchConvocation.messagePlaceholder")}
               value={details.message}
               onChange={(e) => updateDetails("message", e.target.value)}
+              disabled={!canManage}
             />
           </label>
         </div>
@@ -629,7 +654,8 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
           rows={3}
           placeholder={defaultNotes || t("pages.matchConvocation.notesInternalPlaceholder")}
           value={notes}
-          onChange={(e) => { setNotes(e.target.value); setSaved(false); }}
+          onChange={(e) => { if (!canManage) return; setNotes(e.target.value); setSaved(false); }}
+          disabled={!canManage}
         />
       </AppCard>
 
@@ -673,12 +699,14 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
           >
             {t("pages.matchConvocation.copyRoster")}
           </Button>
-          <Button
-            onClick={() => markAsSent("WhatsApp")}
-            disabled={count === 0}
-          >
-            {t("pages.matchConvocation.markSent")}
-          </Button>
+          {canManage && (
+            <Button
+              onClick={() => markAsSent("WhatsApp")}
+              disabled={count === 0}
+            >
+              {t("pages.matchConvocation.markSent")}
+            </Button>
+          )}
         </div>
 
         <div style={s.communicationFooter}>
@@ -716,7 +744,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
                   {rolePlayers.map((player) => {
                     const pid      = String(player.id);
                     const selected = selectedIds.includes(pid);
-                    const disabled = !selected && full;
+                    const disabled = !canManage || (!selected && full);
                     const displayName =
                       [player.firstName, player.lastName].filter(Boolean).join(" ") ||
                       player.name || "—";
@@ -762,15 +790,17 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
                   pending: rsvpStats.pending || 0,
                 })}
               </Badge>
-              <Button
-                onClick={sendConvocations}
-                disabled={sendingConvocations || !teamId}
-                style={{ flex: isMobile ? "1 1 100%" : "0 0 auto" }}
-              >
-                {sendingConvocations
-                  ? t("pages.matchConvocation.sendConvocationsSending")
-                  : t("pages.matchConvocation.sendConvocationsButton")}
-              </Button>
+              {canManage && (
+                <Button
+                  onClick={sendConvocations}
+                  disabled={sendingConvocations || !teamId}
+                  style={{ flex: isMobile ? "1 1 100%" : "0 0 auto" }}
+                >
+                  {sendingConvocations
+                    ? t("pages.matchConvocation.sendConvocationsSending")
+                    : t("pages.matchConvocation.sendConvocationsButton")}
+                </Button>
+              )}
             </div>
           </div>
 
@@ -800,16 +830,18 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
                     <Badge tone={status === "yes" ? "green" : status === "no" ? "red" : "orange"}>
                       {t(`pages.matchConvocation.rsvpStatus.${status}`)}
                     </Badge>
-                    <Button
-                      variant="ghost"
-                      onClick={() => copyRsvpLink(player)}
-                      disabled={copyingRsvpId === pid || !teamId}
-                      style={{ flex: isMobile ? 1 : "0 0 auto" }}
-                    >
-                      {copyingRsvpId === pid
-                        ? t("pages.matchConvocation.rsvpCopying")
-                        : t("pages.matchConvocation.rsvpCopyLink")}
-                    </Button>
+                    {canManage && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => copyRsvpLink(player)}
+                        disabled={copyingRsvpId === pid || !teamId}
+                        style={{ flex: isMobile ? 1 : "0 0 auto" }}
+                      >
+                        {copyingRsvpId === pid
+                          ? t("pages.matchConvocation.rsvpCopying")
+                          : t("pages.matchConvocation.rsvpCopyLink")}
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -830,9 +862,11 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
               <Button variant="ghost" onClick={printConvocationSheet}>
                 {t("pages.matchConvocation.printPdf")}
               </Button>
-              <Button onClick={() => persistConvocazione(true)} disabled={count === 0}>
-                {published ? t("pages.matchConvocation.updatePublication") : t("pages.matchConvocation.publishNow")}
-              </Button>
+              {canManage && (
+                <Button onClick={() => persistConvocazione(true)} disabled={count === 0}>
+                  {published ? t("pages.matchConvocation.updatePublication") : t("pages.matchConvocation.publishNow")}
+                </Button>
+              )}
             </div>
           </div>
 

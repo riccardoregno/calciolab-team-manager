@@ -77,12 +77,12 @@ export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange,
             <Badge tone={getStatusTone(form.status)}>{form.status || t("pages.playerDetail.statusField.available")}</Badge>
           </div>
 
-          {editing && (
+          {editing && onImageUpload && (
             <div style={{ marginTop: 20, width: "100%" }}>
               <input
                 type="file"
                 accept="image/*"
-                onChange={(event) => onImageUpload(event.target.files[0])}
+                onChange={(event) => onImageUpload?.(event.target.files[0])}
                 style={styles.input}
               />
               {form.photo && (
@@ -92,7 +92,7 @@ export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange,
                     <input
                       type="range" min="60" max="180" step="5"
                       value={photoSize}
-                      onChange={(e) => onPhotoSizeChange(Number(e.target.value))}
+                      onChange={(e) => onPhotoSizeChange?.(Number(e.target.value))}
                     />
                   </label>
                   <label style={sectionStyles.photoSizeControl}>
@@ -100,7 +100,7 @@ export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange,
                     <input
                       type="range" min="-50" max="50" step="2"
                       value={photoOffsetX}
-                      onChange={(e) => onPhotoOffsetChange("photoOffsetX", Number(e.target.value))}
+                      onChange={(e) => onPhotoOffsetChange?.("photoOffsetX", Number(e.target.value))}
                     />
                   </label>
                   <label style={sectionStyles.photoSizeControl}>
@@ -108,7 +108,7 @@ export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange,
                     <input
                       type="range" min="-50" max="50" step="2"
                       value={photoOffsetY}
-                      onChange={(e) => onPhotoOffsetChange("photoOffsetY", Number(e.target.value))}
+                      onChange={(e) => onPhotoOffsetChange?.("photoOffsetY", Number(e.target.value))}
                     />
                   </label>
                 </div>
@@ -207,28 +207,28 @@ export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSa
                     : t("pages.playerDetail.profile.invitePortal")}
                 </Button>
               )}
-              <Button onClick={() => onEdit(player)}>{t("pages.playerDetail.profile.edit")}</Button>
+              {onEdit && <Button onClick={() => onEdit(player)}>{t("pages.playerDetail.profile.edit")}</Button>}
             </>
           )}
         </div>
       </div>
 
       <div style={sectionStyles.formGrid}>
-        <Field label={t("pages.playerDetail.profile.fieldName")}        value={form.name}        editing={editing} onChange={(v) => onFieldChange("name", v)} />
-        <Field label={t("pages.playerDetail.profile.fieldRole")}        value={form.role}        editing={editing} onChange={(v) => onFieldChange("role", v)} />
-        <Field label={t("pages.playerDetail.profile.fieldShirt")}       value={form.shirtNumber} editing={editing} onChange={(v) => onFieldChange("shirtNumber", v)} />
-        <Field label={t("pages.playerDetail.profile.fieldFoot")}        value={form.foot}        editing={editing} onChange={(v) => onFieldChange("foot", v)} />
-        <Field label={t("pages.playerDetail.profile.fieldHeight")}      value={form.height}      editing={editing} onChange={(v) => onFieldChange("height", v)} />
-        <Field label={t("pages.playerDetail.profile.fieldWeight")}      value={form.weight}      editing={editing} onChange={(v) => onFieldChange("weight", v)} />
-        <Field label={t("pages.playerDetail.profile.fieldNationality")} value={form.nationality} editing={editing} onChange={(v) => onFieldChange("nationality", v)} />
-        <Field label={t("pages.playerDetail.profile.fieldEmail")} type="email" value={form.email} editing={editing} onChange={(v) => onFieldChange("email", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldName")}        value={form.name}        editing={editing} onChange={(v) => onFieldChange?.("name", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldRole")}        value={form.role}        editing={editing} onChange={(v) => onFieldChange?.("role", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldShirt")}       value={form.shirtNumber} editing={editing} onChange={(v) => onFieldChange?.("shirtNumber", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldFoot")}        value={form.foot}        editing={editing} onChange={(v) => onFieldChange?.("foot", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldHeight")}      value={form.height}      editing={editing} onChange={(v) => onFieldChange?.("height", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldWeight")}      value={form.weight}      editing={editing} onChange={(v) => onFieldChange?.("weight", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldNationality")} value={form.nationality} editing={editing} onChange={(v) => onFieldChange?.("nationality", v)} />
+        <Field label={t("pages.playerDetail.profile.fieldEmail")} type="email" value={form.email} editing={editing} onChange={(v) => onFieldChange?.("email", v)} />
         <Field
           label={t("pages.playerDetail.profile.fieldBirthDate")}
           type="date"
           value={form.birthDate}
           displayValue={formatBirthDateDisplay(form.birthDate)}
           editing={editing}
-          onChange={(v) => onFieldChange("birthDate", v)}
+          onChange={(v) => onFieldChange?.("birthDate", v)}
         />
       </div>
     </AppCard>
@@ -396,9 +396,9 @@ export function PlayerDevelopmentTab({ form, editing, summary, videoClips = [], 
       <AppCard>
         <h3 style={{ marginTop: 0 }}>{t("pages.playerDetail.development.technicalProfile")}</h3>
         <div style={{ display: "grid", gap: 14 }}>
-          <TextAreaField label={t("pages.playerDetail.overview.strengths")}          value={form.strengths}        editing={editing} onChange={(v) => onFieldChange("strengths", v)} />
-          <TextAreaField label={t("pages.playerDetail.overview.improvements")}       value={form.improvements}     editing={editing} onChange={(v) => onFieldChange("improvements", v)} />
-          <TextAreaField label={t("pages.playerDetail.development.developmentFocus")} value={form.developmentFocus} editing={editing} onChange={(v) => onFieldChange("developmentFocus", v)} />
+          <TextAreaField label={t("pages.playerDetail.overview.strengths")}          value={form.strengths}        editing={editing} onChange={(v) => onFieldChange?.("strengths", v)} />
+          <TextAreaField label={t("pages.playerDetail.overview.improvements")}       value={form.improvements}     editing={editing} onChange={(v) => onFieldChange?.("improvements", v)} />
+          <TextAreaField label={t("pages.playerDetail.development.developmentFocus")} value={form.developmentFocus} editing={editing} onChange={(v) => onFieldChange?.("developmentFocus", v)} />
         </div>
       </AppCard>
 
@@ -415,10 +415,10 @@ export function PlayerDevelopmentTab({ form, editing, summary, videoClips = [], 
           )}
         </div>
         <div style={{ display: "grid", gap: 14 }}>
-          <TextAreaField label={t("pages.playerDetail.development.weeklyGoal")}     value={form.weeklyGoal}      editing={editing} onChange={(v) => onFieldChange("weeklyGoal", v)} />
-          <TextAreaField label={t("pages.playerDetail.development.thirtyDayGoal")}  value={form.thirtyDayGoal}   editing={editing} onChange={(v) => onFieldChange("thirtyDayGoal", v)} />
-          <TextAreaField label={t("pages.playerDetail.development.trainingActions")} value={form.trainingActions} editing={editing} onChange={(v) => onFieldChange("trainingActions", v)} />
-          <TextAreaField label={t("pages.playerDetail.development.successMetrics")} value={form.successMetrics}  editing={editing} onChange={(v) => onFieldChange("successMetrics", v)} />
+          <TextAreaField label={t("pages.playerDetail.development.weeklyGoal")}     value={form.weeklyGoal}      editing={editing} onChange={(v) => onFieldChange?.("weeklyGoal", v)} />
+          <TextAreaField label={t("pages.playerDetail.development.thirtyDayGoal")}  value={form.thirtyDayGoal}   editing={editing} onChange={(v) => onFieldChange?.("thirtyDayGoal", v)} />
+          <TextAreaField label={t("pages.playerDetail.development.trainingActions")} value={form.trainingActions} editing={editing} onChange={(v) => onFieldChange?.("trainingActions", v)} />
+          <TextAreaField label={t("pages.playerDetail.development.successMetrics")} value={form.successMetrics}  editing={editing} onChange={(v) => onFieldChange?.("successMetrics", v)} />
         </div>
       </AppCard>
 
@@ -449,10 +449,10 @@ export function PlayerDevelopmentTab({ form, editing, summary, videoClips = [], 
         )}
 
         <div style={{ marginTop: 14 }}>
-          <TextAreaField label={t("pages.playerDetail.development.videoNotes")}    value={form.videoReviewNotes} editing={editing} onChange={(v) => onFieldChange("videoReviewNotes", v)} />
+          <TextAreaField label={t("pages.playerDetail.development.videoNotes")}    value={form.videoReviewNotes} editing={editing} onChange={(v) => onFieldChange?.("videoReviewNotes", v)} />
         </div>
         <div style={{ marginTop: 14 }}>
-          <TextAreaField label={t("pages.playerDetail.development.coachFeedback")} value={form.coachFeedback}    editing={editing} onChange={(v) => onFieldChange("coachFeedback", v)} />
+          <TextAreaField label={t("pages.playerDetail.development.coachFeedback")} value={form.coachFeedback}    editing={editing} onChange={(v) => onFieldChange?.("coachFeedback", v)} />
         </div>
       </AppCard>
     </div>
@@ -466,10 +466,10 @@ export function PlayerPhysicalTab({ form, editing, latestTests, onFieldChange })
       <AppCard>
         <h3 style={{ marginTop: 0 }}>{t("pages.playerDetail.physical.title")}</h3>
         <div style={sectionStyles.formGrid}>
-          <StatusField value={form.status} editing={editing} onChange={(v) => onFieldChange("status", v)} />
-          <Field label={t("pages.playerDetail.physical.fieldInjuryType")}    value={form.injuryType}         editing={editing} onChange={(v) => onFieldChange("injuryType", v)} />
-          <Field label={t("pages.playerDetail.physical.fieldDifferentiated")} value={form.differentiatedType} editing={editing} onChange={(v) => onFieldChange("differentiatedType", v)} />
-          <Field label={t("pages.playerDetail.physical.fieldExpectedReturn")} value={form.expectedReturn}     editing={editing} onChange={(v) => onFieldChange("expectedReturn", v)} />
+          <StatusField value={form.status} editing={editing} onChange={(v) => onFieldChange?.("status", v)} />
+          <Field label={t("pages.playerDetail.physical.fieldInjuryType")}    value={form.injuryType}         editing={editing} onChange={(v) => onFieldChange?.("injuryType", v)} />
+          <Field label={t("pages.playerDetail.physical.fieldDifferentiated")} value={form.differentiatedType} editing={editing} onChange={(v) => onFieldChange?.("differentiatedType", v)} />
+          <Field label={t("pages.playerDetail.physical.fieldExpectedReturn")} value={form.expectedReturn}     editing={editing} onChange={(v) => onFieldChange?.("expectedReturn", v)} />
         </div>
       </AppCard>
 
@@ -527,12 +527,14 @@ export function PlayerMedicalTab({
         </Badge>
       </div>
 
-      <div style={sectionStyles.quickActions}>
-        <Button onClick={onAddInjuryRecord}>{t("pages.playerDetail.medical.addInjury")}</Button>
-        <Button variant="ghost" onClick={onCreateDifferentiatedWork}>{t("pages.playerDetail.medical.createDifferentiated")}</Button>
-        <Button variant="ghost" onClick={onAddMedicalNote}>{t("pages.playerDetail.medical.addNote")}</Button>
-        <Button variant="ghost" onClick={onMarkRecovered} disabled={!activeInjuries.length}>{t("pages.playerDetail.medical.markRecovered")}</Button>
-      </div>
+      {(onAddInjuryRecord || onCreateDifferentiatedWork || onAddMedicalNote || onMarkRecovered) && (
+        <div style={sectionStyles.quickActions}>
+          {onAddInjuryRecord && <Button onClick={onAddInjuryRecord}>{t("pages.playerDetail.medical.addInjury")}</Button>}
+          {onCreateDifferentiatedWork && <Button variant="ghost" onClick={onCreateDifferentiatedWork}>{t("pages.playerDetail.medical.createDifferentiated")}</Button>}
+          {onAddMedicalNote && <Button variant="ghost" onClick={onAddMedicalNote}>{t("pages.playerDetail.medical.addNote")}</Button>}
+          {onMarkRecovered && <Button variant="ghost" onClick={onMarkRecovered} disabled={!activeInjuries.length}>{t("pages.playerDetail.medical.markRecovered")}</Button>}
+        </div>
+      )}
 
       <div style={sectionStyles.medicalKpiGrid}>
         <MiniKpi label={t("pages.playerDetail.medical.totalInjuries")}  value={injuryHistory.length} />
@@ -737,9 +739,11 @@ export function PlayerAbsencesSection({ absences = [], onAddAbsence, onRemoveAbs
         </Badge>
       </div>
 
-      <div style={sectionStyles.quickActions}>
-        <Button onClick={onAddAbsence}>{t("pages.playerDetail.absences.addBtn")}</Button>
-      </div>
+      {onAddAbsence && (
+        <div style={sectionStyles.quickActions}>
+          <Button onClick={onAddAbsence}>{t("pages.playerDetail.absences.addBtn")}</Button>
+        </div>
+      )}
 
       {sorted.length ? (
         <div style={sectionStyles.injuryTimeline}>

@@ -12,6 +12,7 @@ import { SkeletonList } from "../components/ui/Skeleton";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { useAreaPermission } from "../components/auth/permissionContext";
 import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
@@ -51,6 +52,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
+  const { canManage } = useAreaPermission();
   const { showToast, ToastContainer } = useToast();
   const [confirmState, setConfirmState] = useState(null);
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
@@ -121,6 +123,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   }, [form, openModal]);
 
   function handleLogoUpload(field, file) {
+    if (!canManage) return;
     if (!file) return;
 
     const reader = new FileReader();
@@ -136,6 +139,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   }
 
   function saveMatch() {
+    if (!canManage) return;
     if (savingRef.current) return;
     const errors = {};
     if (!form.opponent.trim()) errors.opponent = true;
@@ -177,10 +181,12 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   }
 
   function editMatch(match) {
+    if (!canManage) return;
     openMatchModal(match.id);
   }
 
   function openNewMatch() {
+    if (!canManage) return;
     openMatchModal();
   }
 
@@ -208,6 +214,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   }
 
   function importCalendar(file) {
+    if (!canManage) return;
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
@@ -236,6 +243,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   }
 
   function confirmCalendarImport() {
+    if (!canManage) return;
     const newMatches = importPreview?.newMatches || [];
     setMatches((prevMatches) => [...prevMatches, ...newMatches].sort(sortMatchesByDate));
     setImportSummary({
@@ -249,6 +257,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   }
 
   function deleteMatch(id) {
+    if (!canManage) return;
     const removed = matches.find((m) => m.id === id);
     if (!removed) return;
     setConfirmState({
@@ -280,19 +289,23 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
             <Link to="/match-day" style={{ textDecoration: "none" }}>
               <Button variant="ghost">{t("pages.matches.matchDay")}</Button>
             </Link>
-            <label style={{ display: "inline-flex" }}>
-              <input
-                type="file"
-                accept=".csv,text/csv"
-                onChange={(event) => {
-                  importCalendar(event.target.files?.[0]);
-                  event.target.value = "";
-                }}
-                style={{ display: "none" }}
-              />
-              <Button variant="ghost">{t("pages.matches.importCsv")}</Button>
-            </label>
-            <Button onClick={openNewMatch}>{t("pages.matches.newMatch")}</Button>
+            {canManage && (
+              <>
+                <label style={{ display: "inline-flex" }}>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(event) => {
+                      importCalendar(event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                    style={{ display: "none" }}
+                  />
+                  <Button variant="ghost">{t("pages.matches.importCsv")}</Button>
+                </label>
+                <Button onClick={openNewMatch}>{t("pages.matches.newMatch")}</Button>
+              </>
+            )}
           </div>
         }
       />
@@ -327,7 +340,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
           title={t("pages.matches.noMatchesTitle")}
           text={t("pages.matches.noMatchesText")}
           action={
-            <button
+            canManage ? <button
               onClick={openNewMatch}
               style={{
                 marginTop: 12, padding: "9px 20px", borderRadius: 10,
@@ -336,7 +349,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
               }}
             >
               {t("pages.matches.newMatch")}
-            </button>
+            </button> : null
           }
         />
       ) : (
@@ -486,21 +499,25 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
                   </Button>
                 </Link>
 
-                <Button
-                  variant="ghost"
-                  onClick={() => editMatch(match)}
-                  style={{ minWidth: 0 }}
-                >
-                  {t("common.edit")}
-                </Button>
+                {canManage && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      onClick={() => editMatch(match)}
+                      style={{ minWidth: 0 }}
+                    >
+                      {t("common.edit")}
+                    </Button>
 
-                <Button
-                  variant="danger"
-                  onClick={() => deleteMatch(match.id)}
-                  style={{ minWidth: 0 }}
-                >
-                  {t("common.delete")}
-                </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => deleteMatch(match.id)}
+                      style={{ minWidth: 0 }}
+                    >
+                      {t("common.delete")}
+                    </Button>
+                  </>
+                )}
               </div>
             </AppCard>
           ))}

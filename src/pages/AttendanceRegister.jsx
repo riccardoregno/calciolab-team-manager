@@ -7,6 +7,7 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
 import SearchBar from "../components/ui/SearchBar";
+import { useAreaPermission } from "../components/auth/permissionContext";
 import { styles } from "../styles/index.js";
 import { formatShortDate } from "../utils/helpers";
 import { useTranslation } from "../i18n";
@@ -50,6 +51,7 @@ function getDuration(session) {
 export default function AttendanceRegister({ players = [], sessions = [], setSessions }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { canManage } = useAreaPermission();
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("tutti");
   const [month, setMonth] = useState(() => {
@@ -95,6 +97,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   );
 
   function updateAttendance(sessionId, playerId, patch) {
+    if (!canManage) return;
     setSessions((prevSessions) =>
       prevSessions.map((session) => {
         if (String(session.id) !== String(sessionId)) return session;
@@ -111,6 +114,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   }
 
   function cycleStatus(session, player) {
+    if (!canManage) return;
     const playerId = String(player.id);
     const current = session.attendance?.[playerId]?.status || getDefaultStatus(player);
     const currentIndex = STATUS_FLOW.indexOf(current);
@@ -119,6 +123,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   }
 
   function markSession(sessionId, status) {
+    if (!canManage) return;
     setSessions((prevSessions) =>
       prevSessions.map((session) => {
         if (String(session.id) !== String(sessionId)) return session;
@@ -203,7 +208,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
           icon="📋"
           title={t("pages.attendanceRegister.noSessionsTitle")}
           text={t("pages.attendanceRegister.noSessionsText")}
-          action={<Button onClick={() => navigate("/trainings")}>{t("pages.attendanceRegister.createSession")}</Button>}
+          action={canManage ? <Button onClick={() => navigate("/trainings")}>{t("pages.attendanceRegister.createSession")}</Button> : null}
         />
       ) : !visiblePlayers.length ? (
         <EmptyState
@@ -229,10 +234,12 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                         <span>{formatShortDate(session.date)}</span>
                         <small>{session.title || t("pages.attendanceRegister.sessionFallback")}</small>
                       </button>
-                      <div style={ar.columnActions}>
-                        <button type="button" onClick={() => markSession(session.id, "Presente")} style={ar.miniAction}>P</button>
-                        <button type="button" onClick={() => markSession(session.id, "Assente")} style={ar.miniAction}>A</button>
-                      </div>
+                      {canManage && (
+                        <div style={ar.columnActions}>
+                          <button type="button" onClick={() => markSession(session.id, "Presente")} style={ar.miniAction}>P</button>
+                          <button type="button" onClick={() => markSession(session.id, "Assente")} style={ar.miniAction}>A</button>
+                        </div>
+                      )}
                     </th>
                   ))}
                   <th style={ar.th}>{t("pages.attendanceRegister.presencePct")}</th>
@@ -264,6 +271,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                               <button
                                 type="button"
                                 onClick={() => cycleStatus(session, player)}
+                                disabled={!canManage}
                                 style={{
                                   ...ar.statusCell,
                                   color: meta.color,
@@ -282,6 +290,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                                   step="0.5"
                                   value={entry.rpe || ""}
                                   onChange={(event) => updateAttendance(session.id, playerId, { rpe: event.target.value })}
+                                  disabled={!canManage}
                                   placeholder="RPE"
                                   style={ar.rpeInput}
                                   aria-label={t("pages.attendanceRegister.rpeFor", { name: getPlayerName(player) })}

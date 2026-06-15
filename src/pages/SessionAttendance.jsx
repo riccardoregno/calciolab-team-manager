@@ -3,6 +3,7 @@ import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
+import { useAreaPermission } from "../components/auth/permissionContext";
 import { formatDate } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
@@ -19,10 +20,12 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canManage } = useAreaPermission();
 
   const session = sessions.find((s) => String(s.id) === String(id));
 
   function updatePlayer(playerId, field, value) {
+    if (!canManage) return;
     if (!session) return;
     setSessions((prevSessions) =>
       prevSessions.map((item) => {
@@ -40,6 +43,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   }
 
   function markAll(status) {
+    if (!canManage) return;
     if (!session) return;
     setSessions((prevSessions) =>
       prevSessions.map((item) => {
@@ -120,9 +124,11 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
             <span style={s.pct}>{pct}{t("pages.sessionAttendance.summaryPct")}</span>
           </div>
           <div style={s.topActions}>
-            <Button variant="ghost" onClick={() => markAll("Presente")}>
-              {t("pages.sessionAttendance.markAllPresent")}
-            </Button>
+            {canManage && (
+              <Button variant="ghost" onClick={() => markAll("Presente")}>
+                {t("pages.sessionAttendance.markAllPresent")}
+              </Button>
+            )}
             <Button variant="ghost" onClick={() => navigate("/trainings")}>
               {t("pages.sessionAttendance.back")}
             </Button>
@@ -169,6 +175,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                       <button
                         key={opt}
                         onClick={() => updatePlayer(pid, "status", opt)}
+                        disabled={!canManage}
                         style={{
                           ...s.statusBtn,
                           ...(status === opt ? s.statusBtnActive : {}),
@@ -192,6 +199,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                         placeholder="1–10"
                         value={rpe}
                         onChange={(e) => updatePlayer(pid, "rpe", e.target.value)}
+                        disabled={!canManage}
                       />
                       <span style={s.rpeHint}>{t("pages.sessionAttendance.rpeHint")}</span>
                     </div>

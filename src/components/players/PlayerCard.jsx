@@ -143,13 +143,15 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [] }) {
             {t("components.playerCard.profile")}
           </Button>
 
-          <Button
-            variant="danger"
-            onClick={onDelete}
-            style={{ flex: "1 1 110px" }}
-          >
-            {t("common.delete")}
-          </Button>
+          {onDelete && (
+            <Button
+              variant="danger"
+              onClick={onDelete}
+              style={{ flex: "1 1 110px" }}
+            >
+              {t("common.delete")}
+            </Button>
+          )}
         </div>
       </div>
     </div>

@@ -9,6 +9,7 @@ import MetricStrip from "../components/ui/MetricStrip";
 import PageHeader from "../components/ui/PageHeader";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useToast } from "../components/ui/Toast";
+import { useAreaPermission } from "../components/auth/permissionContext";
 
 import { styles } from "../styles/index.js";
 import { createId, formatShortDate, getPhysicalReference } from "../utils/helpers";
@@ -245,6 +246,7 @@ export default function PhysicalTests({
   const { showToast, ToastContainer } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  const { canManage } = useAreaPermission();
   const searchParams = new URLSearchParams(location.search);
   const isTestModalOpen = searchParams.get("modal") === PHYSICAL_TEST_MODAL;
   const modalPlayerId = searchParams.get("playerId") || "";
@@ -332,6 +334,7 @@ export default function PhysicalTests({
 
   // ── Modal helpers ─────────────────────────
   function openAdd(playerId) {
+    if (!canManage) return;
     const params = new URLSearchParams(location.search);
     params.set("modal", PHYSICAL_TEST_MODAL);
     params.set("playerId", String(playerId));
@@ -340,6 +343,7 @@ export default function PhysicalTests({
   }
 
   function openEdit(test) {
+    if (!canManage) return;
     const params = new URLSearchParams(location.search);
     params.set("modal", PHYSICAL_TEST_MODAL);
     params.set("testId", String(test.id));
@@ -361,6 +365,7 @@ export default function PhysicalTests({
   }
 
   function saveTest() {
+    if (!canManage) return;
     const f = modal.form;
     const errors = {};
     if (!f.playerId) errors.playerId = true;
@@ -394,6 +399,7 @@ export default function PhysicalTests({
   }
 
   function deleteTest(id) {
+    if (!canManage) return;
     setConfirmState({
       message: t("pages.physicalTests.deleteConfirm"),
       confirmLabel: t("pages.physicalTests.deleteLabel"),
@@ -628,7 +634,7 @@ export default function PhysicalTests({
                         </button>
                       )}
                       <div style={{ flex: 1 }} />
-                      <Button onClick={() => openAdd(pid)}>{t("pages.physicalTests.addTestBtn")}</Button>
+                      {canManage && <Button onClick={() => openAdd(pid)}>{t("pages.physicalTests.addTestBtn")}</Button>}
                     </div>
 
                     {/* Storico espandibile con delta */}
@@ -644,8 +650,12 @@ export default function PhysicalTests({
                                   <Badge tone="blue">{formatShortDate(test.date)}</Badge>
                                   {idx === 0 && <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 700 }}>● {t("pages.physicalTests.latestBadge")}</span>}
                                   <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
-                                    <button onClick={() => openEdit(test)} style={pt.iconBtn} title="Modifica" aria-label="Modifica">✏️</button>
-                                    <button onClick={() => deleteTest(test.id)} style={{ ...pt.iconBtn, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }} title="Elimina" aria-label="Elimina">🗑️</button>
+                                    {canManage && (
+                                      <>
+                                        <button onClick={() => openEdit(test)} style={pt.iconBtn} title="Modifica" aria-label="Modifica">✏️</button>
+                                        <button onClick={() => deleteTest(test.id)} style={{ ...pt.iconBtn, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }} title="Elimina" aria-label="Elimina">🗑️</button>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                                 {/* metriche con confronto */}
@@ -797,7 +807,7 @@ export default function PhysicalTests({
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
               <Button variant="ghost" onClick={() => closeModal({ resetDraft: true })}>{t("pages.physicalTests.cancel")}</Button>
-              <Button onClick={saveTest}>{modal.mode === "edit" ? t("pages.physicalTests.updateTest") : t("pages.physicalTests.saveTest")}</Button>
+              {canManage && <Button onClick={saveTest}>{modal.mode === "edit" ? t("pages.physicalTests.updateTest") : t("pages.physicalTests.saveTest")}</Button>}
             </div>
           </div>
         </div>

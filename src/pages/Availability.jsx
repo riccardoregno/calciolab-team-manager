@@ -8,6 +8,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 import MetricStrip from "../components/ui/MetricStrip";
 import { useToast } from "../components/ui/Toast";
+import { useAreaPermission } from "../components/auth/permissionContext";
 import { styles } from "../styles/index.js";
 import { createId, getPlayerUnavailabilityOnDate } from "../utils/helpers";
 import { useTranslation } from "../i18n";
@@ -220,6 +221,7 @@ export default function Availability({
   const location = useLocation();
   const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
+  const { canManage } = useAreaPermission();
   const searchParams = new URLSearchParams(location.search);
   const openModal = searchParams.get("modal") === AVAILABILITY_MODAL;
   const editingPlayerParam = searchParams.get("playerId") || "";
@@ -327,11 +329,13 @@ export default function Availability({
 
   // ── Apri modal aggiungi
   function openAdd() {
+    if (!canManage) return;
     openAvailabilityModal();
   }
 
   // ── Apri modal modifica infortunio attivo
   function openEdit(player) {
+    if (!canManage) return;
     openAvailabilityModal(player.id);
   }
 
@@ -356,6 +360,7 @@ export default function Availability({
 
   // ── Salva infortunio (nuovo o modifica)
   function saveInjury() {
+    if (!canManage) return;
     if (!form.playerId) {
       showToast(t("pages.availability.toastSelectPlayer"), "warn");
       return;
@@ -426,6 +431,7 @@ export default function Availability({
   }
 
   function openRecovery(player) {
+    if (!canManage) return;
     const params = new URLSearchParams(location.search);
     params.set("modal", RECOVERY_MODAL);
     params.set("playerId", String(player.id));
@@ -443,6 +449,7 @@ export default function Availability({
 
   // ── Segna rientro: chiude l'infortunio attivo e aggiorna lo storico
   function markRecovered(playerId, recoveredAt = new Date().toISOString().slice(0, 10)) {
+    if (!canManage) return;
     const today = recoveredAt;
 
     setPlayers((prevPlayers) => prevPlayers.map((p) => {
@@ -490,7 +497,7 @@ export default function Availability({
       <PageHeader
         title={t("pages.availability.title")}
         subtitle={t("pages.availability.subtitle")}
-        action={<Button onClick={openAdd}>{t("pages.availability.btnAdd")}</Button>}
+        action={canManage ? <Button onClick={openAdd}>{t("pages.availability.btnAdd")}</Button> : null}
       />
 
       {/* KPI + azione */}
@@ -719,9 +726,9 @@ export default function Availability({
                       {t("pages.availability.historyBtn", { count: pastInjuries.length })}
                     </button>
                   )}
-                  <Button variant="ghost" onClick={() => openEdit(player)} style={{ flex: 1 }}>{t("pages.availability.btnEdit")}</Button>
+                  {canManage && <Button variant="ghost" onClick={() => openEdit(player)} style={{ flex: 1 }}>{t("pages.availability.btnEdit")}</Button>}
                   <Button variant="ghost" onClick={() => navigate(`/players/${player.id}`)} style={{ flex: 1 }}>{t("pages.availability.btnCard")}</Button>
-                  <Button onClick={() => openRecovery(player)} style={{ flex: 1 }}>{t("pages.availability.btnRecovery")}</Button>
+                  {canManage && <Button onClick={() => openRecovery(player)} style={{ flex: 1 }}>{t("pages.availability.btnRecovery")}</Button>}
                 </div>
 
                 {/* Storico infortuni inline */}
@@ -905,7 +912,7 @@ export default function Availability({
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
             <Button variant="ghost" onClick={() => closeAvailabilityModal({ resetDraft: true })}>{t("pages.availability.btnCancel")}</Button>
-            <Button onClick={saveInjury}>{editingPlayerId ? t("pages.availability.btnUpdate") : t("pages.availability.btnAddInj")}</Button>
+            {canManage && <Button onClick={saveInjury}>{editingPlayerId ? t("pages.availability.btnUpdate") : t("pages.availability.btnAddInj")}</Button>}
           </div>
         </Modal>
       )}
@@ -952,7 +959,7 @@ export default function Availability({
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
             <Button variant="ghost" onClick={closeRecovery}>{t("pages.availability.btnCancel")}</Button>
-            <Button onClick={() => markRecovered(recoveryPlayer.id, recoveryDate)}>{t("pages.availability.btnConfirmRecovery")}</Button>
+            {canManage && <Button onClick={() => markRecovered(recoveryPlayer.id, recoveryDate)}>{t("pages.availability.btnConfirmRecovery")}</Button>}
           </div>
         </Modal>
       )}

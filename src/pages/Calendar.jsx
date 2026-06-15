@@ -17,6 +17,7 @@ import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { useAreaPermission } from "../components/auth/permissionContext";
 import { formatShortDate, getAvailabilityGroups, getSessionLoad, createId } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { useTranslation } from "../i18n";
@@ -58,8 +59,10 @@ function Calendar({
   const [view, setView] = useTabState("view", "week");
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [confirmState, setConfirmState] = useState(null);
+  const { canManage } = useAreaPermission();
 
   function quickCreate({ date, type, title, notes }) {
+    if (!canManage) return;
     const base = {
       id:    createId(type === "Partita" ? "match" : "session"),
       date,
@@ -104,6 +107,7 @@ function Calendar({
   const effectiveSelectedId = selectedId || sortedEvents[0]?.id || "";
 
   function requestDeleteEvent(event) {
+    if (!canManage) return;
     setConfirmState({
       message: t("pages.calendar.deleteTitle", { title: event.title }),
       confirmLabel: t("pages.calendar.deleteLabel"),
@@ -170,7 +174,9 @@ function Calendar({
             players={players}
             onQuickCreate={quickCreate}
             onDeleteEvent={requestDeleteEvent}
+            canManage={canManage}
             onEditEvent={(event, updates) => {
+              if (!canManage) return;
               if (event.type === "Partita") setMatches?.(matches.map((m) => String(m.id) === String(event.id) ? { ...m, ...updates } : m));
               else setSessions?.(sessions.map((s) => String(s.id) === String(event.id) ? { ...s, ...updates } : s));
             }}
@@ -184,7 +190,9 @@ function Calendar({
             onSelect={setSelectedId}
             onQuickCreate={quickCreate}
             onDeleteEvent={requestDeleteEvent}
+            canManage={canManage}
             onEditEvent={(event, updates) => {
+              if (!canManage) return;
               if (event.type === "Partita") setMatches?.(matches.map((m) => String(m.id) === String(event.id) ? { ...m, ...updates } : m));
               else setSessions?.(sessions.map((s) => String(s.id) === String(event.id) ? { ...s, ...updates } : s));
             }}
@@ -195,7 +203,7 @@ function Calendar({
   );
 }
 
-function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQuickCreate, onDeleteEvent, onEditEvent }) {
+function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQuickCreate, onDeleteEvent, onEditEvent, canManage = true }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [openDay, setOpenDay] = useState(null);
@@ -208,12 +216,14 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
   );
 
   function handleDragStart({ active }) {
+    if (!canManage) return;
     const ev = events.find((e) => String(e.id) === String(active.id));
     setActiveEvent(ev || null);
   }
 
   function handleDragEnd({ active, over }) {
     setActiveEvent(null);
+    if (!canManage) return;
     if (!over) return;
     const newDate = over.id;
     const ev = events.find((e) => String(e.id) === String(active.id));
@@ -380,13 +390,13 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                       )}
                     </div>
                     <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-                      {cell.events.length === 1 && (
+                      {canManage && cell.events.length === 1 && (
                         <>
                           <button onClick={() => setEditingEvent(cell.events[0])} style={wv.addBtnSmall} title="Modifica evento">✏️</button>
                           <button onClick={() => onDeleteEvent?.(cell.events[0])} style={{ ...wv.addBtnSmall, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento">🗑️</button>
                         </>
                       )}
-                      {onQuickCreate && (
+                      {canManage && onQuickCreate && (
                         <button onClick={() => setOpenDay(isOpen ? null : cell.dateKey)} style={wv.addBtnSmall} title="Aggiungi evento">
                           {isOpen ? "×" : "+"}
                         </button>
@@ -406,7 +416,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
 
                 <div style={{ display: "grid", gap: 5, marginTop: 6 }}>
                   {cell.events.map((event) => (
-                    <DraggableEvent key={`${event.type}-${event.id}`} event={event}>
+                    <DraggableEvent key={`${event.type}-${event.id}`} event={event} disabled={!canManage}>
                       <div
                         style={{
                           borderRadius: 8,
@@ -431,7 +441,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                         >
                           {event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}{" "}{event.title}
                         </button>
-                        {cell.events.length > 1 && (
+                        {canManage && cell.events.length > 1 && (
                           <>
                             <button
                               onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }}
@@ -476,7 +486,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
 // ─────────────────────────────────────────────
 // Vista Settimana (ex WeekPlan)
 // ─────────────────────────────────────────────
-function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }) {
+function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, canManage = true }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [offset, setOffset] = useState(0);
@@ -490,12 +500,14 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
   );
 
   function handleDragStart({ active }) {
+    if (!canManage) return;
     const ev = events.find((e) => String(e.id) === String(active.id));
     setActiveEvent(ev || null);
   }
 
   function handleDragEnd({ active, over }) {
     setActiveEvent(null);
+    if (!canManage) return;
     if (!over) return;
     const newDate = over.id;
     const ev = events.find((e) => String(e.id) === String(active.id));
@@ -601,7 +613,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
                     <Badge tone={dayEvents.length ? (isToday ? "blue" : "green") : "purple"}>
                       {dayEvents.length || "Off"}
                     </Badge>
-                    {onQuickCreate && (
+                    {canManage && onQuickCreate && (
                       <button
                         onClick={() => setOpenDay(isOpen ? null : day.key)}
                         style={wv.addBtn}
@@ -629,7 +641,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
                 <div style={isMobile ? wv.eventListMobile : wv.eventList}>
                   {dayEvents.length ? (
                     dayEvents.map((event) => (
-                      <DraggableEvent key={`${event.type}-${event.id}`} event={event}>
+                      <DraggableEvent key={`${event.type}-${event.id}`} event={event} disabled={!canManage}>
                         <div
                           style={{
                             ...wv.event,
@@ -650,10 +662,12 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
                                   </p>
                                 )}
                               </div>
-                              <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
-                                <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica">✏️</button>
-                                <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina">🗑️</button>
-                              </div>
+                              {canManage && (
+                                <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+                                  <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica">✏️</button>
+                                  <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina">🗑️</button>
+                                </div>
+                              )}
                             </>
                           ) : (
                             <>
@@ -661,10 +675,12 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent }
                                 <Badge tone={event.type === "Partita" ? "orange" : event.type === "Altro" ? "blue" : "green"}>
                                   {t(EVENT_TYPES.find(et => et.value === event.type)?.labelKey ?? "pages.calendar.typeTraining")}
                                 </Badge>
-                                <div style={{ display: "flex", gap: 3 }}>
-                                  <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica evento">✏️</button>
-                                  <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento">🗑️</button>
-                                </div>
+                                {canManage && (
+                                  <div style={{ display: "flex", gap: 3 }}>
+                                    <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica evento">✏️</button>
+                                    <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento">🗑️</button>
+                                  </div>
+                                )}
                               </div>
                               <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 13 }}>{event.title}</p>
                               {(event.theme || event.opponent || event.objective || event.notes) && (
@@ -1122,10 +1138,11 @@ function toDateKey(date) {
 // ─────────────────────────────────────────────
 // DnD — Draggable event wrapper
 // ─────────────────────────────────────────────
-function DraggableEvent({ event, children }) {
+function DraggableEvent({ event, children, disabled = false }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: String(event.id),
     data: { event },
+    disabled,
   });
 
   return (
@@ -1136,13 +1153,13 @@ function DraggableEvent({ event, children }) {
           ? `translate(${transform.x}px, ${transform.y}px)`
           : undefined,
         opacity: isDragging ? 0.35 : 1,
-        cursor: isDragging ? "grabbing" : "grab",
-        touchAction: "none",
+        cursor: disabled ? "default" : isDragging ? "grabbing" : "grab",
+        touchAction: disabled ? "auto" : "none",
         zIndex: isDragging ? 999 : "auto",
         position: isDragging ? "relative" : undefined,
       }}
-      {...listeners}
-      {...attributes}
+      {...(disabled ? {} : listeners)}
+      {...(disabled ? {} : attributes)}
     >
       {children}
     </div>
