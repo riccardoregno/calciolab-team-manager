@@ -398,7 +398,6 @@ const mobileTopbarStyles = {
     color: "white",
     fontSize: 13,
     fontWeight: 950,
-    flexShrink: 0,
   },
   syncDot: {
     width: 36,

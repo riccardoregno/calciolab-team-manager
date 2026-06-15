@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AppCard from "../ui/AppCard";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
+import PermissionProvider from "./PermissionProvider";
 import { getCurrentUserRole, isRoleAllowed, memberRoles } from "../../utils/helpers";
 
 // FIX #5: supabaseRole (da team_members.role su Supabase) è la fonte di verità.
@@ -12,38 +13,75 @@ import { getCurrentUserRole, isRoleAllowed, memberRoles } from "../../utils/help
 //   - supabaseRole null senza Supabase (locale) → fallback a appSettings accettabile
 //
 // customAreas support (featureKey + member props):
-//   Se featureKey è fornito e member.customAreas[featureKey] è "view" o "manage",
-//   l'accesso è garantito indipendentemente dal ruolo — permette override per-area
-//   configurati dall'owner nell'invito (e modificabili in Settings).
+//   - "none" blocca l'area anche se il ruolo base la vedrebbe.
+//   - "view" permette l'accesso in sola lettura.
+//   - "manage" permette lettura + scrittura.
+//   - "role"/undefined usa i permessi predefiniti del ruolo.
 export default function RoleGate({ allowedRoles = [], appSettings = {}, supabaseRole = null, authConfigured = false, member = null, featureKey = null, children }) {
   const navigate = useNavigate();
-
-  // Controlla override customAreas PRIMA della verifica ruolo
-  if (featureKey && member?.customAreas) {
-    const areaAccess = member.customAreas[featureKey];
-    if (areaAccess === "view" || areaAccess === "manage") {
-      return children;
-    }
-  }
 
   const currentRole = authConfigured
     ? (supabaseRole ?? "")                         // Supabase attivo: usa solo il ruolo Supabase
     : (supabaseRole || getCurrentUserRole(appSettings)); // locale: fallback accettabile
 
-  if (isRoleAllowed(currentRole, allowedRoles)) {
-    return children;
+  const areaAccess = featureKey && member?.customAreas
+    ? member.customAreas[featureKey]
+    : null;
+
+  if (areaAccess === "none") {
+    return deniedView({
+      currentRole,
+      allowedRoles,
+      navigate,
+      title: "Area non disponibile",
+      badge: "Accesso area",
+      message: "Questa area e' stata disattivata per il tuo profilo.",
+    });
   }
 
+  if (areaAccess === "view" || areaAccess === "manage") {
+    return wrapWithPermission(children, featureKey, areaAccess, "custom");
+  }
+
+  if (isRoleAllowed(currentRole, allowedRoles)) {
+    return wrapWithPermission(children, featureKey, "manage", "role");
+  }
+
+  return deniedView({
+    currentRole,
+    allowedRoles,
+    navigate,
+    title: "Vista non disponibile",
+    badge: "Accesso ruolo",
+    message: `Questa sezione non e' prevista per il ruolo ${memberRoles[currentRole]?.label || currentRole}.`,
+  });
+}
+
+function wrapWithPermission(children, area, level, source) {
+  return (
+    <PermissionProvider
+      value={{
+        area,
+        level,
+        source,
+        canView: level === "view" || level === "manage",
+        canManage: level === "manage",
+      }}
+    >
+      {children}
+    </PermissionProvider>
+  );
+}
+
+function deniedView({ allowedRoles, navigate, title, badge, message }) {
   return (
     <div style={gateStyles.page}>
       <AppCard>
         <div style={gateStyles.panel}>
           <div style={gateStyles.icon}>!</div>
-          <Badge tone="orange">Accesso ruolo</Badge>
-          <h1 style={gateStyles.title}>Vista non disponibile</h1>
-          <p style={gateStyles.text}>
-            Questa sezione non e' prevista per il ruolo <strong>{memberRoles[currentRole]?.label || currentRole}</strong>.
-          </p>
+          <Badge tone="orange">{badge}</Badge>
+          <h1 style={gateStyles.title}>{title}</h1>
+          <p style={gateStyles.text}>{message}</p>
           <p style={gateStyles.note}>
             Ruoli abilitati: {allowedRoles.map((role) => memberRoles[role]?.label || role).join(", ")}.
           </p>
