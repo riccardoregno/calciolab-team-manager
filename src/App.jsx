@@ -620,7 +620,7 @@ function App() {
                   exercises={exercises}
                   sessions={sessions}
                   matches={matches}
-                />)}
+                />, "settings")}
               />
 
               {/* Legacy redirects → unified settings */}
@@ -646,7 +646,7 @@ function App() {
                   gpsSessions={gpsSessions}
                   setGpsSessions={setGpsSessions}
                   players={players}
-                />)}
+                />, "physical")}
               />
 
               <Route
@@ -654,7 +654,7 @@ function App() {
                 element={
                   gate(technicalRoles, <FeatureGate featureKey="opponents" appSettings={previewAppSettings}>
                     <Opponents matches={matches} />
-                  </FeatureGate>)
+                  </FeatureGate>, "matches")
                 }
               />
 
@@ -670,7 +670,7 @@ function App() {
                       setStaffTasks={setStaffTasks}
                       appSettings={previewAppSettings}
                     />
-                  </FeatureGate>)
+                  </FeatureGate>, "matches")
                 }
               />
 
@@ -686,7 +686,7 @@ function App() {
                       setStaffTasks={setStaffTasks}
                       appSettings={previewAppSettings}
                     />
-                  </FeatureGate>)
+                  </FeatureGate>, "matches")
                 }
               />
 
@@ -705,7 +705,7 @@ function App() {
                       gpsSessions={gpsSessions}
                       appSettings={previewAppSettings}
                     />
-                  </FeatureGate>)
+                  </FeatureGate>, "exports")
                 }
               />
 
@@ -717,7 +717,7 @@ function App() {
                     setStaffTasks={setStaffTasks}
                     players={players}
                     matches={matches}
-                  />)
+                  />, "staffTasks")
                 }
               />
 
@@ -730,7 +730,7 @@ function App() {
                     authorName={profile ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() : "Coach"}
                     authorRole={auth.team?.role || previewAppSettings?.currentUserRole || "headCoach"}
                     appSettings={previewAppSettings}
-                  />)
+                  />, "staffChat")
                 }
               />
 
@@ -744,7 +744,7 @@ function App() {
                       matches={matches}
                       physicalTests={physicalTests}
                     />
-                  </FeatureGate>)
+                  </FeatureGate>, "statistics")
                 }
               />
 
@@ -754,7 +754,7 @@ function App() {
                   gate(coachRoles, <SeasonGoals
                     matches={matches}
                     players={players}
-                  />)
+                  />, "statistics")
                 }
               />
 
@@ -770,7 +770,7 @@ function App() {
                     sessions={sessions}
                     matches={matches}
                     physicalTests={physicalTests}
-                  />)
+                  />, "billing")
                 }
               />
 
@@ -781,7 +781,7 @@ function App() {
                     appSettings={previewAppSettings}
                     setAppSettings={setAppSettings}
                     team={auth.team}
-                  />)
+                  />, "settings")
                 }
               />
 
@@ -799,7 +799,7 @@ function App() {
                       setSessions={setSessions}
                       players={players}
                     />
-                  </FeatureGate>)
+                  </FeatureGate>, "sessions")
                 }
               />
 
@@ -816,7 +816,7 @@ function App() {
                       setAppSettings={setAppSettings}
                       myPlayerId={auth.team?.role === "player" ? auth.team?.playerId : null}
                     />
-                  </FeatureGate>)
+                  </FeatureGate>, "playerPortal")
                 }
               />
 
@@ -828,7 +828,7 @@ function App() {
                       appSettings={previewAppSettings}
                       setAppSettings={setAppSettings}
                     />
-                  </FeatureGate>)
+                  </FeatureGate>, "sponsors")
                 }
               />
 
@@ -836,7 +836,7 @@ function App() {
 
               <Route
                 path="/availability"
-                element={gate(["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"], <Availability players={players} setPlayers={setPlayers} sessions={sessions} matches={matches} loading={loading} />)}
+                element={gate(["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"], <Availability players={players} setPlayers={setPlayers} sessions={sessions} matches={matches} loading={loading} />, "availability")}
               />
 
               <Route
@@ -863,7 +863,7 @@ function App() {
                       players={players}
                       appSettings={previewAppSettings}
                     />
-                  </FeatureGate>)
+                  </FeatureGate>, "matches")
                 }
               />
 
@@ -877,7 +877,7 @@ function App() {
                       players={players}
                       appSettings={previewAppSettings}
                     />
-                  </FeatureGate>)
+                  </FeatureGate>, "matches")
                 }
               />
 
@@ -888,7 +888,7 @@ function App() {
                     players={players}
                     matches={matches}
                     appSettings={previewAppSettings}
-                  />)
+                  />, "matches")
                 }
               />
 
@@ -899,7 +899,7 @@ function App() {
                     players={players}
                     sessions={sessions}
                     setSessions={setSessions}
-                  />)
+                  />, "sessions")
                 }
               />
 
@@ -910,7 +910,7 @@ function App() {
                     players={players}
                     sessions={sessions}
                     setSessions={setSessions}
-                  />)
+                  />, "sessions")
                 }
               />
 
@@ -923,11 +923,11 @@ function App() {
                     matches={matches}
                     setMatches={setMatches}
                     appSettings={previewAppSettings}
-                  />)
+                  />, "matches")
                 }
               />
 
-              <Route path="/tactical-board" element={gate(technicalRoles, <TacticalBoard players={players} exercises={exercises} setExercises={setExercises} />)} />
+              <Route path="/tactical-board" element={gate(technicalRoles, <TacticalBoard players={players} exercises={exercises} setExercises={setExercises} />, "tacticalBoard")} />
 
               <Route
                 path="/statistics"
@@ -984,13 +984,13 @@ function App() {
               <Route
                 path="/player/:id"
                 element={
-                  gate(coachRoles, <LegacyPlayerRedirect />)
+                  gate(coachRoles, <LegacyPlayerRedirect />, "players")
                 }
               />
 
               <Route
                 path="/exercises"
-                element={gate(technicalRoles, <Exercises exercises={exercises} setExercises={setExercises} />)}
+                element={gate(technicalRoles, <Exercises exercises={exercises} setExercises={setExercises} />, "exercises")}
               />
 
               <Route
@@ -1003,7 +1003,7 @@ function App() {
                     players={players}
                     appSettings={previewAppSettings}
                     loading={loading}
-                  />)
+                  />, "sessions")
                 }
               />
 
@@ -1015,7 +1015,7 @@ function App() {
                     matches={matches}
                     players={players}
                     gpsSessions={gpsSessions}
-                  />)
+                  />, "sessions")
                 }
               />
 

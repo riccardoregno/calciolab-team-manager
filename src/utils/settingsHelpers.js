@@ -40,6 +40,16 @@ export const PERMISSION_AREAS = [
   { key: "statistics", icon: "📈" },
   { key: "setPlays",   icon: "🎯" },
   { key: "calendar",   icon: "📅" },
+  { key: "exercises",  icon: "🏃" },
+  { key: "tacticalBoard", icon: "🧠" },
+  { key: "availability", icon: "✅" },
+  { key: "staffTasks", icon: "🗂️" },
+  { key: "staffChat",  icon: "💬" },
+  { key: "playerPortal", icon: "📱" },
+  { key: "sponsors",   icon: "🤝" },
+  { key: "exports",    icon: "📤" },
+  { key: "settings",   icon: "⚙️" },
+  { key: "billing",    icon: "💳" },
 ];
 
 export const AREA_ACCESS_LABEL_KEYS = {
