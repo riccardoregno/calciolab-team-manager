@@ -79,6 +79,19 @@ export function createId(prefix = "id"){
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+export function createUuid(){
+  if(typeof crypto !== "undefined" && crypto.randomUUID){
+    return crypto.randomUUID();
+  }
+
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => {
+    const random = typeof crypto !== "undefined" && crypto.getRandomValues
+      ? crypto.getRandomValues(new Uint8Array(1))[0]
+      : Math.floor(Math.random() * 256);
+    return (Number(c) ^ (random & (15 >> (Number(c) / 4)))).toString(16);
+  });
+}
+
 export function normalizePlayer(player){
   // Fast-path: skip normalization if player already has all required fields
   if (

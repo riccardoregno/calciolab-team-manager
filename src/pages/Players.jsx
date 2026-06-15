@@ -21,7 +21,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
-import { createId, isBirthdayToday, getTeamAverageAge, calcPlayerAge, getPlayerQuickStats } from "../utils/helpers";
+import { createUuid, isBirthdayToday, getTeamAverageAge, calcPlayerAge, getPlayerQuickStats } from "../utils/helpers";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
 const PLAYER_MODAL_QUERY = "new-player";
@@ -376,7 +376,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
 
     const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`;
     const newPlayer = {
-      id:          createId("player"),
+      id:          createUuid(),
       name:        fullName,
       firstName:   form.firstName.trim(),
       lastName:    form.lastName.trim(),

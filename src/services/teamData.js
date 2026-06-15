@@ -25,6 +25,8 @@ const EMPTY_ENTITY_INTENT_KEY = `${STORAGE_KEY}:empty-entities`;
 // FIX #7: regex che ammette solo caratteri sicuri negli ID usati nelle query Supabase.
 // Previene injection nella lista passata a .not("id","in", rawString).
 const SAFE_ID_REGEX = /^[a-zA-Z0-9_\-.:]+$/;
+const UUID_ID_TABLES = new Set(["players", "exercises"]);
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function getInitialState() {
   return normalizeAppState({
@@ -542,20 +544,23 @@ async function syncEntityTable(table, teamId, records, { allowEmptyDelete = fals
   const rows = records
     .map((record) => {
       const id = String(record.id);
+      const dbId = normalizeRecordIdForTable(table, id);
 
       // FIX #7: valida ID prima di usarlo nella query delete.
       // ID non validi vengono skippati con warning in dev.
-      if (!SAFE_ID_REGEX.test(id)) {
+      if (!dbId || !SAFE_ID_REGEX.test(dbId)) {
         if (import.meta.env.DEV) {
           console.warn(`[teamData] ID non sicuro skippato in ${table}: "${id}"`);
         }
         return null;
       }
 
+      const data = dbId === id ? record : { ...record, id: dbId };
+
       return {
-        id,
+        id:         dbId,
         team_id:    teamId,
-        data:       record,
+        data,
         updated_at: new Date().toISOString(),
       };
     })
@@ -651,4 +656,13 @@ function escapeSupabaseListValue(value) {
   const s = String(value);
   if (!SAFE_ID_REGEX.test(s)) throw new Error(`[teamData] ID non sicuro: "${s}"`);
   return `"${s}"`;
+}
+
+function normalizeRecordIdForTable(table, id) {
+  const value = String(id || "");
+  if (!UUID_ID_TABLES.has(table)) return value;
+  if (UUID_REGEX.test(value)) return value;
+
+  const uuidSuffix = value.match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)?.[0];
+  return uuidSuffix && UUID_REGEX.test(uuidSuffix) ? uuidSuffix : value;
 }

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "../../i18n";
-import { createId } from "../../utils/helpers";
+import { createUuid } from "../../utils/helpers";
 import { emptyPlayer } from "../../data/initialData";
 
 // ─── CSV Parser ──────────────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ function rowToPlayer(row, mapping) {
 
   return {
     ...emptyPlayer(),
-    id:          createId("player"),
+    id:          createUuid(),
     name:        fullName,
     firstName,
     lastName,
