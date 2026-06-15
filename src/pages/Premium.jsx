@@ -789,6 +789,7 @@ export default function Premium({
 const ps = {
   page: {
     display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr)",
     gap: 22,
   },
   alertBanner: {
