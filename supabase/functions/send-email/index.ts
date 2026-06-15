@@ -17,6 +17,7 @@
  */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { checkRateLimit, rateLimitedResponse } from "../_shared/rateLimit.ts";
+import { requireAuth } from "../_shared/requireAuth.ts";
 
 // Rate limit: max 15 email per utente ogni 10 minuti (protezione spam inviti)
 const EMAIL_RL_MAX = 15;
@@ -37,11 +38,24 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const AUTH_REQUIRED_TYPES = ["team_invite", "match_convocation", "player_invite"];
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...CORS, "Content-Type": "application/json" },
   });
+}
+
+function isAppUrl(value?: string) {
+  if (!value) return true;
+  try {
+    const expected = new URL(APP_URL);
+    const actual = new URL(value);
+    return actual.origin === expected.origin;
+  } catch {
+    return false;
+  }
 }
 
 /* ─── HTML Templates ────────────────────────────────────────────── */
@@ -378,6 +392,18 @@ Deno.serve(async (req: Request) => {
   const ANON_ALLOWED_TYPES = ["welcome", "trial_expiring", "team_invite", "match_convocation", "player_invite"];
   if (isAnon && !ANON_ALLOWED_TYPES.includes(type)) {
     return json({ error: `Tipo '${type}' non permesso dalle chiamate frontend` }, 403);
+  }
+
+  if (AUTH_REQUIRED_TYPES.includes(type) && !isServiceRole && !isInternal) {
+    const auth = await requireAuth(req);
+    if (auth.error) return json({ error: auth.error }, auth.status!);
+  }
+
+  if ((type === "team_invite" || type === "player_invite") && !isAppUrl(body.inviteUrl)) {
+    return json({ error: "URL non valido" }, 400);
+  }
+  if (type === "match_convocation" && !isAppUrl(body.rsvpUrl)) {
+    return json({ error: "URL non valido" }, 400);
   }
 
   let subject: string;

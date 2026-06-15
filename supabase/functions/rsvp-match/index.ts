@@ -168,6 +168,12 @@ Deno.serve(async (req: Request) => {
       if (existingError) return json({ error: "Errore lettura token RSVP" }, 500);
 
       if (existing && new Date(existing.expires_at).getTime() > now.getTime()) {
+        await notifyPlayerConvocation(serviceClient, {
+          teamId,
+          matchId,
+          playerId,
+          matchData: (matchRow.data || {}) as Record<string, unknown>,
+        });
         return json({ token: existing.token, expiresAt: existing.expires_at, response: existing.response });
       }
 

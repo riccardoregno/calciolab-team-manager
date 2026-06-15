@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, rateLimitedResponse } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,6 +8,9 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const INVITE_TOKEN_RE = /^[a-zA-Z0-9_-]{32,160}$/;
+const INVITE_RL_MAX = 10;
+const INVITE_RL_WINDOW_MS = 10 * 60 * 1000;
 const teamSelect = "id, name, season, category, subscription_plan, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used, stripe_customer_id, stripe_subscription_id";
 
 Deno.serve(async (req) => {
@@ -20,6 +24,9 @@ Deno.serve(async (req) => {
 
     if (!inviteToken) {
       return json({ error: "Token invito mancante" }, 400);
+    }
+    if (!INVITE_TOKEN_RE.test(inviteToken)) {
+      return json({ error: "Token invito non valido" }, 400);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -38,6 +45,11 @@ Deno.serve(async (req) => {
 
     if (authError || !authData.user) {
       return json({ error: "Utente non autenticato" }, 401);
+    }
+
+    const rlKey = `accept-team-invite:${authData.user.id}`;
+    if (!checkRateLimit(rlKey, INVITE_RL_MAX, INVITE_RL_WINDOW_MS)) {
+      return rateLimitedResponse(rlKey, corsHeaders);
     }
 
     const serviceClient = createClient(supabaseUrl, serviceKey);

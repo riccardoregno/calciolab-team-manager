@@ -1,4 +1,4 @@
-import "@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { requireAuth } from "../_shared/requireAuth.ts";
 import { checkRateLimit, rateLimitedResponse } from "../_shared/rateLimit.ts";
 
