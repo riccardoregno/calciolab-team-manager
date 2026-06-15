@@ -470,10 +470,13 @@ function App() {
   // currentMember: voce del membro corrente in settings.members, usata da RoleGate
   // per applicare override customAreas (permessi per-area configurati nell'invito).
   const currentMember = (() => {
+    const userMemberId = auth.user?.id ? `member-${auth.user.id}` : "";
     const email = auth.user?.email?.toLowerCase?.() || "";
-    if (!email) return null;
     const members = Array.isArray(previewAppSettings?.members) ? previewAppSettings.members : [];
-    return members.find((m) => String(m.email || "").trim().toLowerCase() === email) || null;
+    return members.find((m) => (
+      (userMemberId && String(m.id || "") === userMemberId) ||
+      (email && String(m.email || "").trim().toLowerCase() === email)
+    )) || null;
   })();
 
   function gate(allowedRoles, children, featureKey = null) {

@@ -43,6 +43,16 @@ export default function RoleGate({ allowedRoles = [], appSettings = {}, supabase
     return wrapWithPermission(children, featureKey, areaAccess, "custom");
   }
 
+  if (
+    authConfigured &&
+    featureKey &&
+    !member &&
+    currentRole &&
+    !["owner", "headCoach"].includes(currentRole)
+  ) {
+    return wrapWithPermission(children, featureKey, "view", "pending-member");
+  }
+
   if (isRoleAllowed(currentRole, allowedRoles)) {
     return wrapWithPermission(children, featureKey, "manage", "role");
   }
