@@ -20,10 +20,6 @@ export default function Topbar({
   onDevelopmentPlanPreviewChange,
   developmentRolePreview = "headCoach",
   onDevelopmentRolePreviewChange,
-  storageSource = null,
-  refreshing = false,
-  loading = false,
-  onSyncNow = null,
 }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
@@ -34,8 +30,14 @@ export default function Topbar({
     players, sessions, matches, staffTasks, chatUnread,
   });
 
-  const firstName = profile?.first_name || "Coach";
+  const firstName = profile?.first_name || "";
+  const displayFirstName = firstName || "Coach";
   const lastName = profile?.last_name || "";
+  const fallbackAvatarText = (
+    `${profile?.first_name?.[0] || ""}${profile?.last_name?.[0] || ""}`
+    || profile?.email?.slice(0, 2)
+    || "CL"
+  ).toUpperCase();
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -93,7 +95,7 @@ export default function Topbar({
       <div style={{ ...styles.topbarProfileMenu, ...extraStyle }}>
         <div style={styles.topbarProfileMenuHeader}>
           <strong>
-            {firstName} {lastName}
+            {displayFirstName} {lastName}
           </strong>
           <span>{profile?.email || t("common.profileCoach")}</span>
         </div>
@@ -150,29 +152,12 @@ export default function Topbar({
         </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {(refreshing || (storageSource && storageSource !== "supabase")) && onSyncNow && (
-          <button
-            type="button"
-            onClick={onSyncNow}
-            disabled={refreshing || loading}
-            title={t("common.syncNow")}
-            style={{
-              ...mobileTopbarStyles.syncDot,
-              background: storageSource === "partial" || storageSource === "pending-upload" ? "rgba(251,146,60,0.14)" : "rgba(248,113,113,0.14)",
-              color: storageSource === "partial" || storageSource === "pending-upload" ? "#fb923c" : "#f87171",
-              opacity: refreshing || loading ? 0.55 : 1,
-            }}
-          >
-            {refreshing ? "⏳" : "🔄"}
-          </button>
-        )}
-      </div>
+      <div />
     </header>
 
     <header className="mobile-hide" style={styles.topbar}>
       <div style={styles.topbarLeft}>
-        <p style={styles.topbarEyebrow}>{t("topbar.greeting", { name: firstName })}</p>
+        <p style={styles.topbarEyebrow}>{t("topbar.greeting", { name: displayFirstName })}</p>
         <h1 style={styles.topbarTitle}>{t("topbar.title")}</h1>
       </div>
 
@@ -216,7 +201,23 @@ export default function Topbar({
                   </Link>
                 ))
               ) : (
-                <div style={styles.topbarSearchEmpty}>{t("common.noResults")}</div>
+                <div style={{
+                  ...styles.topbarSearchEmpty,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  textAlign: "center",
+                  gap: 6,
+                  padding: "22px 14px",
+                }}>
+                  <span style={{ color: "#64748b", fontSize: 30, lineHeight: 1 }}>⌕</span>
+                  <strong style={{ color: "#e2e8f0", fontSize: 13 }}>
+                    {t("topbar.noResultsFor", { query: search.trim() })}
+                  </strong>
+                  <span style={{ color: "#64748b", fontSize: 12, lineHeight: 1.35 }}>
+                    {t("topbar.searchSuggestion")}
+                  </span>
+                </div>
               )}
             </div>
           )}
@@ -319,9 +320,25 @@ export default function Topbar({
             style={styles.topbarProfileButton}
             onClick={() => setOpenProfileDesktop(!openProfileDesktop)}
           >
+            {!firstName && (
+              <span style={{
+                width: 28,
+                height: 28,
+                borderRadius: 10,
+                display: "grid",
+                placeItems: "center",
+                flexShrink: 0,
+                background: "linear-gradient(135deg,#22c55e,#16a34a)",
+                color: "#052e16",
+                fontSize: 11,
+                fontWeight: 950,
+              }}>
+                {fallbackAvatarText}
+              </span>
+            )}
             <div style={styles.topbarProfileText}>
               <strong style={styles.topbarProfileName}>
-                {firstName} {lastName}
+                {displayFirstName} {lastName}
               </strong>
               <span style={styles.topbarProfileRole}>Coach CalcioLab</span>
             </div>

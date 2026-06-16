@@ -12,6 +12,7 @@ import { useAreaPermission } from "../components/auth/permissionContext";
 import { styles } from "../styles/index.js";
 import { createId, getPlayerUnavailabilityOnDate } from "../utils/helpers";
 import { useTranslation } from "../i18n";
+import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { fetchPlayerAvailability } from "../services/playerAvailability";
 
 // Limite di giorni renderizzati nella pianificazione "giorno per giorno" —
@@ -230,12 +231,44 @@ export default function Availability({
   const { showToast, ToastContainer } = useToast();
   const { canManage } = useAreaPermission();
   const [selfAvailData, setSelfAvailData] = useState([]);
+  const [selfAvailLoading, setSelfAvailLoading] = useState(true);
 
   useEffect(() => {
-    if (!teamId) return;
-    fetchPlayerAvailability({ teamId }).then(({ data }) => {
-      if (data) setSelfAvailData(data);
-    });
+    let active = true;
+
+    if (!teamId) {
+      return undefined;
+    }
+
+    async function loadPlayerAvailability({ showLoading = false } = {}) {
+      if (showLoading) setSelfAvailLoading(true);
+      const { data } = await fetchPlayerAvailability({ teamId });
+      if (!active) return;
+      setSelfAvailData(data || []);
+      setSelfAvailLoading(false);
+    }
+
+    loadPlayerAvailability({ showLoading: true });
+
+    if (!isSupabaseConfigured || !supabase) {
+      return () => {
+        active = false;
+      };
+    }
+
+    const channel = supabase
+      .channel(`player_availability:${teamId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "player_availability", filter: `team_id=eq.${teamId}` },
+        () => loadPlayerAvailability()
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
   }, [teamId]);
   const searchParams = new URLSearchParams(location.search);
   const openModal = searchParams.get("modal") === AVAILABILITY_MODAL;
@@ -680,7 +713,9 @@ export default function Availability({
               <p style={av.muted}>{t("pages.availability.selfAvailSub")}</p>
             </div>
           </div>
-          {selfAvailData.length === 0 ? (
+          {selfAvailLoading ? (
+            <SkeletonList rows={2} cols={1} />
+          ) : selfAvailData.length === 0 ? (
             <p style={av.muted}>{t("pages.availability.selfAvailEmpty")}</p>
           ) : (
             <div style={{ display: "grid", gap: 8 }}>

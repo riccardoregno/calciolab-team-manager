@@ -142,6 +142,7 @@ function Dashboard({
   physicalTests: rawPhysicalTests = [],
   appSettings = {},
   setAppSettings,
+  teamId = null,
   loading = false,
 }) {
   const players = useMemo(() => Array.isArray(rawPlayers) ? rawPlayers : [], [rawPlayers]);
@@ -158,6 +159,7 @@ function Dashboard({
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState(null);
   const [showPersonalize, setShowPersonalize] = useState(false);
+  const [pendingRsvpMatches, setPendingRsvpMatches] = useState([]);
   const isMobile = useIsMobile();
 
   // Memoize settings so derived useMemo hooks don't re-run on every render
@@ -230,6 +232,7 @@ function Dashboard({
   const realTopPresence = [...playerStats].sort((a, b) => b.appearances - a.appearances)[0];
 
   const today = todayStart();
+  const todayTime = today.getTime();
   const weekEnd = new Date(today);
   weekEnd.setDate(today.getDate() + 7);
 
@@ -275,6 +278,37 @@ function Dashboard({
     }
     return { total: convocatiIds.length, available, unavailable, pending };
   }, [nextMatch, nextMatchRsvps]);
+
+  const effectiveTeamId = teamId || auth.team?.id || null;
+  useEffect(() => {
+    let active = true;
+
+    const futureMatches = matches
+      .filter((match) => {
+        const matchDate = new Date(match.date);
+        const hasConvocati = Array.isArray(match.convocazione?.playerIds) && match.convocazione.playerIds.length > 0;
+        return effectiveTeamId && hasConvocati && matchDate.getTime() >= todayTime;
+      })
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const pendingRequest = futureMatches.length
+      ? Promise.all(
+        futureMatches.map(async (match) => {
+          const { rsvps } = await fetchMatchRsvps({ teamId: effectiveTeamId, matchId: match.id });
+          const pending = (rsvps || []).filter((rsvp) => !rsvp.response).length;
+          return pending > 0 ? { match, pending } : null;
+        })
+      )
+      : Promise.resolve([]);
+
+    pendingRequest.then((items) => {
+      if (!active) return;
+      setPendingRsvpMatches(items.filter(Boolean).slice(0, 3));
+    });
+
+    return () => { active = false; };
+  }, [effectiveTeamId, matches, todayTime]);
+
   const todayEvents = events.filter((event) => {
     const date = new Date(event.date);
     return date >= today && date < new Date(today.getTime() + 24 * 60 * 60 * 1000);
@@ -1173,6 +1207,14 @@ function Dashboard({
         />
       )}
 
+      {pendingRsvpMatches.length > 0 && (
+        <PendingRsvpMatchesCard
+          items={pendingRsvpMatches}
+          navigate={navigate}
+          t={t}
+        />
+      )}
+
       {/* Sezioni draggable */}
       <DndContext onDragEnd={handleSectionDragEnd} collisionDetection={closestCenter}>
         <SortableContext items={safeSectionOrder} strategy={verticalListSortingStrategy}>
@@ -1417,6 +1459,54 @@ function OpenCorrectionsCard({ corrections, navigate, t }) {
             </div>
           );
         })}
+      </div>
+    </AppCard>
+  );
+}
+
+function PendingRsvpMatchesCard({ items, navigate, t }) {
+  return (
+    <AppCard style={{ marginBottom: 18 }}>
+      <SectionTitle
+        title={t("pages.dashboard.pendingRsvpTitle")}
+        subtitle={t("pages.dashboard.pendingRsvpSubtitle")}
+      />
+
+      <div style={{ display: "grid", gap: 10 }}>
+        {items.map(({ match, pending }) => (
+          <button
+            key={match.id}
+            type="button"
+            onClick={() => navigate(`/match-convocation/${match.id}`)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              width: "100%",
+              padding: 12,
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.045)",
+              color: "white",
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <span style={{ minWidth: 0 }}>
+              <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {match.opponent || t("pages.matches.opponentPlaceholder")}
+              </strong>
+              <span style={{ display: "block", marginTop: 3, color: "#94a3b8", fontSize: 12, fontWeight: 700 }}>
+                {formatDate(match.date)}
+              </span>
+            </span>
+
+            <Badge tone="orange">
+              {t("pages.dashboard.pendingRsvpBadge", { count: pending })}
+            </Badge>
+          </button>
+        ))}
       </div>
     </AppCard>
   );

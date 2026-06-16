@@ -5,28 +5,10 @@ import { useTranslation } from "../i18n";
 import { useStaffChat } from "../hooks/useStaffChat";
 import { useIsMobile } from "../hooks/useIsMobile";
 
-// Ruoli → colori badge
-const ROLE_COLORS = {
-  owner:           { bg: "#7c3aed22", border: "#7c3aed66", text: "#c4b5fd" },
-  headCoach:       { bg: "#2563eb22", border: "#2563eb66", text: "#93c5fd" },
-  assistantCoach:  { bg: "#0891b222", border: "#0891b266", text: "#67e8f9" },
-  athleticTrainer: { bg: "#05966922", border: "#05966966", text: "#6ee7b7" },
-  director:        { bg: "#d9770622", border: "#d9770666", text: "#fcd34d" },
-};
-
-function roleBadgeStyle(role) {
-  const c = ROLE_COLORS[role] || { bg: "#ffffff11", border: "#ffffff33", text: "#cbd5e1" };
-  return {
-    display: "inline-block",
-    fontSize: 11,
-    fontWeight: 700,
-    padding: "2px 8px",
-    borderRadius: 6,
-    background: c.bg,
-    border: `1px solid ${c.border}`,
-    color: c.text,
-    letterSpacing: 0.2,
-  };
+function getInitials(name = "") {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  return (parts[0]?.slice(0, 2) || "?").toUpperCase();
 }
 
 function formatTime(iso) {
@@ -165,7 +147,7 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
                 {collaboratorsOnline.map((person) => (
                   <span key={person.user_id} style={chatStyles.presenceChip}>
                     <span style={chatStyles.presenceAvatar}>
-                      {(person.author_name?.[0] || "?").toUpperCase()}
+                      {getInitials(person.author_name)}
                     </span>
                     {person.author_name || t("pages.staffChat.collaborator")}
                   </span>
@@ -229,7 +211,7 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
                         : "linear-gradient(135deg, #374151, #1f2937)",
                     }}
                   >
-                    {(msg.author_name?.[0] || "?").toUpperCase()}
+                    {getInitials(msg.author_name)}
                   </div>
 
                   {/* Bubble */}
@@ -257,9 +239,6 @@ export default function StaffChat({ teamId, userId, authorName, authorRole }) {
                     }}>
                       <span style={{ fontWeight: 700, fontSize: 13, color: "#e2e8f0" }}>
                         {isOwn ? t("pages.staffChat.you") : msg.author_name}
-                      </span>
-                      <span style={roleBadgeStyle(msg.author_role)}>
-                        {t(`roles.${msg.author_role}`) || msg.author_role}
                       </span>
                       <span style={{ color: "#475569", fontSize: 11 }}>
                         {formatTime(msg.created_at)}

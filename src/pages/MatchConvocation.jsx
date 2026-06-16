@@ -467,7 +467,8 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   const rsvpAvgHours = (() => {
     const times = rsvps
       .filter((r) => r.response && r.responded_at && r.created_at)
-      .map((r) => (new Date(r.responded_at) - new Date(r.created_at)) / 3600000);
+      .map((r) => (new Date(r.responded_at) - new Date(r.created_at)) / 3600000)
+      .filter((v) => Number.isFinite(v) && v >= 0);
     if (!times.length) return null;
     return Math.round(times.reduce((s, v) => s + v, 0) / times.length);
   })();
