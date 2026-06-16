@@ -21,7 +21,8 @@ const PRIMARY = [
 
 // ── Voci nel drawer "Altro" ───────────────────────────────────────
 const SECONDARY = [
-  { to: "/exercises", labelKey: "navigation.items.exercises", icon: "📚", roles: technicalRoles },
+  { to: "/staff-chat",       labelKey: "navigation.items.staffChat", icon: "💬", roles: coachRoles, badge: "chat" },
+  { to: "/exercises",        labelKey: "navigation.items.exercises", icon: "📚", roles: technicalRoles },
   { to: "/microcycle",       labelKey: "navigation.items.microcycle", icon: "🗓️", roles: technicalRoles },
   { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾", roles: technicalRoles },
   { to: "/statistics",       labelKey: "navigation.items.statistics", icon: "📊", roles: coachRoles },
@@ -31,18 +32,26 @@ const SECONDARY = [
   { to: "/physical-workouts",labelKey: "navigation.items.physicalWorkouts", icon: "🏃", roles: physicalRoles },
   { to: "/gps-load",         labelKey: "navigation.items.gpsLoad", icon: "📡", roles: physicalRoles },
   { to: "/staff-tasks",      labelKey: "navigation.items.staffTasks", icon: "✅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
+  { to: "/player-portal",    labelKey: "navigation.items.playerPortal", icon: "🎮", roles: coachRoles },
+  { to: "/opponents",        labelKey: "navigation.items.opponents", icon: "🔍", roles: coachRoles },
+  { to: "/season-goals",     labelKey: "navigation.items.seasonGoals", icon: "🎯", roles: managementRoles },
+  { to: "/ai-session-builder", labelKey: "navigation.items.aiSessionBuilder", icon: "🤖", roles: technicalRoles },
   { to: "/exports",          labelKey: "navigation.items.exports", icon: "🖨️", roles: managementRoles },
   { to: "/settings",         labelKey: "navigation.items.settings", icon: "⚙️", roles: allRoles },
   { to: "/premium",          labelKey: "navigation.items.premium", icon: "💎", roles: managementRoles },
 ];
 
-export default function MobileBottomNav({ currentRole = "headCoach" }) {
+export default function MobileBottomNav({ currentRole = "headCoach", storageSource = null, chatUnread = 0 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const effectiveRole = currentRole || "headCoach";
   const primaryItems = PRIMARY.filter((item) => isRoleAllowed(effectiveRole, item.roles));
   const secondaryItems = SECONDARY.filter((item) => isRoleAllowed(effectiveRole, item.roles));
+  const showSyncDot = Boolean(storageSource && storageSource !== "supabase");
+  const syncDotColor = storageSource === "partial" || storageSource === "pending-upload" ? "#fb923c" : "#f87171";
+  const showAltroDot = showSyncDot || chatUnread > 0;
+  const altroDotColor = chatUnread > 0 ? "#3b82f6" : syncDotColor;
 
   function goTo(path) {
     navigate(path);
@@ -114,7 +123,42 @@ export default function MobileBottomNav({ currentRole = "headCoach" }) {
                     justifyContent: "center",
                   }}
                 >
-                  <span style={{ fontSize: 22 }}>{item.icon}</span>
+                  <span style={{ position: "relative", fontSize: 22, lineHeight: 1 }}>
+                    {item.icon}
+                    {item.badge === "chat" && chatUnread > 0 && (
+                      <span style={{
+                        position: "absolute",
+                        top: -4,
+                        right: -8,
+                        minWidth: 16,
+                        height: 16,
+                        borderRadius: 8,
+                        background: "#3b82f6",
+                        color: "white",
+                        fontSize: 9,
+                        fontWeight: 900,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0 3px",
+                        boxShadow: "0 0 0 2px #0f172a",
+                      }}>
+                        {chatUnread > 9 ? "9+" : chatUnread}
+                      </span>
+                    )}
+                    {showSyncDot && item.to === "/settings" && (
+                      <span style={{
+                        position: "absolute",
+                        top: -2,
+                        right: -5,
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: syncDotColor,
+                        boxShadow: "0 0 0 2px #0f172a",
+                      }} />
+                    )}
+                  </span>
                   <span style={{ fontSize: 11, fontWeight: 500, textAlign: "center", lineHeight: 1.2 }}>{t(item.labelKey)}</span>
                 </button>
               ))}
@@ -145,7 +189,21 @@ export default function MobileBottomNav({ currentRole = "headCoach" }) {
           className={open ? "mobile-nav-item active" : "mobile-nav-item"}
           style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
         >
-          <span>☰</span>
+          <span style={{ position: "relative", lineHeight: 1 }}>
+            ☰
+            {showAltroDot && (
+              <span style={{
+                position: "absolute",
+                top: -2,
+                right: -7,
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: altroDotColor,
+                boxShadow: "0 0 0 2px #0f172a",
+              }} />
+            )}
+          </span>
           <small>{t("navigation.mobile.more")}</small>
         </button>
       </nav>

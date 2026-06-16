@@ -565,22 +565,6 @@ function App() {
               </span>
             )}
 
-            {auth.team?.id && (refreshing || storageSource !== "supabase") && (
-              <button
-                type="button"
-                onClick={refreshTeamData}
-                disabled={refreshing || loading}
-                className="sync-now-button"
-                style={{
-                  ...styles.syncNowButton,
-                  opacity: refreshing || loading ? 0.55 : 1,
-                  cursor: refreshing || loading ? "not-allowed" : "pointer",
-                }}
-              >
-                {refreshing ? t("common.syncingNow") : t("common.syncNow")}
-              </button>
-            )}
-
             {storageError && storageSource !== "supabase" && (
               <span style={{ ...styles.storageStatusText, maxWidth: 320 }}>
                 {storageSource === "partial" ? storageError : t("common.offlineHint")}
@@ -604,6 +588,7 @@ function App() {
                     physicalTests={physicalTests}
                     appSettings={previewAppSettings}
                     setAppSettings={setAppSettings}
+                    teamId={auth.team?.id || null}
                     loading={loading}
                   />)
                 }
@@ -1061,7 +1046,7 @@ function App() {
       {/* Deep link handler — intercetta Universal Links / App Links su iOS/Android */}
       <DeepLinkHandler />
 
-      <MobileBottomNav currentRole={auth.team?.role || null} />
+      <MobileBottomNav currentRole={auth.team?.role || null} storageSource={storageSource} chatUnread={chatUnread} />
       <PWAInstallBanner />
       <PushBanner />
       {/* Push notifications — dentro BrowserRouter perché il hook usa useNavigate */}
