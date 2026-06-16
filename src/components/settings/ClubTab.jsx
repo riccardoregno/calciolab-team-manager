@@ -29,6 +29,9 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
   const [inviteForm, setInviteForm] = useState(() => loadInviteMemberDraft());
   const [showCustomPerms, setShowCustomPerms] = useState(false);
   const [expandedMemberPerms, setExpandedMemberPerms] = useState({});
+  const [sentInviteUrl, setSentInviteUrl] = useState("");
+  const [sentInviteName, setSentInviteName] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
   // Modifiche ruolo "in sospeso": il cambio nel <select> non si applica subito,
   // l'utente deve premere "Salva" — evita salvataggi accidentali e rende
   // visibile l'esito (sincronizzazione con team_members su Supabase).
@@ -84,6 +87,8 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
       setInviteForm(EMPTY_INVITE_FORM);
       setShowCustomPerms(false);
     }
+    setSentInviteUrl("");
+    setSentInviteName("");
     const params = new URLSearchParams(location.search);
     params.delete("modal");
     const search = params.toString();
@@ -197,10 +202,14 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
     setInviteForm(EMPTY_INVITE_FORM);
     setShowCustomPerms(false);
     clearInviteMemberDraft();
-    closeInviteModal();
+
+    // Mostra step 2 con link invito (non chiude subito la modale)
+    const inviteUrl = getInviteLink(token);
+    setSentInviteUrl(inviteUrl);
+    setSentInviteName(pending.name || pending.email);
+    setLinkCopied(false);
 
     // Invia email di invito (fire-and-forget — non blocca la UI)
-    const inviteUrl = getInviteLink(token);
     const teamName  = profile.teamName || profile.clubName || "CalcioLab";
     const roleName  = memberRoles?.find?.((r) => r.id === inviteForm.role)?.label || inviteForm.role || "Membro dello staff";
     supabase.auth.getSession().then(({ data: sessionData }) => {
@@ -763,8 +772,91 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
 
       {/* ── Modale invito ── */}
       {inviteModal && (
-        <div style={inviteStyles.overlay} onClick={() => closeInviteModal()}>
+        <div style={inviteStyles.overlay} onClick={() => closeInviteModal({ resetDraft: !sentInviteUrl })}>
           <div style={inviteStyles.modal} onClick={(e) => e.stopPropagation()}>
+            {sentInviteUrl ? (
+              /* ── Step 2: link pronto da condividere ── */
+              <div style={{ display: "grid", gap: 18 }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 40, lineHeight: 1, marginBottom: 10 }}>✅</div>
+                  <h3 style={{ margin: "0 0 6px", fontSize: 17 }}>Invito inviato a {sentInviteName}</h3>
+                  <p style={{ color: "#94a3b8", margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+                    Se l&apos;email non arriva, condividi direttamente il link qui sotto.
+                  </p>
+                </div>
+
+                <div style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  fontSize: 12,
+                  color: "#93c5fd",
+                  wordBreak: "break-all",
+                  lineHeight: 1.5,
+                }}>
+                  {sentInviteUrl}
+                </div>
+
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(sentInviteUrl).then(() => {
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 2500);
+                      });
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "10px 14px",
+                      borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      background: linkCopied ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.07)",
+                      color: linkCopied ? "#22c55e" : "#e2e8f0",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {linkCopied ? "✓ Copiato!" : "📋 Copia link"}
+                  </button>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`Ciao! Ti invito su CalcioLab. Clicca qui per accedere: ${sentInviteUrl}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      padding: "10px 14px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "rgba(37,211,102,0.18)",
+                      color: "#25d366",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      textDecoration: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    📱 Invia su WhatsApp
+                  </a>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => closeInviteModal()}
+                  style={{ ...inviteStyles.cancelBtn, width: "100%", textAlign: "center" }}
+                >
+                  Chiudi
+                </button>
+              </div>
+            ) : (
+              /* ── Step 1: form invito ── */
+              <>
             <h3 style={{ margin: "0 0 6px", fontSize: 18 }}>{t("pages.settings.clubModalTitle")}</h3>
             <p style={{ color: "#94a3b8", margin: "0 0 20px", fontSize: 13, lineHeight: 1.5 }}>
               Inserisci i dati del membro. Riceverà un link per accedere al workspace con il suo ruolo.
@@ -855,6 +947,8 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
                 <Button type="submit">{t("pages.settings.clubBtnSendInvite")}</Button>
               </div>
             </form>
+              </>
+            )}
           </div>
         </div>
       )}
