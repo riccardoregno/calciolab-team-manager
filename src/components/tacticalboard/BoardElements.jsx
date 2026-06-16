@@ -73,26 +73,34 @@ export function TacticalPlayerIcon({ player, isOpponent, isRealPlayer }) {
       : { shirt: "#2563eb", collar: "#1d4ed8", text: "#eff6ff", skin: "#f5c5a3" };
 
   return (
-    <svg viewBox="0 0 42 50" width="42" height="50" aria-hidden="true" style={{ display: "block" }}>
+    <svg viewBox="0 0 46 56" width="46" height="56" aria-hidden="true" style={{ display: "block" }}>
       {/* drop shadow */}
-      <ellipse cx="21" cy="48" rx="14" ry="2.5" fill="rgba(0,0,0,0.28)" />
+      <ellipse cx="23" cy="53" rx="15.5" ry="3" fill="rgba(0,0,0,0.3)" />
       {/* jersey body — wide trapezoid, no arms/legs (top-down tactical view) */}
       <path
-        d="M5 46 L7 25 Q21 18 35 25 L37 46Z"
+        d="M5 51 L7.5 28 Q23 20 38.5 28 L41 51Z"
         fill={palette.shirt}
-        stroke="rgba(0,0,0,0.3)"
-        strokeWidth="1"
+        stroke="rgba(255,255,255,0.82)"
+        strokeWidth="1.9"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7.5 28 L2.8 34 L8.8 38 M38.5 28 L43.2 34 L37.2 38"
+        fill="none"
+        stroke="rgba(255,255,255,0.82)"
+        strokeWidth="1.8"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
       {/* collar V */}
-      <path d="M17.5 25 Q21 28.5 24.5 25" fill="none" stroke={palette.collar} strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M18.5 28 Q23 32 27.5 28" fill="none" stroke={palette.collar} strokeWidth="2.4" strokeLinecap="round" />
       {/* jersey number — large and centered */}
       <text
-        x="21"
-        y="37"
+        x="23"
+        y="41"
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize="12"
+        fontSize="13"
         fontWeight="950"
         fontFamily="system-ui,sans-serif"
         fill={palette.text}
@@ -101,12 +109,12 @@ export function TacticalPlayerIcon({ player, isOpponent, isRealPlayer }) {
         {player.number}
       </text>
       {/* head — prominent, front-facing */}
-      <circle cx="21" cy="13" r="9.5" fill={palette.skin} stroke="rgba(15,23,42,0.28)" strokeWidth="1.2" />
+      <circle cx="23" cy="14" r="10" fill={palette.skin} stroke="rgba(255,255,255,0.82)" strokeWidth="1.7" />
       {/* hair band / cap hint */}
-      <path d="M11.8 11 Q21 4 30.2 11" fill="rgba(40,22,8,0.42)" />
+      <path d="M13.2 12 Q23 4.5 32.8 12" fill="rgba(40,22,8,0.42)" />
       {/* eyes */}
-      <circle cx="17.5" cy="13" r="1.1" fill="rgba(30,15,5,0.55)" />
-      <circle cx="24.5" cy="13" r="1.1" fill="rgba(30,15,5,0.55)" />
+      <circle cx="19.3" cy="14" r="1.05" fill="rgba(30,15,5,0.55)" />
+      <circle cx="26.7" cy="14" r="1.05" fill="rgba(30,15,5,0.55)" />
     </svg>
   );
 }

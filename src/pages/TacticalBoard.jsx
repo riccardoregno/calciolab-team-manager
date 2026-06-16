@@ -98,6 +98,8 @@ export default function TacticalBoard({
   const [isPlayingFrames, setIsPlayingFrames] = useState(false);
   const [savedSchemas, setSavedSchemas] = useState(() => loadSchemas());
   const [mobileFullscreen, setMobileFullscreen] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState(null);
+  const [fieldTheme, setFieldTheme] = useState(_saved?.fieldTheme ?? "auto");
   const [schemaName, setSchemaName] = useState("");
   const [schemaSaved, setSchemaSaved] = useState(false);
 
@@ -143,8 +145,9 @@ export default function TacticalBoard({
       areaSize,
       boardFrames,
       activeFrameId,
+      fieldTheme,
     });
-  }, [ownFormation, opponentFormation, boardPlayers, lines, notes, selectedLineup, boardObjects, areaSize, boardFrames, activeFrameId]);
+  }, [ownFormation, opponentFormation, boardPlayers, lines, notes, selectedLineup, boardObjects, areaSize, boardFrames, activeFrameId, fieldTheme]);
 
   useEffect(() => {
     function handleKeyDown(event) {
@@ -239,6 +242,10 @@ export default function TacticalBoard({
   const opponentCount = boardPlayers.filter((p) => p.team === "opponent").length;
   const selectedShape = getSelectedShape(lines, selectedItem);
   const selectedObject = getSelectedObject(boardObjects, selectedItem);
+  const mobileFullscreenActive = isMobile && mobileFullscreen;
+  const activeFieldTheme = fieldTheme === "auto" ? (mobileFullscreenActive ? "grey" : "green") : fieldTheme;
+  const fieldThemeStyle = FIELD_THEMES[activeFieldTheme]?.style ?? FIELD_THEMES.green.style;
+  const benchPlayers = availablePlayers.filter((player) => !selectedLineup.some((selected) => selected.id === player.id));
 
   // ── Undo helpers ─────────────────────────────────────────────────────────────
   function pushHistory(currentLines, currentObjects, currentPlayers) {
@@ -661,6 +668,16 @@ export default function TacticalBoard({
     setIsPlayingFrames(false);
   }
 
+  function toggleMobilePanel(panel) {
+    setMobilePanel((current) => (current === panel ? null : panel));
+  }
+
+  function selectMobileTool(tool) {
+    setActiveTool(tool);
+    setSelectedItem(null);
+    setMobilePanel(null);
+  }
+
   // ─── Schema save / load ───────────────────────────────────────────────────────
   function saveCurrentSchema() {
     const name = schemaName.trim();
@@ -960,20 +977,28 @@ export default function TacticalBoard({
       )}
 
       <div
-        style={isMobile && mobileFullscreen ? {
+        style={mobileFullscreenActive ? {
           position: "fixed",
           inset: 0,
           zIndex: 200,
-          background: "#0a1628",
-          overflowY: "auto",
-          WebkitOverflowScrolling: "touch",
-          padding: "8px 8px 24px",
+          background: "#020617",
+          overflow: "hidden",
+          padding: "max(8px, env(safe-area-inset-top)) 8px max(10px, env(safe-area-inset-bottom))",
         } : {}}
       >
       <div style={{ ...boardStyles.layout, gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) 330px" }}>
         <div style={boardStyles.mainColumn}>
-          <AppCard>
-            {!(isMobile && mobileFullscreen) && <div style={{ ...boardStyles.header, flexWrap: "wrap", flexDirection: isMobile ? "column" : "row" }}>
+          <AppCard
+            noPadding={mobileFullscreenActive}
+            style={mobileFullscreenActive ? {
+              minHeight: "100%",
+              background: "transparent",
+              border: "none",
+              boxShadow: "none",
+              overflow: "visible",
+            } : undefined}
+          >
+            {!mobileFullscreenActive && <div style={{ ...boardStyles.header, flexWrap: "wrap", flexDirection: isMobile ? "column" : "row" }}>
               <div>
                 <div style={boardStyles.kicker}>CALCIOLAB TACTICAL PAD</div>
                 <h2 style={boardStyles.title}>Match Plan</h2>
@@ -995,7 +1020,7 @@ export default function TacticalBoard({
             </div>}
 
             {/* ── Riga 1: formazioni + azioni gara ── */}
-            {!(isMobile && mobileFullscreen) && <div style={boardStyles.toolbar}>
+            {!mobileFullscreenActive && <div style={boardStyles.toolbar}>
               <label style={boardStyles.label}>
                 {t("pages.tacticalBoard.ownTeam")}
                 <select value={ownFormation} onChange={(e) => changeOwnFormation(e.target.value)} style={boardStyles.select}>
@@ -1019,7 +1044,29 @@ export default function TacticalBoard({
             </div>}
 
             {/* ── Riga 2: strumenti di disegno ── */}
-            <div style={{ ...boardStyles.drawBar, padding: isMobile ? "8px" : undefined }}>
+            {mobileFullscreenActive ? (
+              <div style={mobileTopBar}>
+                <button type="button" onClick={() => toggleMobilePanel("players")} style={{ ...mobileTopButton, ...(mobilePanel === "players" ? mobileTopButtonActive : {}) }}>
+                  👕
+                </button>
+                <button type="button" onClick={() => toggleMobilePanel("objects")} style={{ ...mobileTopButton, ...(mobilePanel === "objects" ? mobileTopButtonActive : {}) }}>
+                  🔺
+                </button>
+                <button type="button" onClick={() => toggleMobilePanel("lines")} style={{ ...mobileTopButton, ...(mobilePanel === "lines" ? mobileTopButtonActive : {}) }}>
+                  ↗
+                </button>
+                <button type="button" onClick={() => toggleMobilePanel("field")} style={{ ...mobileTopButton, ...(mobilePanel === "field" ? mobileTopButtonActive : {}) }}>
+                  ⚙
+                </button>
+                <button type="button" onClick={() => setMobileFullscreen(false)} style={{ ...mobileTopButton, marginLeft: "auto" }}>
+                  ✕
+                </button>
+              </div>
+            ) : (
+            <div style={{
+              ...boardStyles.drawBar,
+              padding: isMobile ? "8px" : undefined,
+            }}>
               {/* Modalità */}
               <div style={boardStyles.toolGroup}>
                 <ToolButton icon={<Move size={17} />} active={activeTool === "move"} onClick={() => setActiveTool("move")} title={t("pages.tacticalBoard.moveToolTip")} />
@@ -1097,7 +1144,8 @@ export default function TacticalBoard({
                   type="button"
                   onClick={() => setMobileFullscreen((v) => !v)}
                   style={{
-                    marginLeft: "auto",
+                    marginLeft: mobileFullscreenActive ? 4 : "auto",
+                    flexShrink: 0,
                     border: "1px solid rgba(148,163,184,0.22)",
                     background: mobileFullscreen ? "rgba(37,99,235,0.28)" : "rgba(255,255,255,0.05)",
                     color: "#cbd5e1",
@@ -1115,8 +1163,9 @@ export default function TacticalBoard({
                 </button>
               )}
             </div>
+            )}
 
-            {!(isMobile && mobileFullscreen) && <div style={boardStyles.boardConfigBar}>
+            {!mobileFullscreenActive && <div style={boardStyles.boardConfigBar}>
               <div style={boardStyles.fieldSizeGroup}>
                 <span>Area</span>
                 <label style={boardStyles.fieldSizeLabel}>
@@ -1202,7 +1251,19 @@ export default function TacticalBoard({
             </div>}
 
             {(selectedShape || selectedObject) && (
-              <div style={boardStyles.editorBar}>
+              <div style={{
+                ...boardStyles.editorBar,
+                ...(mobileFullscreenActive ? {
+                  position: "fixed",
+                  left: 10,
+                  right: 10,
+                  bottom: 78,
+                  zIndex: 270,
+                  margin: 0,
+                  background: "rgba(2,6,23,0.9)",
+                  boxShadow: "0 14px 34px rgba(0,0,0,0.45)",
+                } : {}),
+              }}>
                 <div style={{ ...boardStyles.editorMeta, minWidth: isMobile ? 0 : 220 }}>
                   <strong>{selectedShape ? t("pages.tacticalBoard.shapeSelectedTitle") : t("pages.tacticalBoard.objectSelectedTitle")}</strong>
                   <span>
@@ -1288,9 +1349,18 @@ export default function TacticalBoard({
   id="tactical-board-field"
   style={{
     ...boardStyles.field,
+    ...fieldThemeStyle,
     touchAction: "none",
     minHeight: isMobile ? 0 : 520,
-    ...(isMobile && mobileFullscreen ? { aspectRatio: "2 / 3", borderRadius: 12, width: "100%" } : {}),
+    ...(mobileFullscreenActive ? {
+      aspectRatio: "auto",
+      height: "calc(100dvh - 132px)",
+      minHeight: 0,
+      width: "100%",
+      marginTop: 66,
+      borderRadius: 24,
+      border: "1px solid rgba(255,255,255,0.18)",
+    } : {}),
   }}
   onPointerDown={handleBoardMouseDown}
   onPointerMove={handleBoardMouseMove}
@@ -1540,7 +1610,145 @@ export default function TacticalBoard({
   </div>
 </DndContext>
 
-            {!(isMobile && mobileFullscreen) && <div style={boardStyles.legend}>
+            {mobileFullscreenActive && (
+              <div style={mobileDock}>
+                <button type="button" onClick={handleUndo} disabled={undoStack.length === 0} style={{ ...mobileDockButton, opacity: undoStack.length ? 1 : 0.38 }}>
+                  <Undo2 size={18} />
+                </button>
+                <button type="button" onClick={() => toggleMobilePanel("players")} style={{ ...mobileDockButton, ...(mobilePanel === "players" ? mobileDockButtonActive : {}) }}>
+                  <span style={mobileDockIcon}>👕</span>
+                  <span style={mobileDockLabel}>{t("pages.tacticalBoard.mobilePlayers")}</span>
+                </button>
+                <button type="button" onClick={() => toggleMobilePanel("objects")} style={{ ...mobileDockButton, ...(mobilePanel === "objects" ? mobileDockButtonActive : {}) }}>
+                  <span style={mobileDockIcon}>🔺</span>
+                  <span style={mobileDockLabel}>{t("pages.tacticalBoard.mobileObjects")}</span>
+                </button>
+                <button type="button" onClick={() => toggleMobilePanel("lines")} style={{ ...mobileDockButton, ...(mobilePanel === "lines" ? mobileDockButtonActive : {}) }}>
+                  <span style={mobileDockIcon}>↗</span>
+                  <span style={mobileDockLabel}>{t("pages.tacticalBoard.mobileLines")}</span>
+                </button>
+                <button type="button" onClick={() => toggleMobilePanel("field")} style={{ ...mobileDockButton, ...(mobilePanel === "field" ? mobileDockButtonActive : {}) }}>
+                  <span style={mobileDockIcon}>⚙</span>
+                  <span style={mobileDockLabel}>{t("pages.tacticalBoard.mobileField")}</span>
+                </button>
+              </div>
+            )}
+
+            {mobileFullscreenActive && mobilePanel && (
+              <div style={mobileSheetBackdrop} onPointerDown={() => setMobilePanel(null)}>
+                <div style={mobileSheet} onPointerDown={(event) => event.stopPropagation()}>
+                  <div style={mobileSheetHandle} />
+                  <div style={mobileSheetHeader}>
+                    <h3 style={mobileSheetTitle}>{t(`pages.tacticalBoard.mobilePanel${mobilePanel[0].toUpperCase()}${mobilePanel.slice(1)}`)}</h3>
+                    <button type="button" style={mobileSheetClose} onClick={() => setMobilePanel(null)}>✕</button>
+                  </div>
+
+                  {mobilePanel === "players" && (
+                    <div style={mobileSheetContent}>
+                      <div style={mobileInlineControls}>
+                        <label style={mobileFieldLabel}>
+                          {t("pages.tacticalBoard.ownTeam")}
+                          <select value={ownFormation} onChange={(event) => changeOwnFormation(event.target.value)} style={mobileSelect}>
+                            {formationOptions.map((formation) => <option key={formation}>{formation}</option>)}
+                          </select>
+                        </label>
+                        <label style={mobileFieldLabel}>
+                          {t("pages.tacticalBoard.opponents")}
+                          <select value={opponentFormation} onChange={(event) => changeOpponentFormation(event.target.value)} style={mobileSelect}>
+                            {formationOptions.map((formation) => <option key={formation}>{formation}</option>)}
+                          </select>
+                        </label>
+                      </div>
+                      <div style={mobilePlayerList}>
+                        {benchPlayers.slice(0, 12).map((player) => (
+                          <button key={player.id} type="button" style={mobilePlayerButton} onClick={() => addPlayerToLineup(player)}>
+                            <span style={mobilePlayerNumber}>{player.number ?? "-"}</span>
+                            <span style={mobilePlayerName}>{player.name}</span>
+                          </button>
+                        ))}
+                        {!benchPlayers.length && <div style={mobileEmpty}>{t("pages.tacticalBoard.noStartersSelected")}</div>}
+                      </div>
+                      <button type="button" style={mobileActionButton} onClick={clearLineup}>{t("pages.tacticalBoard.btnClearLineup")}</button>
+                    </div>
+                  )}
+
+                  {mobilePanel === "objects" && (
+                    <div style={mobileSheetGrid}>
+                      {MOBILE_OBJECT_TOOLS.map((tool) => (
+                        <button key={tool.key} type="button" style={{ ...mobileChoiceButton, ...(activeTool === `stamp-${tool.key}` ? mobileChoiceButtonActive : {}) }} onClick={() => selectMobileTool(`stamp-${tool.key}`)}>
+                          <span style={mobileChoiceIcon}>{tool.icon}</span>
+                          <span>{t(`pages.tacticalBoard.${tool.titleKey}`)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {mobilePanel === "lines" && (
+                    <div style={mobileSheetContent}>
+                      <div style={mobileSheetGrid}>
+                        {MOBILE_LINE_TOOLS.map((tool) => (
+                          <button key={tool.key} type="button" style={{ ...mobileChoiceButton, ...(activeTool === tool.key ? mobileChoiceButtonActive : {}) }} onClick={() => selectMobileTool(tool.key)}>
+                            <span style={mobileChoiceIcon}>{tool.icon}</span>
+                            <span>{t(`pages.tacticalBoard.${tool.titleKey}`)}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <div style={mobileColorRow}>
+                        {DRAW_COLORS.map((c) => (
+                          <button
+                            key={c.value}
+                            type="button"
+                            title={c.label}
+                            onClick={() => {
+                              setDrawColor(c.value);
+                              if (selectedShape) updateSelectedShape({ color: c.value });
+                              if (selectedObject) updateSelectedObject({ color: c.value });
+                            }}
+                            style={{
+                              ...mobileColorButton,
+                              background: c.value,
+                              boxShadow: drawColor === c.value ? "0 0 0 3px rgba(250,204,21,0.75)" : "none",
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {mobilePanel === "field" && (
+                    <div style={mobileSheetContent}>
+                      <div style={mobileThemeRow}>
+                        {Object.entries(FIELD_THEMES).map(([key, theme]) => (
+                          <button key={key} type="button" style={{ ...mobileThemeButton, ...(fieldTheme === key ? mobileChoiceButtonActive : {}) }} onClick={() => setFieldTheme(key)}>
+                            <span style={{ ...mobileThemeSwatch, background: theme.swatch }} />
+                            <span>{t(`pages.tacticalBoard.${theme.titleKey}`)}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <div style={mobileInlineControls}>
+                        <label style={mobileFieldLabel}>
+                          {t("pages.tacticalBoard.fieldWidthLabel")}
+                          <input style={mobileNumberInput} type="number" value={areaSize.width} min="1" max="60" onChange={(event) => updateAreaSize("width", event.target.value)} />
+                        </label>
+                        <label style={mobileFieldLabel}>
+                          {t("pages.tacticalBoard.fieldLengthLabel")}
+                          <input style={mobileNumberInput} type="number" value={areaSize.length} min="1" max="110" onChange={(event) => updateAreaSize("length", event.target.value)} />
+                        </label>
+                      </div>
+                      <div style={mobileInlineActions}>
+                        <button type="button" style={mobileActionButton} onClick={addSizedArea}>{t("pages.tacticalBoard.insertArea")}</button>
+                        <button type="button" style={mobileActionButton} onClick={addFrame}><Plus size={15} /> Frame</button>
+                        <button type="button" style={mobileActionButton} onClick={toggleFramePlayback} disabled={boardFrames.length < 2}>
+                          {isPlayingFrames ? <Pause size={15} /> : <Play size={15} />} {boardFrames.length || "0/0"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!mobileFullscreenActive && <div style={boardStyles.legend}>
               <span style={boardStyles.legendItem}><i style={boardStyles.dotBlue} />{t("pages.tacticalBoard.ownTeam")}</span>
               <span style={boardStyles.legendItem}><i style={boardStyles.dotRed} />{t("pages.tacticalBoard.opponents")}</span>
             </div>}
@@ -1549,7 +1757,7 @@ export default function TacticalBoard({
 
 
 
-        {!(isMobile && mobileFullscreen) && <div style={boardStyles.sideColumn}>
+        {!mobileFullscreenActive && <div style={boardStyles.sideColumn}>
           <AppCard>
             <h3 style={styles.cardTitle}>{t("pages.tacticalBoard.gamePrinciples")}</h3>
             <div style={boardStyles.notes}>
@@ -1827,4 +2035,389 @@ const exStyles = {
     fontSize: 13,
     cursor: "pointer",
   },
+};
+
+const FIELD_THEMES = {
+  auto: {
+    titleKey: "fieldThemeAuto",
+    swatch: "linear-gradient(135deg,#22c55e 0 50%,#64748b 50% 100%)",
+    style: {
+      background:
+        "linear-gradient(180deg, rgba(34,197,94,0.18), transparent 56%), repeating-linear-gradient(90deg, rgba(22,163,74,0.72) 0, rgba(22,163,74,0.72) 76px, rgba(21,128,61,0.72) 76px, rgba(21,128,61,0.72) 152px)",
+    },
+  },
+  green: {
+    titleKey: "fieldThemeGreen",
+    swatch: "#16a34a",
+    style: {
+      background:
+        "linear-gradient(180deg, rgba(34,197,94,0.2), transparent 56%), repeating-linear-gradient(90deg, rgba(22,163,74,0.75) 0, rgba(22,163,74,0.75) 76px, rgba(21,128,61,0.75) 76px, rgba(21,128,61,0.75) 152px)",
+    },
+  },
+  grey: {
+    titleKey: "fieldThemeGrey",
+    swatch: "#64748b",
+    style: {
+      background:
+        "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.07), transparent 26%), linear-gradient(180deg, rgba(100,116,139,0.62), rgba(71,85,105,0.54)), repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0, rgba(255,255,255,0.035) 70px, transparent 70px, transparent 140px)",
+    },
+  },
+  dark: {
+    titleKey: "fieldThemeDark",
+    swatch: "#111827",
+    style: {
+      background:
+        "linear-gradient(180deg, rgba(30,41,59,0.86), rgba(15,23,42,0.84)), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0, rgba(255,255,255,0.04) 70px, transparent 70px, transparent 140px)",
+    },
+  },
+};
+
+const MOBILE_OBJECT_TOOLS = [
+  { key: "ball", titleKey: "stampBall", icon: "⚽" },
+  { key: "cone", titleKey: "stampCone", icon: "🔺" },
+  { key: "goal", titleKey: "stampGoal", icon: "▱" },
+  { key: "pole", titleKey: "stampPole", icon: "│" },
+  { key: "hurdle", titleKey: "stampHurdle", icon: "▰" },
+  { key: "ring", titleKey: "stampRing", icon: "○" },
+  { key: "ladder", titleKey: "stampLadder", icon: "▤" },
+];
+
+const MOBILE_LINE_TOOLS = [
+  { key: "move", titleKey: "moveToolTip", icon: "✥" },
+  { key: "line", titleKey: "lineTypeLine", icon: "━" },
+  { key: "dashed", titleKey: "lineTypeDashed", icon: "┄" },
+  { key: "arrow", titleKey: "lineTypeArrow", icon: "↗" },
+  { key: "curve", titleKey: "lineTypeCurve", icon: "⌒" },
+  { key: "curve-dashed", titleKey: "lineTypeCurveDashed", icon: "⌁" },
+  { key: "zone", titleKey: "lineTypeZone", icon: "▭" },
+];
+
+const mobileTopBar = {
+  position: "fixed",
+  top: "max(8px, env(safe-area-inset-top))",
+  left: 8,
+  right: 8,
+  zIndex: 260,
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: "8px",
+  borderRadius: 18,
+  background: "rgba(2,6,23,0.86)",
+  border: "1px solid rgba(255,255,255,0.09)",
+  boxShadow: "0 14px 36px rgba(0,0,0,0.42)",
+  backdropFilter: "blur(14px)",
+};
+
+const mobileTopButton = {
+  width: 44,
+  height: 44,
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.1)",
+  background: "rgba(15,23,42,0.9)",
+  color: "#e2e8f0",
+  display: "grid",
+  placeItems: "center",
+  fontSize: 20,
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const mobileTopButtonActive = {
+  border: "1px solid rgba(250,204,21,0.78)",
+  background: "rgba(250,204,21,0.16)",
+  color: "#fde68a",
+};
+
+const mobileDock = {
+  position: "fixed",
+  left: "50%",
+  bottom: "max(10px, env(safe-area-inset-bottom))",
+  transform: "translateX(-50%)",
+  zIndex: 260,
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "8px 10px",
+  borderRadius: 24,
+  background: "rgba(2,6,23,0.86)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  boxShadow: "0 14px 36px rgba(0,0,0,0.42)",
+  backdropFilter: "blur(14px)",
+};
+
+const mobileDockButton = {
+  width: 54,
+  height: 50,
+  borderRadius: 16,
+  border: "1px solid rgba(255,255,255,0.1)",
+  background: "rgba(15,23,42,0.95)",
+  color: "#e2e8f0",
+  display: "grid",
+  placeItems: "center",
+  gap: 1,
+  fontSize: 19,
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const mobileDockButtonActive = {
+  border: "1px solid rgba(250,204,21,0.82)",
+  background: "rgba(250,204,21,0.16)",
+  color: "#fde68a",
+  boxShadow: "0 0 0 2px rgba(250,204,21,0.12)",
+};
+
+const mobileDockIcon = {
+  lineHeight: 1,
+  fontSize: 18,
+};
+
+const mobileDockLabel = {
+  fontSize: 9,
+  lineHeight: 1,
+  fontWeight: 900,
+  letterSpacing: 0,
+};
+
+const mobileSheetBackdrop = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 270,
+  display: "flex",
+  alignItems: "flex-end",
+  background: "linear-gradient(180deg, rgba(2,6,23,0.08), rgba(2,6,23,0.58))",
+};
+
+const mobileSheet = {
+  width: "100%",
+  maxHeight: "62dvh",
+  overflowY: "auto",
+  borderRadius: "28px 28px 0 0",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderBottom: "none",
+  background: "rgba(2,6,23,0.97)",
+  color: "#f8fafc",
+  padding: "10px 18px max(18px, env(safe-area-inset-bottom))",
+  boxShadow: "0 -22px 60px rgba(0,0,0,0.48)",
+};
+
+const mobileSheetHandle = {
+  width: 58,
+  height: 5,
+  borderRadius: 999,
+  background: "rgba(148,163,184,0.7)",
+  margin: "0 auto 18px",
+};
+
+const mobileSheetHeader = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  marginBottom: 16,
+};
+
+const mobileSheetTitle = {
+  margin: 0,
+  fontSize: 22,
+  lineHeight: 1.1,
+  fontWeight: 950,
+  letterSpacing: 0,
+};
+
+const mobileSheetClose = {
+  width: 40,
+  height: 40,
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.1)",
+  background: "rgba(15,23,42,0.95)",
+  color: "#e2e8f0",
+  fontWeight: 950,
+  cursor: "pointer",
+};
+
+const mobileSheetContent = {
+  display: "grid",
+  gap: 14,
+};
+
+const mobileSheetGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 10,
+};
+
+const mobileChoiceButton = {
+  minHeight: 78,
+  borderRadius: 18,
+  border: "1px solid rgba(148,163,184,0.16)",
+  background: "rgba(30,41,59,0.9)",
+  color: "#e2e8f0",
+  display: "grid",
+  placeItems: "center",
+  gap: 6,
+  padding: "10px 8px",
+  fontSize: 11,
+  fontWeight: 900,
+  textAlign: "center",
+  cursor: "pointer",
+};
+
+const mobileChoiceButtonActive = {
+  border: "2px solid rgba(250,204,21,0.92)",
+  background: "rgba(250,204,21,0.16)",
+  color: "#fef3c7",
+};
+
+const mobileChoiceIcon = {
+  fontSize: 25,
+  lineHeight: 1,
+};
+
+const mobileColorRow = {
+  display: "grid",
+  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+  gap: 10,
+};
+
+const mobileColorButton = {
+  height: 44,
+  borderRadius: 999,
+  border: "2px solid rgba(255,255,255,0.16)",
+  cursor: "pointer",
+};
+
+const mobileInlineControls = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+};
+
+const mobileFieldLabel = {
+  display: "grid",
+  gap: 7,
+  color: "#94a3b8",
+  fontSize: 11,
+  fontWeight: 900,
+  textTransform: "uppercase",
+};
+
+const mobileSelect = {
+  width: "100%",
+  minHeight: 44,
+  borderRadius: 14,
+  border: "1px solid rgba(148,163,184,0.18)",
+  background: "rgba(15,23,42,0.95)",
+  color: "#f8fafc",
+  padding: "0 10px",
+  fontWeight: 900,
+};
+
+const mobileNumberInput = {
+  ...mobileSelect,
+  appearance: "textfield",
+};
+
+const mobilePlayerList = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 9,
+  maxHeight: 178,
+  overflowY: "auto",
+};
+
+const mobilePlayerButton = {
+  minHeight: 52,
+  borderRadius: 16,
+  border: "1px solid rgba(148,163,184,0.16)",
+  background: "rgba(30,41,59,0.88)",
+  color: "#f8fafc",
+  display: "flex",
+  alignItems: "center",
+  gap: 9,
+  padding: "8px 10px",
+  cursor: "pointer",
+  minWidth: 0,
+};
+
+const mobilePlayerNumber = {
+  width: 30,
+  height: 30,
+  borderRadius: 999,
+  display: "grid",
+  placeItems: "center",
+  background: "linear-gradient(135deg,#3b82f6,#2563eb)",
+  color: "white",
+  fontSize: 13,
+  fontWeight: 950,
+  flexShrink: 0,
+};
+
+const mobilePlayerName = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  fontSize: 13,
+  fontWeight: 900,
+};
+
+const mobileEmpty = {
+  gridColumn: "1 / -1",
+  padding: 14,
+  borderRadius: 14,
+  background: "rgba(15,23,42,0.82)",
+  color: "#94a3b8",
+  fontWeight: 800,
+  textAlign: "center",
+};
+
+const mobileActionButton = {
+  minHeight: 44,
+  borderRadius: 14,
+  border: "1px solid rgba(250,204,21,0.28)",
+  background: "rgba(250,204,21,0.14)",
+  color: "#fde68a",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  padding: "0 12px",
+  fontWeight: 950,
+  cursor: "pointer",
+};
+
+const mobileInlineActions = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 9,
+};
+
+const mobileThemeRow = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: 9,
+};
+
+const mobileThemeButton = {
+  minHeight: 70,
+  borderRadius: 18,
+  border: "1px solid rgba(148,163,184,0.16)",
+  background: "rgba(30,41,59,0.9)",
+  color: "#e2e8f0",
+  display: "grid",
+  placeItems: "center",
+  gap: 7,
+  padding: "9px 7px",
+  fontSize: 11,
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const mobileThemeSwatch = {
+  width: 28,
+  height: 28,
+  borderRadius: 999,
+  border: "2px solid rgba(255,255,255,0.25)",
 };

@@ -508,8 +508,8 @@ export const boardStyles = {
 
  player: {
   position: "absolute",
-  width: 42,
-  height: 50,
+  width: 46,
+  height: 56,
   borderRadius: 12,
   display: "flex",
   alignItems: "center",
@@ -521,7 +521,7 @@ export const boardStyles = {
   fontSize: 12,
   zIndex: 30,
   transition: "0.15s ease",
-  filter: "drop-shadow(0 8px 12px rgba(0,0,0,0.38))",
+  filter: "drop-shadow(0 9px 13px rgba(0,0,0,0.42))",
 },
 
  ownPlayer: {
