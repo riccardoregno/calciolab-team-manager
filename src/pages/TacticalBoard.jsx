@@ -973,7 +973,7 @@ export default function TacticalBoard({
       <div style={{ ...boardStyles.layout, gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) 330px" }}>
         <div style={boardStyles.mainColumn}>
           <AppCard>
-            <div style={{ ...boardStyles.header, flexWrap: "wrap", flexDirection: isMobile ? "column" : "row" }}>
+            {!(isMobile && mobileFullscreen) && <div style={{ ...boardStyles.header, flexWrap: "wrap", flexDirection: isMobile ? "column" : "row" }}>
               <div>
                 <div style={boardStyles.kicker}>CALCIOLAB TACTICAL PAD</div>
                 <h2 style={boardStyles.title}>Match Plan</h2>
@@ -992,10 +992,10 @@ export default function TacticalBoard({
                   <strong>{opponentCount}</strong>
                 </div>
               </div>
-            </div>
+            </div>}
 
             {/* ── Riga 1: formazioni + azioni gara ── */}
-            <div style={boardStyles.toolbar}>
+            {!(isMobile && mobileFullscreen) && <div style={boardStyles.toolbar}>
               <label style={boardStyles.label}>
                 {t("pages.tacticalBoard.ownTeam")}
                 <select value={ownFormation} onChange={(e) => changeOwnFormation(e.target.value)} style={boardStyles.select}>
@@ -1016,7 +1016,7 @@ export default function TacticalBoard({
                 <button style={boardStyles.secondaryButton} onClick={clearLineup}>{t("pages.tacticalBoard.btnClearLineup")}</button>
                 <button style={boardStyles.primaryButton} onClick={resetBoard}>Reset board</button>
               </div>
-            </div>
+            </div>}
 
             {/* ── Riga 2: strumenti di disegno ── */}
             <div style={{ ...boardStyles.drawBar, padding: isMobile ? "8px" : undefined }}>
@@ -1116,7 +1116,7 @@ export default function TacticalBoard({
               )}
             </div>
 
-            <div style={boardStyles.boardConfigBar}>
+            {!(isMobile && mobileFullscreen) && <div style={boardStyles.boardConfigBar}>
               <div style={boardStyles.fieldSizeGroup}>
                 <span>Area</span>
                 <label style={boardStyles.fieldSizeLabel}>
@@ -1199,7 +1199,7 @@ export default function TacticalBoard({
                   </button>
                 ))}
               </div>
-            </div>
+            </div>}
 
             {(selectedShape || selectedObject) && (
               <div style={boardStyles.editorBar}>
@@ -1286,7 +1286,12 @@ export default function TacticalBoard({
             <DndContext onDragEnd={handleDragEnd}>
   <div
   id="tactical-board-field"
-  style={{ ...boardStyles.field, touchAction: "none", minHeight: isMobile ? 0 : 520 }}
+  style={{
+    ...boardStyles.field,
+    touchAction: "none",
+    minHeight: isMobile ? 0 : 520,
+    ...(isMobile && mobileFullscreen ? { aspectRatio: "2 / 3", borderRadius: 12, width: "100%" } : {}),
+  }}
   onPointerDown={handleBoardMouseDown}
   onPointerMove={handleBoardMouseMove}
   onPointerUp={handleBoardMouseUp}
@@ -1535,10 +1540,10 @@ export default function TacticalBoard({
   </div>
 </DndContext>
 
-            <div style={boardStyles.legend}>
+            {!(isMobile && mobileFullscreen) && <div style={boardStyles.legend}>
               <span style={boardStyles.legendItem}><i style={boardStyles.dotBlue} />{t("pages.tacticalBoard.ownTeam")}</span>
               <span style={boardStyles.legendItem}><i style={boardStyles.dotRed} />{t("pages.tacticalBoard.opponents")}</span>
-            </div>
+            </div>}
           </AppCard>
         </div>
 
