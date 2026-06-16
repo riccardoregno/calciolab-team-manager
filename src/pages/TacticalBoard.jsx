@@ -7,7 +7,7 @@ import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
 import { ArrowRight, Move, Pause, Play, Plus, Undo2 } from "lucide-react";
 import { emptyExercise } from "../data/initialData";
-import { createId } from "../utils/helpers";
+import { createUuid } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { boardStyles } from "../styles/tacticalBoard";
@@ -760,7 +760,7 @@ export default function TacticalBoard({
       // Crea un nuovo esercizio con il disegno incorporato
       const newExercise = {
         ...emptyExercise(),
-        id:           createId("exercise"),
+        id:           createUuid(),
         title:        name,
         tacticalBoard: boardSnapshot,
       };

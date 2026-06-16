@@ -13,7 +13,7 @@ import { useToast } from "../components/ui/Toast";
 
 import { styles } from "../styles/index.js";
 import { emptyExercise } from "../data/initialData";
-import { createId } from "../utils/helpers";
+import { createUuid } from "../utils/helpers";
 import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
 import { useTranslation } from "../i18n";
 
@@ -83,7 +83,7 @@ function Exercises({
 
     const payload = {
       ...form,
-      id: editingId || createId("exercise"),
+      id: editingId || createUuid(),
     };
 
     if (editingId) {
@@ -457,7 +457,7 @@ function Exercises({
                     showToast(t("pages.exercises.titleRequired"), "warn");
                     return;
                   }
-                  const id = editingId || createId("exercise");
+                  const id = editingId || createUuid();
                   const payload = { ...form, id };
                   if (editingId) {
                     setExercises((prevExercises) => prevExercises.map((ex) => ex.id === editingId ? payload : ex));

@@ -10,7 +10,7 @@ import PageHeader from "../components/ui/PageHeader";
 import SearchBar from "../components/ui/SearchBar";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { styles } from "../styles/index.js";
-import { TRAINING_BLOCKS, getBlockFromCategory, createId, getCurrentUserRole, isFeatureUnlocked } from "../utils/helpers";
+import { TRAINING_BLOCKS, getBlockFromCategory, createUuid, getCurrentUserRole, isFeatureUnlocked } from "../utils/helpers";
 import { generateExerciseSvg, getExerciseDescription, getExerciseProgressions, getCommonErrors } from "../utils/exerciseContent";
 import ExerciseDiagram from "../components/exercises/ExerciseDiagram";
 import { emptyExercise } from "../data/initialData";
@@ -335,7 +335,7 @@ export default function ExerciseLibrary({
   const cloneExerciseToMine = useCallback((exercise) => {
     const cloned = {
       ...exercise,
-      id: createId("exercise"),
+      id: createUuid(),
       source: "custom",
       title: getDisplayTitle(exercise),
       description: exDesc(exercise),
@@ -354,7 +354,7 @@ export default function ExerciseLibrary({
   }, [location, navigate, setExercises]);
 
   function openNew() {
-    setEditForm({ ...emptyExercise(), id: createId("fp5-custom"), intensity: "Media" });
+    setEditForm({ ...emptyExercise(), id: createUuid(), intensity: "Media" });
     setEditIsNew(true);
     setEditModal(true);
   }
