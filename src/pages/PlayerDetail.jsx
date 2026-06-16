@@ -108,6 +108,7 @@ function PlayerDetail({
   const isMobile = useIsMobile();
   const [invitingPortal, setInvitingPortal] = useState(false);
   const [revokingPortal, setRevokingPortal] = useState(false);
+  const [portalInviteLink, setPortalInviteLink] = useState("");
   const [portalAccountState, setPortalAccountState] = useState({ playerId: "", accountId: null });
   const currentPlayerId = String(player?.id || "");
   const portalAccountId = portalAccountState.playerId === currentPlayerId ? portalAccountState.accountId : null;
@@ -557,10 +558,13 @@ function PlayerDetail({
 
       const base = typeof window !== "undefined" ? window.location.origin : "https://calciolab.org";
       const inviteUrl = `${base}/join?token=${token}`;
+      // Mostra il link subito — indipendentemente dall'esito dell'email
+      setPortalInviteLink(inviteUrl);
 
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL || ""}/functions/v1/send-email`, {
+      // Email fire-and-forget: l'invito è già salvato su Supabase, il link è disponibile
+      fetch(`${import.meta.env.VITE_SUPABASE_URL || ""}/functions/v1/send-email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -574,12 +578,7 @@ function PlayerDetail({
           teamName: team.name,
           inviteUrl,
         }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || data?.error) {
-        showToast(t("pages.playerDetail.portalInviteError"), "error");
-        return;
-      }
+      }).catch(() => {});
       showToast(t("pages.playerDetail.portalInviteSent"), "ok");
     } catch {
       showToast(t("pages.playerDetail.portalInviteError"), "error");
@@ -664,6 +663,7 @@ function PlayerDetail({
               onInvitePortal={canManage ? invitePlayerToPortal : undefined}
               invitingPortal={invitingPortal}
               portalInvitePending={portalInvitePending}
+              portalInviteLink={portalInviteLink}
               portalAccountLinked={Boolean(portalAccountId)}
               onRevokePortal={canManage ? revokePlayerPortalAccess : undefined}
               revokingPortal={revokingPortal}

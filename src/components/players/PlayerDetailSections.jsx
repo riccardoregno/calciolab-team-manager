@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -169,8 +169,9 @@ export function PlayerKpiStrip({ summary }) {
   );
 }
 
-export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSave, onFieldChange, onInvitePortal, invitingPortal, portalInvitePending, portalAccountLinked, onRevokePortal, revokingPortal }) {
+export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSave, onFieldChange, onInvitePortal, invitingPortal, portalInvitePending, portalAccountLinked, onRevokePortal, revokingPortal, portalInviteLink }) {
   const { t } = useTranslation();
+  const [linkCopied, setLinkCopied] = React.useState(false);
   return (
     <AppCard>
       <div style={sectionStyles.cardHeader}>
@@ -212,6 +213,47 @@ export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSa
           )}
         </div>
       </div>
+
+      {portalInviteLink && (
+        <div style={{
+          margin: "0 0 16px",
+          padding: "12px 14px",
+          borderRadius: 10,
+          background: "rgba(34,197,94,0.08)",
+          border: "1px solid rgba(34,197,94,0.25)",
+          display: "grid",
+          gap: 10,
+        }}>
+          <p style={{ margin: 0, fontSize: 12, color: "#86efac", fontWeight: 700 }}>
+            ✅ Invito inviato — condividi il link se l&apos;email non arriva
+          </p>
+          <div style={{ fontSize: 11, color: "#93c5fd", wordBreak: "break-all", lineHeight: 1.5, background: "rgba(0,0,0,0.2)", borderRadius: 6, padding: "6px 10px" }}>
+            {portalInviteLink}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard?.writeText(portalInviteLink).then(() => {
+                  setLinkCopied(true);
+                  setTimeout(() => setLinkCopied(false), 2500);
+                });
+              }}
+              style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", background: linkCopied ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)", color: linkCopied ? "#22c55e" : "#e2e8f0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              {linkCopied ? "✓ Copiato!" : "📋 Copia link"}
+            </button>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`Ciao ${form.name || ""}! Sei stato invitato su CalcioLab. Clicca qui per accedere: ${portalInviteLink}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "7px 10px", borderRadius: 7, border: "none", background: "rgba(37,211,102,0.15)", color: "#25d366", fontSize: 12, fontWeight: 700, textDecoration: "none", cursor: "pointer" }}
+            >
+              📱 WhatsApp
+            </a>
+          </div>
+        </div>
+      )}
 
       <div style={sectionStyles.formGrid}>
         <Field label={t("pages.playerDetail.profile.fieldName")}        value={form.name}        editing={editing} onChange={(v) => onFieldChange?.("name", v)} />
