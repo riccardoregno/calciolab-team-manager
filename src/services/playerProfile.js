@@ -94,6 +94,19 @@ export async function loadPlayerStats(teamId, playerId) {
   return { data, error };
 }
 
+export async function loadPlayerMatchesForPeriod(teamId, matchIds) {
+  if (!isSupabaseConfigured || !teamId || !matchIds?.length) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("player_matches")
+    .select("player_id, match_id, minutes_played, goals, assists, yellow_cards, red_cards, rating")
+    .eq("team_id", teamId)
+    .in("match_id", matchIds);
+
+  if (error && import.meta.env.DEV) console.error("[playerProfile] loadPlayerMatchesForPeriod:", error.message);
+  return { data: data || [], error };
+}
+
 export async function loadPlayerMatches(teamId, playerId) {
   if (!isSupabaseConfigured || !teamId || !playerId) return { data: [], error: null };
 

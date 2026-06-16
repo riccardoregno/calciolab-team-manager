@@ -10,7 +10,7 @@ import { SkeletonList } from "../components/ui/Skeleton";
 
 import { formatDate, normalizeAppSettings } from "../utils/helpers";
 import { styles } from "../styles/index.js";
-import { loadAllPlayerStats, loadPlayerMatches } from "../services/playerProfile";
+import { loadAllPlayerStats, loadPlayerMatches, loadPlayerMatchesForPeriod } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -117,6 +117,54 @@ function Statistics({
       return next.filter((id, itemIndex) => id || itemIndex < 2);
     });
   }
+
+  // ── Carico Preparatore ─────────────────────────────────────────────────────
+  const [caricoPreset, setCaricoPreset] = useState("7");
+  const [caricoFrom, setCaricoFrom] = useState("");
+  const [caricoTo, setCaricoTo] = useState("");
+  const [caricoRows, setCaricoRows] = useState([]);
+  const [caricoLoading, setCaricoLoading] = useState(false);
+  const [caricoMatchCount, setCaricoMatchCount] = useState(0);
+
+  function getCaricoRange() {
+    const today = new Date().toISOString().slice(0, 10);
+    if (caricoPreset === "custom") return { from: caricoFrom || "", to: caricoTo || today };
+    const d = new Date();
+    d.setDate(d.getDate() - parseInt(caricoPreset, 10));
+    return { from: d.toISOString().slice(0, 10), to: today };
+  }
+
+  useEffect(() => {
+    const { from, to } = getCaricoRange();
+    const matchEvents = events.filter(
+      (e) => e.type === "Partita" && (!from || e.date >= from) && (!to || e.date <= to)
+    );
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCaricoMatchCount(matchEvents.length);
+    if (!auth.team?.id || matchEvents.length === 0) {
+      setCaricoRows([]);
+      return;
+    }
+    setCaricoLoading(true);
+    const ids = matchEvents.map((e) => String(e.id));
+    loadPlayerMatchesForPeriod(auth.team.id, ids).then(({ data }) => {
+      const agg = {};
+      (data || []).forEach((row) => {
+        const pid = String(row.player_id);
+        if (!agg[pid]) agg[pid] = { playerId: pid, minutes: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0, matches: 0, totalRating: 0, ratedMatches: 0 };
+        agg[pid].minutes    += Number(row.minutes_played) || 0;
+        agg[pid].goals      += Number(row.goals)          || 0;
+        agg[pid].assists    += Number(row.assists)        || 0;
+        agg[pid].yellowCards += Number(row.yellow_cards)  || 0;
+        agg[pid].redCards   += Number(row.red_cards)      || 0;
+        agg[pid].matches    += 1;
+        if (row.rating != null) { agg[pid].totalRating += Number(row.rating); agg[pid].ratedMatches += 1; }
+      });
+      setCaricoRows(Object.values(agg).sort((a, b) => b.minutes - a.minutes));
+      setCaricoLoading(false);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caricoPreset, caricoFrom, caricoTo, events, auth.team?.id]);
 
   // FIX #10: tracciamo la fonte dati delle statistiche per mostrare un badge all'utente
   // e prevenire la situazione in cui playerStatsMap è vuoto (Supabase offline) e
@@ -345,6 +393,109 @@ function Statistics({
           ))}
         </div>
       )}
+
+      {/* ── Carico Preparatore ── */}
+      <AppCard>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+          <div>
+            <p style={{ ...s.sectionLabel, marginBottom: 2 }}>⚡ Carico Preparatore</p>
+            <span style={{ fontSize: 12, color: "#64748b" }}>
+              {caricoMatchCount} {caricoMatchCount === 1 ? "partita" : "partite"} nel periodo
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {[["7", "7 giorni"], ["14", "14 giorni"], ["30", "30 giorni"], ["custom", "Personalizzato"]].map(([val, label]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setCaricoPreset(val)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 10,
+                  border: "1px solid",
+                  borderColor: caricoPreset === val ? "#3b82f6" : "rgba(255,255,255,0.1)",
+                  background: caricoPreset === val ? "rgba(37,99,235,0.25)" : "rgba(255,255,255,0.04)",
+                  color: caricoPreset === val ? "#93c5fd" : "#94a3b8",
+                  fontWeight: 900,
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {caricoPreset === "custom" && (
+          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            <label style={s.filterLabel}>
+              Dal
+              <input type="date" value={caricoFrom} onChange={(e) => setCaricoFrom(e.target.value)} style={styles.input} />
+            </label>
+            <label style={s.filterLabel}>
+              Al
+              <input type="date" value={caricoTo} onChange={(e) => setCaricoTo(e.target.value)} style={styles.input} />
+            </label>
+          </div>
+        )}
+
+        {caricoLoading && <SkeletonList rows={5} />}
+
+        {!caricoLoading && caricoRows.length === 0 && (
+          <p style={{ color: "#475569", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
+            Nessun dato partita nel periodo selezionato. Inserisci le statistiche in <strong>Statistiche Partita</strong> per ogni match.
+          </p>
+        )}
+
+        {!caricoLoading && caricoRows.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {/* header row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 8, padding: "0 0 8px", borderBottom: "1px solid rgba(255,255,255,0.07)", fontSize: 10, fontWeight: 900, color: "#475569", textTransform: "uppercase", letterSpacing: 0.6 }}>
+              <span>Giocatore</span>
+              <span style={{ textAlign: "right", minWidth: 60 }}>Minuti</span>
+              <span style={{ textAlign: "center", minWidth: 36 }}>P</span>
+              <span style={{ textAlign: "right", minWidth: 56 }}>G / A</span>
+            </div>
+            {caricoRows.map((row) => {
+              const player = players.find((p) => String(p.id) === row.playerId);
+              if (!player) return null;
+              const maxMins = caricoMatchCount * 90;
+              const pct = maxMins > 0 ? Math.min(100, Math.round((row.minutes / maxMins) * 100)) : 0;
+              const avg = row.matches > 0 ? Math.round(row.minutes / row.matches) : 0;
+              const barColor = row.minutes === 0 ? "#334155" : avg < 30 ? "#fbbf24" : avg < 65 ? "#22c55e" : avg < 85 ? "#f97316" : "#22c55e";
+              const loadLabel = row.minutes === 0 ? "0 min" : avg < 30 ? "Basso" : avg < 65 ? "Medio" : avg < 85 ? "Alto" : "Titolare";
+              return (
+                <div key={row.playerId} style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 8, alignItems: "center", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, color: "#e2e8f0", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {player.name}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                      <div style={{ flex: 1, height: 5, background: "rgba(255,255,255,0.07)", borderRadius: 3, overflow: "hidden", maxWidth: 180 }}>
+                        <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 3, transition: "width 0.4s ease" }} />
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: barColor, whiteSpace: "nowrap" }}>{loadLabel}</span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", minWidth: 60 }}>
+                    <span style={{ fontWeight: 900, color: "#f8fafc", fontSize: 14 }}>{row.minutes}</span>
+                    <span style={{ fontSize: 10, color: "#64748b", marginLeft: 2 }}>min</span>
+                  </div>
+                  <div style={{ textAlign: "center", minWidth: 36, fontWeight: 700, color: "#94a3b8", fontSize: 13 }}>
+                    {row.matches}
+                  </div>
+                  <div style={{ textAlign: "right", minWidth: 56, fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap" }}>
+                    <span style={row.goals > 0 ? { color: "#4ade80", fontWeight: 900 } : {}}>{row.goals}G</span>
+                    {" · "}
+                    <span style={row.assists > 0 ? { color: "#60a5fa", fontWeight: 900 } : {}}>{row.assists}A</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </AppCard>
 
       {/* ── Grafici ── */}
       <Suspense fallback={<div style={s.chartFallback}>{t("pages.statistics.loadingCharts")}</div>}>
