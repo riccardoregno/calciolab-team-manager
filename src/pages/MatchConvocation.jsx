@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
+import MetricStrip from "../components/ui/MetricStrip";
 import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
@@ -459,6 +460,17 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
     acc[response] = (acc[response] || 0) + 1;
     return acc;
   }, { yes: 0, no: 0, pending: 0 });
+
+  const rsvpTotal = convocati.length;
+  const rsvpResponded = (rsvpStats.yes || 0) + (rsvpStats.no || 0);
+  const rsvpResponsePct = rsvpTotal > 0 ? Math.round((rsvpResponded / rsvpTotal) * 100) : 0;
+  const rsvpAvgHours = (() => {
+    const times = rsvps
+      .filter((r) => r.response && r.responded_at && r.created_at)
+      .map((r) => (new Date(r.responded_at) - new Date(r.created_at)) / 3600000);
+    if (!times.length) return null;
+    return Math.round(times.reduce((s, v) => s + v, 0) / times.length);
+  })();
   const convocatiByRole = groupByRole(convocati);
   const selectedRoleCounts = ROLE_ORDER.reduce((acc, role) => {
     acc[role] = convocati.filter((player) => player.role === role).length;
@@ -803,6 +815,22 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
               )}
             </div>
           </div>
+
+          {rsvpTotal > 0 && (
+            <MetricStrip
+              className="mobile-scroll-x"
+              style={{ margin: "12px 0 4px" }}
+              items={[
+                { key: "pct",     label: t("pages.matchConvocation.kpiResponseRate"),    value: `${rsvpResponsePct}%`, color: rsvpResponsePct >= 80 ? "#22c55e" : rsvpResponsePct >= 50 ? "#fb923c" : "#f87171" },
+                { key: "yes",     label: t("pages.matchConvocation.kpiYes"),             value: rsvpStats.yes || 0,    color: "#22c55e" },
+                { key: "no",      label: t("pages.matchConvocation.kpiNo"),              value: rsvpStats.no || 0,     color: "#f87171" },
+                { key: "pending", label: t("pages.matchConvocation.kpiPending"),         value: rsvpStats.pending || 0, color: rsvpStats.pending > 0 ? "#fb923c" : "#64748b" },
+                rsvpAvgHours !== null
+                  ? { key: "avg", label: t("pages.matchConvocation.kpiAvgTime"),        value: `${rsvpAvgHours}h`,    color: "#a78bfa" }
+                  : null,
+              ]}
+            />
+          )}
 
           {rsvpError && <p style={s.errorText}>{rsvpError}</p>}
 

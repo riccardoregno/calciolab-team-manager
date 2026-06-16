@@ -133,7 +133,7 @@ export async function fetchMatchRsvps({ teamId, matchId }) {
 
   const { data, error } = await supabase
     .from("rsvp_tokens")
-    .select("player_id, response, responded_at, expires_at")
+    .select("player_id, response, responded_at, expires_at, created_at")
     .eq("team_id", teamId)
     .eq("match_id", String(matchId));
 
