@@ -28,7 +28,6 @@ export default function Topbar({
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [openNotifications, setOpenNotifications] = useState(false);
-  const [openProfileMobile, setOpenProfileMobile] = useState(false);
   const [openProfileDesktop, setOpenProfileDesktop] = useState(false);
 
   const { notifications, unreadCount, isRead, markAllRead, markRead } = useInAppNotifications({
@@ -37,7 +36,6 @@ export default function Topbar({
 
   const firstName = profile?.first_name || "Coach";
   const lastName = profile?.last_name || "";
-  const initials = `${firstName?.[0] || "C"}${lastName?.[0] || ""}`.toUpperCase();
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -153,7 +151,7 @@ export default function Topbar({
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {onSyncNow && (
+        {(refreshing || (storageSource && storageSource !== "supabase")) && onSyncNow && (
           <button
             type="button"
             onClick={onSyncNow}
@@ -161,36 +159,14 @@ export default function Topbar({
             title={t("common.syncNow")}
             style={{
               ...mobileTopbarStyles.syncDot,
-              background:
-                storageSource === "supabase" ? "rgba(34,197,94,0.14)"
-                : storageSource === "partial" || storageSource === "pending-upload" ? "rgba(251,146,60,0.14)"
-                : "rgba(248,113,113,0.14)",
-              color:
-                storageSource === "supabase" ? "#4ade80"
-                : storageSource === "partial" || storageSource === "pending-upload" ? "#fb923c"
-                : "#f87171",
+              background: storageSource === "partial" || storageSource === "pending-upload" ? "rgba(251,146,60,0.14)" : "rgba(248,113,113,0.14)",
+              color: storageSource === "partial" || storageSource === "pending-upload" ? "#fb923c" : "#f87171",
               opacity: refreshing || loading ? 0.55 : 1,
             }}
           >
             {refreshing ? "⏳" : "🔄"}
           </button>
         )}
-
-        <div style={{ position: "relative" }}>
-          <button
-            type="button"
-            style={mobileTopbarStyles.avatarButton}
-            onClick={() => setOpenProfileMobile(!openProfileMobile)}
-            aria-label={t("common.profileCoach")}
-          >
-            {initials}
-          </button>
-
-          {openProfileMobile && renderProfileMenu(
-            { right: 0, width: "min(280px, calc(100vw - 28px))" },
-            () => setOpenProfileMobile(false),
-          )}
-        </div>
       </div>
     </header>
 
