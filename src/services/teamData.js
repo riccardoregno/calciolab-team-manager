@@ -664,5 +664,7 @@ function normalizeRecordIdForTable(table, id) {
   if (UUID_REGEX.test(value)) return value;
 
   const uuidSuffix = value.match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)?.[0];
-  return uuidSuffix && UUID_REGEX.test(uuidSuffix) ? uuidSuffix : value;
+  // Return null for UUID-table rows with non-recoverable IDs — caller filters them
+  // out rather than sending a non-UUID value that would crash the whole upsert.
+  return uuidSuffix && UUID_REGEX.test(uuidSuffix) ? uuidSuffix : null;
 }
