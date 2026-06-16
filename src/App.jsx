@@ -565,7 +565,7 @@ function App() {
               </span>
             )}
 
-            {auth.team?.id && (
+            {auth.team?.id && (refreshing || storageSource !== "supabase") && (
               <button
                 type="button"
                 onClick={refreshTeamData}

@@ -343,8 +343,6 @@ export default function Topbar({
             style={styles.topbarProfileButton}
             onClick={() => setOpenProfileDesktop(!openProfileDesktop)}
           >
-            <div style={styles.topbarAvatar}>{initials}</div>
-
             <div style={styles.topbarProfileText}>
               <strong style={styles.topbarProfileName}>
                 {firstName} {lastName}
