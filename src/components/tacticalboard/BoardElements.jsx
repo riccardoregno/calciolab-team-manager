@@ -67,54 +67,67 @@ export function FieldObjectIcon({ type }) {
 
 export function TacticalPlayerIcon({ player, isOpponent, isRealPlayer }) {
   const palette = isOpponent
-    ? { shirt: "#ef4444", collar: "#dc2626", text: "#fff1f2", skin: "#f5c5a3" }
+    ? { shirt: "#ef4444", sleeve: "#b91c1c", trim: "#fee2e2", text: "#fff1f2", skin: "#f2c19b", hair: "#3f2212" }
     : isRealPlayer
-      ? { shirt: "#0ea5e9", collar: "#0284c7", text: "#f0f9ff", skin: "#f5c5a3" }
-      : { shirt: "#2563eb", collar: "#1d4ed8", text: "#eff6ff", skin: "#f5c5a3" };
+      ? { shirt: "#3b82f6", sleeve: "#1d4ed8", trim: "#dbeafe", text: "#eff6ff", skin: "#f2c19b", hair: "#3f2212" }
+      : { shirt: "#2563eb", sleeve: "#1e40af", trim: "#dbeafe", text: "#eff6ff", skin: "#f2c19b", hair: "#3f2212" };
 
   return (
-    <svg viewBox="0 0 46 56" width="46" height="56" aria-hidden="true" style={{ display: "block" }}>
-      {/* drop shadow */}
-      <ellipse cx="23" cy="53" rx="15.5" ry="3" fill="rgba(0,0,0,0.3)" />
-      {/* jersey body — wide trapezoid, no arms/legs (top-down tactical view) */}
+    <svg viewBox="0 0 58 70" width="58" height="70" aria-hidden="true" style={{ display: "block" }}>
+      <defs>
+        <linearGradient id={`shirt-${player.id}`} x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor={palette.shirt} />
+          <stop offset="1" stopColor={palette.sleeve} />
+        </linearGradient>
+      </defs>
+      <ellipse cx="29" cy="66" rx="20" ry="4.4" fill="rgba(0,0,0,0.34)" />
       <path
-        d="M5 51 L7.5 28 Q23 20 38.5 28 L41 51Z"
-        fill={palette.shirt}
-        stroke="rgba(255,255,255,0.82)"
-        strokeWidth="1.9"
+        d="M12 30 L4 43 Q6 48 13 47 L16 40 Z"
+        fill={palette.sleeve}
+        stroke="rgba(255,255,255,0.92)"
+        strokeWidth="3"
         strokeLinejoin="round"
       />
       <path
-        d="M7.5 28 L2.8 34 L8.8 38 M38.5 28 L43.2 34 L37.2 38"
+        d="M46 30 L54 43 Q52 48 45 47 L42 40 Z"
+        fill={palette.sleeve}
+        stroke="rgba(255,255,255,0.92)"
+        strokeWidth="3"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 62 L14 31 Q19 26 24 25 L29 32 L34 25 Q39 26 44 31 L46 62 Z"
+        fill={`url(#shirt-${player.id})`}
+        stroke="rgba(255,255,255,0.96)"
+        strokeWidth="3.2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M22.5 27.5 L29 34.5 L35.5 27.5"
         fill="none"
-        stroke="rgba(255,255,255,0.82)"
-        strokeWidth="1.8"
+        stroke={palette.trim}
+        strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {/* collar V */}
-      <path d="M18.5 28 Q23 32 27.5 28" fill="none" stroke={palette.collar} strokeWidth="2.4" strokeLinecap="round" />
-      {/* jersey number — large and centered */}
+      <path d="M17 38 H41" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round" />
       <text
-        x="23"
-        y="41"
+        x="29"
+        y="49"
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize="13"
+        fontSize="17"
         fontWeight="950"
         fontFamily="system-ui,sans-serif"
         fill={palette.text}
-        letterSpacing="-0.5"
       >
         {player.number}
       </text>
-      {/* head — prominent, front-facing */}
-      <circle cx="23" cy="14" r="10" fill={palette.skin} stroke="rgba(255,255,255,0.82)" strokeWidth="1.7" />
-      {/* hair band / cap hint */}
-      <path d="M13.2 12 Q23 4.5 32.8 12" fill="rgba(40,22,8,0.42)" />
-      {/* eyes */}
-      <circle cx="19.3" cy="14" r="1.05" fill="rgba(30,15,5,0.55)" />
-      <circle cx="26.7" cy="14" r="1.05" fill="rgba(30,15,5,0.55)" />
+      <circle cx="29" cy="16" r="12" fill={palette.skin} stroke="rgba(255,255,255,0.96)" strokeWidth="3" />
+      <path d="M17.2 15.5 Q19 5.2 29 4.8 Q39 5.2 40.8 15.5 Q35 10.7 29 11 Q23 10.7 17.2 15.5Z" fill={palette.hair} opacity="0.72" />
+      <circle cx="24.6" cy="17" r="1.25" fill="rgba(30,15,5,0.62)" />
+      <circle cx="33.4" cy="17" r="1.25" fill="rgba(30,15,5,0.62)" />
+      <path d="M25 22 Q29 24.4 33 22" fill="none" stroke="rgba(30,15,5,0.36)" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
