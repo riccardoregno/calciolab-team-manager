@@ -169,15 +169,22 @@ Deno.serve(async (req) => {
         },
       ];
 
+    // Se non rimangono inviti nominativi, il token corrente diventa aperto a chiunque:
+    // lo rotiamo subito per invalidarlo. Il coach dovrà generarne uno nuovo al prossimo invito.
+    const stillHasNamedInvites = nextPendingInvites.some((inv) => Boolean(String(inv.email || "").trim()));
+    const settingsUpdate: Record<string, unknown> = {
+      ...settings,
+      pendingInvites: nextPendingInvites,
+      members: nextMembers,
+    };
+    if (!stillHasNamedInvites) {
+      settingsUpdate.inviteToken = null;
+      settingsUpdate.inviteTokenExpiresAt = null;
+    }
+
     const { error: settingsError } = await serviceClient
       .from("teams")
-      .update({
-        settings: {
-          ...settings,
-          pendingInvites: nextPendingInvites,
-          members: nextMembers,
-        },
-      })
+      .update({ settings: settingsUpdate })
       .eq("id", team.id);
 
     if (settingsError) {
