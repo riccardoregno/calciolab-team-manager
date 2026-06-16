@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { respondRsvpAsPlayer } from "../services/rsvp";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -25,6 +27,7 @@ export default function PlayerPortal({
   physicalTests = [],
   appSettings = {},
   setAppSettings,
+  teamId = null,
   myPlayerId = null,
 }) {
   const { t } = useTranslation();
@@ -154,6 +157,8 @@ export default function PlayerPortal({
           activeGoal={savedGoal}
           activeNote={savedNote}
           isMobile={isMobile}
+          teamId={teamId}
+          myPlayerId={myPlayerId}
         />
       ) : (
         <StaffView
@@ -331,20 +336,64 @@ function PlayerView({
   nextEvents, myConvocations,
   players, portal, comms,
   activeProgram, activeGoal, activeNote, isMobile,
+  teamId, myPlayerId,
 }) {
   const { t } = useTranslation();
-  const upcoming = myConvocations.filter(
-    (m) => new Date(m.date) >= todayStart()
-  );
-  const past = myConvocations.filter(
-    (m) => new Date(m.date) < todayStart()
-  );
+  const [rsvpMap, setRsvpMap] = useState({});   // matchId → {response, responded_at}
+  const [savingId, setSavingId] = useState(null);
+  const mountedRef = useRef(true);
+
+  const fetchRsvps = useCallback(async () => {
+    if (!isSupabaseConfigured || !teamId || !myPlayerId) return;
+    const { data } = await supabase
+      .from("rsvp_tokens")
+      .select("match_id, response, responded_at")
+      .eq("team_id", teamId)
+      .eq("player_id", String(myPlayerId));
+    if (!mountedRef.current || !data) return;
+    const map = {};
+    data.forEach((r) => { map[String(r.match_id)] = r; });
+    setRsvpMap(map);
+  }, [teamId, myPlayerId]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    fetchRsvps();
+    return () => { mountedRef.current = false; };
+  }, [fetchRsvps]);
+
+  async function handleRsvp(matchId, response) {
+    if (savingId || !teamId || !myPlayerId) return;
+    setSavingId(String(matchId));
+    // optimistic update
+    setRsvpMap((prev) => ({
+      ...prev,
+      [String(matchId)]: { response, responded_at: new Date().toISOString() },
+    }));
+    const { error } = await respondRsvpAsPlayer({
+      teamId,
+      matchId: String(matchId),
+      playerId: String(myPlayerId),
+      response,
+    });
+    if (error) {
+      // revert on failure
+      setRsvpMap((prev) => {
+        const next = { ...prev };
+        delete next[String(matchId)];
+        return next;
+      });
+    }
+    setSavingId(null);
+  }
+
+  const upcoming = myConvocations.filter((m) => new Date(m.date) >= todayStart());
+  const past     = myConvocations.filter((m) => new Date(m.date) < todayStart());
 
   return (
     <div style={{ ...ps.playerLayout, gridTemplateColumns: isMobile ? "1fr" : "minmax(0,1.4fr) minmax(280px,0.6fr)" }}>
       {/* Colonna principale */}
       <div style={{ display: "grid", gap: 18, alignContent: "start" }}>
-        {/* Welcome + stats */}
         <PlayerPreviewCard
           selectedPlayer={selectedPlayer}
           summary={summary}
@@ -377,13 +426,21 @@ function PlayerView({
           ) : (
             <div style={ps.list}>
               {upcoming.map((m) => (
-                <ConvocazioneRow
-                  key={m.id}
-                  match={m}
-                  players={players}
-                  highlightId={selectedPlayer?.id}
-                  showFull
-                />
+                <div key={m.id}>
+                  <ConvocazioneRow
+                    match={m}
+                    players={players}
+                    highlightId={selectedPlayer?.id}
+                    showFull
+                  />
+                  <RsvpButtons
+                    matchId={m.id}
+                    rsvp={rsvpMap[String(m.id)]}
+                    saving={savingId === String(m.id)}
+                    onRespond={handleRsvp}
+                    t={t}
+                  />
+                </div>
               ))}
               {past.length > 0 && (
                 <>
@@ -391,12 +448,21 @@ function PlayerView({
                     {t("pages.playerPortal.convArchiveLabel")}
                   </p>
                   {past.slice(0, 3).map((m) => (
-                    <ConvocazioneRow
-                      key={m.id}
-                      match={m}
-                      players={players}
-                      highlightId={selectedPlayer?.id}
-                    />
+                    <div key={m.id}>
+                      <ConvocazioneRow
+                        match={m}
+                        players={players}
+                        highlightId={selectedPlayer?.id}
+                      />
+                      <RsvpButtons
+                        matchId={m.id}
+                        rsvp={rsvpMap[String(m.id)]}
+                        saving={savingId === String(m.id)}
+                        onRespond={handleRsvp}
+                        t={t}
+                        archived
+                      />
+                    </div>
                   ))}
                 </>
               )}
@@ -804,6 +870,57 @@ function PlayerPreviewCard({
 }
 
 // ─────────────────────────────────────────────
+// Bottoni risposta RSVP (vista giocatore)
+// ─────────────────────────────────────────────
+function RsvpButtons({ matchId, rsvp, saving, onRespond, t, archived = false }) {
+  const current = rsvp?.response || "pending";
+  const hasToken = rsvp !== undefined;
+
+  // Don't show if staff hasn't created a token yet
+  if (!hasToken) return null;
+
+  return (
+    <div style={ps.rsvpBar}>
+      <span style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>
+        {current === "yes"     ? t("pages.playerPortal.rsvpConfirmed")
+         : current === "no"   ? t("pages.playerPortal.rsvpDeclined")
+         :                      t("pages.playerPortal.rsvpPendingLabel")}
+      </span>
+      {!archived && (
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={() => onRespond(matchId, "yes")}
+            disabled={saving || current === "yes"}
+            style={{
+              ...ps.rsvpBtn,
+              background: current === "yes" ? "rgba(34,197,94,0.18)" : "rgba(34,197,94,0.07)",
+              border: `1px solid ${current === "yes" ? "rgba(34,197,94,0.5)" : "rgba(34,197,94,0.2)"}`,
+              color: "#4ade80",
+              opacity: saving ? 0.6 : 1,
+            }}
+          >
+            ✅ {t("pages.playerPortal.rsvpYes")}
+          </button>
+          <button
+            onClick={() => onRespond(matchId, "no")}
+            disabled={saving || current === "no"}
+            style={{
+              ...ps.rsvpBtn,
+              background: current === "no" ? "rgba(248,113,113,0.18)" : "rgba(248,113,113,0.07)",
+              border: `1px solid ${current === "no" ? "rgba(248,113,113,0.5)" : "rgba(248,113,113,0.2)"}`,
+              color: "#f87171",
+              opacity: saving ? 0.6 : 1,
+            }}
+          >
+            ❌ {t("pages.playerPortal.rsvpNo")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Micro-componenti
 // ─────────────────────────────────────────────
 function MiniMetric({ label, value }) {
@@ -907,6 +1024,19 @@ const ps = {
   convPlayer: {
     display: "flex", gap: 8, alignItems: "center",
     padding: "5px 8px", borderRadius: 8,
+  },
+
+  // RSVP buttons bar
+  rsvpBar: {
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    gap: 8, flexWrap: "wrap",
+    padding: "8px 14px", marginTop: 6, borderRadius: "0 0 10px 10px",
+    background: "rgba(255,255,255,0.02)", borderTop: "1px solid rgba(255,255,255,0.05)",
+  },
+  rsvpBtn: {
+    padding: "5px 12px", borderRadius: 8, border: "none",
+    fontSize: 12, fontWeight: 700, cursor: "pointer",
+    transition: "opacity 0.15s",
   },
 
   // Comunicazione

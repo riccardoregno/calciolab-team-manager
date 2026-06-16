@@ -817,6 +817,7 @@ function App() {
                       physicalTests={physicalTests}
                       appSettings={previewAppSettings}
                       setAppSettings={setAppSettings}
+                      teamId={auth.team?.id}
                       myPlayerId={auth.team?.role === "player" ? auth.team?.playerId : null}
                     />
                   </FeatureGate>, "playerPortal")
