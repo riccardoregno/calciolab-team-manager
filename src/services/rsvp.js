@@ -65,6 +65,26 @@ export async function submitRsvpResponse({ token, response }) {
   return callRsvpFunction({ action: "respond", token, response });
 }
 
+// Authenticated player responds to their own RSVP directly via RLS
+// (no token / no TTL — requires player_accounts row for auth.uid()).
+export async function respondRsvpAsPlayer({ teamId, matchId, playerId, response }) {
+  if (!isSupabaseConfigured) {
+    return { error: new Error("Supabase non configurato") };
+  }
+  if (response !== "yes" && response !== "no") {
+    return { error: new Error("Risposta non valida") };
+  }
+
+  const { error } = await supabase
+    .from("rsvp_tokens")
+    .update({ response, responded_at: new Date().toISOString() })
+    .eq("team_id", teamId)
+    .eq("match_id", String(matchId))
+    .eq("player_id", String(playerId));
+
+  return { error: error || null };
+}
+
 export async function sendMatchConvocationEmail({
   to, playerName, teamName, opponent, matchDate, matchTime, matchVenue, rsvpUrl,
 }) {
