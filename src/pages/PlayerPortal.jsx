@@ -3,6 +3,7 @@ import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { respondRsvpAsPlayer } from "../services/rsvp";
+import { fetchPlayerAvailability, setPlayerAvailability } from "../services/playerAvailability";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -341,6 +342,9 @@ function PlayerView({
   const { t } = useTranslation();
   const [rsvpMap, setRsvpMap] = useState({});   // matchId → {response, responded_at}
   const [savingId, setSavingId] = useState(null);
+  const [availability, setAvailability] = useState(null); // current record or null
+  const [availSaving, setAvailSaving] = useState(false);
+  const [availReason, setAvailReason] = useState("");
   const mountedRef = useRef(true);
 
   const fetchRsvps = useCallback(async () => {
@@ -356,11 +360,37 @@ function PlayerView({
     setRsvpMap(map);
   }, [teamId, myPlayerId]);
 
+  const fetchAvailability = useCallback(async () => {
+    if (!teamId || !myPlayerId) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const { data } = await fetchPlayerAvailability({ teamId, playerId: myPlayerId });
+    if (!mountedRef.current) return;
+    // pick today's open record
+    const current = (data || []).find((r) => r.date_from === today && !r.date_to) || null;
+    setAvailability(current);
+    setAvailReason(current?.reason || "");
+  }, [teamId, myPlayerId]);
+
   useEffect(() => {
     mountedRef.current = true;
     fetchRsvps();
+    fetchAvailability();
     return () => { mountedRef.current = false; };
-  }, [fetchRsvps]);
+  }, [fetchRsvps, fetchAvailability]);
+
+  async function handleAvailability(status) {
+    if (availSaving || !teamId || !myPlayerId) return;
+    setAvailSaving(true);
+    setAvailability((prev) => ({ ...(prev || {}), status, reason: availReason }));
+    const { error } = await setPlayerAvailability({
+      teamId,
+      playerId: myPlayerId,
+      status,
+      reason: availReason,
+    });
+    if (!error) await fetchAvailability();
+    setAvailSaving(false);
+  }
 
   async function handleRsvp(matchId, response) {
     if (savingId || !teamId || !myPlayerId) return;
@@ -408,6 +438,64 @@ function PlayerView({
           activeNote={activeNote}
           compact={false}
         />
+
+        {/* Disponibilità giocatore */}
+        <AppCard>
+          <h3 style={{ ...ps.sectionTitle, marginBottom: 12 }}>
+            {t("pages.playerPortal.availabilityTitle")}
+          </h3>
+          <p style={{ ...ps.muted, fontSize: 13, marginBottom: 14 }}>
+            {t("pages.playerPortal.availabilityDesc")}
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+            {["available", "doubtful", "unavailable"].map((s) => (
+              <button
+                key={s}
+                onClick={() => handleAvailability(s)}
+                disabled={availSaving}
+                style={{
+                  ...ps.availBtn,
+                  background: availability?.status === s
+                    ? s === "available"   ? "rgba(34,197,94,0.2)"
+                    : s === "doubtful"    ? "rgba(251,146,60,0.2)"
+                    :                       "rgba(248,113,113,0.2)"
+                    : "rgba(255,255,255,0.04)",
+                  border: `1px solid ${
+                    availability?.status === s
+                      ? s === "available"  ? "rgba(34,197,94,0.5)"
+                      : s === "doubtful"   ? "rgba(251,146,60,0.5)"
+                      :                      "rgba(248,113,113,0.5)"
+                      : "rgba(255,255,255,0.1)"
+                  }`,
+                  color: availability?.status === s
+                    ? s === "available"  ? "#4ade80"
+                    : s === "doubtful"   ? "#fb923c"
+                    :                      "#f87171"
+                    : "#94a3b8",
+                  opacity: availSaving ? 0.6 : 1,
+                }}
+              >
+                {s === "available"   ? `✅ ${t("pages.playerPortal.availStatusAvailable")}`
+                 : s === "doubtful"  ? `🟡 ${t("pages.playerPortal.availStatusDoubtful")}`
+                 :                     `❌ ${t("pages.playerPortal.availStatusUnavailable")}`}
+              </button>
+            ))}
+          </div>
+          <input
+            style={{ ...styles.input, fontSize: 13 }}
+            placeholder={t("pages.playerPortal.availReasonPlaceholder")}
+            value={availReason}
+            onChange={(e) => setAvailReason(e.target.value)}
+            onBlur={() => availability?.status && handleAvailability(availability.status)}
+          />
+          {availability?.status && (
+            <p style={{ ...ps.muted, fontSize: 11, marginTop: 8 }}>
+              {t("pages.playerPortal.availSavedOn", {
+                date: formatShortDate(availability.updated_at || availability.created_at),
+              })}
+            </p>
+          )}
+        </AppCard>
       </div>
 
       {/* Colonna laterale */}
@@ -1024,6 +1112,13 @@ const ps = {
   convPlayer: {
     display: "flex", gap: 8, alignItems: "center",
     padding: "5px 8px", borderRadius: 8,
+  },
+
+  // Availability buttons
+  availBtn: {
+    padding: "8px 16px", borderRadius: 10,
+    fontSize: 13, fontWeight: 700, cursor: "pointer",
+    transition: "opacity 0.15s",
   },
 
   // RSVP buttons bar
