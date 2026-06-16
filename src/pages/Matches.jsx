@@ -17,6 +17,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
 import { createId, formatDate, normalizeAppSettings, parseMatchResult } from "../utils/helpers";
+import { sendTeamNotification } from "../services/notifications";
 
 const MATCH_MODAL_QUERY = "match";
 const MATCH_DRAFT_KEY = "calciolab_match_draft_v1";
@@ -47,7 +48,7 @@ function translateLocation(location, t) {
   return t(LOCATION_LABEL_KEYS[location] || LOCATION_LABEL_KEYS.Casa);
 }
 
-function Matches({ matches, setMatches, players = [], appSettings = {}, loading = false }) {
+function Matches({ matches, setMatches, players = [], appSettings = {}, loading = false, teamId = null }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const location = useLocation();
@@ -168,7 +169,20 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
     };
 
     if (editingId) {
+      const existing = matches.find((m) => m.id === editingId);
+      const changed = existing && (
+        existing.date !== payload.date ||
+        existing.time !== payload.time ||
+        existing.venue !== payload.venue
+      );
       setMatches((prevMatches) => prevMatches.map((m) => (m.id === editingId ? payload : m)));
+      if (changed && teamId) {
+        sendTeamNotification({
+          teamId,
+          type: "match_update",
+          payload: { opponent: payload.opponent, date: payload.date, time: payload.time || "", venue: payload.venue || "" },
+        });
+      }
     } else {
       setMatches((prevMatches) => [...prevMatches, payload]);
     }

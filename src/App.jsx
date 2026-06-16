@@ -1007,6 +1007,7 @@ function App() {
                     players={players}
                     appSettings={previewAppSettings}
                     loading={loading}
+                    teamId={auth.team?.id}
                   />, "sessions")
                 }
               />
@@ -1032,6 +1033,7 @@ function App() {
                     players={players}
                     appSettings={previewAppSettings}
                     loading={loading}
+                    teamId={auth.team?.id}
                   />, "matches")
                 }
               />

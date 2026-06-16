@@ -18,6 +18,7 @@ import { useAreaPermission } from "../components/auth/permissionContext";
 import { styles } from "../styles/index.js";
 import { createId, formatDate, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 import { useTranslation } from "../i18n";
+import { sendTeamNotification } from "../services/notifications";
 import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
 import { useIsMobile } from "../hooks/useIsMobile";
 
@@ -53,7 +54,7 @@ function getRpeDisplayMeta(md, rpe, t) {
 }
 
 function Trainings({
-  exercises, sessions, setSessions, players = [], appSettings = {}, loading = false }) {
+  exercises, sessions, setSessions, players = [], appSettings = {}, loading = false, teamId = null }) {
 
   const { t } = useTranslation();
   const isMobile = useIsMobile(760);
@@ -245,6 +246,13 @@ function Trainings({
       );
     } else {
       setSessions((prevSessions) => [...prevSessions, payload]);
+      if (teamId) {
+        sendTeamNotification({
+          teamId,
+          type: "new_session",
+          payload: { title: payload.title, date: payload.date || "" },
+        });
+      }
     }
 
     setEditingId(null);
