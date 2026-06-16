@@ -12,6 +12,7 @@ import { useAreaPermission } from "../components/auth/permissionContext";
 import { styles } from "../styles/index.js";
 import { createId, getPlayerUnavailabilityOnDate } from "../utils/helpers";
 import { useTranslation } from "../i18n";
+import { fetchPlayerAvailability } from "../services/playerAvailability";
 
 // Limite di giorni renderizzati nella pianificazione "giorno per giorno" —
 // evita di costruire liste enormi se l'utente seleziona un range troppo ampio.
@@ -107,6 +108,12 @@ const DIFF_TYPE_LABEL_KEYS = {
 };
 
 const UNAVAILABLE = STATUS_OPTIONS.map((s) => s.value);
+
+const SELF_AVAIL_STYLES = {
+  available:   { color: "#22c55e", bg: "rgba(34,197,94,0.1)",   border: "rgba(34,197,94,0.3)"   },
+  doubtful:    { color: "#f59e0b", bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.3)"  },
+  unavailable: { color: "#f87171", bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.3)" },
+};
 const AVAILABILITY_DRAFT_KEY = "calciolab_availability_draft_v1";
 const AVAILABILITY_MODAL = "medical";
 const RECOVERY_MODAL = "recovery";
@@ -215,13 +222,21 @@ function getMedicalType(status, injuryType, differentiatedType) {
 // Componente principale
 // ─────────────────────────────────────────────
 export default function Availability({
-  players = [], setPlayers, sessions = [], matches = [], loading = false }) {
+  players = [], setPlayers, sessions = [], matches = [], loading = false, teamId = null }) {
 
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
   const { canManage } = useAreaPermission();
+  const [selfAvailData, setSelfAvailData] = useState([]);
+
+  useEffect(() => {
+    if (!teamId) return;
+    fetchPlayerAvailability({ teamId }).then(({ data }) => {
+      if (data) setSelfAvailData(data);
+    });
+  }, [teamId]);
   const searchParams = new URLSearchParams(location.search);
   const openModal = searchParams.get("modal") === AVAILABILITY_MODAL;
   const editingPlayerParam = searchParams.get("playerId") || "";
@@ -655,6 +670,47 @@ export default function Availability({
           ))}
         </div>
       </AppCard>
+
+      {/* Disponibilità dichiarata dai giocatori */}
+      {teamId && (
+        <AppCard>
+          <div style={av.sectionHeader}>
+            <div>
+              <h3 style={av.sectionTitle}>{t("pages.availability.selfAvailTitle")}</h3>
+              <p style={av.muted}>{t("pages.availability.selfAvailSub")}</p>
+            </div>
+          </div>
+          {selfAvailData.length === 0 ? (
+            <p style={av.muted}>{t("pages.availability.selfAvailEmpty")}</p>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              {selfAvailData.map((rec) => {
+                const player = players.find((p) => String(p.id) === String(rec.player_id));
+                const name = player
+                  ? ([player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "—")
+                  : rec.player_id;
+                const { color, bg, border } = SELF_AVAIL_STYLES[rec.status] || SELF_AVAIL_STYLES.available;
+                const labelKey = `pages.availability.selfAvailStatus${rec.status.charAt(0).toUpperCase() + rec.status.slice(1)}`;
+                const updatedDate = new Date(rec.updated_at || rec.created_at).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "2-digit" });
+                return (
+                  <div key={rec.id} style={{ ...av.prepDayRow, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "#e2e8f0" }}>{name}</span>
+                      {rec.reason && <span style={{ fontSize: 12, color: "#64748b" }}>{rec.reason}</span>}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ ...av.badge, color, background: bg, border: `1px solid ${border}` }}>
+                        {t(labelKey)}
+                      </span>
+                      <span style={{ fontSize: 11, color: "#475569" }}>{t("pages.availability.selfAvailUpdated", { date: updatedDate })}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </AppCard>
+      )}
 
       {/* Lista infortuni attivi */}
       {loading && players.length === 0 ? (
