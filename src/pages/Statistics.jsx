@@ -16,6 +16,7 @@ import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
 
 const StatisticsCharts = lazy(() => import("../components/statistics/StatisticsCharts"));
+const MinutaggioMatrix = lazy(() => import("../components/statistics/MinutaggioMatrix"));
 
 function Statistics({
   events, players, appSettings = {}, setAppSettings }) {
@@ -117,6 +118,8 @@ function Statistics({
       return next.filter((id, itemIndex) => id || itemIndex < 2);
     });
   }
+
+  const [showMatrix, setShowMatrix] = useState(false);
 
   // ── Carico Preparatore ─────────────────────────────────────────────────────
   const [caricoPreset, setCaricoPreset] = useState("7");
@@ -493,6 +496,32 @@ function Statistics({
                 </div>
               );
             })}
+          </div>
+        )}
+      </AppCard>
+
+      {/* ── Matrice Minutaggio ── */}
+      <AppCard>
+        <div
+          onClick={() => setShowMatrix((v) => !v)}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" }}
+        >
+          <div>
+            <p style={{ ...s.sectionLabel, marginBottom: 2 }}>📋 Tabella Minutaggio</p>
+            <span style={{ fontSize: 12, color: "#64748b" }}>
+              Matrice giocatori × partite — minuti per ogni gara
+            </span>
+          </div>
+          <span style={{ fontSize: 18, color: "#60a5fa", fontWeight: 900, lineHeight: 1 }}>
+            {showMatrix ? "▲" : "▼"}
+          </span>
+        </div>
+
+        {showMatrix && (
+          <div style={{ marginTop: 20 }}>
+            <Suspense fallback={<div style={{ padding: "24px 0", textAlign: "center", color: "#64748b", fontSize: 13 }}>Caricamento…</div>}>
+              <MinutaggioMatrix players={players} matches={filteredEvents} />
+            </Suspense>
           </div>
         )}
       </AppCard>
