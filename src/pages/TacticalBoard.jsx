@@ -97,6 +97,7 @@ export default function TacticalBoard({
   const [activeFrameId, setActiveFrameId] = useState(_saved?.activeFrameId ?? "");
   const [isPlayingFrames, setIsPlayingFrames] = useState(false);
   const [savedSchemas, setSavedSchemas] = useState(() => loadSchemas());
+  const [mobileFullscreen, setMobileFullscreen] = useState(false);
   const [schemaName, setSchemaName] = useState("");
   const [schemaSaved, setSchemaSaved] = useState(false);
 
@@ -958,6 +959,17 @@ export default function TacticalBoard({
         </div>
       )}
 
+      <div
+        style={isMobile && mobileFullscreen ? {
+          position: "fixed",
+          inset: 0,
+          zIndex: 200,
+          background: "#0a1628",
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          padding: "8px 8px 24px",
+        } : {}}
+      >
       <div style={{ ...boardStyles.layout, gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) 330px" }}>
         <div style={boardStyles.mainColumn}>
           <AppCard>
@@ -1080,6 +1092,28 @@ export default function TacticalBoard({
                   style={undoStack.length === 0 ? { opacity: 0.35, pointerEvents: "none" } : {}}
                 />
               </div>
+              {isMobile && (
+                <button
+                  type="button"
+                  onClick={() => setMobileFullscreen((v) => !v)}
+                  style={{
+                    marginLeft: "auto",
+                    border: "1px solid rgba(148,163,184,0.22)",
+                    background: mobileFullscreen ? "rgba(37,99,235,0.28)" : "rgba(255,255,255,0.05)",
+                    color: "#cbd5e1",
+                    borderRadius: 12,
+                    padding: "7px 10px",
+                    fontWeight: 900,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  {mobileFullscreen ? "✕" : "⛶"}
+                </button>
+              )}
             </div>
 
             <div style={boardStyles.boardConfigBar}>
@@ -1510,7 +1544,7 @@ export default function TacticalBoard({
 
 
 
-        <div style={boardStyles.sideColumn}>
+        {!(isMobile && mobileFullscreen) && <div style={boardStyles.sideColumn}>
           <AppCard>
             <h3 style={styles.cardTitle}>{t("pages.tacticalBoard.gamePrinciples")}</h3>
             <div style={boardStyles.notes}>
@@ -1686,7 +1720,8 @@ export default function TacticalBoard({
               </p>
             )}
           </AppCard>
-        </div>
+        </div>}
+      </div>
       </div>
     </div>
   );

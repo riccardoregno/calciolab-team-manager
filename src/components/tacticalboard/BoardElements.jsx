@@ -67,37 +67,40 @@ export function FieldObjectIcon({ type }) {
 
 export function TacticalPlayerIcon({ player, isOpponent, isRealPlayer }) {
   const palette = isOpponent
-    ? { shirt: "#ef4444", shorts: "#7f1d1d", text: "#fff1f2", skin: "#f7c59f" }
+    ? { shirt: "#ef4444", shorts: "#7f1d1d", collar: "#dc2626", text: "#fff1f2", skin: "#f7c59f" }
     : isRealPlayer
-      ? { shirt: "#0ea5e9", shorts: "#075985", text: "#f0f9ff", skin: "#f7c59f" }
-      : { shirt: "#2563eb", shorts: "#1e3a8a", text: "#eff6ff", skin: "#f7c59f" };
+      ? { shirt: "#0ea5e9", shorts: "#075985", collar: "#0284c7", text: "#f0f9ff", skin: "#f7c59f" }
+      : { shirt: "#2563eb", shorts: "#1e3a8a", collar: "#1d4ed8", text: "#eff6ff", skin: "#f7c59f" };
 
   return (
     <svg viewBox="0 0 42 50" width="42" height="50" aria-hidden="true" style={{ display: "block" }}>
-      <ellipse cx="21" cy="45" rx="12" ry="3" fill="rgba(0,0,0,0.32)" />
-      <circle cx="21" cy="9" r="4.6" fill={palette.skin} stroke="rgba(15,23,42,0.38)" strokeWidth="1" />
-      <path
-        d="M12 18 Q21 11 30 18 L28 32 Q21 36 14 32Z"
-        fill={palette.shirt}
-        stroke="rgba(15,23,42,0.5)"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
-      <path d="M12 20 L5 27 M30 20 L37 27" stroke={palette.shirt} strokeWidth="4" strokeLinecap="round" />
-      <path d="M17 32 L13 43 M25 32 L29 43" stroke={palette.shorts} strokeWidth="4.2" strokeLinecap="round" />
-      <path d="M14 43 H10 M28 43 H32" stroke="#e5e7eb" strokeWidth="2.4" strokeLinecap="round" />
-      <text
-        x="21"
-        y="27"
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize="11"
-        fontWeight="950"
-        fontFamily="system-ui,sans-serif"
-        fill={palette.text}
-      >
+      {/* ground shadow */}
+      <ellipse cx="21" cy="47" rx="11" ry="2.2" fill="rgba(0,0,0,0.32)" />
+      {/* head */}
+      <circle cx="21" cy="8" r="5" fill={palette.skin} stroke="rgba(15,23,42,0.35)" strokeWidth="1" />
+      {/* hair cap */}
+      <path d="M16 7.5 Q18 2 21 2 Q24 2 26 7.5" fill="rgba(45,20,8,0.5)" />
+      {/* shirt body */}
+      <path d="M13 18 Q21 12 29 18 L27.5 32 Q21 36 14.5 32Z" fill={palette.shirt} stroke="rgba(15,23,42,0.45)" strokeWidth="1.2" strokeLinejoin="round" />
+      {/* collar */}
+      <path d="M18.5 18.5 Q21 21 23.5 18.5" fill="none" stroke={palette.collar} strokeWidth="2" strokeLinecap="round" />
+      {/* left arm — forward/up (running pose) */}
+      <path d="M13 20 L5 16" stroke={palette.shirt} strokeWidth="4.5" strokeLinecap="round" />
+      <circle cx="4.5" cy="15.5" r="2.5" fill={palette.skin} />
+      {/* right arm — back/down (running pose) */}
+      <path d="M29 20 L37 26" stroke={palette.shirt} strokeWidth="4.5" strokeLinecap="round" />
+      <circle cx="37.5" cy="26.5" r="2.5" fill={palette.skin} />
+      {/* jersey number */}
+      <text x="21" y="26.5" textAnchor="middle" dominantBaseline="middle" fontSize="10" fontWeight="950" fontFamily="system-ui,sans-serif" fill={palette.text}>
         {player.number}
       </text>
+      {/* left leg — forward stride */}
+      <path d="M16.5 32 L13.5 43" stroke={palette.shorts} strokeWidth="4.5" strokeLinecap="round" />
+      {/* right leg — back stride */}
+      <path d="M25.5 32 L28.5 43" stroke={palette.shorts} strokeWidth="4.5" strokeLinecap="round" />
+      {/* shoes */}
+      <path d="M10 43 L15.5 43" stroke="#e5e7eb" strokeWidth="2.8" strokeLinecap="round" />
+      <path d="M26.5 43 L32 43" stroke="#e5e7eb" strokeWidth="2.8" strokeLinecap="round" />
     </svg>
   );
 }
