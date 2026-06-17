@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { isRoleAllowed } from "../../utils/helpers";
+import { supabase } from "../../lib/supabaseClient";
 
 const allRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"];
 const coachRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"];
@@ -60,6 +61,12 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
 
   function goTo(path) {
     navigate(path);
+    setOpen(false);
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    navigate("/");
     setOpen(false);
   }
 
@@ -168,6 +175,25 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
                 </button>
               ))}
             </div>
+
+            {/* Logout — solo per giocatori */}
+            {effectiveRole === "player" && (
+              <button
+                onClick={handleLogout}
+                style={{
+                  marginTop: 14, width: "100%",
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "13px 16px", borderRadius: 12,
+                  background: "rgba(248,113,113,0.08)",
+                  border: "1px solid rgba(248,113,113,0.2)",
+                  color: "#f87171", fontSize: 14, fontWeight: 700,
+                  cursor: "pointer", textAlign: "left",
+                }}
+              >
+                <span style={{ fontSize: 20 }}>🚪</span>
+                Esci dall'account
+              </button>
+            )}
           </div>
         </>
       )}
