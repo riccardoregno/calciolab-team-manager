@@ -23,6 +23,7 @@ import { useEventReminders } from "./hooks/useNotifications";
 import { useStaffChat } from "./hooks/useStaffChat";
 import { supabase } from "./lib/supabaseClient";
 import { isNative, hideSplashScreen, setStatusBarDark, onAndroidBack } from "./utils/capacitor";
+import { getCurrentUserRole } from "./utils/helpers";
 import { updateTeamSubscription } from "./services/subscription";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 
@@ -497,7 +498,7 @@ function App() {
   return (
     <BrowserRouter>
       <div className="app-shell" style={styles.appShell}>
-        {auth.team?.role !== "player" && (
+        {getCurrentUserRole(previewAppSettings) !== "player" && (
           <div className="desktop-sidebar">
             <Sidebar appSettings={previewAppSettings} currentRole={auth.team?.role || null} chatUnread={chatUnread} />
           </div>
@@ -1053,7 +1054,7 @@ function App() {
       {/* Deep link handler — intercetta Universal Links / App Links su iOS/Android */}
       <DeepLinkHandler />
 
-      {auth.team?.role !== "player" && (
+      {getCurrentUserRole(previewAppSettings) !== "player" && (
         <MobileBottomNav currentRole={auth.team?.role || null} storageSource={storageSource} chatUnread={chatUnread} />
       )}
       <PWAInstallBanner />
