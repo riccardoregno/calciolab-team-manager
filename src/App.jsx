@@ -497,9 +497,11 @@ function App() {
   return (
     <BrowserRouter>
       <div className="app-shell" style={styles.appShell}>
-        <div className="desktop-sidebar">
-          <Sidebar appSettings={previewAppSettings} currentRole={auth.team?.role || null} chatUnread={chatUnread} />
-        </div>
+        {auth.team?.role !== "player" && (
+          <div className="desktop-sidebar">
+            <Sidebar appSettings={previewAppSettings} currentRole={auth.team?.role || null} chatUnread={chatUnread} />
+          </div>
+        )}
 
         <main className="app-content" style={styles.content}>
           <Topbar
@@ -1051,7 +1053,9 @@ function App() {
       {/* Deep link handler — intercetta Universal Links / App Links su iOS/Android */}
       <DeepLinkHandler />
 
-      <MobileBottomNav currentRole={auth.team?.role || null} storageSource={storageSource} chatUnread={chatUnread} />
+      {auth.team?.role !== "player" && (
+        <MobileBottomNav currentRole={auth.team?.role || null} storageSource={storageSource} chatUnread={chatUnread} />
+      )}
       <PWAInstallBanner />
       <PushBanner />
       {/* Push notifications — dentro BrowserRouter perché il hook usa useNavigate */}
