@@ -83,6 +83,36 @@ export const PREVENTION_BASE = [
       "Controllo carico individuale per 2 settimane",
     ],
   },
+  {
+    key: "ginocchio",
+    title: "Ginocchio (LCA / patella)",
+    reason: "PREVENZIONE",
+    points: [
+      "Squat monopodalico e step-up eccentrico",
+      "Rinforzo quadricipite e ischio-crurali progressivo",
+      "Controllo del valgo dinamico nei salti e cambi direzione",
+    ],
+  },
+  {
+    key: "tendine",
+    title: "Tendinopatia (Achillea / rotulea)",
+    reason: "PREVENZIONE",
+    points: [
+      "Heel drop eccentrico su superficie inclinata 2x/settimana",
+      "Evitare picchi di carico improvvisi (spike >10%/settimana)",
+      "Monitoraggio rigidità mattutina e dolore post-seduta",
+    ],
+  },
+  {
+    key: "lombalgia",
+    title: "Lombalgia e colonna",
+    reason: "PREVENZIONE",
+    points: [
+      "Core stability: plank, bird-dog, dead bug progressivi",
+      "Mobilità toracica e flessibilità catena posteriore",
+      "Evitare sessioni ad alto volume di sprint in stanchezza",
+    ],
+  },
 ];
 
 export function getPreventionRecommendations(injuryHistory, player) {
