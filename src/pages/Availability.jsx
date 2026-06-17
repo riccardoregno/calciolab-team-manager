@@ -14,6 +14,8 @@ import { createId, getPlayerUnavailabilityOnDate } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { fetchPlayerAvailability } from "../services/playerAvailability";
+import { useAuth } from "../hooks/useAuth";
+import { generateAvailabilityPDF, generateAvailabilityCSV } from "../utils/generateAvailabilityExport";
 
 // Limite di giorni renderizzati nella pianificazione "giorno per giorno" —
 // evita di costruire liste enormi se l'utente seleziona un range troppo ampio.
@@ -230,6 +232,8 @@ export default function Availability({
   const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
   const { canManage } = useAreaPermission();
+  const auth = useAuth();
+  const teamName = auth.profile?.teamName || auth.profile?.clubName || auth.team?.name || "Squadra";
   const [selfAvailData, setSelfAvailData] = useState([]);
   const [selfAvailLoading, setSelfAvailLoading] = useState(true);
 
@@ -553,7 +557,7 @@ export default function Availability({
       {/* KPI + azione */}
       <MetricStrip
         className="mobile-scroll-x"
-        style={{ marginBottom: 20 }}
+        style={{ marginBottom: 12 }}
         items={[
           { key: "available", label: t("pages.availability.kpiAvailable"), value: availablePlayers.length, color: "#22c55e" },
           ...STATUS_OPTIONS.map((s) => {
@@ -562,6 +566,38 @@ export default function Availability({
           }),
         ]}
       />
+
+      {/* Export disponibilità */}
+      {players.length > 0 && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => generateAvailabilityPDF({ players, teamName })}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "7px 14px", borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(255,255,255,0.05)",
+              color: "#e2e8f0", fontSize: 12, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            🖨️ Esporta PDF
+          </button>
+          <button
+            type="button"
+            onClick={() => generateAvailabilityCSV({ players, teamName })}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "7px 14px", borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(255,255,255,0.05)",
+              color: "#e2e8f0", fontSize: 12, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            📊 Esporta CSV (Excel)
+          </button>
+        </div>
+      )}
 
       {/* Report infortuni squadra */}
       {injuryReport.types.length > 0 && (
