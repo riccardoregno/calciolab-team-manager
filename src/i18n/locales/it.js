@@ -973,6 +973,8 @@ export const it = {
       linePresetPress: "Pressing",
       linePresetRun: "Corsa",
       linePresetZone: "Zona",
+      exportImageError: "Impossibile esportare l'immagine della lavagna.",
+      mobileInsertExercise: "Esercizio",
     },
     playerDetail: {
       title: "Scheda giocatore",

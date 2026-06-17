@@ -870,12 +870,40 @@ export default function TacticalBoard({
     setSelectedSlotId(null);
     setSelectedBenchPlayer(null);
     setSelectedItem(null);
+    setMobilePanel(null);
   }
 
   function deleteSchema(id) {
     const updated = savedSchemas.filter((s) => s.id !== id);
     setSavedSchemas(updated);
     persistSchemas(updated);
+  }
+
+  async function exportBoardImage() {
+    const board = document.getElementById("tactical-board-field");
+    if (!board) return;
+
+    const previousSelection = selectedItem;
+    setSelectedItem(null);
+    setMobilePanel(null);
+
+    try {
+      await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+      const { default: html2canvas } = await import("html2canvas");
+      const canvas = await html2canvas(board, {
+        backgroundColor: null,
+        scale: Math.min(2, window.devicePixelRatio || 1),
+        useCORS: true,
+      });
+      const link = document.createElement("a");
+      link.download = `calciolab-lavagna-${new Date().toISOString().slice(0, 10)}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch {
+      showToast(t("pages.tacticalBoard.exportImageError"), "error");
+    } finally {
+      setSelectedItem(previousSelection);
+    }
   }
 
   function openExerciseModal() {
@@ -1942,6 +1970,45 @@ export default function TacticalBoard({
                           {isPlayingFrames ? <Pause size={15} /> : <Play size={15} />} {boardFrames.length || "0/0"}
                         </button>
                       </div>
+                      <div style={mobileSchemaPanel}>
+                        <div style={mobileSchemaTitle}>{t("pages.tacticalBoard.savedSchemas")}</div>
+                        <div style={mobileSchemaSaveRow}>
+                          <input
+                            style={mobileSchemaInput}
+                            value={schemaName}
+                            onChange={(event) => setSchemaName(event.target.value)}
+                            placeholder={t("pages.tacticalBoard.schemaNamePlaceholder")}
+                          />
+                          <button type="button" style={mobileActionButton} onClick={saveCurrentSchema}>
+                            {schemaSaved ? t("pages.tacticalBoard.btnSaved") : t("pages.tacticalBoard.btnSave")}
+                          </button>
+                        </div>
+                        <div style={mobileInlineActions}>
+                          <button type="button" style={mobileActionButton} onClick={exportBoardImage}>
+                            {t("pages.tacticalBoard.exportImage")}
+                          </button>
+                          <button type="button" style={mobileActionButton} onClick={() => {
+                            setMobilePanel(null);
+                            openExerciseModal();
+                          }}>
+                            {t("pages.tacticalBoard.mobileInsertExercise")}
+                          </button>
+                        </div>
+                        <div style={mobileSchemaList}>
+                          {PRESET_SCHEMAS.slice(0, 4).map((preset) => (
+                            <button key={preset.id} type="button" style={mobileSchemaButton} onClick={() => loadSchema(preset)}>
+                              <strong>{preset.name}</strong>
+                              <span>{preset.category}</span>
+                            </button>
+                          ))}
+                          {savedSchemas.slice(0, 6).map((schema) => (
+                            <button key={schema.id} type="button" style={mobileSchemaButton} onClick={() => loadSchema(schema)}>
+                              <strong>{schema.name}</strong>
+                              <span>{schema.ownFormation || t("pages.tacticalBoard.ownTeam")}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2639,6 +2706,61 @@ const mobileInlineActions = {
   display: "grid",
   gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
   gap: 9,
+};
+
+const mobileSchemaPanel = {
+  display: "grid",
+  gap: 10,
+  paddingTop: 12,
+  borderTop: "1px solid rgba(148,163,184,0.14)",
+};
+
+const mobileSchemaTitle = {
+  color: "#e2e8f0",
+  fontSize: 13,
+  fontWeight: 950,
+  textTransform: "uppercase",
+};
+
+const mobileSchemaSaveRow = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 9,
+};
+
+const mobileSchemaInput = {
+  minWidth: 0,
+  minHeight: 44,
+  borderRadius: 14,
+  border: "1px solid rgba(148,163,184,0.18)",
+  background: "rgba(15,23,42,0.95)",
+  color: "#f8fafc",
+  padding: "0 12px",
+  fontWeight: 850,
+  outline: "none",
+};
+
+const mobileSchemaList = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+  maxHeight: 168,
+  overflowY: "auto",
+};
+
+const mobileSchemaButton = {
+  minHeight: 54,
+  borderRadius: 14,
+  border: "1px solid rgba(148,163,184,0.14)",
+  background: "rgba(30,41,59,0.86)",
+  color: "#e2e8f0",
+  display: "grid",
+  alignContent: "center",
+  gap: 3,
+  padding: "8px 10px",
+  textAlign: "left",
+  cursor: "pointer",
+  minWidth: 0,
 };
 
 const mobileThemeRow = {

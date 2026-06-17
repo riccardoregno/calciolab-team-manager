@@ -973,6 +973,8 @@ export const en = {
       linePresetPress: "Press",
       linePresetRun: "Run",
       linePresetZone: "Zone",
+      exportImageError: "Could not export the tactical board image.",
+      mobileInsertExercise: "Exercise",
     },
     playerDetail: {
       title: "Player profile",
