@@ -650,12 +650,15 @@ function PlayerView({
             </AppCard>
 
             {/* RPE Borg */}
-            {rateableEvents.length > 0 && (
-              <AppCard>
-                <h3 style={{ ...ps.sectionTitle, marginBottom: 4 }}>Come hai sentito le ultime sedute?</h3>
-                <p style={{ ...ps.muted, fontSize: 13, marginBottom: 14 }}>
-                  Valuta lo sforzo percepito (RPE 1–10) per ogni allenamento o partita.
-                </p>
+            <AppCard>
+              <h3 style={{ ...ps.sectionTitle, marginBottom: 4 }}>Come hai sentito le ultime sedute?</h3>
+              <p style={{ ...ps.muted, fontSize: 13, marginBottom: 14 }}>
+                Valuta lo sforzo percepito (RPE 1–10) per ogni allenamento o partita.
+              </p>
+              {rateableEvents.length === 0 && (
+                <p style={ps.muted}>Nessuna seduta o partita negli ultimi 14 giorni da valutare.</p>
+              )}
+              {rateableEvents.length > 0 && (
                 <div style={{ display: "grid", gap: 14 }}>
                   {rateableEvents.map((e) => {
                     const rec = rpeMap[String(e.id)];
@@ -709,8 +712,8 @@ function PlayerView({
                     );
                   })}
                 </div>
-              </AppCard>
-            )}
+              )}
+            </AppCard>
           </>
         )}
 
@@ -1401,15 +1404,15 @@ const ps = {
     marginBottom: 0,
   },
   kpiStrip: {
-    display: "flex", gap: 0, flexWrap: "wrap",
+    display: "flex", gap: 0, flexWrap: "nowrap", overflowX: "auto",
     background: "rgba(255,255,255,0.025)",
     border: "1px solid rgba(255,255,255,0.07)",
     borderTop: "none",
     borderRadius: "0 0 0 0",
   },
   kpiItem: {
-    flex: "1 1 80px", minWidth: 70,
-    padding: "12px 16px",
+    flex: "1 1 0", minWidth: 0,
+    padding: "10px 8px",
     textAlign: "center",
     borderRight: "1px solid rgba(255,255,255,0.06)",
   },
