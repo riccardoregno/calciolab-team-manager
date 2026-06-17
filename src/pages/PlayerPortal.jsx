@@ -158,6 +158,7 @@ export default function PlayerPortal({
           portal={portal}
           comms={comms}
           physicalTests={physicalTests}
+          sessions={sessions}
           activeProgram={savedProgram}
           activeGoal={savedGoal}
           activeNote={savedNote}
@@ -339,7 +340,7 @@ function StaffView({
 function PlayerView({
   selectedPlayer, summary, latestTest, physicalReference,
   nextEvents, myConvocations,
-  players, portal, comms, physicalTests,
+  players, portal, comms, physicalTests, sessions = [],
   activeProgram, activeGoal, activeNote, isMobile,
   teamId, myPlayerId,
 }) {
@@ -456,13 +457,16 @@ function PlayerView({
   const rateableEvents = useMemo(() => {
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 14);
     return [
-      ...(nextEvents.filter((e) => new Date(e.date) < todayStart()).map((e) => ({ ...e, eventType: "session" }))),
-      ...myConvocations.filter((m) => new Date(m.date) < todayStart()).map((m) => ({ ...m, eventType: "match", title: `vs ${m.opponent || "?"}` })),
+      ...sessions
+        .filter((e) => e.date && new Date(e.date) < todayStart() && new Date(e.date) >= cutoff)
+        .map((e) => ({ ...e, eventType: "session" })),
+      ...myConvocations
+        .filter((m) => m.date && new Date(m.date) < todayStart() && new Date(m.date) >= cutoff)
+        .map((m) => ({ ...m, eventType: "match", title: `vs ${m.opponent || "?"}` })),
     ]
-      .filter((e) => new Date(e.date) >= cutoff)
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 7);
-  }, [nextEvents, myConvocations]);
+  }, [sessions, myConvocations]);
 
   const upcoming = myConvocations.filter((m) => new Date(m.date) >= todayStart());
   const past     = myConvocations.filter((m) => new Date(m.date) < todayStart());
