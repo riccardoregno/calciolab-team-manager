@@ -123,7 +123,7 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [] }) {
           }}
         >
           <MiniValue label={t("components.playerCard.appearances")} value={appearances} />
-          <MiniValue label={t("components.playerCard.trainingPct")} value={trainingPctValue} />
+          <MiniValue label={t("components.playerCard.trainingPctAbbr")} value={trainingPctValue} />
           <MiniValue label={t("components.playerCard.age")} value={ageValue} />
         </div>
 
@@ -178,6 +178,9 @@ function MiniValue({ label, value }) {
           textTransform: "uppercase",
           letterSpacing: 0,
           lineHeight: 1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
         }}
       >
         {label}
