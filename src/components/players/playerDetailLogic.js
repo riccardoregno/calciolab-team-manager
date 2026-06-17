@@ -41,6 +41,50 @@ const PREVENTION_LIBRARY = [
   },
 ];
 
+// Schede di prevenzione generale: visibili a TUTTI i giocatori indipendentemente dagli infortuni
+export const PREVENTION_BASE = [
+  {
+    key: "nordic",
+    title: "Lesione muscolare coscia",
+    reason: "PREVENZIONE",
+    points: [
+      "Nordic Hamstring 2x/settimana",
+      "Monitoraggio spike di carico settimanale",
+      "Rientro sprint progressivo prima del gruppo pieno",
+    ],
+  },
+  {
+    key: "distorsione_caviglia",
+    title: "Distorsione caviglia",
+    reason: "PREVENZIONE",
+    points: [
+      "Propriocezione monopodalica e superfici instabili",
+      "Rinforzo peronei con elastici",
+      "Progressione da statico a cambi direzione",
+    ],
+  },
+  {
+    key: "pubalgia_base",
+    title: "Pubalgia / adduttori",
+    reason: "PREVENZIONE",
+    points: [
+      "Copenhagen Adduction e core stability",
+      "Riduzione cambi direzione ad alta densità",
+      "Monitoraggio dolore inguinale post-seduta",
+    ],
+  },
+  {
+    key: "recidiva",
+    title: "Recidiva muscolare",
+    reason: "RETURN TO PLAY",
+    points: [
+      "Progressione 50% → 75% → 100% intensità",
+      "Test funzionali senza dolore prima del contatto",
+      "Controllo carico individuale per 2 settimane",
+    ],
+  },
+];
+
 export function getPreventionRecommendations(injuryHistory, player) {
   const source = [
     player?.injuryType,

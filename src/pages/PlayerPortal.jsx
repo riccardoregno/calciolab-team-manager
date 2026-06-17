@@ -5,7 +5,7 @@ import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { respondRsvpAsPlayer } from "../services/rsvp";
 import { fetchPlayerAvailability, setPlayerAvailability } from "../services/playerAvailability";
 import { touchPlayerPortalActivity } from "../services/playerPortalActivity";
-import { getPreventionRecommendations } from "../components/players/playerDetailLogic";
+import { getPreventionRecommendations, PREVENTION_BASE } from "../components/players/playerDetailLogic";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -441,7 +441,13 @@ function PlayerView({
     <div style={{ display: "grid", gap: 0 }}>
       {/* ── Header profilo ── */}
       <div style={ps.playerHeader2}>
-        <div style={ps.avatar}>{selectedPlayer?.name?.slice(0, 1) || "P"}</div>
+        {selectedPlayer?.photo ? (
+          <div style={ps.avatarFrame}>
+            <img src={selectedPlayer.photo} alt={selectedPlayer.name} style={ps.avatarImg} />
+          </div>
+        ) : (
+          <div style={ps.avatar}>{selectedPlayer?.name?.slice(0, 1) || "P"}</div>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
             <Badge tone={selectedPlayer?.status === "Disponibile" || !selectedPlayer?.status ? "green" : "orange"}>
@@ -725,31 +731,21 @@ function PlayerView({
             {/* Prevenzione e Return to Play */}
             <AppCard>
               <h3 style={{ ...ps.sectionTitle, marginBottom: 4 }}>Prevenzione e Return to Play</h3>
-              <p style={{ ...ps.muted, fontSize: 13, marginBottom: preventionRecs.length ? 14 : 0 }}>
+              <p style={{ ...ps.muted, fontSize: 13, marginBottom: 14 }}>
                 Schede rapide per gestire rischio ricaduta, recupero e lavoro individuale.
               </p>
-              {preventionRecs.length > 0 ? (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 10 }}>
-                  {preventionRecs.map((item) => (
-                    <div key={item.key} style={{ padding: 14, borderRadius: 12, background: "rgba(15,23,42,0.55)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
-                        <strong style={{ fontSize: 13, lineHeight: 1.3, color: "#f8fafc" }}>{item.title}</strong>
-                        <span style={{ flexShrink: 0, color: "#38bdf8", fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>{item.reason}</span>
-                      </div>
-                      <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 5, color: "#94a3b8", fontSize: 12, lineHeight: 1.45 }}>
-                        {item.points.map((pt, i) => <li key={i}>{pt}</li>)}
-                      </ul>
-                    </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 10 }}>
+                {/* Schede base: sempre visibili per tutti */}
+                {PREVENTION_BASE.map((item) => (
+                  <PreventionCard key={item.key} item={item} />
+                ))}
+                {/* Schede personalizzate: generate dallo storico infortuni */}
+                {preventionRecs
+                  .filter((rec) => !PREVENTION_BASE.some((b) => b.key === rec.key))
+                  .map((item) => (
+                    <PreventionCard key={item.key} item={item} personal />
                   ))}
-                </div>
-              ) : (
-                <div style={{ padding: 16, borderRadius: 12, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)", marginTop: 10 }}>
-                  <p style={{ margin: 0, color: "#4ade80", fontWeight: 700, fontSize: 13 }}>Nessuna scheda di prevenzione attiva</p>
-                  <p style={{ ...ps.muted, fontSize: 12, margin: "4px 0 0" }}>
-                    Le schede compaiono automaticamente in base allo storico infortuni.
-                  </p>
-                </div>
-              )}
+              </div>
             </AppCard>
 
             {/* Storico infortuni */}
@@ -1213,6 +1209,26 @@ function RsvpButtons({ matchId, rsvp, saving, onRespond, t, archived = false }) 
 }
 
 // ─────────────────────────────────────────────
+// Scheda prevenzione
+// ─────────────────────────────────────────────
+function PreventionCard({ item, personal = false }) {
+  const tagColor = item.reason === "RETURN TO PLAY" ? "#4ade80" : personal ? "#fb923c" : "#38bdf8";
+  return (
+    <div style={{ padding: 14, borderRadius: 12, background: "rgba(15,23,42,0.55)", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
+        <strong style={{ fontSize: 13, lineHeight: 1.3, color: "#f8fafc" }}>{item.title}</strong>
+        <span style={{ flexShrink: 0, color: tagColor, fontSize: 10, fontWeight: 900, textTransform: "uppercase", whiteSpace: "nowrap" }}>
+          {item.reason}
+        </span>
+      </div>
+      <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 5, color: "#94a3b8", fontSize: 12, lineHeight: 1.45 }}>
+        {item.points.map((pt, i) => <li key={i}>{pt}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Micro-componenti
 // ─────────────────────────────────────────────
 function MiniMetric({ label, value }) {
@@ -1334,6 +1350,13 @@ const ps = {
     display: "grid", placeItems: "center",
     background: "linear-gradient(135deg,#2563eb,#38bdf8)",
     fontSize: 24, fontWeight: 900,
+  },
+  avatarFrame: {
+    width: 54, height: 54, borderRadius: 12, flexShrink: 0,
+    overflow: "hidden", border: "2px solid rgba(255,255,255,0.12)",
+  },
+  avatarImg: {
+    width: "100%", height: "100%", objectFit: "cover", display: "block",
   },
   welcomeMsg: {
     color: "#cbd5e1", lineHeight: 1.6, padding: "12px 14px",
