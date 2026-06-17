@@ -169,9 +169,27 @@ export function PlayerKpiStrip({ summary }) {
   );
 }
 
-export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSave, onFieldChange, onInvitePortal, invitingPortal, portalInvitePending, portalAccountLinked, onRevokePortal, revokingPortal, portalInviteLink }) {
+export function PlayerProfileTab({
+  form,
+  player,
+  editing,
+  onEdit,
+  onCancel,
+  onSave,
+  onFieldChange,
+  onInvitePortal,
+  invitingPortal,
+  portalInvitePending,
+  portalAccountLinked,
+  onCancelPortalInvite,
+  cancellingPortalInvite,
+  onRevokePortal,
+  revokingPortal,
+  portalInviteLink,
+}) {
   const { t } = useTranslation();
   const [linkCopied, setLinkCopied] = React.useState(false);
+  const showInviteBox = Boolean(portalInviteLink && !portalAccountLinked);
   return (
     <AppCard>
       <div style={sectionStyles.cardHeader}>
@@ -214,7 +232,22 @@ export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSa
         </div>
       </div>
 
-      {portalInviteLink && (
+      {portalAccountLinked && (
+        <div style={{
+          margin: "0 0 16px",
+          padding: "12px 14px",
+          borderRadius: 10,
+          background: "rgba(34,197,94,0.08)",
+          border: "1px solid rgba(34,197,94,0.25)",
+          color: "#86efac",
+          fontSize: 12,
+          fontWeight: 800,
+        }}>
+          ✅ {t("pages.playerDetail.profile.portalAccessActive")}
+        </div>
+      )}
+
+      {showInviteBox && (
         <div style={{
           margin: "0 0 16px",
           padding: "12px 14px",
@@ -251,6 +284,18 @@ export function PlayerProfileTab({ form, player, editing, onEdit, onCancel, onSa
             >
               📱 WhatsApp
             </a>
+            {onCancelPortalInvite && (
+              <button
+                type="button"
+                onClick={onCancelPortalInvite}
+                disabled={cancellingPortalInvite}
+                style={{ flex: "0 0 auto", padding: "7px 10px", borderRadius: 7, border: "1px solid rgba(248,113,113,0.25)", background: "rgba(248,113,113,0.10)", color: "#fca5a5", fontSize: 12, fontWeight: 700, cursor: cancellingPortalInvite ? "not-allowed" : "pointer", opacity: cancellingPortalInvite ? 0.65 : 1 }}
+              >
+                {cancellingPortalInvite
+                  ? t("pages.playerDetail.profile.invitePortalSending")
+                  : t("pages.playerDetail.profile.cancelPortalInvite")}
+              </button>
+            )}
           </div>
         </div>
       )}

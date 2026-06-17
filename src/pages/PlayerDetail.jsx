@@ -108,6 +108,7 @@ function PlayerDetail({
   const isMobile = useIsMobile();
   const [invitingPortal, setInvitingPortal] = useState(false);
   const [revokingPortal, setRevokingPortal] = useState(false);
+  const [cancellingPortalInvite, setCancellingPortalInvite] = useState(false);
   const [portalInviteLink, setPortalInviteLink] = useState("");
   const [portalAccountState, setPortalAccountState] = useState({ playerId: "", accountId: null });
   const currentPlayerId = String(player?.id || "");
@@ -611,6 +612,43 @@ function PlayerDetail({
     }
   }
 
+  async function cancelPlayerPortalInvite() {
+    if (!canManage) return;
+    if (cancellingPortalInvite || !team?.id || !isSupabaseConfigured) return;
+    setCancellingPortalInvite(true);
+    try {
+      const settings = normalizeAppSettings(appSettings) || {};
+      const nextPendingInvites = (settings.pendingInvites || []).filter(
+        (invite) => !(String(invite.playerId) === String(player.id) && invite.role === "player")
+      );
+      const stillHasNamedInvites = nextPendingInvites.some((invite) =>
+        Boolean(String(invite.email || "").trim())
+      );
+      const nextSettings = {
+        ...settings,
+        pendingInvites: nextPendingInvites,
+        inviteToken: stillHasNamedInvites ? settings.inviteToken : null,
+        inviteTokenExpiresAt: stillHasNamedInvites ? settings.inviteTokenExpiresAt : null,
+      };
+
+      const { error } = await supabase
+        .from("teams")
+        .update({ settings: nextSettings })
+        .eq("id", team.id);
+      if (error) {
+        showToast(t("pages.playerDetail.portalInviteCancelError"), "error");
+        return;
+      }
+      setAppSettings?.(() => nextSettings);
+      setPortalInviteLink("");
+      showToast(t("pages.playerDetail.portalInviteCancelSuccess"), "ok");
+    } catch {
+      showToast(t("pages.playerDetail.portalInviteCancelError"), "error");
+    } finally {
+      setCancellingPortalInvite(false);
+    }
+  }
+
   return (
     <div style={styles.page}>
       <PageHeader title={player.name} subtitle={t("pages.playerDetail.subtitle")} />
@@ -665,8 +703,10 @@ function PlayerDetail({
               onInvitePortal={canManage ? invitePlayerToPortal : undefined}
               invitingPortal={invitingPortal}
               portalInvitePending={portalInvitePending}
-              portalInviteLink={portalInviteLink}
+              portalInviteLink={portalAccountId ? "" : portalInviteLink}
               portalAccountLinked={Boolean(portalAccountId)}
+              onCancelPortalInvite={canManage ? cancelPlayerPortalInvite : undefined}
+              cancellingPortalInvite={cancellingPortalInvite}
               onRevokePortal={canManage ? revokePlayerPortalAccess : undefined}
               revokingPortal={revokingPortal}
             />
