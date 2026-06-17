@@ -73,27 +73,14 @@ export function TacticalPlayerIcon({ player, isOpponent, isRealPlayer }) {
       : { shirt: "#2563eb", shadow: "#1e40af", trim: "#dbeafe", shorts: "#1e3a8a", socks: "#dbeafe", text: "#eff6ff", skin: "#d7a06f", hair: "#24140c" };
 
   return (
-    <svg viewBox="0 0 54 76" width="54" height="76" aria-hidden="true" style={{ display: "block" }}>
+    <svg viewBox="0 0 54 62" width="54" height="62" aria-hidden="true" style={{ display: "block" }}>
       <defs>
         <linearGradient id={`shirt-${player.id}`} x1="0" x2="1" y1="0" y2="1">
           <stop offset="0" stopColor={palette.shirt} />
           <stop offset="1" stopColor={palette.shadow} />
         </linearGradient>
       </defs>
-      <ellipse cx="27" cy="72" rx="18" ry="3.8" fill="rgba(0,0,0,0.28)" />
-
-      <path d="M20 52 L16 66" stroke={palette.socks} strokeWidth="5.5" strokeLinecap="round" />
-      <path d="M34 52 L38 66" stroke={palette.socks} strokeWidth="5.5" strokeLinecap="round" />
-      <path d="M15 68 L24 68" stroke="#111827" strokeWidth="4.2" strokeLinecap="round" />
-      <path d="M30 68 L39 68" stroke="#111827" strokeWidth="4.2" strokeLinecap="round" />
-
-      <path
-        d="M17 46 L37 46 L34 55 Q27 58 20 55 Z"
-        fill={palette.shorts}
-        stroke="rgba(255,255,255,0.72)"
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-      />
+      <ellipse cx="27" cy="58" rx="18" ry="3.6" fill="rgba(0,0,0,0.28)" />
 
       <path
         d="M16 24 L6 36 Q8 40 13 39 L19 31 Z"
@@ -128,7 +115,7 @@ export function TacticalPlayerIcon({ player, isOpponent, isRealPlayer }) {
       <path d="M18 34 H36" stroke="rgba(255,255,255,0.18)" strokeWidth="1.4" strokeLinecap="round" />
       <text
         x="27"
-        y="41.5"
+        y="41"
         textAnchor="middle"
         dominantBaseline="middle"
         fontSize="14.5"
@@ -142,7 +129,6 @@ export function TacticalPlayerIcon({ player, isOpponent, isRealPlayer }) {
       <rect x="23.6" y="17" width="6.8" height="7.8" rx="3" fill={palette.skin} />
       <ellipse cx="27" cy="12.2" rx="8.4" ry="9.2" fill={palette.skin} stroke="rgba(255,255,255,0.86)" strokeWidth="2" />
       <path d="M19.6 11.5 Q21.5 4.8 27.2 4.5 Q33.8 4.9 35 11.6 Q31.5 8.8 27.2 8.8 Q23.2 8.8 19.6 11.5Z" fill={palette.hair} opacity="0.82" />
-      <path d="M23.7 14.2 Q27 16.4 30.4 14.2" stroke="rgba(48,28,14,0.42)" strokeWidth="1.3" strokeLinecap="round" fill="none" />
     </svg>
   );
 }

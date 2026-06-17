@@ -509,7 +509,7 @@ export const boardStyles = {
  player: {
   position: "absolute",
   width: 54,
-  height: 76,
+  height: 62,
   borderRadius: 16,
   display: "flex",
   alignItems: "center",
