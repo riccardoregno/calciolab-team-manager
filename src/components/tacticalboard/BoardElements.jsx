@@ -67,67 +67,82 @@ export function FieldObjectIcon({ type }) {
 
 export function TacticalPlayerIcon({ player, isOpponent, isRealPlayer }) {
   const palette = isOpponent
-    ? { shirt: "#ef4444", sleeve: "#b91c1c", trim: "#fee2e2", text: "#fff1f2", skin: "#f2c19b", hair: "#3f2212" }
+    ? { shirt: "#ef4444", shadow: "#b91c1c", trim: "#fee2e2", shorts: "#991b1b", socks: "#fee2e2", text: "#fff1f2", skin: "#d7a06f", hair: "#24140c" }
     : isRealPlayer
-      ? { shirt: "#3b82f6", sleeve: "#1d4ed8", trim: "#dbeafe", text: "#eff6ff", skin: "#f2c19b", hair: "#3f2212" }
-      : { shirt: "#2563eb", sleeve: "#1e40af", trim: "#dbeafe", text: "#eff6ff", skin: "#f2c19b", hair: "#3f2212" };
+      ? { shirt: "#2563eb", shadow: "#1d4ed8", trim: "#dbeafe", shorts: "#1e3a8a", socks: "#dbeafe", text: "#eff6ff", skin: "#d7a06f", hair: "#24140c" }
+      : { shirt: "#2563eb", shadow: "#1e40af", trim: "#dbeafe", shorts: "#1e3a8a", socks: "#dbeafe", text: "#eff6ff", skin: "#d7a06f", hair: "#24140c" };
 
   return (
-    <svg viewBox="0 0 58 70" width="58" height="70" aria-hidden="true" style={{ display: "block" }}>
+    <svg viewBox="0 0 54 76" width="54" height="76" aria-hidden="true" style={{ display: "block" }}>
       <defs>
         <linearGradient id={`shirt-${player.id}`} x1="0" x2="1" y1="0" y2="1">
           <stop offset="0" stopColor={palette.shirt} />
-          <stop offset="1" stopColor={palette.sleeve} />
+          <stop offset="1" stopColor={palette.shadow} />
         </linearGradient>
       </defs>
-      <ellipse cx="29" cy="66" rx="20" ry="4.4" fill="rgba(0,0,0,0.34)" />
+      <ellipse cx="27" cy="72" rx="18" ry="3.8" fill="rgba(0,0,0,0.28)" />
+
+      <path d="M20 52 L16 66" stroke={palette.socks} strokeWidth="5.5" strokeLinecap="round" />
+      <path d="M34 52 L38 66" stroke={palette.socks} strokeWidth="5.5" strokeLinecap="round" />
+      <path d="M15 68 L24 68" stroke="#111827" strokeWidth="4.2" strokeLinecap="round" />
+      <path d="M30 68 L39 68" stroke="#111827" strokeWidth="4.2" strokeLinecap="round" />
+
       <path
-        d="M12 30 L4 43 Q6 48 13 47 L16 40 Z"
-        fill={palette.sleeve}
-        stroke="rgba(255,255,255,0.92)"
-        strokeWidth="3"
+        d="M17 46 L37 46 L34 55 Q27 58 20 55 Z"
+        fill={palette.shorts}
+        stroke="rgba(255,255,255,0.72)"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+
+      <path
+        d="M16 24 L6 36 Q8 40 13 39 L19 31 Z"
+        fill={palette.shadow}
+        stroke="rgba(255,255,255,0.82)"
+        strokeWidth="2.2"
         strokeLinejoin="round"
       />
       <path
-        d="M46 30 L54 43 Q52 48 45 47 L42 40 Z"
-        fill={palette.sleeve}
-        stroke="rgba(255,255,255,0.92)"
-        strokeWidth="3"
+        d="M38 24 L48 36 Q46 40 41 39 L35 31 Z"
+        fill={palette.shadow}
+        stroke="rgba(255,255,255,0.82)"
+        strokeWidth="2.2"
         strokeLinejoin="round"
       />
+
       <path
-        d="M12 62 L14 31 Q19 26 24 25 L29 32 L34 25 Q39 26 44 31 L46 62 Z"
+        d="M14 48 L17 25 Q21 22 24 22 L27 27 L30 22 Q33 22 37 25 L40 48 Q34 52 27 52 Q20 52 14 48Z"
         fill={`url(#shirt-${player.id})`}
-        stroke="rgba(255,255,255,0.96)"
-        strokeWidth="3.2"
+        stroke="rgba(255,255,255,0.9)"
+        strokeWidth="2.4"
         strokeLinejoin="round"
       />
       <path
-        d="M22.5 27.5 L29 34.5 L35.5 27.5"
+        d="M23 24.5 L27 29 L31 24.5"
         fill="none"
         stroke={palette.trim}
-        strokeWidth="3"
+        strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="M17 38 H41" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round" />
+      <path d="M18 34 H36" stroke="rgba(255,255,255,0.18)" strokeWidth="1.4" strokeLinecap="round" />
       <text
-        x="29"
-        y="49"
+        x="27"
+        y="41.5"
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize="17"
+        fontSize="14.5"
         fontWeight="950"
         fontFamily="system-ui,sans-serif"
         fill={palette.text}
       >
         {player.number}
       </text>
-      <circle cx="29" cy="16" r="12" fill={palette.skin} stroke="rgba(255,255,255,0.96)" strokeWidth="3" />
-      <path d="M17.2 15.5 Q19 5.2 29 4.8 Q39 5.2 40.8 15.5 Q35 10.7 29 11 Q23 10.7 17.2 15.5Z" fill={palette.hair} opacity="0.72" />
-      <circle cx="24.6" cy="17" r="1.25" fill="rgba(30,15,5,0.62)" />
-      <circle cx="33.4" cy="17" r="1.25" fill="rgba(30,15,5,0.62)" />
-      <path d="M25 22 Q29 24.4 33 22" fill="none" stroke="rgba(30,15,5,0.36)" strokeWidth="1.5" strokeLinecap="round" />
+
+      <rect x="23.6" y="17" width="6.8" height="7.8" rx="3" fill={palette.skin} />
+      <ellipse cx="27" cy="12.2" rx="8.4" ry="9.2" fill={palette.skin} stroke="rgba(255,255,255,0.86)" strokeWidth="2" />
+      <path d="M19.6 11.5 Q21.5 4.8 27.2 4.5 Q33.8 4.9 35 11.6 Q31.5 8.8 27.2 8.8 Q23.2 8.8 19.6 11.5Z" fill={palette.hair} opacity="0.82" />
+      <path d="M23.7 14.2 Q27 16.4 30.4 14.2" stroke="rgba(48,28,14,0.42)" strokeWidth="1.3" strokeLinecap="round" fill="none" />
     </svg>
   );
 }
