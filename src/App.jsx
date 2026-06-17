@@ -801,18 +801,37 @@ function App() {
               <Route
                 path="/player-portal"
                 element={
-                  gate(["owner", "headCoach", "director", "player"], <FeatureGate featureKey="playerPortal" appSettings={previewAppSettings}>
-                    <PlayerPortal
-                      players={players}
-                      sessions={sessions}
-                      matches={matches}
-                      physicalTests={physicalTests}
-                      appSettings={previewAppSettings}
-                      setAppSettings={setAppSettings}
-                      teamId={auth.team?.id}
-                      myPlayerId={auth.team?.role === "player" ? auth.team?.playerId : null}
-                    />
-                  </FeatureGate>, "playerPortal")
+                  gate(["owner", "headCoach", "director", "player"],
+                    // I player invitati bypassano la FeatureGate: l'accesso al portale
+                    // è garantito dall'invito, indipendentemente dal piano del team.
+                    // Il gate del piano è rilevante solo per i coach che gestiscono il portale.
+                    auth.team?.role === "player" ? (
+                      <PlayerPortal
+                        players={players}
+                        sessions={sessions}
+                        matches={matches}
+                        physicalTests={physicalTests}
+                        appSettings={previewAppSettings}
+                        setAppSettings={setAppSettings}
+                        teamId={auth.team?.id}
+                        myPlayerId={auth.team?.playerId || null}
+                      />
+                    ) : (
+                      <FeatureGate featureKey="playerPortal" appSettings={previewAppSettings}>
+                        <PlayerPortal
+                          players={players}
+                          sessions={sessions}
+                          matches={matches}
+                          physicalTests={physicalTests}
+                          appSettings={previewAppSettings}
+                          setAppSettings={setAppSettings}
+                          teamId={auth.team?.id}
+                          myPlayerId={null}
+                        />
+                      </FeatureGate>
+                    ),
+                    "playerPortal"
+                  )
                 }
               />
 

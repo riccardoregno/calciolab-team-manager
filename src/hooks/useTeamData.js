@@ -123,8 +123,10 @@ export function useTeamData({ teamId } = {}) {
 
     loadRemoteState({ teamId }).then((result) => {
       if (!active) return;
-
       applyLoadedState(result);
+      setLoading(false);
+    }).catch(() => {
+      if (!active) return;
       setLoading(false);
     });
 
