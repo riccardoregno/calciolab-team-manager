@@ -131,18 +131,26 @@ function Statistics({
 
   function getCaricoRange() {
     const today = new Date().toISOString().slice(0, 10);
-    if (caricoPreset === "custom") return { from: caricoFrom || "", to: caricoTo || today };
+    if (caricoPreset === "custom") {
+      if (!caricoFrom) return { from: null, to: null, invalid: true };
+      return { from: caricoFrom, to: caricoTo || today };
+    }
     const d = new Date();
     d.setDate(d.getDate() - parseInt(caricoPreset, 10));
     return { from: d.toISOString().slice(0, 10), to: today };
   }
 
   useEffect(() => {
-    const { from, to } = getCaricoRange();
+    const { from, to, invalid } = getCaricoRange();
+    if (invalid) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCaricoMatchCount(0);
+      setCaricoRows([]);
+      return;
+    }
     const matchEvents = events.filter(
       (e) => e.type === "Partita" && (!from || e.date >= from) && (!to || e.date <= to)
     );
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCaricoMatchCount(matchEvents.length);
     if (!auth.team?.id || matchEvents.length === 0) {
       setCaricoRows([]);
@@ -165,7 +173,7 @@ function Statistics({
       });
       setCaricoRows(Object.values(agg).sort((a, b) => b.minutes - a.minutes));
       setCaricoLoading(false);
-    });
+    }).catch(() => setCaricoLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caricoPreset, caricoFrom, caricoTo, events, auth.team?.id]);
 
@@ -201,7 +209,7 @@ function Statistics({
     }
     loadPlayerMatches(auth.team.id, effectiveSelectedPlayerId).then(({ data }) => {
       setPlayerMatchesDB(data || []);
-    });
+    }).catch(() => setPlayerMatchesDB([]));
   }, [auth.team?.id, effectiveSelectedPlayerId]);
 
   const filteredEvents = useMemo(() => {

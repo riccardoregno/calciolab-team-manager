@@ -772,7 +772,7 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
 
       {/* ── Modale invito ── */}
       {inviteModal && (
-        <div style={inviteStyles.overlay} onClick={() => closeInviteModal({ resetDraft: !sentInviteUrl })}>
+        <div style={inviteStyles.overlay} onClick={() => closeInviteModal({ resetDraft: Boolean(sentInviteUrl) })}>
           <div style={inviteStyles.modal} onClick={(e) => e.stopPropagation()}>
             {sentInviteUrl ? (
               /* ── Step 2: link pronto da condividere ── */

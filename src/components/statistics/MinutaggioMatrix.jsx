@@ -75,9 +75,9 @@ export default function MinutaggioMatrix({ players, matches }) {
       });
       setStatsMap(map);
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.team?.id, sortedMatches.length, matches]);
+  }, [auth.team?.id, matches]);
 
   if (loading) {
     return <div style={{ padding: "32px 0", textAlign: "center", color: "#64748b", fontSize: 13 }}>Caricamento dati…</div>;
@@ -222,7 +222,7 @@ export default function MinutaggioMatrix({ players, matches }) {
                        cell.mins != null       ? cell.mins :
                        ""}
                       {hasYellow && (
-                        <span style={{ position: "absolute", top: 2, right: 3, width: 5, height: 5, background: "#facc15", borderRadius: 1 }} />
+                        <span style={{ position: "absolute", top: 2, right: hasRed ? 10 : 3, width: 5, height: 5, background: "#facc15", borderRadius: 1 }} />
                       )}
                       {hasRed && (
                         <span style={{ position: "absolute", top: 2, right: 3, width: 5, height: 5, background: "#ef4444", borderRadius: 1 }} />

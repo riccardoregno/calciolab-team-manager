@@ -304,6 +304,8 @@ function Dashboard({
     pendingRequest.then((items) => {
       if (!active) return;
       setPendingRsvpMatches(items.filter(Boolean).slice(0, 3));
+    }).catch(() => {
+      if (active) setPendingRsvpMatches([]);
     });
 
     return () => { active = false; };

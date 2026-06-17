@@ -237,6 +237,8 @@ export default function Availability({
     let active = true;
 
     if (!teamId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelfAvailLoading(false);
       return undefined;
     }
 

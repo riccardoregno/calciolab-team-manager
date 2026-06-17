@@ -121,6 +121,7 @@ function PlayerDetail({
     setEditBaseUpdatedAt(player._updatedAt || null);
     setMedicalModal(null);
     setConflictModal(false);
+    setPortalInviteLink("");
     // Reset intenzionale solo al cambio atleta: includere l'intero player sovrascriverebbe edit/modali dopo ogni update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player?.id]);

@@ -169,7 +169,11 @@ export default function TacticalBoard({
         setLines((prev) => prev.filter((shape) => shape.id !== selectedItem.id));
       }
       if (selectedItem.kind === "object") {
-        setBoardObjects((prev) => prev.filter((obj) => obj.id !== selectedItem.id));
+        setBoardObjects((prev) => {
+          const target = prev.find((o) => o.id === selectedItem.id);
+          if (target?.locked) return prev;
+          return prev.filter((o) => o.id !== selectedItem.id);
+        });
       }
       setSelectedItem(null);
     }
@@ -304,7 +308,10 @@ export default function TacticalBoard({
     }
 
     if (selectedItem.kind === "object") {
-      setBoardObjects((prev) => prev.filter((obj) => obj.id !== selectedItem.id));
+      const target = boardObjects.find((o) => o.id === selectedItem.id);
+      if (!target?.locked) {
+        setBoardObjects((prev) => prev.filter((o) => o.id !== selectedItem.id));
+      }
     }
 
     setSelectedItem(null);
