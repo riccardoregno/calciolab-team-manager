@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import { respondRsvpAsPlayer } from "../services/rsvp";
 import { fetchPlayerAvailability, setPlayerAvailability } from "../services/playerAvailability";
 import { touchPlayerPortalActivity } from "../services/playerPortalActivity";
-import { getPreventionRecommendations, PREVENTION_BASE } from "../components/players/playerDetailLogic";
 import { fetchPlayerRpe, upsertRpe } from "../services/sessionRpe";
 
 import AppCard from "../components/ui/AppCard";
@@ -373,10 +372,6 @@ function PlayerView({
     [selectedPlayer]
   );
   const activeInjuries = injuryHistory.filter((inj) => !inj.endDate);
-  const preventionRecs = useMemo(
-    () => getPreventionRecommendations(injuryHistory, selectedPlayer),
-    [injuryHistory, selectedPlayer]
-  );
   const myPhysicalTests = useMemo(
     () => (physicalTests || [])
       .filter((t) => String(t.playerId) === String(selectedPlayer?.id))
@@ -848,25 +843,7 @@ function PlayerView({
               </AppCard>
             )}
 
-            {/* Prevenzione e Return to Play */}
-            <AppCard>
-              <h3 style={{ ...ps.sectionTitle, marginBottom: 4 }}>Prevenzione e Return to Play</h3>
-              <p style={{ ...ps.muted, fontSize: 13, marginBottom: 14 }}>
-                Schede rapide per gestire rischio ricaduta, recupero e lavoro individuale.
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 10 }}>
-                {/* Schede base: sempre visibili per tutti */}
-                {PREVENTION_BASE.map((item) => (
-                  <PreventionCard key={item.key} item={item} />
-                ))}
-                {/* Schede personalizzate: generate dallo storico infortuni */}
-                {preventionRecs
-                  .filter((rec) => !PREVENTION_BASE.some((b) => b.key === rec.key))
-                  .map((item) => (
-                    <PreventionCard key={item.key} item={item} personal />
-                  ))}
-              </div>
-            </AppCard>
+            <PrehabSection injuryHistory={injuryHistory} selectedPlayer={selectedPlayer} />
 
             {/* Storico infortuni */}
             {injuryHistory.length > 0 && (
@@ -1352,22 +1329,343 @@ function rpeBgColor(v) {
 }
 
 // ─────────────────────────────────────────────
-// Scheda prevenzione
+// PREHAB — dati routine e libreria
 // ─────────────────────────────────────────────
-function PreventionCard({ item, personal = false }) {
-  const tagColor = item.reason === "RETURN TO PLAY" ? "#4ade80" : personal ? "#fb923c" : "#38bdf8";
+const PREHAB_ROUTINES = {
+  base: {
+    label: "Base", duration: "8 min",
+    exercises: [
+      { id: "ponte",  emoji: "🍑", name: "Ponte Glutei",            sets: "2×12",        desc: "Attiva glutei e stabilizza bacino." },
+      { id: "nordic", emoji: "🦵", name: "Nordic Hamstring",        sets: "2×5",         desc: "Eccentrico ischio-crurali, previene lesioni coscia." },
+      { id: "bdog",   emoji: "🧠", name: "Bird Dog",                sets: "8+8",         desc: "Core stability e controllo lombare." },
+      { id: "dbug",   emoji: "🧠", name: "Dead Bug",                sets: "8+8",         desc: "Anti-rotazione e stabilità addominale." },
+      { id: "calf",   emoji: "🦶", name: "Calf Raise",              sets: "15+15",       desc: "Rinforzo polpaccio, protegge tendine d'Achille." },
+      { id: "equil",  emoji: "⚖️", name: "Equilibrio Monopodalico", sets: "30\"",        desc: "Propriocezione e controllo caviglia." },
+    ],
+  },
+  intermedia: {
+    label: "Intermedia", duration: "12 min",
+    exercises: [
+      { id: "ponte",   emoji: "🍑", name: "Ponte Glutei",            sets: "2×12",       desc: "Attiva glutei e stabilizza bacino." },
+      { id: "monster", emoji: "🐉", name: "Monster Walk",            sets: "2×10m",      desc: "Abduzione anca con elastico, attiva gluteo medio." },
+      { id: "nordic",  emoji: "🦵", name: "Nordic Hamstring",        sets: "2×5",        desc: "Eccentrico ischio-crurali, previene lesioni coscia." },
+      { id: "copen",   emoji: "⚽", name: "Copenhagen",              sets: "2×20\"",     desc: "Rinforzo adduttori, previene pubalgia." },
+      { id: "calf",    emoji: "🦶", name: "Calf Raise",              sets: "15+15",      desc: "Rinforzo polpaccio e tendine d'Achille." },
+      { id: "equil",   emoji: "⚖️", name: "Equilibrio Monopodalico", sets: "30\"",       desc: "Propriocezione e controllo caviglia." },
+      { id: "bdog",    emoji: "🧠", name: "Bird Dog",                sets: "8+8",        desc: "Core stability e controllo lombare." },
+      { id: "dbug",    emoji: "🧠", name: "Dead Bug",                sets: "8+8",        desc: "Anti-rotazione e stabilità addominale." },
+      { id: "sprint",  emoji: "🏃", name: "Sprint progressivi",      sets: "60%-80%-95%", desc: "Attiva sistema neuromuscolare, previene strappi." },
+    ],
+  },
+  elite: {
+    label: "Elite", duration: "15 min",
+    exercises: [
+      { id: "ponte",   emoji: "🍑", name: "Ponte Glutei",            sets: "2×12",       desc: "Attiva glutei e stabilizza bacino." },
+      { id: "monster", emoji: "🐉", name: "Monster Walk",            sets: "2×10m",      desc: "Abduzione anca con elastico, attiva gluteo medio." },
+      { id: "nordic",  emoji: "🦵", name: "Nordic Hamstring",        sets: "2×5",        desc: "Eccentrico ischio-crurali, previene lesioni coscia." },
+      { id: "copen",   emoji: "⚽", name: "Copenhagen avanzato",     sets: "3×25\"",     desc: "Rinforzo adduttori progressivo, alta intensità." },
+      { id: "calf",    emoji: "🦶", name: "Calf Isometric",          sets: "3×30\"",     desc: "Tenuta isometrica polpaccio." },
+      { id: "equil",   emoji: "⚖️", name: "Equilibrio Monopodalico", sets: "45\"",       desc: "Propriocezione avanzata con occhi chiusi." },
+      { id: "bdog",    emoji: "🧠", name: "Bird Dog",                sets: "10+10",      desc: "Core stability progressiva." },
+      { id: "dbug",    emoji: "🧠", name: "Dead Bug",                sets: "10+10",      desc: "Anti-rotazione avanzata." },
+      { id: "hip",     emoji: "🍑", name: "Hip Thrust",              sets: "3×10",       desc: "Potenza glutei per sprint e frenate." },
+      { id: "landing", emoji: "🦘", name: "Single Leg Landing",      sets: "3×6",        desc: "Atterraggio monopodalico, protegge LCA." },
+      { id: "sprint",  emoji: "🏃", name: "Sprint 30m",              sets: "4×30m",      desc: "Velocità massimale, attiva unità motorie veloci." },
+    ],
+  },
+};
+
+const PREHAB_LIBRARY = [
+  { key: "muscolare",      emoji: "🦵", title: "Lesione Muscolare Coscia",  reason: "PREVENZIONE",   injuryMatch: /muscolare|coscia|hamstring|quadricipite/,
+    bullets: ["Nordic Hamstring 2×/settimana", "Sprint >90% velocità 1×/settimana", "Monitoraggio carico settimanale"],
+    detail: { desc: "La coscia è il distretto muscolare più colpito nel calcio.", perche: "Gli ischio-crurali lavorano in eccentrico durante lo sprint: il rinforzo eccentrico riduce del 50% le lesioni.", quando: "2 volte a settimana, in riscaldamento o dopo il defaticamento." } },
+  { key: "pubalgia",       emoji: "⚽", title: "Pubalgia / Adduttori",       reason: "PREVENZIONE",   injuryMatch: /pubalgia|adduttore|inguine/,
+    bullets: ["Copenhagen Adduction", "Core Stability", "Monitoraggio dolore inguinale"],
+    detail: { desc: "La pubalgia colpisce fino al 20% dei calciatori.", perche: "Squilibrio tra forza adduttori e abduttori causa microtraumi cronici alla sinfisi pubica.", quando: "3 volte a settimana nei periodi di alta densità di gare." } },
+  { key: "caviglia",       emoji: "🦶", title: "Distorsione Caviglia",       reason: "PREVENZIONE",   injuryMatch: /caviglia|distorsione/,
+    bullets: ["Propriocezione su superfici instabili", "Elastici peronieri", "Cambi direzione progressivi"],
+    detail: { desc: "La distorsione di caviglia è il trauma più frequente nel calcio.", perche: "I recettori articolari si danneggiano dopo una distorsione. Il training propriocettivo riduce le recidive del 35%.", quando: "Prima del lavoro tecnico-tattico, ogni seduta." } },
+  { key: "ginocchio",      emoji: "🦴", title: "Ginocchio LCA / Patella",    reason: "PREVENZIONE",   injuryMatch: /ginocchio|lca|patella|legament/,
+    bullets: ["Squat monopodalico", "Step up eccentrico", "Controllo valgo dinamico"],
+    detail: { desc: "Le lesioni al LCA sono le più invalidanti per un calciatore.", perche: "Il collasso del ginocchio in valgo durante atterraggi e cambi direzione è il principale meccanismo lesionale.", quando: "2-3 volte a settimana, integrato nel riscaldamento." } },
+  { key: "tendine",        emoji: "⚡", title: "Tendinopatia",               reason: "PREVENZIONE",   injuryMatch: /tendine|achille|rotuleo|tendinopat/,
+    bullets: ["Heel Drop eccentrico", "Heavy Slow Resistance", "Nessuno spike carico >10%/settimana"],
+    detail: { desc: "Tendinopatie achillea e rotulea favorite da carichi discontinui.", perche: "I tendini si adattano lentamente. Un aumento del carico >10%/settimana supera la capacità rigenerativa.", quando: "2 volte a settimana. Ridurre nelle settimane con >3 allenamenti intensi." } },
+  { key: "lombalgia",      emoji: "🧠", title: "Lombalgia e Colonna",        reason: "PREVENZIONE",   injuryMatch: /lombalgia|colonna|schiena|lombar/,
+    bullets: ["Bird Dog + Dead Bug", "Mobilità toracica", "Evitare sprint in fatica"],
+    detail: { desc: "Il 40% dei calciatori soffre di lombalgia. Il core instabile porta la colonna a compensare ogni movimento.", perche: "Il core è il fondamento della postura e del gesto atletico.", quando: "Ogni seduta come warm-up. Priorità nelle settimane di alta intensità." } },
+  { key: "flessori",       emoji: "🏃", title: "Flessori Anca e Mobilità",   reason: "PREVENZIONE",   injuryMatch: /flessore|psoas|iliaco/,
+    bullets: ["Stretching psoas 2×60\" per lato", "Mobilità anca in rotazione", "Dissociazione lombo-pelvica"],
+    detail: { desc: "I calciatori accorciano cronicamente i flessori dell'anca per i continui gesti di corsa e tiro.", perche: "Flessori corti causano retroversione del bacino, lombalgia e riduzione della lunghezza del passo.", quando: "Post-allenamento come defaticamento, 3-4 volte a settimana." } },
+  { key: "glutei",         emoji: "🍑", title: "Glutei e Catena Posteriore", reason: "PREVENZIONE",   injuryMatch: /gluteo/,
+    bullets: ["Ponte glutei", "Hip Thrust", "Monster Walk con elastico"],
+    detail: { desc: "I glutei deboli sono alla base di pubalgia, dolore al ginocchio e lombalgia.", perche: "Il gluteo medio stabilizza il bacino durante la corsa. Il grande gluteo genera la potenza dello sprint.", quando: "2-3 volte a settimana come attivazione pre-allenamento." } },
+  { key: "propriocezione", emoji: "⚖️", title: "Propriocezione Caviglia",    reason: "PREVENZIONE",   injuryMatch: /propriocez|medusa|equilibr/,
+    bullets: ["Medusa monopodalica 3×30\"", "Elastici peronei + tibiali", "Saltelli su superficie instabile"],
+    detail: { desc: "La propriocezione è la capacità articolare di sentire la posizione nello spazio.", perche: "Dopo una distorsione, i recettori articolari si danneggiano. Il training li ripristina.", quando: "Prima di ogni allenamento, specialmente su terreni irregolari o bagnati." } },
+];
+
+const PERSONAL_PROFILES = [
+  { test: /muscolare|coscia|hamstring|quadricipite/, label: "Profilo Coscia",   color: "#f87171", ids: ["nordic","ponte","sprint","bdog","dbug"] },
+  { test: /pubalgia|adduttore|inguine/,              label: "Profilo Pubalgia", color: "#fb923c", ids: ["copen","ponte","bdog","dbug","monster"] },
+  { test: /caviglia|distorsione/,                    label: "Profilo Caviglia", color: "#facc15", ids: ["equil","calf","monster","bdog","dbug"] },
+  { test: /ginocchio|lca|patella/,                   label: "Profilo Ginocchio",color: "#a78bfa", ids: ["ponte","hip","landing","bdog","equil"] },
+];
+
+// ─────────────────────────────────────────────
+// Sezione Prehab principale
+// ─────────────────────────────────────────────
+function PrehabSection({ injuryHistory = [], selectedPlayer }) {
+  const [level, setLevel] = useState("intermedia");
+  const [checked, setChecked] = useState(new Set());
+  const [started, setStarted] = useState(false);
+  const [modalItem, setModalItem] = useState(null);
+
+  const routine = PREHAB_ROUTINES[level];
+  const exercises = routine.exercises;
+  const total = exercises.length;
+  const done = exercises.filter((e) => checked.has(`${level}:${e.id}`)).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const allDone = done === total && total > 0;
+
+  const injSource = [
+    selectedPlayer?.injuryType, selectedPlayer?.differentiatedType,
+    ...injuryHistory.flatMap((i) => [i.injuryType, i.differentiatedType, i.notes]),
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  const personalProfile = PERSONAL_PROFILES.find((p) => p.test.test(injSource)) || null;
+  const allEliteEx = PREHAB_ROUTINES.elite.exercises;
+  const personalExercises = personalProfile
+    ? personalProfile.ids.map((id) => allEliteEx.find((e) => e.id === id)).filter(Boolean)
+    : null;
+
+  function toggle(key) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
+  function resetRoutine() {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      exercises.forEach((e) => next.delete(`${level}:${e.id}`));
+      return next;
+    });
+    setStarted(false);
+  }
+
+  function switchLevel(key) {
+    setLevel(key);
+    setStarted(false);
+    setChecked((prev) => {
+      const next = new Set(prev);
+      PREHAB_ROUTINES[key].exercises.forEach((e) => next.delete(`${key}:${e.id}`));
+      return next;
+    });
+  }
+
   return (
-    <div style={{ padding: 14, borderRadius: 12, background: "rgba(15,23,42,0.55)", border: "1px solid rgba(255,255,255,0.08)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
-        <strong style={{ fontSize: 13, lineHeight: 1.3, color: "#f8fafc" }}>{item.title}</strong>
-        <span style={{ flexShrink: 0, color: tagColor, fontSize: 10, fontWeight: 900, textTransform: "uppercase", whiteSpace: "nowrap" }}>
-          {item.reason}
-        </span>
+    <>
+      {/* Banner routine personalizzata */}
+      {personalProfile && personalExercises && (
+        <div style={{ padding: "16px 18px", borderRadius: 16, background: "linear-gradient(135deg,rgba(37,99,235,0.18),rgba(56,189,248,0.08))", border: "1px solid rgba(37,99,235,0.35)" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
+            <span style={{ fontSize: 26 }}>⭐</span>
+            <div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 3 }}>
+                <span style={{ fontSize: 10, fontWeight: 900, color: "#38bdf8", textTransform: "uppercase", letterSpacing: "0.06em" }}>ROUTINE PERSONALIZZATA</span>
+                <span style={{ fontSize: 10, fontWeight: 800, color: personalProfile.color, background: "rgba(255,255,255,0.07)", borderRadius: 5, padding: "1px 7px" }}>{personalProfile.label}</span>
+              </div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "#f8fafc", lineHeight: 1.2 }}>CalcioLab ha rilevato un profilo di rischio.</p>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>Segui questa routine prioritaria basata sul tuo storico infortuni.</p>
+            </div>
+          </div>
+          <div style={{ display: "grid", gap: 5 }}>
+            {personalExercises.map((ex) => (
+              <div key={ex.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 10px", borderRadius: 9, background: "rgba(255,255,255,0.05)" }}>
+                <span style={{ fontSize: 16 }}>{ex.emoji}</span>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{ex.name}</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: "#38bdf8" }}>{ex.sets}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Hero card */}
+      <div style={{ background: "linear-gradient(135deg,#1e3a5f 0%,#0f172a 55%,rgba(37,99,235,0.12) 100%)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 16, padding: "20px 18px" }}>
+        <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 16 }}>
+          <span style={{ fontSize: 34 }}>🛡️</span>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 900, color: "#38bdf8", textTransform: "uppercase", letterSpacing: "0.08em" }}>PREHAB CALCIOLAB</p>
+            <h2 style={{ margin: "0 0 3px", fontSize: 20, fontWeight: 900, color: "#f8fafc", lineHeight: 1.1 }}>Routine consigliata</h2>
+            <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>{routine.duration} · 2 volte a settimana prima dell'allenamento.</p>
+          </div>
+        </div>
+
+        {/* Level tabs */}
+        <div style={{ display: "flex", gap: 0, padding: "4px", background: "rgba(0,0,0,0.35)", borderRadius: 12, marginBottom: 14 }}>
+          {Object.entries(PREHAB_ROUTINES).map(([key, r]) => (
+            <button key={key} onClick={() => switchLevel(key)} style={{
+              flex: 1, padding: "8px 4px", borderRadius: 9, border: "none", cursor: "pointer",
+              fontSize: 12, fontWeight: 800, lineHeight: 1.2,
+              background: level === key ? "#2563eb" : "transparent",
+              color: level === key ? "#fff" : "#64748b",
+              transition: "all 0.18s",
+            }}>
+              {r.label}<br /><span style={{ fontSize: 10, opacity: 0.7, fontWeight: 600 }}>{r.duration}</span>
+            </button>
+          ))}
+        </div>
+
+        {!started ? (
+          <button onClick={() => setStarted(true)} style={{ width: "100%", padding: "13px", borderRadius: 11, border: "none", background: "linear-gradient(90deg,#2563eb,#38bdf8)", color: "#fff", fontSize: 14, fontWeight: 800, cursor: "pointer", letterSpacing: "0.01em" }}>
+            Inizia Routine →
+          </button>
+        ) : (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: allDone ? "#4ade80" : "#94a3b8" }}>
+                {allDone ? "✅ Routine completata!" : "Routine in corso"}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 900, color: allDone ? "#4ade80" : "#38bdf8" }}>{pct}%</span>
+            </div>
+            <div style={{ height: 8, borderRadius: 99, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: 99, width: `${pct}%`, transition: "width 0.4s ease", background: allDone ? "#4ade80" : "linear-gradient(90deg,#2563eb,#38bdf8)" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
+              <span style={{ fontSize: 11, color: "#475569" }}>{done} di {total} esercizi</span>
+              <button onClick={resetRoutine} style={{ background: "none", border: "none", color: "#475569", fontSize: 11, cursor: "pointer", fontWeight: 700, padding: 0 }}>↺ Ricomincia</button>
+            </div>
+          </div>
+        )}
       </div>
-      <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 5, color: "#94a3b8", fontSize: 12, lineHeight: 1.45 }}>
-        {item.points.map((pt, i) => <li key={i}>{pt}</li>)}
-      </ul>
-    </div>
+
+      {/* Lista esercizi */}
+      {started && (
+        <div style={{ display: "grid", gap: 7 }}>
+          {exercises.map((ex) => {
+            const key = `${level}:${ex.id}`;
+            const isDone = checked.has(key);
+            return (
+              <div key={key} onClick={() => toggle(key)} role="checkbox" aria-checked={isDone} style={{
+                display: "flex", gap: 12, alignItems: "center", padding: "12px 14px",
+                borderRadius: 12, cursor: "pointer", userSelect: "none",
+                background: isDone ? "rgba(34,197,94,0.07)" : "rgba(255,255,255,0.025)",
+                border: `1px solid ${isDone ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.07)"}`,
+                transition: "all 0.2s",
+              }}>
+                <span style={{ fontSize: 22, flexShrink: 0 }}>{ex.emoji}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: isDone ? "#4ade80" : "#f8fafc", textDecoration: isDone ? "line-through" : "none", transition: "all 0.2s" }}>
+                      {ex.name}
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: "#38bdf8", flexShrink: 0 }}>{ex.sets}</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>{ex.desc}</p>
+                </div>
+                <div style={{
+                  width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+                  border: `2px solid ${isDone ? "#4ade80" : "rgba(255,255,255,0.15)"}`,
+                  background: isDone ? "#4ade80" : "transparent",
+                  display: "grid", placeItems: "center",
+                  fontSize: 14, fontWeight: 900, color: "#0f172a",
+                  transition: "all 0.2s",
+                }}>
+                  {isDone ? "✓" : ""}
+                </div>
+              </div>
+            );
+          })}
+
+          {allDone && (
+            <div style={{ padding: "22px 18px", borderRadius: 14, background: "rgba(34,197,94,0.09)", border: "1px solid rgba(34,197,94,0.3)", textAlign: "center", marginTop: 4 }}>
+              <div style={{ fontSize: 42, marginBottom: 8 }}>✅</div>
+              <h3 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 900, color: "#4ade80" }}>Routine completata!</h3>
+              <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.5 }}>Ottimo lavoro. Ridurre il rischio di infortunio inizia dalla costanza.</p>
+            </div>
+          )}
+
+          <p style={{ textAlign: "center", color: "#475569", fontSize: 12, margin: "2px 0 6px", fontWeight: 700 }}>
+            ⏱ Tempo stimato: {routine.duration}
+          </p>
+        </div>
+      )}
+
+      {/* Libreria infortuni */}
+      <div style={{ marginTop: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "12px 0" }}>
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+          <span style={{ fontSize: 12, fontWeight: 900, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", whiteSpace: "nowrap" }}>📚 Libreria Infortuni</span>
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+        </div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {PREHAB_LIBRARY.map((item) => {
+            const isPersonal = injuryHistory.some((inj) =>
+              item.injuryMatch.test([inj.injuryType, inj.differentiatedType, inj.notes].filter(Boolean).join(" ").toLowerCase())
+            );
+            return (
+              <div key={item.key} style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: `1px solid ${isPersonal ? "rgba(251,146,60,0.3)" : "rgba(255,255,255,0.07)"}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 7 }}>
+                  <div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 18 }}>{item.emoji}</span>
+                    <strong style={{ fontSize: 14, color: "#f8fafc" }}>{item.title}</strong>
+                    {isPersonal && (
+                      <span style={{ fontSize: 9, fontWeight: 900, color: "#fb923c", background: "rgba(251,146,60,0.12)", borderRadius: 4, padding: "2px 6px", textTransform: "uppercase" }}>⚠ Storico</span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 900, color: "#38bdf8", textTransform: "uppercase", flexShrink: 0, letterSpacing: "0.05em" }}>{item.reason}</span>
+                </div>
+                <ul style={{ margin: "0 0 10px", paddingLeft: 16, display: "grid", gap: 3, color: "#94a3b8", fontSize: 12, lineHeight: 1.45 }}>
+                  {item.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                </ul>
+                <button onClick={() => setModalItem(item)} style={{ background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.25)", color: "#38bdf8", borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  Approfondisci →
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Modal dettaglio */}
+      {modalItem && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={() => setModalItem(null)}>
+          <div style={{ width: "100%", maxWidth: 540, background: "#0f172a", borderRadius: "20px 20px 0 0", border: "1px solid rgba(255,255,255,0.1)", padding: "24px 20px 36px", maxHeight: "82vh", overflowY: "auto" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <span style={{ fontSize: 30 }}>{modalItem.emoji}</span>
+                <div>
+                  <span style={{ fontSize: 10, fontWeight: 900, color: "#38bdf8", textTransform: "uppercase" }}>{modalItem.reason}</span>
+                  <h3 style={{ margin: "2px 0 0", fontSize: 18, fontWeight: 900, color: "#f8fafc", lineHeight: 1.15 }}>{modalItem.title}</h3>
+                </div>
+              </div>
+              <button onClick={() => setModalItem(null)} style={{ background: "rgba(255,255,255,0.07)", border: "none", color: "#94a3b8", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 20, display: "grid", placeItems: "center" }}>×</button>
+            </div>
+            <p style={{ color: "#cbd5e1", fontSize: 14, lineHeight: 1.65, margin: "0 0 16px" }}>{modalItem.detail.desc}</p>
+            <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ padding: 14, borderRadius: 12, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)" }}>
+                <p style={{ margin: "0 0 5px", fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em", color: "#38bdf8" }}>Perché è utile</p>
+                <p style={{ margin: 0, fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>{modalItem.detail.perche}</p>
+              </div>
+              <div style={{ padding: 14, borderRadius: 12, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                <p style={{ margin: "0 0 5px", fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em", color: "#4ade80" }}>Quando usarlo</p>
+                <p style={{ margin: 0, fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>{modalItem.detail.quando}</p>
+              </div>
+              <div style={{ padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <p style={{ margin: "0 0 5px", fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em", color: "#475569" }}>▶ Video dimostrazione</p>
+                <p style={{ margin: 0, fontSize: 12, color: "#475569", fontStyle: "italic" }}>In arrivo nella prossima versione.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
