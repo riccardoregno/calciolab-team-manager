@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { useNavigate } from "react-router-dom";
 import { respondRsvpAsPlayer } from "../services/rsvp";
 import { fetchPlayerAvailability, setPlayerAvailability } from "../services/playerAvailability";
 import { touchPlayerPortalActivity } from "../services/playerPortalActivity";
@@ -35,6 +36,7 @@ export default function PlayerPortal({
   myPlayerId = null,
 }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const settings     = normalizeAppSettings(appSettings);
   const portal       = settings.playerPortal;
   const comms        = settings.communications || [];
@@ -133,6 +135,11 @@ export default function PlayerPortal({
     });
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    navigate("/");
+  }
+
   return (
     <div style={ps.page}>
       <PageHeader
@@ -143,6 +150,11 @@ export default function PlayerPortal({
             : t("pages.playerPortal.subtitle")
         }
         badge={portal.enabled ? t("pages.playerPortal.badgeActive") : t("pages.playerPortal.badgeOff")}
+        action={isPlayerView ? (
+          <button onClick={handleLogout} style={ps.logoutBtn}>
+            Esci
+          </button>
+        ) : null}
       />
 
       {isPlayerView ? (
@@ -1544,6 +1556,14 @@ const ps = {
     padding: "5px 12px", borderRadius: 8, border: "none",
     fontSize: 12, fontWeight: 700, cursor: "pointer",
     transition: "opacity 0.15s",
+  },
+
+  logoutBtn: {
+    padding: "7px 16px", borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.05)",
+    color: "#94a3b8", fontSize: 13, fontWeight: 700,
+    cursor: "pointer",
   },
 
   // Comunicazione
