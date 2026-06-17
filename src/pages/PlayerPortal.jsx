@@ -4,6 +4,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { respondRsvpAsPlayer } from "../services/rsvp";
 import { fetchPlayerAvailability, setPlayerAvailability } from "../services/playerAvailability";
+import { touchPlayerPortalActivity } from "../services/playerPortalActivity";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -377,6 +378,17 @@ function PlayerView({
     fetchAvailability();
     return () => { mountedRef.current = false; };
   }, [fetchRsvps, fetchAvailability]);
+
+  useEffect(() => {
+    if (!teamId || !myPlayerId) return undefined;
+
+    touchPlayerPortalActivity({ teamId, playerId: myPlayerId, increment: true });
+    const intervalId = window.setInterval(() => {
+      touchPlayerPortalActivity({ teamId, playerId: myPlayerId, increment: false });
+    }, 60000);
+
+    return () => window.clearInterval(intervalId);
+  }, [teamId, myPlayerId]);
 
   async function handleAvailability(status) {
     if (availSaving || !teamId || !myPlayerId) return;

@@ -186,10 +186,13 @@ export function PlayerProfileTab({
   onRevokePortal,
   revokingPortal,
   portalInviteLink,
+  portalActivity,
+  portalActivityNow,
 }) {
   const { t } = useTranslation();
   const [linkCopied, setLinkCopied] = React.useState(false);
   const showInviteBox = Boolean(portalInviteLink && !portalAccountLinked);
+  const portalOnline = isPortalActivityOnline(portalActivity, portalActivityNow);
   return (
     <AppCard>
       <div style={sectionStyles.cardHeader}>
@@ -233,17 +236,32 @@ export function PlayerProfileTab({
       </div>
 
       {portalAccountLinked && (
-        <div style={{
-          margin: "0 0 16px",
-          padding: "12px 14px",
-          borderRadius: 10,
-          background: "rgba(34,197,94,0.08)",
-          border: "1px solid rgba(34,197,94,0.25)",
-          color: "#86efac",
-          fontSize: 12,
-          fontWeight: 800,
-        }}>
-          ✅ {t("pages.playerDetail.profile.portalAccessActive")}
+        <div style={sectionStyles.portalActivityBox}>
+          <div style={sectionStyles.portalActivityStatus}>
+            <span style={{
+              ...sectionStyles.portalActivityDot,
+              background: portalOnline ? "#22c55e" : "#64748b",
+              boxShadow: portalOnline ? "0 0 0 4px rgba(34,197,94,0.12)" : "none",
+            }} />
+            {t("pages.playerDetail.profile.portalAccessActive")}
+          </div>
+          <div style={sectionStyles.portalActivityGrid}>
+            <PortalActivityItem
+              label={t("pages.playerDetail.profile.portalVisits")}
+              value={portalActivity?.visit_count ?? 0}
+            />
+            <PortalActivityItem
+              label={t("pages.playerDetail.profile.portalLastSeen")}
+              value={formatPortalLastSeen(portalActivity?.last_seen_at, portalActivityNow, t)}
+            />
+            <PortalActivityItem
+              label={t("pages.playerDetail.profile.portalStatus")}
+              value={portalOnline
+                ? t("pages.playerDetail.profile.portalOnline")
+                : t("pages.playerDetail.profile.portalOffline")}
+              tone={portalOnline ? "online" : "offline"}
+            />
+          </div>
         </div>
       )}
 
@@ -1033,6 +1051,36 @@ function ReadOnlyText({ label, value }) {
   );
 }
 
+function PortalActivityItem({ label, value, tone }) {
+  return (
+    <div style={sectionStyles.portalActivityItem}>
+      <span>{label}</span>
+      <strong style={tone === "online" ? sectionStyles.portalActivityOnline : undefined}>{value}</strong>
+    </div>
+  );
+}
+
+function isPortalActivityOnline(activity, now) {
+  if (!activity?.online_until) return false;
+  const until = new Date(activity.online_until).getTime();
+  return Number.isFinite(until) && until > now;
+}
+
+function formatPortalLastSeen(value, now, t) {
+  if (!value) return t("pages.playerDetail.profile.portalNeverSeen");
+  const seenAt = new Date(value).getTime();
+  if (!Number.isFinite(seenAt)) return t("pages.playerDetail.profile.portalNeverSeen");
+  const diffSeconds = Math.max(0, Math.floor((now - seenAt) / 1000));
+  if (diffSeconds < 60) return t("pages.playerDetail.profile.portalJustNow");
+  if (diffSeconds < 3600) {
+    return t("pages.playerDetail.profile.portalMinutesAgo", { count: Math.floor(diffSeconds / 60) });
+  }
+  if (diffSeconds < 86400) {
+    return t("pages.playerDetail.profile.portalHoursAgo", { count: Math.floor(diffSeconds / 3600) });
+  }
+  return t("pages.playerDetail.profile.portalDaysAgo", { count: Math.floor(diffSeconds / 86400) });
+}
+
 function getAvailabilityScore(player, activeInjuries) {
   if (activeInjuries.length || player.status === "Infortunato") return 25;
   if (player.status === "Recupero") return 55;
@@ -1166,6 +1214,47 @@ const sectionStyles = {
   developmentGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 16 },
   developmentKpis: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 10 },
   formGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 },
+  portalActivityBox: {
+    margin: "0 0 16px",
+    padding: "12px 14px",
+    borderRadius: 12,
+    background: "rgba(34,197,94,0.08)",
+    border: "1px solid rgba(34,197,94,0.25)",
+    display: "grid",
+    gap: 12,
+  },
+  portalActivityStatus: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    color: "#86efac",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  portalActivityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    flexShrink: 0,
+  },
+  portalActivityGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))",
+    gap: 8,
+  },
+  portalActivityItem: {
+    display: "grid",
+    gap: 4,
+    padding: "10px 12px",
+    borderRadius: 10,
+    background: "rgba(15,23,42,0.45)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: 800,
+    textTransform: "uppercase",
+  },
+  portalActivityOnline: { color: "#86efac" },
   fieldLabel: { color: "#94a3b8", fontSize: 12, fontWeight: 800, marginBottom: 8, textTransform: "uppercase" },
   readOnlyBox: {
     borderRadius: 16,

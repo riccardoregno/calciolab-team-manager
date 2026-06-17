@@ -28,6 +28,7 @@ import { getInviteExpiryDate } from "../utils/settingsHelpers";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
+import { fetchPlayerPortalActivity } from "../services/playerPortalActivity";
 
 const ABSENCE_TYPES = ["ferie", "permesso", "studio", "lavoro", "altro"];
 
@@ -111,8 +112,11 @@ function PlayerDetail({
   const [cancellingPortalInvite, setCancellingPortalInvite] = useState(false);
   const [portalInviteLink, setPortalInviteLink] = useState("");
   const [portalAccountState, setPortalAccountState] = useState({ playerId: "", accountId: null });
+  const [portalActivityState, setPortalActivityState] = useState({ playerId: "", data: null });
+  const [portalActivityNow, setPortalActivityNow] = useState(Date.now());
   const currentPlayerId = String(player?.id || "");
   const portalAccountId = portalAccountState.playerId === currentPlayerId ? portalAccountState.accountId : null;
+  const portalActivity = portalActivityState.playerId === currentPlayerId ? portalActivityState.data : null;
 
   useEffect(() => {
     if (!player) return;
@@ -141,6 +145,46 @@ function PlayerDetail({
       });
     return () => { cancelled = true; };
   }, [currentPlayerId, team?.id]);
+
+  useEffect(() => {
+    if (!currentPlayerId || !team?.id || !isSupabaseConfigured) {
+      return undefined;
+    }
+
+    let active = true;
+    fetchPlayerPortalActivity({ teamId: team.id, playerId: currentPlayerId }).then(({ data }) => {
+      if (active) setPortalActivityState({ playerId: currentPlayerId, data: data || null });
+    });
+
+    const channel = supabase
+      .channel(`player_portal_activity_${team.id}_${currentPlayerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "player_portal_activity",
+          filter: `player_id=eq.${currentPlayerId}`,
+        },
+        (payload) => {
+          const row = payload.new || payload.old;
+          if (String(row?.team_id || "") === String(team.id)) {
+            setPortalActivityState({ playerId: currentPlayerId, data: payload.new || null });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, [currentPlayerId, team?.id]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setPortalActivityNow(Date.now()), 30000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   const summary = useMemo(
     () => getPlayerSummary(player, { sessions, matches, physicalTests }),
@@ -705,6 +749,8 @@ function PlayerDetail({
               portalInvitePending={portalInvitePending}
               portalInviteLink={portalAccountId ? "" : portalInviteLink}
               portalAccountLinked={Boolean(portalAccountId)}
+              portalActivity={portalActivity}
+              portalActivityNow={portalActivityNow}
               onCancelPortalInvite={canManage ? cancelPlayerPortalInvite : undefined}
               cancellingPortalInvite={cancellingPortalInvite}
               onRevokePortal={canManage ? revokePlayerPortalAccess : undefined}
