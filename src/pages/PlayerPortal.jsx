@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { respondRsvpAsPlayer } from "../services/rsvp";
 import { fetchPlayerAvailability, setPlayerAvailability } from "../services/playerAvailability";
 import { touchPlayerPortalActivity } from "../services/playerPortalActivity";
+import { getPreventionRecommendations } from "../components/players/playerDetailLogic";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -155,6 +156,7 @@ export default function PlayerPortal({
           players={players}
           portal={portal}
           comms={comms}
+          physicalTests={physicalTests}
           activeProgram={savedProgram}
           activeGoal={savedGoal}
           activeNote={savedNote}
@@ -336,17 +338,34 @@ function StaffView({
 function PlayerView({
   selectedPlayer, summary, latestTest, physicalReference,
   nextEvents, myConvocations,
-  players, portal, comms,
+  players, portal, comms, physicalTests,
   activeProgram, activeGoal, activeNote, isMobile,
   teamId, myPlayerId,
 }) {
   const { t } = useTranslation();
-  const [rsvpMap, setRsvpMap] = useState({});   // matchId → {response, responded_at}
+  const [activeTab, setActiveTab] = useState("home");
+  const [rsvpMap, setRsvpMap] = useState({});
   const [savingId, setSavingId] = useState(null);
-  const [availability, setAvailability] = useState(null); // current record or null
+  const [availability, setAvailability] = useState(null);
   const [availSaving, setAvailSaving] = useState(false);
   const [availReason, setAvailReason] = useState("");
   const mountedRef = useRef(true);
+
+  const injuryHistory = useMemo(
+    () => [...(selectedPlayer?.injuries || [])].sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0)),
+    [selectedPlayer]
+  );
+  const activeInjuries = injuryHistory.filter((inj) => !inj.endDate);
+  const preventionRecs = useMemo(
+    () => getPreventionRecommendations(injuryHistory, selectedPlayer),
+    [injuryHistory, selectedPlayer]
+  );
+  const myPhysicalTests = useMemo(
+    () => (physicalTests || [])
+      .filter((t) => String(t.playerId) === String(selectedPlayer?.id))
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)),
+    [physicalTests, selectedPlayer]
+  );
 
   const fetchRsvps = useCallback(async () => {
     if (!isSupabaseConfigured || !teamId || !myPlayerId) return;
@@ -366,7 +385,6 @@ function PlayerView({
     const today = new Date().toISOString().slice(0, 10);
     const { data } = await fetchPlayerAvailability({ teamId, playerId: myPlayerId });
     if (!mountedRef.current) return;
-    // pick today's open record
     const current = (data || []).find((r) => r.date_from === today && !r.date_to) || null;
     setAvailability(current);
     setAvailReason(current?.reason || "");
@@ -381,12 +399,10 @@ function PlayerView({
 
   useEffect(() => {
     if (!teamId || !myPlayerId) return undefined;
-
     touchPlayerPortalActivity({ teamId, playerId: myPlayerId, increment: true });
     const intervalId = window.setInterval(() => {
       touchPlayerPortalActivity({ teamId, playerId: myPlayerId, increment: false });
     }, 60000);
-
     return () => window.clearInterval(intervalId);
   }, [teamId, myPlayerId]);
 
@@ -394,12 +410,7 @@ function PlayerView({
     if (availSaving || !teamId || !myPlayerId) return;
     setAvailSaving(true);
     setAvailability((prev) => ({ ...(prev || {}), status, reason: availReason }));
-    const { error } = await setPlayerAvailability({
-      teamId,
-      playerId: myPlayerId,
-      status,
-      reason: availReason,
-    });
+    const { error } = await setPlayerAvailability({ teamId, playerId: myPlayerId, status, reason: availReason });
     if (!error) await fetchAvailability();
     setAvailSaving(false);
   }
@@ -407,24 +418,10 @@ function PlayerView({
   async function handleRsvp(matchId, response) {
     if (savingId || !teamId || !myPlayerId) return;
     setSavingId(String(matchId));
-    // optimistic update
-    setRsvpMap((prev) => ({
-      ...prev,
-      [String(matchId)]: { response, responded_at: new Date().toISOString() },
-    }));
-    const { error } = await respondRsvpAsPlayer({
-      teamId,
-      matchId: String(matchId),
-      playerId: String(myPlayerId),
-      response,
-    });
+    setRsvpMap((prev) => ({ ...prev, [String(matchId)]: { response, responded_at: new Date().toISOString() } }));
+    const { error } = await respondRsvpAsPlayer({ teamId, matchId: String(matchId), playerId: String(myPlayerId), response });
     if (error) {
-      // revert on failure
-      setRsvpMap((prev) => {
-        const next = { ...prev };
-        delete next[String(matchId)];
-        return next;
-      });
+      setRsvpMap((prev) => { const next = { ...prev }; delete next[String(matchId)]; return next; });
     }
     setSavingId(null);
   }
@@ -432,175 +429,369 @@ function PlayerView({
   const upcoming = myConvocations.filter((m) => new Date(m.date) >= todayStart());
   const past     = myConvocations.filter((m) => new Date(m.date) < todayStart());
 
-  return (
-    <div style={{ ...ps.playerLayout, gridTemplateColumns: isMobile ? "1fr" : "minmax(0,1.4fr) minmax(280px,0.6fr)" }}>
-      {/* Colonna principale */}
-      <div style={{ display: "grid", gap: 18, alignContent: "start" }}>
-        <PlayerPreviewCard
-          selectedPlayer={selectedPlayer}
-          summary={summary}
-          latestTest={latestTest}
-          physicalReference={physicalReference}
-          nextEvents={nextEvents}
-          myConvocations={myConvocations}
-          portal={portal}
-          comms={comms}
-          activeProgram={activeProgram}
-          activeGoal={activeGoal}
-          activeNote={activeNote}
-          compact={false}
-        />
+  const TABS = [
+    { id: "home",          label: "Home",          icon: "🏠" },
+    { id: "convocazioni",  label: "Convocazioni",  icon: "📅", badge: upcoming.length || null },
+    { id: "fisico",        label: "Fisico",        icon: "💪" },
+    { id: "medico",        label: "Medico",        icon: "🩺", badge: activeInjuries.length || null },
+    { id: "comunicazioni", label: "Comunicazioni", icon: "📢", badge: comms.length || null },
+  ];
 
-        {/* Disponibilità giocatore */}
-        <AppCard>
-          <h3 style={{ ...ps.sectionTitle, marginBottom: 12 }}>
-            {t("pages.playerPortal.availabilityTitle")}
-          </h3>
-          <p style={{ ...ps.muted, fontSize: 13, marginBottom: 14 }}>
-            {t("pages.playerPortal.availabilityDesc")}
-          </p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-            {["available", "doubtful", "unavailable"].map((s) => (
-              <button
-                key={s}
-                onClick={() => handleAvailability(s)}
-                disabled={availSaving}
-                style={{
-                  ...ps.availBtn,
-                  background: availability?.status === s
-                    ? s === "available"   ? "rgba(34,197,94,0.2)"
-                    : s === "doubtful"    ? "rgba(251,146,60,0.2)"
-                    :                       "rgba(248,113,113,0.2)"
-                    : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${
-                    availability?.status === s
-                      ? s === "available"  ? "rgba(34,197,94,0.5)"
-                      : s === "doubtful"   ? "rgba(251,146,60,0.5)"
-                      :                      "rgba(248,113,113,0.5)"
-                      : "rgba(255,255,255,0.1)"
-                  }`,
-                  color: availability?.status === s
-                    ? s === "available"  ? "#4ade80"
-                    : s === "doubtful"   ? "#fb923c"
-                    :                      "#f87171"
-                    : "#94a3b8",
-                  opacity: availSaving ? 0.6 : 1,
-                }}
-              >
-                {s === "available"   ? `✅ ${t("pages.playerPortal.availStatusAvailable")}`
-                 : s === "doubtful"  ? `🟡 ${t("pages.playerPortal.availStatusDoubtful")}`
-                 :                     `❌ ${t("pages.playerPortal.availStatusUnavailable")}`}
-              </button>
-            ))}
+  return (
+    <div style={{ display: "grid", gap: 0 }}>
+      {/* ── Header profilo ── */}
+      <div style={ps.playerHeader2}>
+        <div style={ps.avatar}>{selectedPlayer?.name?.slice(0, 1) || "P"}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
+            <Badge tone={selectedPlayer?.status === "Disponibile" || !selectedPlayer?.status ? "green" : "orange"}>
+              {selectedPlayer?.status || "Disponibile"}
+            </Badge>
+            {activeInjuries.length > 0 && (
+              <Badge tone="red">{activeInjuries.length} infortun{activeInjuries.length === 1 ? "io" : "i"} attiv{activeInjuries.length === 1 ? "o" : "i"}</Badge>
+            )}
           </div>
-          <input
-            style={{ ...styles.input, fontSize: 13 }}
-            placeholder={t("pages.playerPortal.availReasonPlaceholder")}
-            value={availReason}
-            onChange={(e) => setAvailReason(e.target.value)}
-            onBlur={() => availability?.status && handleAvailability(availability.status)}
-          />
+          <h2 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 900, lineHeight: 1.08 }}>
+            {selectedPlayer?.name || "Giocatore"}
+          </h2>
+          <p style={{ ...ps.muted, fontSize: 13, margin: "2px 0 0" }}>
+            {selectedPlayer?.role || "—"}{selectedPlayer?.shirtNumber ? ` · #${selectedPlayer.shirtNumber}` : ""}
+          </p>
+        </div>
+        {/* Disponibilità mini-toggle */}
+        <div style={ps.availMini}>
+          <p style={{ ...ps.muted, fontSize: 10, fontWeight: 800, textTransform: "uppercase", margin: "0 0 6px" }}>Disponibilità</p>
+          <div style={{ display: "flex", gap: 5 }}>
+            {["available", "doubtful", "unavailable"].map((s) => {
+              const active = availability?.status === s;
+              const color = s === "available" ? "#4ade80" : s === "doubtful" ? "#fb923c" : "#f87171";
+              const bg    = s === "available" ? "rgba(34,197,94,0.18)" : s === "doubtful" ? "rgba(251,146,60,0.18)" : "rgba(248,113,113,0.18)";
+              return (
+                <button key={s} onClick={() => handleAvailability(s)} disabled={availSaving}
+                  title={s === "available" ? "Disponibile" : s === "doubtful" ? "In dubbio" : "Non disponibile"}
+                  style={{ ...ps.availDot, background: active ? bg : "rgba(255,255,255,0.04)", border: `1px solid ${active ? color : "rgba(255,255,255,0.1)"}`, color: active ? color : "#475569", opacity: availSaving ? 0.6 : 1 }}>
+                  {s === "available" ? "✅" : s === "doubtful" ? "🟡" : "❌"}
+                </button>
+              );
+            })}
+          </div>
           {availability?.status && (
-            <p style={{ ...ps.muted, fontSize: 11, marginTop: 8 }}>
-              {t("pages.playerPortal.availSavedOn", {
-                date: formatShortDate(availability.updated_at || availability.created_at),
-              })}
-            </p>
+            <input
+              style={{ ...styles.input, fontSize: 11, marginTop: 6, padding: "4px 8px" }}
+              placeholder="Motivazione..."
+              value={availReason}
+              onChange={(e) => setAvailReason(e.target.value)}
+              onBlur={() => availability?.status && handleAvailability(availability.status)}
+            />
           )}
-        </AppCard>
+        </div>
       </div>
 
-      {/* Colonna laterale */}
-      <div style={{ display: "grid", gap: 18, alignContent: "start" }}>
-        {/* Le mie convocazioni */}
-        <AppCard>
-          <h3 style={ps.sectionTitle}>
-            {t("pages.playerPortal.myConvocationsTitle")}
-            {upcoming.length > 0 && (
-              <Badge tone="green" style={{ marginLeft: 8 }}>{t("pages.playerPortal.upcoming", { count: upcoming.length })}</Badge>
-            )}
-          </h3>
+      {/* ── KPI strip ── */}
+      <div style={ps.kpiStrip}>
+        {[
+          { label: "Presenze",  value: summary.stats.presences },
+          { label: "Minuti",    value: summary.stats.minutes   },
+          { label: "Gol",       value: summary.stats.goals     },
+          { label: "Assist",    value: summary.stats.assists   },
+          { label: "Carico",    value: summary.stats.load      },
+        ].map(({ label, value }) => (
+          <div key={label} style={ps.kpiItem}>
+            <p style={{ margin: "0 0 2px", color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>{label}</p>
+            <strong style={{ fontSize: 20, lineHeight: 1 }}>{value || 0}</strong>
+          </div>
+        ))}
+      </div>
 
-          {upcoming.length === 0 && past.length === 0 ? (
-            <p style={ps.muted}>{t("pages.playerPortal.convNonePublished")}</p>
-          ) : (
-            <div style={ps.list}>
-              {upcoming.map((m) => (
-                <div key={m.id}>
-                  <ConvocazioneRow
-                    match={m}
-                    players={players}
-                    highlightId={selectedPlayer?.id}
-                    showFull
-                  />
-                  <RsvpButtons
-                    matchId={m.id}
-                    rsvp={rsvpMap[String(m.id)]}
-                    saving={savingId === String(m.id)}
-                    onRespond={handleRsvp}
-                    t={t}
-                  />
-                </div>
-              ))}
-              {past.length > 0 && (
-                <>
-                  <p style={{ ...ps.muted, fontSize: 11, textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.05em", margin: "8px 0 4px" }}>
-                    {t("pages.playerPortal.convArchiveLabel")}
-                  </p>
-                  {past.slice(0, 3).map((m) => (
-                    <div key={m.id}>
-                      <ConvocazioneRow
-                        match={m}
-                        players={players}
-                        highlightId={selectedPlayer?.id}
-                      />
-                      <RsvpButtons
-                        matchId={m.id}
-                        rsvp={rsvpMap[String(m.id)]}
-                        saving={savingId === String(m.id)}
-                        onRespond={handleRsvp}
-                        t={t}
-                        archived
-                      />
+      {/* ── Tab bar ── */}
+      <div style={ps.tabBar}>
+        {TABS.map((tab) => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+            ...ps.tabBtn,
+            color: activeTab === tab.id ? "#f8fafc" : "#64748b",
+            borderBottom: `2px solid ${activeTab === tab.id ? "#2563eb" : "transparent"}`,
+          }}>
+            <span style={{ fontSize: 14 }}>{tab.icon}</span>
+            {!isMobile && <span>{tab.label}</span>}
+            {tab.badge ? (
+              <span style={{ ...ps.tabBadge, background: activeTab === tab.id ? "#2563eb" : "rgba(255,255,255,0.1)" }}>
+                {tab.badge}
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Tab content ── */}
+      <div style={{ paddingTop: 20, display: "grid", gap: 18 }}>
+
+        {/* HOME */}
+        {activeTab === "home" && (
+          <>
+            {portal.welcomeMessage && (
+              <div style={ps.welcomeMsg}>{portal.welcomeMessage}</div>
+            )}
+            {/* Prossima convocazione */}
+            {upcoming[0] && (
+              <AppCard>
+                <h3 style={{ ...ps.sectionTitle, marginBottom: 10 }}>Prossima partita</h3>
+                <ConvocazioneRow match={upcoming[0]} players={players} highlightId={selectedPlayer?.id} showFull />
+                <RsvpButtons matchId={upcoming[0].id} rsvp={rsvpMap[String(upcoming[0].id)]} saving={savingId === String(upcoming[0].id)} onRespond={handleRsvp} t={t} />
+              </AppCard>
+            )}
+            {/* Obiettivo + programma */}
+            {(activeGoal || activeProgram || activeNote) && (
+              <AppCard>
+                {activeGoal && (
+                  <div style={{ marginBottom: activeProgram || activeNote ? 14 : 0 }}>
+                    <p style={ps.infoTitle}>Obiettivo settimana</p>
+                    <p style={{ ...ps.infoValue, fontSize: 15 }}>{activeGoal}</p>
+                  </div>
+                )}
+                {activeProgram && (
+                  <div style={{ padding: 12, borderRadius: 10, background: "rgba(34,197,94,0.07)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: activeNote ? 12 : 0 }}>
+                    <p style={ps.infoTitle}>Programma assegnato</p>
+                    <p style={{ color: "#cbd5e1", lineHeight: 1.6, margin: 0, fontSize: 14 }}>{activeProgram}</p>
+                  </div>
+                )}
+                {activeNote && (
+                  <div>
+                    <p style={ps.infoTitle}>Nota staff</p>
+                    <p style={{ ...ps.infoValue }}>{activeNote}</p>
+                  </div>
+                )}
+              </AppCard>
+            )}
+            {/* Prossimi eventi */}
+            <AppCard>
+              <h3 style={{ ...ps.sectionTitle, marginBottom: 10 }}>Prossimi impegni</h3>
+              {nextEvents.length ? (
+                <div style={ps.list}>
+                  {nextEvents.map((e) => (
+                    <div key={e.id} style={ps.eventRow}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>{e.title}</p>
+                        <p style={{ ...ps.muted, fontSize: 11 }}>{e.type || "Evento"}</p>
+                      </div>
+                      <span style={{ color: "#94a3b8", fontSize: 12 }}>{formatShortDate(e.date)}</span>
                     </div>
                   ))}
-                </>
+                </div>
+              ) : (
+                <p style={ps.muted}>Nessun impegno nei prossimi giorni.</p>
               )}
-            </div>
-          )}
-        </AppCard>
+            </AppCard>
+            {/* Rendimento recente */}
+            <AppCard>
+              <h3 style={{ ...ps.sectionTitle, marginBottom: 10 }}>Rendimento recente</h3>
+              {summary.recentEvents.length ? (
+                <div style={ps.list}>
+                  {summary.recentEvents.slice(0, 5).map(({ event, data }) => (
+                    <div key={`${event.id}-${selectedPlayer?.id}`} style={ps.eventRow}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>{event.title}</p>
+                        <p style={{ ...ps.muted, fontSize: 12 }}>{formatShortDate(event.date)}</p>
+                      </div>
+                      <strong style={{ color: "#38bdf8" }}>{data.minutes || 0}&apos;</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={ps.muted}>Nessun evento recente registrato.</p>
+              )}
+            </AppCard>
+          </>
+        )}
 
-        {/* Comunicazioni */}
-        {comms.length > 0 && (
+        {/* CONVOCAZIONI */}
+        {activeTab === "convocazioni" && (
           <AppCard>
-            <h3 style={ps.sectionTitle}>{t("pages.playerPortal.commBoardTitle")}</h3>
-            <div style={ps.list}>
-              {comms.slice(0, 6).map((c) => (
-                <CommCard key={c.id} comm={c} />
-              ))}
-            </div>
+            <h3 style={{ ...ps.sectionTitle, marginBottom: 14 }}>
+              Le mie convocazioni
+              {upcoming.length > 0 && <Badge tone="green" style={{ marginLeft: 8 }}>{upcoming.length} in arrivo</Badge>}
+            </h3>
+            {upcoming.length === 0 && past.length === 0 ? (
+              <p style={ps.muted}>Nessuna convocazione pubblicata.</p>
+            ) : (
+              <div style={ps.list}>
+                {upcoming.map((m) => (
+                  <div key={m.id}>
+                    <ConvocazioneRow match={m} players={players} highlightId={selectedPlayer?.id} showFull />
+                    <RsvpButtons matchId={m.id} rsvp={rsvpMap[String(m.id)]} saving={savingId === String(m.id)} onRespond={handleRsvp} t={t} />
+                  </div>
+                ))}
+                {past.length > 0 && (
+                  <>
+                    <p style={{ ...ps.muted, fontSize: 11, textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.05em", margin: "8px 0 4px" }}>
+                      Archivio
+                    </p>
+                    {past.slice(0, 5).map((m) => (
+                      <div key={m.id}>
+                        <ConvocazioneRow match={m} players={players} highlightId={selectedPlayer?.id} />
+                        <RsvpButtons matchId={m.id} rsvp={rsvpMap[String(m.id)]} saving={savingId === String(m.id)} onRespond={handleRsvp} t={t} archived />
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
           </AppCard>
         )}
 
-        {/* Rendimento */}
-        <AppCard>
-          <h3 style={ps.sectionTitle}>{t("pages.playerPortal.recentTitle")}</h3>
-          {summary.recentEvents.length ? (
-            <div style={ps.list}>
-              {summary.recentEvents.slice(0, 5).map(({ event, data }) => (
-                <div key={`${event.id}-${selectedPlayer?.id}`} style={ps.eventRow}>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>{event.title}</p>
-                    <p style={{ ...ps.muted, fontSize: 12 }}>{formatShortDate(event.date)}</p>
-                  </div>
-                  <strong style={{ color: "#38bdf8" }}>{data.minutes || 0}&apos;</strong>
+        {/* FISICO */}
+        {activeTab === "fisico" && (
+          <>
+            <AppCard>
+              <h3 style={{ ...ps.sectionTitle, marginBottom: 14 }}>Profilo fisico</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: 10 }}>
+                <div style={ps.infoBlock}>
+                  <p style={ps.infoTitle}>Ultimo test</p>
+                  <p style={ps.infoValue}>{latestTest ? formatShortDate(latestTest.date) : "Da testare"}</p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p style={ps.muted}>{t("pages.playerPortal.recentNone")}</p>
-          )}
-        </AppCard>
+                <div style={ps.infoBlock}>
+                  <p style={ps.infoTitle}>Gruppo</p>
+                  <p style={ps.infoValue}>{physicalReference.group || "Da testare"}</p>
+                </div>
+                <div style={ps.infoBlock}>
+                  <p style={ps.infoTitle}>MAS</p>
+                  <p style={ps.infoValue}>{physicalReference.mas ? `${physicalReference.mas} km/h` : "—"}</p>
+                </div>
+              </div>
+            </AppCard>
+            {myPhysicalTests.length > 0 && (
+              <AppCard>
+                <h3 style={{ ...ps.sectionTitle, marginBottom: 14 }}>Storico test fisici</h3>
+                <div style={ps.list}>
+                  {myPhysicalTests.map((test) => (
+                    <div key={test.id} style={{ ...ps.eventRow, alignItems: "flex-start" }}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{formatShortDate(test.date)}</p>
+                        <p style={{ ...ps.muted, fontSize: 12 }}>Gruppo {test.group || "—"}</p>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <strong style={{ color: "#38bdf8", fontSize: 15 }}>{test.mas ? `${test.mas} km/h` : "—"}</strong>
+                        {test.vo2max && <p style={{ ...ps.muted, fontSize: 11, margin: 0 }}>VO₂max {test.vo2max}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </AppCard>
+            )}
+          </>
+        )}
+
+        {/* MEDICO */}
+        {activeTab === "medico" && (
+          <>
+            {/* Infortuni attivi */}
+            {activeInjuries.length > 0 && (
+              <AppCard>
+                <h3 style={{ ...ps.sectionTitle, marginBottom: 14 }}>
+                  Infortuni attivi
+                  <Badge tone="red">{activeInjuries.length}</Badge>
+                </h3>
+                <div style={ps.list}>
+                  {activeInjuries.map((inj, i) => (
+                    <div key={i} style={{ padding: 14, borderRadius: 12, background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.2)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                        <div>
+                          <Badge tone="red" style={{ marginBottom: 6 }}>{inj.injuryType || "Infortunio"}</Badge>
+                          {inj.differentiatedType && (
+                            <p style={{ ...ps.muted, fontSize: 12, margin: "4px 0 0" }}>Tipo: {inj.differentiatedType}</p>
+                          )}
+                          {inj.startDate && (
+                            <p style={{ ...ps.muted, fontSize: 12, margin: "2px 0 0" }}>Dal {formatShortDate(inj.startDate)}</p>
+                          )}
+                        </div>
+                        {inj.expectedReturn && (
+                          <div style={{ textAlign: "right" }}>
+                            <p style={{ ...ps.muted, fontSize: 11, margin: 0 }}>Rientro previsto</p>
+                            <strong style={{ color: "#fb923c", fontSize: 14 }}>{formatShortDate(inj.expectedReturn)}</strong>
+                          </div>
+                        )}
+                      </div>
+                      {inj.preventionPlan?.returnToPlayNotes && (
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                          <p style={ps.infoTitle}>Return to Play</p>
+                          <p style={{ ...ps.muted, fontSize: 13, margin: 0, lineHeight: 1.5 }}>{inj.preventionPlan.returnToPlayNotes}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </AppCard>
+            )}
+
+            {/* Prevenzione e Return to Play */}
+            <AppCard>
+              <h3 style={{ ...ps.sectionTitle, marginBottom: 4 }}>Prevenzione e Return to Play</h3>
+              <p style={{ ...ps.muted, fontSize: 13, marginBottom: preventionRecs.length ? 14 : 0 }}>
+                Schede rapide per gestire rischio ricaduta, recupero e lavoro individuale.
+              </p>
+              {preventionRecs.length > 0 ? (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 10 }}>
+                  {preventionRecs.map((item) => (
+                    <div key={item.key} style={{ padding: 14, borderRadius: 12, background: "rgba(15,23,42,0.55)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
+                        <strong style={{ fontSize: 13, lineHeight: 1.3, color: "#f8fafc" }}>{item.title}</strong>
+                        <span style={{ flexShrink: 0, color: "#38bdf8", fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>{item.reason}</span>
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 5, color: "#94a3b8", fontSize: 12, lineHeight: 1.45 }}>
+                        {item.points.map((pt, i) => <li key={i}>{pt}</li>)}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: 16, borderRadius: 12, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)", marginTop: 10 }}>
+                  <p style={{ margin: 0, color: "#4ade80", fontWeight: 700, fontSize: 13 }}>Nessuna scheda di prevenzione attiva</p>
+                  <p style={{ ...ps.muted, fontSize: 12, margin: "4px 0 0" }}>
+                    Le schede compaiono automaticamente in base allo storico infortuni.
+                  </p>
+                </div>
+              )}
+            </AppCard>
+
+            {/* Storico infortuni */}
+            {injuryHistory.length > 0 && (
+              <AppCard>
+                <h3 style={{ ...ps.sectionTitle, marginBottom: 14 }}>Storico infortuni</h3>
+                <div style={ps.list}>
+                  {injuryHistory.filter((inj) => inj.endDate).slice(0, 5).map((inj, i) => (
+                    <div key={i} style={ps.eventRow}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{inj.injuryType || "Infortunio"}</p>
+                        <p style={{ ...ps.muted, fontSize: 12 }}>
+                          {formatShortDate(inj.startDate)} → {formatShortDate(inj.endDate)}
+                        </p>
+                      </div>
+                      {inj.daysLost > 0 && (
+                        <span style={{ color: "#f87171", fontSize: 12, fontWeight: 700 }}>{inj.daysLost}gg</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </AppCard>
+            )}
+          </>
+        )}
+
+        {/* COMUNICAZIONI */}
+        {activeTab === "comunicazioni" && (
+          <AppCard>
+            <h3 style={{ ...ps.sectionTitle, marginBottom: 14 }}>
+              Comunicazioni
+              {comms.length > 0 && <span style={ps.badge}>{comms.length}</span>}
+            </h3>
+            {comms.length === 0 ? (
+              <p style={ps.muted}>Nessuna comunicazione pubblicata.</p>
+            ) : (
+              <div style={ps.list}>
+                {comms.map((c) => <CommCard key={c.id} comm={c} />)}
+              </div>
+            )}
+          </AppCard>
+        )}
       </div>
     </div>
   );
@@ -1055,6 +1246,60 @@ const ps = {
   page:        { display: "grid", gap: 20 },
   staffLayout: { display: "grid", gridTemplateColumns: "360px minmax(0,1fr)", gap: 20, alignItems: "start" },
   playerLayout:{ display: "grid", gridTemplateColumns: "minmax(0,1.4fr) minmax(280px,0.6fr)", gap: 20, alignItems: "start" },
+
+  // Player portal redesign
+  playerHeader2: {
+    display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap",
+    padding: "20px 20px 16px",
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 16,
+    marginBottom: 0,
+  },
+  kpiStrip: {
+    display: "flex", gap: 0, flexWrap: "wrap",
+    background: "rgba(255,255,255,0.025)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderTop: "none",
+    borderRadius: "0 0 0 0",
+  },
+  kpiItem: {
+    flex: "1 1 80px", minWidth: 70,
+    padding: "12px 16px",
+    textAlign: "center",
+    borderRight: "1px solid rgba(255,255,255,0.06)",
+  },
+  availMini: {
+    marginLeft: "auto", minWidth: 130,
+  },
+  availDot: {
+    width: 34, height: 34, borderRadius: 8,
+    display: "grid", placeItems: "center",
+    fontSize: 14, cursor: "pointer",
+    transition: "opacity 0.15s",
+  },
+  tabBar: {
+    display: "flex", gap: 0, overflowX: "auto",
+    background: "rgba(255,255,255,0.02)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderTop: "none",
+    borderRadius: "0 0 12px 12px",
+    marginBottom: 4,
+  },
+  tabBtn: {
+    display: "flex", alignItems: "center", gap: 6,
+    padding: "12px 18px",
+    background: "none", border: "none",
+    fontSize: 13, fontWeight: 700,
+    cursor: "pointer", whiteSpace: "nowrap",
+    transition: "color 0.15s",
+  },
+  tabBadge: {
+    display: "inline-flex", alignItems: "center", justifyContent: "center",
+    minWidth: 18, height: 18, borderRadius: 9,
+    fontSize: 10, fontWeight: 900, color: "#fff",
+    padding: "0 5px",
+  },
 
   sectionTitle: { margin: "0 0 2px", fontSize: 15, fontWeight: 800, display: "flex", alignItems: "center", gap: 8, lineHeight: 1.2 },
   badge: {
