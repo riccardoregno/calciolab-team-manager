@@ -88,6 +88,7 @@ export async function acceptTeamInvite(token) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY || "",
       },
       body: JSON.stringify({ token }),
     });
@@ -118,19 +119,19 @@ export async function ensureDefaultTeam(user) {
   }
 
   const inviteToken = getStoredInviteToken(user);
+  const hadInviteToken = Boolean(inviteToken);
 
   if (inviteToken) {
     const { team: invitedTeam, error: inviteError, status: inviteStatus } = await acceptTeamInvite(inviteToken);
 
     if (invitedTeam) {
-      return { team: invitedTeam };
+      return { team: await attachPlayerAccount(invitedTeam, user.id) };
     }
 
     // Errori "soft": token non trovato (404), invito riservato ad altra email (403),
-    // invito scaduto (410), o già membro (il team è stato restituito comunque).
-    // In questi casi puliamo il token invalido/stale e proseguiamo normalmente
-    // al lookup delle membership esistenti dell'utente — così non si blocca chi
-    // ha già un team o ha già accettato l'invito in precedenza.
+    // invito scaduto (410), o già membro senza payload team. In questi casi
+    // puliamo il token invalido/stale e proseguiamo SOLO al lookup di membership
+    // già esistenti: non creiamo mai un workspace nuovo partendo da un link invito.
     // Errori "hard" (rete, 500): restituiamo l'errore perché c'è un problema
     // infrastrutturale che vale la pena segnalare.
     const isSoftError = inviteStatus === 404 || inviteStatus === 403 || inviteStatus === 410;
@@ -162,23 +163,16 @@ export async function ensureDefaultTeam(user) {
   const existingMembership = await pickBestMembership(memberships || []);
 
   if (existingMembership?.teams) {
-    let playerId = null;
-    if (existingMembership.role === "player") {
-      const { data: playerAccount } = await supabase
-        .from("player_accounts")
-        .select("player_id")
-        .eq("auth_user_id", user.id)
-        .eq("team_id", existingMembership.team_id)
-        .maybeSingle();
-      playerId = playerAccount?.player_id || null;
-    }
+    return { team: await attachPlayerAccount({
+      ...existingMembership.teams,
+      role: existingMembership.role,
+    }, user.id) };
+  }
 
+  if (hadInviteToken) {
     return {
-      team: {
-        ...existingMembership.teams,
-        role: existingMembership.role,
-        playerId,
-      },
+      team: null,
+      error: new Error("Invito non completato: verifica che il link sia valido e che l'account usi la stessa email invitata."),
     };
   }
 
@@ -210,6 +204,22 @@ export async function ensureDefaultTeam(user) {
   }
 
   return { team: { ...team, role: "owner" } };
+}
+
+async function attachPlayerAccount(team, userId) {
+  if (!team || team.role !== "player" || team.playerId) return team;
+
+  const { data: playerAccount } = await supabase
+    .from("player_accounts")
+    .select("player_id")
+    .eq("auth_user_id", userId)
+    .eq("team_id", team.id)
+    .maybeSingle();
+
+  return {
+    ...team,
+    playerId: playerAccount?.player_id || null,
+  };
 }
 
 async function pickBestMembership(memberships) {
