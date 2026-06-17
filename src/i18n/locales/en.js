@@ -966,6 +966,13 @@ export const en = {
       mobileSendBackward: "Back",
       mobileLock: "Lock",
       mobileUnlock: "Unlock",
+      linePresetSelect: "Select",
+      linePresetPass: "Pass",
+      linePresetMovement: "Movement",
+      linePresetCarry: "Carry",
+      linePresetPress: "Press",
+      linePresetRun: "Run",
+      linePresetZone: "Zone",
     },
     playerDetail: {
       title: "Player profile",

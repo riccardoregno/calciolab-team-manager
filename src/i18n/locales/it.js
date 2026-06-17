@@ -966,6 +966,13 @@ export const it = {
       mobileSendBackward: "Sotto",
       mobileLock: "Blocca",
       mobileUnlock: "Sblocca",
+      linePresetSelect: "Seleziona",
+      linePresetPass: "Passaggio",
+      linePresetMovement: "Movimento",
+      linePresetCarry: "Conduzione",
+      linePresetPress: "Pressing",
+      linePresetRun: "Corsa",
+      linePresetZone: "Zona",
     },
     playerDetail: {
       title: "Scheda giocatore",

@@ -819,6 +819,14 @@ export default function TacticalBoard({
     setMobilePanel(null);
   }
 
+  function selectMobileLineTool(tool) {
+    setActiveTool(tool.type);
+    setDrawColor(tool.color);
+    if (selectedShape) updateSelectedShape({ type: tool.type, color: tool.color });
+    setSelectedItem(null);
+    setMobilePanel(null);
+  }
+
   // ─── Schema save / load ───────────────────────────────────────────────────────
   function saveCurrentSchema() {
     const name = schemaName.trim();
@@ -1864,7 +1872,15 @@ export default function TacticalBoard({
                     <div style={mobileSheetContent}>
                       <div style={mobileSheetGrid}>
                         {MOBILE_LINE_TOOLS.map((tool) => (
-                          <button key={tool.key} type="button" style={{ ...mobileChoiceButton, ...(activeTool === tool.key ? mobileChoiceButtonActive : {}) }} onClick={() => selectMobileTool(tool.key)}>
+                          <button
+                            key={tool.key}
+                            type="button"
+                            style={{
+                              ...mobileChoiceButton,
+                              ...((activeTool === tool.type && (tool.type === "move" || drawColor === tool.color)) ? mobileChoiceButtonActive : {}),
+                            }}
+                            onClick={() => (tool.type === "move" ? selectMobileTool("move") : selectMobileLineTool(tool))}
+                          >
                             <span style={mobileChoiceIcon}>{tool.icon}</span>
                             <span>{t(`pages.tacticalBoard.${tool.titleKey}`)}</span>
                           </button>
@@ -2260,13 +2276,13 @@ const MOBILE_OBJECT_TOOLS = [
 ];
 
 const MOBILE_LINE_TOOLS = [
-  { key: "move", titleKey: "moveToolTip", icon: "✥" },
-  { key: "line", titleKey: "lineTypeLine", icon: "━" },
-  { key: "dashed", titleKey: "lineTypeDashed", icon: "┄" },
-  { key: "arrow", titleKey: "lineTypeArrow", icon: "↗" },
-  { key: "curve", titleKey: "lineTypeCurve", icon: "⌒" },
-  { key: "curve-dashed", titleKey: "lineTypeCurveDashed", icon: "⌁" },
-  { key: "zone", titleKey: "lineTypeZone", icon: "▭" },
+  { key: "select", type: "move", color: "white", titleKey: "linePresetSelect", icon: "✥" },
+  { key: "pass", type: "arrow", color: "white", titleKey: "linePresetPass", icon: "↗" },
+  { key: "movement", type: "curve", color: "#fbbf24", titleKey: "linePresetMovement", icon: "⌒" },
+  { key: "carry", type: "curve-dashed", color: "#38bdf8", titleKey: "linePresetCarry", icon: "⌁" },
+  { key: "press", type: "arrow", color: "#ef4444", titleKey: "linePresetPress", icon: "↯" },
+  { key: "run", type: "dashed", color: "white", titleKey: "linePresetRun", icon: "┄" },
+  { key: "zone", type: "zone", color: "#fbbf24", titleKey: "linePresetZone", icon: "▭" },
 ];
 
 const mobileTopBar = {
