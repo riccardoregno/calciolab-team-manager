@@ -19,6 +19,7 @@ import { styles } from "../styles/index.js";
 import { createId, formatDate, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { sendTeamNotification } from "../services/notifications";
+import RpeMatrix from "../components/statistics/RpeMatrix";
 import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
 import { useIsMobile } from "../hooks/useIsMobile";
 
@@ -54,7 +55,7 @@ function getRpeDisplayMeta(md, rpe, t) {
 }
 
 function Trainings({
-  exercises, sessions, setSessions, players = [], appSettings = {}, loading = false, teamId = null }) {
+  exercises, sessions, setSessions, players = [], matches = [], appSettings = {}, loading = false, teamId = null }) {
 
   const { t } = useTranslation();
   const isMobile = useIsMobile(760);
@@ -341,6 +342,8 @@ function Trainings({
       >
         <MetricStrip items={trainingMetricItems} min={isMobile ? 118 : 132} style={{ marginTop: isMobile ? 8 : 14 }} className="mobile-scroll-x" />
       </ActionBar>
+
+      <RpeMatrix teamId={teamId} players={players} sessions={sessions} matches={matches} />
 
       <div
         className="calciolab-two-column"

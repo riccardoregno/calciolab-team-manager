@@ -1,0 +1,40 @@
+import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+
+export async function fetchTeamRpe({ teamId }) {
+  if (!isSupabaseConfigured || !teamId) return { data: [] };
+  const { data, error } = await supabase
+    .from("session_rpe")
+    .select("*")
+    .eq("team_id", teamId)
+    .order("created_at", { ascending: false });
+  return { data: data || [], error };
+}
+
+export async function fetchPlayerRpe({ teamId, playerId }) {
+  if (!isSupabaseConfigured || !teamId || !playerId) return { data: [] };
+  const { data, error } = await supabase
+    .from("session_rpe")
+    .select("*")
+    .eq("team_id", teamId)
+    .eq("player_id", String(playerId))
+    .order("created_at", { ascending: false });
+  return { data: data || [], error };
+}
+
+export async function upsertRpe({ teamId, playerId, eventId, eventType, rpeValue, notes = "" }) {
+  if (!isSupabaseConfigured || !teamId || !playerId || !eventId) return { error: new Error("missing params") };
+  const { data, error } = await supabase
+    .from("session_rpe")
+    .upsert({
+      team_id:    teamId,
+      player_id:  String(playerId),
+      event_id:   String(eventId),
+      event_type: eventType,
+      rpe_value:  rpeValue,
+      notes:      notes || "",
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "team_id,player_id,event_id" })
+    .select()
+    .single();
+  return { data, error };
+}

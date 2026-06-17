@@ -6,6 +6,7 @@ import { respondRsvpAsPlayer } from "../services/rsvp";
 import { fetchPlayerAvailability, setPlayerAvailability } from "../services/playerAvailability";
 import { touchPlayerPortalActivity } from "../services/playerPortalActivity";
 import { getPreventionRecommendations, PREVENTION_BASE } from "../components/players/playerDetailLogic";
+import { fetchPlayerRpe, upsertRpe } from "../services/sessionRpe";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -345,6 +346,9 @@ function PlayerView({
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("home");
   const [rsvpMap, setRsvpMap] = useState({});
+  const [rpeMap, setRpeMap] = useState({});    // eventId → rpe record
+  const [rpeSaving, setRpeSaving] = useState(null); // eventId saving
+  const [rpeNotes, setRpeNotes] = useState({}); // eventId → draft note
   const [savingId, setSavingId] = useState(null);
   const [availability, setAvailability] = useState(null);
   const [availSaving, setAvailSaving] = useState(false);
@@ -394,8 +398,16 @@ function PlayerView({
     mountedRef.current = true;
     fetchRsvps();
     fetchAvailability();
+    if (teamId && myPlayerId) {
+      fetchPlayerRpe({ teamId, playerId: myPlayerId }).then(({ data }) => {
+        if (!mountedRef.current) return;
+        const map = {};
+        (data || []).forEach((r) => { map[r.event_id] = r; });
+        setRpeMap(map);
+      }).catch(() => {});
+    }
     return () => { mountedRef.current = false; };
-  }, [fetchRsvps, fetchAvailability]);
+  }, [fetchRsvps, fetchAvailability, teamId, myPlayerId]);
 
   useEffect(() => {
     if (!teamId || !myPlayerId) return undefined;
@@ -425,6 +437,32 @@ function PlayerView({
     }
     setSavingId(null);
   }
+
+  async function handleRpe(eventId, eventType, value) {
+    if (rpeSaving || !teamId || !myPlayerId) return;
+    setRpeSaving(eventId);
+    setRpeMap((prev) => ({ ...prev, [eventId]: { ...(prev[eventId] || {}), rpe_value: value, event_id: eventId } }));
+    const { error } = await upsertRpe({
+      teamId, playerId: myPlayerId,
+      eventId: String(eventId), eventType,
+      rpeValue: value,
+      notes: rpeNotes[eventId] || "",
+    });
+    if (error) setRpeMap((prev) => { const n = { ...prev }; delete n[eventId]; return n; });
+    setRpeSaving(null);
+  }
+
+  // Eventi degli ultimi 14 giorni valutabili (passati)
+  const rateableEvents = useMemo(() => {
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 14);
+    return [
+      ...(nextEvents.filter((e) => new Date(e.date) < todayStart()).map((e) => ({ ...e, eventType: "session" }))),
+      ...myConvocations.filter((m) => new Date(m.date) < todayStart()).map((m) => ({ ...m, eventType: "match", title: `vs ${m.opponent || "?"}` })),
+    ]
+      .filter((e) => new Date(e.date) >= cutoff)
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 7);
+  }, [nextEvents, myConvocations]);
 
   const upcoming = myConvocations.filter((m) => new Date(m.date) >= todayStart());
   const past     = myConvocations.filter((m) => new Date(m.date) < todayStart());
@@ -606,6 +644,69 @@ function PlayerView({
                 <p style={ps.muted}>Nessun evento recente registrato.</p>
               )}
             </AppCard>
+
+            {/* RPE Borg */}
+            {rateableEvents.length > 0 && (
+              <AppCard>
+                <h3 style={{ ...ps.sectionTitle, marginBottom: 4 }}>Come hai sentito le ultime sedute?</h3>
+                <p style={{ ...ps.muted, fontSize: 13, marginBottom: 14 }}>
+                  Valuta lo sforzo percepito (RPE 1–10) per ogni allenamento o partita.
+                </p>
+                <div style={{ display: "grid", gap: 14 }}>
+                  {rateableEvents.map((e) => {
+                    const rec = rpeMap[String(e.id)];
+                    const saved = rec?.rpe_value;
+                    return (
+                      <div key={e.id} style={{ padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8 }}>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>
+                              {e.eventType === "match" ? "⚽" : "🏃"} {e.title}
+                            </p>
+                            <p style={{ ...ps.muted, fontSize: 11, margin: 0 }}>{formatShortDate(e.date)}</p>
+                          </div>
+                          {saved && (
+                            <span style={{ fontSize: 13, fontWeight: 900, color: rpeTextColor(saved), background: rpeBgColor(saved), padding: "4px 10px", borderRadius: 8 }}>
+                              RPE {saved} — {BORG_LABELS[saved]}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                          {[1,2,3,4,5,6,7,8,9,10].map((v) => (
+                            <button
+                              key={v}
+                              onClick={() => handleRpe(String(e.id), e.eventType, v)}
+                              disabled={rpeSaving === String(e.id)}
+                              title={BORG_LABELS[v]}
+                              style={{
+                                width: 34, height: 34, borderRadius: 8, border: "1px solid",
+                                fontSize: 13, fontWeight: 700, cursor: "pointer",
+                                background: saved === v ? rpeBgColor(v) : "rgba(255,255,255,0.04)",
+                                borderColor: saved === v ? rpeTextColor(v) : "rgba(255,255,255,0.1)",
+                                color: saved === v ? rpeTextColor(v) : "#64748b",
+                                opacity: rpeSaving === String(e.id) ? 0.6 : 1,
+                                transition: "all 0.12s",
+                              }}
+                            >
+                              {v}
+                            </button>
+                          ))}
+                        </div>
+                        {saved && (
+                          <input
+                            style={{ ...styles.input, fontSize: 12, marginTop: 8, padding: "6px 10px" }}
+                            placeholder="Note opzionali (dolori, sensazioni, …)"
+                            value={rpeNotes[String(e.id)] ?? (rec?.notes || "")}
+                            onChange={(ev) => setRpeNotes((p) => ({ ...p, [String(e.id)]: ev.target.value }))}
+                            onBlur={() => handleRpe(String(e.id), e.eventType, saved)}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </AppCard>
+            )}
           </>
         )}
 
@@ -1206,6 +1307,29 @@ function RsvpButtons({ matchId, rsvp, saving, onRespond, t, archived = false }) 
       )}
     </div>
   );
+}
+
+// ─────────────────────────────────────────────
+// RPE helpers
+// ─────────────────────────────────────────────
+const BORG_LABELS = {
+  1: "Molto leggero", 2: "Leggero", 3: "Moderato",
+  4: "Abbastanza intenso", 5: "Intenso", 6: "Intenso+",
+  7: "Molto intenso", 8: "Molto intenso+", 9: "Estremamente intenso", 10: "Massimale",
+};
+function rpeTextColor(v) {
+  if (!v) return "#475569";
+  if (v <= 3) return "#4ade80";
+  if (v <= 6) return "#facc15";
+  if (v <= 8) return "#fb923c";
+  return "#f87171";
+}
+function rpeBgColor(v) {
+  if (!v) return "rgba(255,255,255,0.04)";
+  if (v <= 3) return "rgba(34,197,94,0.15)";
+  if (v <= 6) return "rgba(250,204,21,0.15)";
+  if (v <= 8) return "rgba(251,146,60,0.18)";
+  return "rgba(248,113,113,0.18)";
 }
 
 // ─────────────────────────────────────────────

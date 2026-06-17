@@ -994,6 +994,7 @@ function App() {
                     sessions={sessions}
                     setSessions={setSessions}
                     players={players}
+                    matches={matches}
                     appSettings={previewAppSettings}
                     loading={loading}
                     teamId={auth.team?.id}
