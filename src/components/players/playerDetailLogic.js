@@ -124,6 +124,39 @@ export const PREVENTION_BASE = [
       "Riequilibrio posturale a lungo termine: riduce il rischio di infortuni ricorrenti legati a compensazioni posturali croniche",
     ],
   },
+  {
+    key: "propriocezione_avanzata",
+    title: "Propriocezione caviglia (meduse ed elastici)",
+    reason: "PREVENZIONE",
+    points: [
+      "Medusa / tavoletta instabile monopodalica: 3×30 sec per lato, occhi aperti poi chiusi — allena i recettori articolari che prevengono le distorsioni",
+      "Elastico peronei laterali: 3×15 ripetizioni di eversione resistita — rinforza i muscoli stabilizzatori esterni della caviglia",
+      "Elastico tibiale anteriore: 3×15 di flessione dorsale contro resistenza — migliora il controllo in frenata e cambio direzione",
+      "Saltelli monopodalici su superficie instabile: progressione che trasferisce la stabilità acquisita al gesto sportivo reale",
+    ],
+  },
+  {
+    key: "elastici_anca",
+    title: "Elastici — anca e catena cinetica",
+    reason: "PREVENZIONE",
+    points: [
+      "Abduzione anca con elastico (clamshell, monster walk): attiva il medio gluteo, riduce il rischio di pubalgia e dolore al ginocchio",
+      "Estensione dell'anca in piedi con elastico: rinforza i glutei e scarica il quadricipite — essenziale dopo infortuni al ginocchio",
+      "Hip thrust con banda elastica: potenza dei flessori e stabilizzatori del bacino per sprint e frenate",
+      "Rotazione esterna resistita: protegge l'LCA migliorando il controllo del valgo dinamico",
+    ],
+  },
+  {
+    key: "flessori_anca",
+    title: "Flessori dell'anca e mobilità",
+    reason: "PREVENZIONE",
+    points: [
+      "Stretching psoas-iliaco in affondo (2×60 sec per lato): i calciatori accorciano cronicamente i flessori — causa diretta di lombalgia e pubalgia",
+      "Rinforzo eccentrico del retto femorale: previene le lesioni al quadricipite, frequenti nei tiri e negli sprint",
+      "Mobilità dell'articolazione dell'anca in rotazione interna/esterna: migliora la fluidità del passo e riduce le compensazioni alla schiena",
+      "Esercizi di dissociazione lombo-pelvica: insegna a muovere il bacino indipendentemente dalla colonna",
+    ],
+  },
 ];
 
 export function getPreventionRecommendations(injuryHistory, player) {
