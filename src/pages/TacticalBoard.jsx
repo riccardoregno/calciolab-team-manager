@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { DndContext } from "@dnd-kit/core";
 import AppCard from "../components/ui/AppCard";
@@ -102,6 +102,14 @@ export default function TacticalBoard({
   const [fieldTheme, setFieldTheme] = useState(_saved?.fieldTheme ?? "auto");
   const [schemaName, setSchemaName] = useState("");
   const [schemaSaved, setSchemaSaved] = useState(false);
+  const objectPinchRef = useRef({
+    pointers: new Map(),
+    objectId: null,
+    startDistance: 0,
+    startScale: 1,
+    historyPushed: false,
+    active: false,
+  });
 
   // ── Esercizio da lavagna ──────────────────────────────────────────────────────
   const [exModalOpen, setExModalOpen] = useState(!!editingExerciseId);
@@ -459,12 +467,15 @@ export default function TacticalBoard({
     if (!point) return;
 
     const onToken = event.target.closest?.("[data-board-token]");
+    const trackingPinch = trackObjectPinchStart(event);
 
     // Only capture pointer when drawing/stamping on empty board area.
     // DnD items (data-board-token) and edit handles manage their own capture.
     if (!onToken) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
+
+    if (trackingPinch) return;
 
     if (activeTool.startsWith("stamp-")) {
       if (onToken) return;
@@ -500,6 +511,8 @@ export default function TacticalBoard({
     const point = getBoardCoordinates(event);
     if (!point) return;
 
+    if (trackObjectPinchMove(event)) return;
+
     if (editDrag) {
       if (editDrag.kind === "shape") updateShapeDrag(point, editDrag);
       if (editDrag.kind === "object") updateObjectDrag(point, editDrag);
@@ -510,7 +523,9 @@ export default function TacticalBoard({
     setDrawingLine((prev) => ({ ...prev, endX: point.x, endY: point.y }));
   }
 
-  function handleBoardMouseUp() {
+  function handleBoardMouseUp(event) {
+    if (trackObjectPinchEnd(event)) return;
+
     if (editDrag) {
       setEditDrag(null);
       return;
@@ -547,6 +562,69 @@ export default function TacticalBoard({
   function updateSelectedObject(patch) {
     if (!selectedObject) return;
     setBoardObjects((prev) => prev.map((obj) => (obj.id === selectedObject.id ? { ...obj, ...patch } : obj)));
+  }
+
+  function getPinchDistance(pointers) {
+    const points = Array.from(pointers.values());
+    if (points.length < 2) return 0;
+    return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+  }
+
+  function trackObjectPinchStart(event) {
+    if (!mobileFullscreenActive || !selectedObject || event.pointerType !== "touch") return false;
+
+    const pinch = objectPinchRef.current;
+    if (pinch.objectId !== selectedObject.id) {
+      pinch.pointers.clear();
+      pinch.objectId = selectedObject.id;
+      pinch.startDistance = 0;
+      pinch.startScale = Number(selectedObject.scale ?? 1);
+      pinch.historyPushed = false;
+      pinch.active = false;
+    }
+
+    pinch.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (pinch.pointers.size === 2) {
+      pinch.startDistance = getPinchDistance(pinch.pointers);
+      pinch.startScale = Number(selectedObject.scale ?? 1);
+      pinch.active = true;
+      if (!pinch.historyPushed) {
+        pushHistory(lines, boardObjects, boardPlayers);
+        pinch.historyPushed = true;
+      }
+    }
+
+    return true;
+  }
+
+  function trackObjectPinchMove(event) {
+    const pinch = objectPinchRef.current;
+    if (!pinch.pointers.has(event.pointerId)) return false;
+
+    pinch.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (!pinch.active || pinch.pointers.size < 2 || !pinch.startDistance || !pinch.objectId) return true;
+
+    const nextDistance = getPinchDistance(pinch.pointers);
+    const nextScale = Math.max(0.45, Math.min(3.2, pinch.startScale * (nextDistance / pinch.startDistance)));
+    setBoardObjects((prev) => prev.map((obj) => (obj.id === pinch.objectId ? { ...obj, scale: nextScale } : obj)));
+    return true;
+  }
+
+  function trackObjectPinchEnd(event) {
+    const pinch = objectPinchRef.current;
+    if (!pinch.pointers.has(event.pointerId)) return false;
+
+    pinch.pointers.delete(event.pointerId);
+    if (pinch.pointers.size < 2) {
+      pinch.startDistance = 0;
+      pinch.active = false;
+    }
+    if (pinch.pointers.size === 0) {
+      pinch.objectId = null;
+      pinch.historyPushed = false;
+    }
+    return true;
   }
 
   function updateAreaSize(key, value) {
@@ -1383,6 +1461,7 @@ export default function TacticalBoard({
   onPointerDown={handleBoardMouseDown}
   onPointerMove={handleBoardMouseMove}
   onPointerUp={handleBoardMouseUp}
+  onPointerCancel={handleBoardMouseUp}
 >
     <div style={boardStyles.pitchTexture} />
     <div style={boardStyles.halfwayLine} />

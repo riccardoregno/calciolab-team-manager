@@ -251,24 +251,19 @@ export function FieldObject({ obj, activeTool, selected, onSelect, onEditStart, 
               event.stopPropagation();
               onRemove(obj.id);
             }}
-            style={{ ...boardStyles.objectHandle, right: -16, top: -16, background: "#ef4444", color: "white", fontSize: 14, fontWeight: 900 }}
+            style={{ ...boardStyles.objectHandle, right: -22, top: -22, background: "#ef4444" }}
           >
             ✕
           </button>
           <button
             type="button"
             data-board-token="true"
-            title={t("pages.tacticalBoard.scaleTip")}
-            onPointerDown={(event) => onEditStart(event, { kind: "object", id: obj.id, action: "scale" })}
-            style={{ ...boardStyles.objectHandle, right: -14, bottom: -14, cursor: "nwse-resize" }}
-          />
-          <button
-            type="button"
-            data-board-token="true"
             title={t("pages.tacticalBoard.rotateTip")}
             onPointerDown={(event) => onEditStart(event, { kind: "object", id: obj.id, action: "rotate" })}
-            style={{ ...boardStyles.objectHandle, left: "50%", top: -24, transform: "translateX(-50%)", background: "#fbbf24" }}
-          />
+            style={{ ...boardStyles.objectHandle, left: "50%", top: -34, transform: "translateX(-50%)", background: "#fbbf24", color: "#111827" }}
+          >
+            ↻
+          </button>
         </>
       )}
     </div>

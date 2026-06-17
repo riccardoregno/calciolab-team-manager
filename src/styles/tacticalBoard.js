@@ -402,14 +402,21 @@ export const boardStyles = {
 
   objectHandle: {
     position: "absolute",
-    width: 14,
-    height: 14,
+    width: 28,
+    height: 28,
     borderRadius: "50%",
     border: "2px solid #ffffff",
     background: "#0f172a",
     padding: 0,
     zIndex: 90,
     boxShadow: "0 4px 12px rgba(0,0,0,0.35)",
+    display: "grid",
+    placeItems: "center",
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: 950,
+    lineHeight: 1,
+    cursor: "pointer",
   },
 
   pitchTexture: {
