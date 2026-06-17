@@ -22,9 +22,10 @@ function cellType(player, event, stats) {
   const hasStats     = Boolean(stats);
 
   if (!isCalledUp && !hasStats) return { type: "absent" };
+  if (isStarter && !hasStats)   return { type: "full",    mins: 90 };  // nessun dato inserito → titolare 90' assunto
   if (isStarter && mins >= 88)  return { type: "full",    mins };
   if (isStarter && mins > 0)    return { type: "starter", mins };
-  if (isStarter && mins === 0)  return { type: "full",    mins: 90 };
+  if (isStarter)                return { type: "unused" };  // dati inseriti ma 0 min → non ha giocato
   if ((isBench || hasStats) && mins > 0) return { type: "sub",   mins };
   if (isCalledUp)               return { type: "unused" };
   if (hasStats && mins > 0)     return { type: "sub",     mins };

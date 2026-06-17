@@ -289,7 +289,8 @@ function Dashboard({
         const hasConvocati = Array.isArray(match.convocazione?.playerIds) && match.convocazione.playerIds.length > 0;
         return effectiveTeamId && hasConvocati && matchDate.getTime() >= todayTime;
       })
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(0, 5);
 
     const pendingRequest = futureMatches.length
       ? Promise.all(

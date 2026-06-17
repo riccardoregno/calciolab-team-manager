@@ -517,6 +517,7 @@ function PlayerDetail({
 
   async function invitePlayerToPortal() {
     if (!canManage) return;
+    if (invitingPortal) return;
     if (!team?.id || !player?.email || !isSupabaseConfigured) return;
     setInvitingPortal(true);
     try {
