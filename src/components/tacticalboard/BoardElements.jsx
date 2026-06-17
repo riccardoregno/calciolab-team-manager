@@ -185,7 +185,8 @@ export function ShapeHandles({ points, onStart }) {
 // ─── Oggetto campo draggable ──────────────────────────────────────────────────
 export function FieldObject({ obj, activeTool, selected, onSelect, onEditStart, onRemove }) {
   const { t } = useTranslation();
-  const isDraggable = activeTool === "move" || selected;
+  const isLocked = Boolean(obj.locked);
+  const isDraggable = !isLocked && (activeTool === "move" || selected);
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: obj.id,
     disabled: !isDraggable,
@@ -213,7 +214,7 @@ export function FieldObject({ obj, activeTool, selected, onSelect, onEditStart, 
           ? `translate(-50%, -50%) translate(${transform.x}px, ${transform.y}px) rotate(${obj.rotation ?? 0}deg) scale(${obj.scale ?? 1})`
           : `translate(-50%, -50%) rotate(${obj.rotation ?? 0}deg) scale(${obj.scale ?? 1})`,
         zIndex: 20,
-        cursor: isDraggable ? "grab" : "crosshair",
+        cursor: isLocked ? "not-allowed" : isDraggable ? "grab" : "crosshair",
         userSelect: "none",
         filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.5))",
         outline: selected ? "2px solid rgba(255,255,255,0.9)" : "none",
@@ -240,7 +241,7 @@ export function FieldObject({ obj, activeTool, selected, onSelect, onEditStart, 
           {obj.text}
         </span>
       ) : null}
-      {selected && (
+      {selected && !isLocked && (
         <>
           <button
             type="button"

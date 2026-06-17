@@ -118,6 +118,7 @@ export default function TacticalBoard({
 
   // ── Undo stack (session-only, non persiste) ───────────────────────────────────
   const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
 
   const availablePlayers = players.length ? players : fallbackPlayers;
 
@@ -256,21 +257,42 @@ export default function TacticalBoard({
   const benchPlayers = availablePlayers.filter((player) => !selectedLineup.some((selected) => selected.id === player.id));
 
   // ── Undo helpers ─────────────────────────────────────────────────────────────
+  function getHistorySnapshot(currentLines = lines, currentObjects = boardObjects, currentPlayers = boardPlayers) {
+    return {
+      lines: currentLines.map((line) => ({ ...line })),
+      boardObjects: currentObjects.map((object) => ({ ...object })),
+      boardPlayers: currentPlayers.map((player) => ({ ...player })),
+    };
+  }
+
   function pushHistory(currentLines, currentObjects, currentPlayers) {
     setUndoStack((prev) => [
       ...prev.slice(-49),
-      { lines: currentLines, boardObjects: currentObjects, boardPlayers: currentPlayers },
+      getHistorySnapshot(currentLines, currentObjects, currentPlayers),
     ]);
+    setRedoStack([]);
   }
 
   function handleUndo() {
     if (undoStack.length === 0) return;
     const snapshot = undoStack[undoStack.length - 1];
+    setRedoStack((prev) => [...prev.slice(-49), getHistorySnapshot()]);
     setLines(snapshot.lines);
     setBoardObjects(snapshot.boardObjects);
     setBoardPlayers(snapshot.boardPlayers);
     setSelectedItem(null);
     setUndoStack((prev) => prev.slice(0, -1));
+  }
+
+  function handleRedo() {
+    if (redoStack.length === 0) return;
+    const snapshot = redoStack[redoStack.length - 1];
+    setUndoStack((prev) => [...prev.slice(-49), getHistorySnapshot()]);
+    setLines(snapshot.lines);
+    setBoardObjects(snapshot.boardObjects);
+    setBoardPlayers(snapshot.boardPlayers);
+    setSelectedItem(null);
+    setRedoStack((prev) => prev.slice(0, -1));
   }
 
   function deleteSelectedItem() {
@@ -286,6 +308,46 @@ export default function TacticalBoard({
     }
 
     setSelectedItem(null);
+  }
+
+  function duplicateSelectedObject() {
+    if (!selectedObject) return;
+    pushHistory(lines, boardObjects, boardPlayers);
+    const nextObject = {
+      ...selectedObject,
+      id: makeShapeId("obj"),
+      x: clampBoard(Number(selectedObject.x ?? 50) + 4),
+      y: clampBoard(Number(selectedObject.y ?? 50) + 4),
+      locked: false,
+    };
+    setBoardObjects((prev) => [...prev, nextObject]);
+    setSelectedItem({ kind: "object", id: nextObject.id });
+  }
+
+  function moveSelectedObjectLayer(direction) {
+    if (!selectedObject) return;
+    const index = boardObjects.findIndex((obj) => obj.id === selectedObject.id);
+    if (index < 0) return;
+    const nextIndex = direction === "up"
+      ? Math.min(boardObjects.length - 1, index + 1)
+      : Math.max(0, index - 1);
+    if (nextIndex === index) return;
+
+    pushHistory(lines, boardObjects, boardPlayers);
+    setBoardObjects((prev) => {
+      const next = [...prev];
+      const [object] = next.splice(index, 1);
+      next.splice(nextIndex, 0, object);
+      return next;
+    });
+  }
+
+  function toggleSelectedObjectLock() {
+    if (!selectedObject) return;
+    pushHistory(lines, boardObjects, boardPlayers);
+    setBoardObjects((prev) =>
+      prev.map((obj) => (obj.id === selectedObject.id ? { ...obj, locked: !obj.locked } : obj))
+    );
   }
 
   function applyFormations(nextOwn, nextOpponent) {
@@ -1217,6 +1279,13 @@ export default function TacticalBoard({
                   title={`${t("pages.tacticalBoard.undo")}${undoStack.length ? ` (${undoStack.length})` : ""}`}
                   style={undoStack.length === 0 ? { opacity: 0.35, pointerEvents: "none" } : {}}
                 />
+                <ToolButton
+                  icon={<span style={{ fontSize: 18, lineHeight: 1 }}>↷</span>}
+                  active={false}
+                  onClick={handleRedo}
+                  title={`${t("pages.tacticalBoard.redo")}${redoStack.length ? ` (${redoStack.length})` : ""}`}
+                  style={redoStack.length === 0 ? { opacity: 0.35, pointerEvents: "none" } : {}}
+                />
               </div>
               {isMobile && (
                 <button
@@ -1695,6 +1764,9 @@ export default function TacticalBoard({
                 <button type="button" onClick={handleUndo} disabled={undoStack.length === 0} style={{ ...mobileDockButton, opacity: undoStack.length ? 1 : 0.38 }}>
                   <Undo2 size={18} />
                 </button>
+                <button type="button" onClick={handleRedo} disabled={redoStack.length === 0} style={{ ...mobileDockButton, opacity: redoStack.length ? 1 : 0.38 }}>
+                  ↷
+                </button>
                 <button type="button" onClick={() => toggleMobilePanel("players")} style={{ ...mobileDockButton, ...(mobilePanel === "players" ? mobileDockButtonActive : {}) }}>
                   <span style={mobileDockIcon}>👕</span>
                   <span style={mobileDockLabel}>{t("pages.tacticalBoard.mobilePlayers")}</span>
@@ -1710,6 +1782,31 @@ export default function TacticalBoard({
                 <button type="button" onClick={() => toggleMobilePanel("field")} style={{ ...mobileDockButton, ...(mobilePanel === "field" ? mobileDockButtonActive : {}) }}>
                   <span style={mobileDockIcon}>⚙</span>
                   <span style={mobileDockLabel}>{t("pages.tacticalBoard.mobileField")}</span>
+                </button>
+              </div>
+            )}
+
+            {mobileFullscreenActive && selectedObject && !mobilePanel && (
+              <div style={mobileObjectToolbar}>
+                <button type="button" style={mobileObjectToolbarButton} onClick={duplicateSelectedObject}>
+                  <span>⧉</span>
+                  <small>{t("pages.tacticalBoard.mobileDuplicate")}</small>
+                </button>
+                <button type="button" style={mobileObjectToolbarButton} onClick={() => moveSelectedObjectLayer("up")}>
+                  <span>↑</span>
+                  <small>{t("pages.tacticalBoard.mobileBringForward")}</small>
+                </button>
+                <button type="button" style={mobileObjectToolbarButton} onClick={() => moveSelectedObjectLayer("down")}>
+                  <span>↓</span>
+                  <small>{t("pages.tacticalBoard.mobileSendBackward")}</small>
+                </button>
+                <button type="button" style={{ ...mobileObjectToolbarButton, ...(selectedObject.locked ? mobileObjectToolbarButtonActive : {}) }} onClick={toggleSelectedObjectLock}>
+                  <span>{selectedObject.locked ? "🔓" : "🔒"}</span>
+                  <small>{selectedObject.locked ? t("pages.tacticalBoard.mobileUnlock") : t("pages.tacticalBoard.mobileLock")}</small>
+                </button>
+                <button type="button" style={{ ...mobileObjectToolbarButton, ...mobileObjectToolbarDanger }} onClick={deleteSelectedItem}>
+                  <span>×</span>
+                  <small>{t("pages.tacticalBoard.deleteSelected")}</small>
                 </button>
               </div>
             )}
@@ -2246,6 +2343,53 @@ const mobileDockButtonActive = {
   background: "rgba(250,204,21,0.16)",
   color: "#fde68a",
   boxShadow: "0 0 0 2px rgba(250,204,21,0.12)",
+};
+
+const mobileObjectToolbar = {
+  position: "fixed",
+  left: 10,
+  right: 10,
+  bottom: "calc(max(10px, env(safe-area-inset-bottom)) + 76px)",
+  zIndex: 262,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  padding: "8px",
+  borderRadius: 18,
+  background: "rgba(2,6,23,0.88)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  boxShadow: "0 14px 36px rgba(0,0,0,0.42)",
+  backdropFilter: "blur(14px)",
+  overflowX: "auto",
+};
+
+const mobileObjectToolbarButton = {
+  minWidth: 58,
+  height: 48,
+  borderRadius: 14,
+  border: "1px solid rgba(148,163,184,0.14)",
+  background: "rgba(15,23,42,0.95)",
+  color: "#e2e8f0",
+  display: "grid",
+  placeItems: "center",
+  gap: 1,
+  padding: "4px 8px",
+  fontSize: 17,
+  fontWeight: 950,
+  cursor: "pointer",
+};
+
+const mobileObjectToolbarButtonActive = {
+  border: "1px solid rgba(250,204,21,0.82)",
+  background: "rgba(250,204,21,0.16)",
+  color: "#fde68a",
+};
+
+const mobileObjectToolbarDanger = {
+  border: "1px solid rgba(248,113,113,0.45)",
+  background: "rgba(239,68,68,0.16)",
+  color: "#fecaca",
 };
 
 const mobileDockIcon = {
