@@ -1022,14 +1022,14 @@ function StatusField({ value, editing, onChange }) {
 
 function Field({ label, value, editing, onChange, type = "text", displayValue }) {
   return (
-    <div>
+    <div style={{ minWidth: 0 }}>
       <FieldLabel>{label}</FieldLabel>
       {editing ? (
         <input
           type={type}
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
-          style={styles.input}
+          style={{ ...styles.input, width: "100%", minWidth: 0, boxSizing: "border-box" }}
         />
       ) : (
         <ReadOnlyBox>{displayValue !== undefined ? displayValue : (value || "-")}</ReadOnlyBox>
@@ -1122,7 +1122,22 @@ const sectionStyles = {
   developmentKpis: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 10 },
   formGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 },
   fieldLabel: { color: "#94a3b8", fontSize: 12, fontWeight: 800, marginBottom: 8, textTransform: "uppercase" },
-  readOnlyBox: { borderRadius: 16, padding: 14, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", minHeight: 48, display: "flex", alignItems: "center" },
+  readOnlyBox: {
+    borderRadius: 16,
+    padding: 14,
+    background: "rgba(255,255,255,0.045)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    minHeight: 48,
+    display: "flex",
+    alignItems: "center",
+    minWidth: 0,
+    maxWidth: "100%",
+    overflow: "hidden",
+    overflowWrap: "anywhere",
+    wordBreak: "break-word",
+    lineHeight: 1.35,
+    boxSizing: "border-box",
+  },
   readOnlyText: { borderRadius: 16, padding: 16, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", lineHeight: 1.6, color: "#cbd5e1" },
   medicalKpiGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 12, marginBottom: 16 },
   quickActions: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 },

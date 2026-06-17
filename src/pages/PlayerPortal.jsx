@@ -836,6 +836,7 @@ function PlayerPreviewCard({
 }) {
   const { t } = useTranslation();
   const upcomingConv = myConvocations.filter((m) => new Date(m.date) >= todayStart());
+  const playerFirstName = selectedPlayer?.firstName || selectedPlayer?.name?.split(" ")?.[0] || "";
 
   return (
     <AppCard>
@@ -865,7 +866,7 @@ function PlayerPreviewCard({
 
           {/* Messaggio spogliatoio */}
           <p style={ps.welcomeMsg}>
-            {portal.welcomeMessage || t("pages.playerPortal.defaultWelcome")}
+            {portal.welcomeMessage || t("pages.playerPortal.defaultWelcome", { name: playerFirstName })}
           </p>
 
           {/* KPI */}

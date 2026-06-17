@@ -2805,7 +2805,7 @@ export const it = {
       portalEnabledLabel: "Portale attivo",
       portalEnabledDesc: "Visibile ai giocatori con piano Club.",
       welcomeMessageLabel: "Messaggio spogliatoio",
-      defaultWelcome: "Benvenuto nella tua area personale CalcioLab.",
+      defaultWelcome: "Ciao {{name}}, questa è la tua area personale CalcioLab. Da qui puoi seguire convocazioni, disponibilità, programma individuale e comunicazioni dello staff. Usala per restare allineato con il team durante la stagione.",
       commTitle: "Comunicazioni",
       commDesc: "Annunci visibili a tutti i giocatori nel portale.",
       commTitlePlaceholder: "Titolo comunicazione *",

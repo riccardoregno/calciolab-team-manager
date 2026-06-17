@@ -2787,7 +2787,7 @@ export const en = {
       portalEnabledLabel: "Portal active",
       portalEnabledDesc: "Visible to players on the Club plan.",
       welcomeMessageLabel: "Dressing room message",
-      defaultWelcome: "Welcome to your personal CalcioLab area.",
+      defaultWelcome: "Hi {{name}}, this is your personal CalcioLab area. From here you can follow call-ups, availability, your individual program and staff communications. Use it to stay aligned with the team throughout the season.",
       commTitle: "Communications",
       commDesc: "Announcements visible to all players in the portal.",
       commTitlePlaceholder: "Communication title *",
