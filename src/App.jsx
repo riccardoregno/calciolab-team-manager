@@ -580,17 +580,21 @@ function App() {
               <Route
                 path="/"
                 element={
-                  gate(allRoles, <Dashboard
-                    players={players}
-                    exercises={exercises}
-                    sessions={sessions}
-                    matches={matches}
-                    physicalTests={physicalTests}
-                    appSettings={previewAppSettings}
-                    setAppSettings={setAppSettings}
-                    teamId={auth.team?.id || null}
-                    loading={loading}
-                  />)
+                  auth.team?.role === "player" ? (
+                    <Navigate to="/player-portal" replace />
+                  ) : (
+                    gate(allRoles, <Dashboard
+                      players={players}
+                      exercises={exercises}
+                      sessions={sessions}
+                      matches={matches}
+                      physicalTests={physicalTests}
+                      appSettings={previewAppSettings}
+                      setAppSettings={setAppSettings}
+                      teamId={auth.team?.id || null}
+                      loading={loading}
+                    />)
+                  )
                 }
               />
 
