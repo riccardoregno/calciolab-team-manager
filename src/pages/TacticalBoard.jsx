@@ -493,6 +493,7 @@ export default function TacticalBoard({
       };
       setBoardObjects((prev) => [...prev, nextObject]);
       setSelectedItem({ kind: "object", id: nextObject.id });
+      setActiveTool("move");
       return;
     }
 
@@ -753,24 +754,6 @@ export default function TacticalBoard({
   function selectMobileTool(tool) {
     setActiveTool(tool);
     setSelectedItem(null);
-    setMobilePanel(null);
-  }
-
-  function insertMobileObject(type) {
-    pushHistory(lines, boardObjects, boardPlayers);
-    const nextObject = {
-      id: makeShapeId("obj"),
-      type,
-      x: 50,
-      y: 50,
-      scale: 1,
-      rotation: 0,
-      color: drawColor,
-      text: "",
-    };
-    setBoardObjects((prev) => [...prev, nextObject]);
-    setSelectedItem({ kind: "object", id: nextObject.id });
-    setActiveTool("move");
     setMobilePanel(null);
   }
 
@@ -1772,7 +1755,7 @@ export default function TacticalBoard({
                   {mobilePanel === "objects" && (
                     <div style={mobileSheetGrid}>
                       {MOBILE_OBJECT_TOOLS.map((tool) => (
-                        <button key={tool.key} type="button" style={{ ...mobileChoiceButton, ...(selectedObject?.type === tool.key ? mobileChoiceButtonActive : {}) }} onClick={() => insertMobileObject(tool.key)}>
+                        <button key={tool.key} type="button" style={{ ...mobileChoiceButton, ...(activeTool === `stamp-${tool.key}` ? mobileChoiceButtonActive : {}) }} onClick={() => selectMobileTool(`stamp-${tool.key}`)}>
                           <span style={mobileChoiceIcon}>{tool.icon}</span>
                           <span>{t(`pages.tacticalBoard.${tool.titleKey}`)}</span>
                         </button>
