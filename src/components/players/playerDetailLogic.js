@@ -113,6 +113,17 @@ export const PREVENTION_BASE = [
       "Evitare sessioni ad alto volume di sprint in stanchezza",
     ],
   },
+  {
+    key: "mezieres",
+    title: "Posture Mézières",
+    reason: "POSTURA",
+    points: [
+      "Correzione catena muscolare posteriore: riduce lombalgia, tensioni cervicali e retroversione del bacino tipiche del calciatore",
+      "Allungamento globale in postura antalgica: migliora la qualità del gesto atletico e previene squilibri muscolari da sovraccarico",
+      "Lavoro diaframmatico e respiratorio: favorisce il recupero, abbassa il tono muscolare di fondo e migliora la mobilità toracica",
+      "Riequilibrio posturale a lungo termine: riduce il rischio di infortuni ricorrenti legati a compensazioni posturali croniche",
+    ],
+  },
 ];
 
 export function getPreventionRecommendations(injuryHistory, player) {
