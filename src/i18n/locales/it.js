@@ -38,6 +38,8 @@ export const it = {
       sessionNoObjective:  "{{title}}: obiettivo seduta mancante",
       playerSuspended:     "{{name}} — squalificato ({{yellows}} ammonizioni)",
       playerCautioned:     "{{name}} — diffidato ({{yellows}}/{{threshold}} ammonizioni)",
+      wellnessCritical:    "{{name}} — wellness critico oggi (riposo consigliato)",
+      wellnessLow:         "{{name}} — wellness basso oggi (monitorare)",
     },
     delete: "Elimina",
     showPassword: "Mostra password",

@@ -22,7 +22,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
 import { createUuid, isBirthdayToday, getTeamAverageAge, calcPlayerAge, getPlayerQuickStats } from "../utils/helpers";
-import { loadAllPlayerStats, loadAllPlayerAvgRatings } from "../services/playerProfile";
+import { loadAllPlayerStats, loadAllPlayerAvgRatings, loadTeamRecentRatings } from "../services/playerProfile";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
 const PLAYER_MODAL_QUERY = "new-player";
@@ -79,11 +79,13 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   const [confirmState, setConfirmState] = useState(null);
   const [playerStatsMap, setPlayerStatsMap] = useState({});
   const [playerRatingsMap, setPlayerRatingsMap] = useState({});
+  const [playerRecentRatings, setPlayerRecentRatings] = useState({});
 
   useEffect(() => {
     if (!teamId) return;
     loadAllPlayerStats(teamId).then(({ data }) => setPlayerStatsMap(data || {}));
     loadAllPlayerAvgRatings(teamId).then(({ data }) => setPlayerRatingsMap(data || {}));
+    loadTeamRecentRatings(teamId).then(({ data }) => setPlayerRecentRatings(data || {}));
   }, [teamId]);
   const [showImport, setShowImport] = useState(false);
   const [search, setSearch] = useState("");
@@ -815,6 +817,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               onDelete={canManage ? () => deletePlayer(player.id) : null}
               yellowCards={Number(playerStatsMap[String(player.id)]?.yellow_cards || 0)}
               avgRating={playerRatingsMap[String(player.id)] || null}
+              recentRatings={playerRecentRatings[String(player.id)] || null}
             />
           ))}
         </div>

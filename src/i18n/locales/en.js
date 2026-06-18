@@ -38,6 +38,8 @@ export const en = {
       sessionNoObjective:  "{{title}}: session objective missing",
       playerSuspended:     "{{name}} — suspended ({{yellows}} yellow cards)",
       playerCautioned:     "{{name}} — on caution warning ({{yellows}}/{{threshold}})",
+      wellnessCritical:    "{{name}} — critical wellness today (rest advised)",
+      wellnessLow:         "{{name}} — low wellness today (monitor closely)",
     },
     delete: "Delete",
     showPassword: "Show password",

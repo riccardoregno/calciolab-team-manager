@@ -1315,7 +1315,7 @@ export function getPlayerQuickStats(player, sessions = [], matches = []) {
   return { appearances, trainingPct };
 }
 
-export function getCoachAlerts({ players = [], matches = [], physicalTests = [], sessions = [], playerStatsMap = {}, t } = {}){
+export function getCoachAlerts({ players = [], matches = [], physicalTests = [], sessions = [], playerStatsMap = {}, teamWellnessToday = [], t } = {}){
   // Fallback identity if t is not provided (avoids crashes if called without i18n context)
   const tr = t || ((key, vars = {}) => {
     let s = key.split(".").pop() || key;
@@ -1390,6 +1390,34 @@ export function getCoachAlerts({ players = [], matches = [], physicalTests = [],
       });
     }
   });
+
+  // Alert wellness critico (oggi)
+  if (teamWellnessToday.length > 0) {
+    const playerById = {};
+    players.forEach((p) => { playerById[String(p.id)] = p; });
+    teamWellnessToday.forEach((row) => {
+      const minScore = Math.min(
+        row.sleep   ?? 5,
+        row.fatigue ?? 5,
+        row.mood    ?? 5,
+      );
+      if (minScore <= 2) {
+        const player = playerById[String(row.player_id)];
+        const name = player?.name || String(row.player_id);
+        alerts.push({
+          tone: "red",
+          text: tr("common.alerts.wellnessCritical", { name }),
+        });
+      } else if (minScore === 3) {
+        const player = playerById[String(row.player_id)];
+        const name = player?.name || String(row.player_id);
+        alerts.push({
+          tone: "orange",
+          text: tr("common.alerts.wellnessLow", { name }),
+        });
+      }
+    });
+  }
 
   return alerts.slice(0, 10);
 }

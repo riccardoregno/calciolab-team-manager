@@ -7,7 +7,27 @@ import { calcPlayerAge, getPlayerQuickStats } from "../../utils/helpers";
 
 const SUSPENSION_THRESHOLD = 5;
 
-function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards = 0, avgRating = null }) {
+function FormDots({ ratings }) {
+  if (!ratings || ratings.length === 0) return null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 10 }}>
+      <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700, marginRight: 2 }}>FORMA</span>
+      {ratings.map((r, i) => (
+        <span
+          key={i}
+          title={`${r.toFixed(1)}/10`}
+          style={{
+            width: 10, height: 10, borderRadius: "50%", flexShrink: 0,
+            background: r >= 7 ? "#22c55e" : r >= 5 ? "#fbbf24" : "#f87171",
+            opacity: 1 - i * 0.12,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards = 0, avgRating = null, recentRatings = null }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -150,6 +170,8 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards
           <MiniValue label={t("components.playerCard.trainingPctAbbr")} value={trainingPctValue} />
           <MiniValue label={t("components.playerCard.age")} value={ageValue} />
         </div>
+
+        <FormDots ratings={recentRatings} />
 
         <div
           style={{

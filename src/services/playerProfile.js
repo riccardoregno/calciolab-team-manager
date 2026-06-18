@@ -80,6 +80,40 @@ export async function loadAllPlayerStats(teamId, season) {
   return { data: map, error: null };
 }
 
+export async function loadTeamRecentRatings(teamId, lastN = 5) {
+  if (!isSupabaseConfigured || !teamId) return { data: {}, error: null };
+
+  const { data, error } = await supabase
+    .from("player_matches")
+    .select("player_id, rating, matches(date)")
+    .eq("team_id", teamId)
+    .not("rating", "is", null);
+
+  if (error) {
+    if (import.meta.env.DEV) console.error("[playerProfile] loadTeamRecentRatings:", error.message);
+    return { data: {}, error };
+  }
+
+  const grouped = {};
+  (data || []).forEach((row) => {
+    const r = parseFloat(row.rating);
+    if (isNaN(r) || r <= 0) return;
+    const key = String(row.player_id);
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push({ rating: r, date: row.matches?.date || "" });
+  });
+
+  const map = {};
+  Object.keys(grouped).forEach((key) => {
+    map[key] = grouped[key]
+      .sort((a, b) => (b.date > a.date ? 1 : -1))
+      .slice(0, lastN)
+      .map((x) => x.rating);
+  });
+
+  return { data: map, error: null };
+}
+
 export async function loadAllPlayerAvgRatings(teamId) {
   if (!isSupabaseConfigured || !teamId) return { data: {}, error: null };
 

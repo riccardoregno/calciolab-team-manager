@@ -357,8 +357,8 @@ function Dashboard({
 
   const coachAlerts = useMemo(() => [
     ...getMatchOperationalAlerts(nextMatch, t),
-    ...getCoachAlerts({ players, matches, physicalTests, sessions, playerStatsMap, t }),
-  ], [players, matches, physicalTests, sessions, playerStatsMap, nextMatch, t]);
+    ...getCoachAlerts({ players, matches, physicalTests, sessions, playerStatsMap, teamWellnessToday, t }),
+  ], [players, matches, physicalTests, sessions, playerStatsMap, teamWellnessToday, nextMatch, t]);
 
   const sectionOrder = Array.isArray(settings.dashboardSectionOrder)
     ? settings.dashboardSectionOrder.filter((key) => DASHBOARD_SECTION_KEYS.includes(key))
