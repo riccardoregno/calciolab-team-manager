@@ -246,6 +246,7 @@ export const it = {
       topAssist: "Top assist",
       mostMinutes: "Più minuti",
       mostPresences: "Più presenze",
+      topRating: "Top rating",
       noData: "Nessun dato",
       rosterStatus: "Stato rosa",
       rosterAvailability: "Disponibilità generale squadra",

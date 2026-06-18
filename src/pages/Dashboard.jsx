@@ -13,7 +13,7 @@ import MetricStrip from "../components/ui/MetricStrip";
 import { SkeletonStatCard } from "../components/ui/Skeleton";
 import { fetchMatchRsvps } from "../services/rsvp";
 import { useAuth } from "../hooks/useAuth";
-import { loadAllPlayerStats } from "../services/playerProfile";
+import { loadAllPlayerStats, loadAllPlayerAvgRatings } from "../services/playerProfile";
 import { getTeamWellnessToday } from "../services/wellness";
 import { useTranslation } from "../i18n";
 import { getObjectiveStatusMeta } from "../constants/objectiveStatus";
@@ -157,6 +157,7 @@ function Dashboard({
   const auth = useAuth();
 
   const [playerStatsMap, setPlayerStatsMap] = useState({});
+  const [playerRatingsMap, setPlayerRatingsMap] = useState({});
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState(null);
   const [teamWellnessToday, setTeamWellnessToday] = useState([]);
@@ -197,10 +198,14 @@ function Dashboard({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStatsLoading(true);
     setStatsError(null);
-    loadAllPlayerStats(auth.team.id).then(({ data, error }) => {
+    Promise.all([
+      loadAllPlayerStats(auth.team.id),
+      loadAllPlayerAvgRatings(auth.team.id),
+    ]).then(([{ data, error }, { data: ratingsData }]) => {
       if (!active) return;
       if (error) setStatsError(error.message || t("pages.dashboard.statsLoadError"));
       setPlayerStatsMap(data || {});
+      setPlayerRatingsMap(ratingsData || {});
       setStatsLoading(false);
     });
     return () => { active = false; };
@@ -218,6 +223,7 @@ function Dashboard({
   const playerStats = useMemo(() => {
     return players.map((player) => {
       const stat = playerStatsMap[String(player.id)] || {};
+      const avgRating = playerRatingsMap[String(player.id)] ?? null;
 
       return {
         id: player.id,
@@ -229,9 +235,10 @@ function Dashboard({
         appearances: Number(stat.appearances || 0),
         yellowCards: Number(stat.yellow_cards || 0),
         redCards: Number(stat.red_cards || 0),
+        avgRating,
       };
     });
-  }, [players, playerStatsMap]);
+  }, [players, playerStatsMap, playerRatingsMap]);
 
   const totalGoals = playerStats.reduce((sum, p) => sum + p.goals, 0);
   const totalAssists = playerStats.reduce((sum, p) => sum + p.assists, 0);
@@ -241,6 +248,9 @@ function Dashboard({
   const realTopAssistman = [...playerStats].sort((a, b) => b.assists - a.assists)[0];
   const realTopMinutes = [...playerStats].sort((a, b) => b.minutes - a.minutes)[0];
   const realTopPresence = [...playerStats].sort((a, b) => b.appearances - a.appearances)[0];
+  const realTopRating = [...playerStats]
+    .filter((p) => p.avgRating !== null)
+    .sort((a, b) => b.avgRating - a.avgRating)[0] ?? null;
 
   const today = todayStart();
   const todayTime = today.getTime();
@@ -619,6 +629,16 @@ function Dashboard({
                     realTopPresence?.id && navigate(`/players/${realTopPresence.id}`)
                   }
                 />
+
+                {realTopRating && (
+                  <TopPerformer
+                    label={t("pages.dashboard.topRating")}
+                    value={`${realTopRating.avgRating.toFixed(1)}/10`}
+                    name={realTopRating.name}
+                    tone="green"
+                    onClick={() => navigate(`/players/${realTopRating.id}`)}
+                  />
+                )}
               </div>
             </AppCard>
           </div>

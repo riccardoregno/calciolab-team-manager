@@ -7,7 +7,7 @@ import { calcPlayerAge, getPlayerQuickStats } from "../../utils/helpers";
 
 const SUSPENSION_THRESHOLD = 5;
 
-function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards = 0 }) {
+function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards = 0, avgRating = null }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -99,6 +99,16 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards
                 color: yellowCards >= SUSPENSION_THRESHOLD ? "#f87171" : "#fbbf24",
               }}>
                 🟨 {yellowCards} {yellowCards >= SUSPENSION_THRESHOLD ? "SQUALIFICA" : "DIFFIDA"}
+              </span>
+            )}
+            {avgRating !== null && (
+              <span style={{
+                fontSize: 11, fontWeight: 900, padding: "2px 7px", borderRadius: 7,
+                background: avgRating >= 7 ? "rgba(34,197,94,0.15)" : avgRating >= 5 ? "rgba(251,191,36,0.15)" : "rgba(148,163,184,0.15)",
+                border: `1px solid ${avgRating >= 7 ? "rgba(34,197,94,0.4)" : avgRating >= 5 ? "rgba(251,191,36,0.4)" : "rgba(148,163,184,0.3)"}`,
+                color: avgRating >= 7 ? "#22c55e" : avgRating >= 5 ? "#fbbf24" : "#94a3b8",
+              }}>
+                ⭐ {avgRating.toFixed(1)}
               </span>
             )}
           </div>

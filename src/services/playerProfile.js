@@ -80,6 +80,38 @@ export async function loadAllPlayerStats(teamId, season) {
   return { data: map, error: null };
 }
 
+export async function loadAllPlayerAvgRatings(teamId) {
+  if (!isSupabaseConfigured || !teamId) return { data: {}, error: null };
+
+  const { data, error } = await supabase
+    .from("player_matches")
+    .select("player_id, rating")
+    .eq("team_id", teamId)
+    .not("rating", "is", null);
+
+  if (error) {
+    if (import.meta.env.DEV) console.error("[playerProfile] loadAllPlayerAvgRatings:", error.message);
+    return { data: {}, error };
+  }
+
+  const sums = {};
+  const counts = {};
+  (data || []).forEach(({ player_id, rating }) => {
+    const r = parseFloat(rating);
+    if (isNaN(r) || r <= 0) return;
+    const key = String(player_id);
+    sums[key] = (sums[key] || 0) + r;
+    counts[key] = (counts[key] || 0) + 1;
+  });
+
+  const map = {};
+  Object.keys(sums).forEach((key) => {
+    map[key] = Math.round((sums[key] / counts[key]) * 10) / 10;
+  });
+
+  return { data: map, error: null };
+}
+
 export async function loadPlayerStats(teamId, playerId) {
   if (!isSupabaseConfigured || !teamId || !playerId) return { data: null, error: null };
 

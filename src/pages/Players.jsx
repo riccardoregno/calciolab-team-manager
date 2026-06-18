@@ -22,7 +22,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
 import { createUuid, isBirthdayToday, getTeamAverageAge, calcPlayerAge, getPlayerQuickStats } from "../utils/helpers";
-import { loadAllPlayerStats } from "../services/playerProfile";
+import { loadAllPlayerStats, loadAllPlayerAvgRatings } from "../services/playerProfile";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
 const PLAYER_MODAL_QUERY = "new-player";
@@ -78,10 +78,12 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   const { showToast, ToastContainer } = useToast();
   const [confirmState, setConfirmState] = useState(null);
   const [playerStatsMap, setPlayerStatsMap] = useState({});
+  const [playerRatingsMap, setPlayerRatingsMap] = useState({});
 
   useEffect(() => {
     if (!teamId) return;
     loadAllPlayerStats(teamId).then(({ data }) => setPlayerStatsMap(data || {}));
+    loadAllPlayerAvgRatings(teamId).then(({ data }) => setPlayerRatingsMap(data || {}));
   }, [teamId]);
   const [showImport, setShowImport] = useState(false);
   const [search, setSearch] = useState("");
@@ -792,6 +794,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               matches={matches}
               onDelete={canManage ? () => deletePlayer(player.id) : null}
               yellowCards={Number(playerStatsMap[String(player.id)]?.yellow_cards || 0)}
+              avgRating={playerRatingsMap[String(player.id)] || null}
             />
           ))}
         </div>
@@ -811,6 +814,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               matches={matches}
               onDelete={canManage ? () => deletePlayer(player.id) : null}
               yellowCards={Number(playerStatsMap[String(player.id)]?.yellow_cards || 0)}
+              avgRating={playerRatingsMap[String(player.id)] || null}
             />
           ))}
         </div>
@@ -973,7 +977,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   );
 }
 
-function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCards = 0 }) {
+function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCards = 0, avgRating = null }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const age = calcPlayerAge(player.birthDate) ?? player.age ?? "-";
@@ -1063,6 +1067,17 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCa
             whiteSpace: "nowrap",
           }}>
             🟨 {yellowCards} {yellowCards >= SUSPENSION_THRESHOLD ? "SQUALIFICA" : "DIFFIDA"}
+          </span>
+        )}
+        {avgRating !== null && (
+          <span style={{
+            fontSize: 10, fontWeight: 900, padding: "2px 6px", borderRadius: 6,
+            background: avgRating >= 7 ? "rgba(34,197,94,0.15)" : avgRating >= 5 ? "rgba(251,191,36,0.15)" : "rgba(148,163,184,0.15)",
+            border: `1px solid ${avgRating >= 7 ? "rgba(34,197,94,0.4)" : avgRating >= 5 ? "rgba(251,191,36,0.4)" : "rgba(148,163,184,0.3)"}`,
+            color: avgRating >= 7 ? "#22c55e" : avgRating >= 5 ? "#fbbf24" : "#94a3b8",
+            whiteSpace: "nowrap",
+          }}>
+            ⭐ {avgRating.toFixed(1)}
           </span>
         )}
       </div>
