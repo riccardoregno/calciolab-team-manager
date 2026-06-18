@@ -15,6 +15,9 @@ import {
 } from "../utils/helpers";
 import { generateSeasonReport } from "../utils/generateSeasonReport";
 import { generateMatchReportPDF } from "../utils/generateMatchReportPDF";
+import { generateTrainingPDF } from "../utils/generateTrainingPDF";
+import { generateMatchDayPDF } from "../utils/generateMatchDayPDF";
+import { generatePlayerReportPDF } from "../utils/generatePlayerReportPDF";
 
 const EXPORT_TYPE_KEYS = [
   { id: "season",    labelKey: "pages.exportCenter.typeSeason",    descKey: "pages.exportCenter.typeSeasonDesc" },
@@ -66,16 +69,36 @@ export default function ExportCenter({
 
   const activeType = exportTypes.find((item) => item.id === type) || exportTypes[0];
 
-  const [generatingMatchPDF, setGeneratingMatchPDF] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
-  async function handleMatchReportDownload() {
-    setGeneratingMatchPDF(true);
+  async function handlePdfDownload() {
+    setGeneratingPdf(true);
     try {
-      generateMatchReportPDF({ match: selectedMatch, players, appSettings });
+      if (type === "training") {
+        await generateTrainingPDF({ session: selectedSession, exercises, appSettings });
+      } else if (type === "matchday") {
+        await generateMatchDayPDF({ match: selectedMatch, players, appSettings });
+      } else if (type === "postmatch") {
+        await generateMatchReportPDF({ match: selectedMatch, players, appSettings });
+      } else if (type === "player") {
+        await generatePlayerReportPDF({ player: selectedPlayer, sessions, matches, physicalTests, appSettings });
+      } else if (type === "season") {
+        await generateSeasonReport({ players, sessions, matches, physicalTests, appSettings });
+      } else {
+        window.print();
+      }
     } finally {
-      setTimeout(() => setGeneratingMatchPDF(false), 800);
+      setTimeout(() => setGeneratingPdf(false), 800);
     }
   }
+
+  const canGeneratePdf = type === "training"
+    ? Boolean(selectedSession)
+    : type === "matchday" || type === "postmatch"
+    ? Boolean(selectedMatch)
+    : type === "player"
+    ? Boolean(selectedPlayer)
+    : true;
 
   return (
     <div style={pageStyles.page}>
@@ -83,8 +106,8 @@ export default function ExportCenter({
         title={t("pages.exportCenter.title")}
         subtitle={t("pages.exportCenter.subtitle")}
         action={
-          <Button onClick={() => window.print()}>
-            {t("pages.exportCenter.printBtn")}
+          <Button onClick={handlePdfDownload} disabled={generatingPdf || !canGeneratePdf}>
+            {generatingPdf ? t("pages.exportCenter.generatingPdf") : t("pages.exportCenter.pdfBtn")}
           </Button>
         }
       />
@@ -173,21 +196,9 @@ export default function ExportCenter({
             title={t("pages.exportCenter.previewTitle", { label: activeType.label })}
             subtitle={t("pages.exportCenter.previewSubtitle")}
             rightContent={
-              type === "postmatch" ? (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                  <Button variant="ghost" onClick={() => window.print()}>{t("pages.exportCenter.pdfBtn")}</Button>
-                  <Button
-                    onClick={handleMatchReportDownload}
-                    disabled={!selectedMatch || generatingMatchPDF}
-                  >
-                    {generatingMatchPDF
-                      ? t("pages.exportCenter.tpl.postmatch.btnGenerating")
-                      : t("pages.exportCenter.tpl.postmatch.btnDownload")}
-                  </Button>
-                </div>
-              ) : (
-                <Button variant="ghost" onClick={() => window.print()}>{t("pages.exportCenter.pdfBtn")}</Button>
-              )
+              <Button variant="ghost" onClick={handlePdfDownload} disabled={generatingPdf || !canGeneratePdf}>
+                {generatingPdf ? t("pages.exportCenter.generatingPdf") : t("pages.exportCenter.pdfBtn")}
+              </Button>
             }
           >
             <div className="print-area print-template">

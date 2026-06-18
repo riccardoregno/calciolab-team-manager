@@ -200,6 +200,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   const [rsvpError, setRsvpError] = useState("");
   const [copyingRsvpId, setCopyingRsvpId] = useState("");
   const [sendingConvocations, setSendingConvocations] = useState(false);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
 
   // resync se il match cambia dall'esterno
   useEffect(() => {
@@ -381,6 +382,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
 
         try {
           const { error: emailError } = await sendMatchConvocationEmail({
+            teamId,
             to: player.email,
             playerName: getPlayerDisplayName(player),
             teamName: clubName,
@@ -455,6 +457,8 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
     .map((pid) => players.find((p) => String(p.id) === pid))
     .filter(Boolean);
   const rsvpMap = new Map(rsvps.map((rsvp) => [String(rsvp.player_id), rsvp]));
+  const emailTargets = convocati.filter((p) => String(p.email || "").trim());
+  const emailMissing = convocati.filter((p) => !String(p.email || "").trim());
   const rsvpStats = convocati.reduce((acc, player) => {
     const response = rsvpMap.get(String(player.id))?.response || "pending";
     acc[response] = (acc[response] || 0) + 1;
@@ -805,13 +809,11 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
               </Badge>
               {canManage && (
                 <Button
-                  onClick={sendConvocations}
+                  onClick={() => setShowEmailPreview((value) => !value)}
                   disabled={sendingConvocations || !teamId}
                   style={{ flex: isMobile ? "1 1 100%" : "0 0 auto" }}
                 >
-                  {sendingConvocations
-                    ? t("pages.matchConvocation.sendConvocationsSending")
-                    : t("pages.matchConvocation.sendConvocationsButton")}
+                  {t("pages.matchConvocation.sendConvocationsButton")}
                 </Button>
               )}
             </div>
@@ -834,6 +836,54 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
           )}
 
           {rsvpError && <p style={s.errorText}>{rsvpError}</p>}
+
+          {showEmailPreview && (
+            <div style={s.emailPreviewBox}>
+              <div style={s.emailPreviewHeader}>
+                <div>
+                  <strong>{t("pages.matchConvocation.emailPreviewTitle")}</strong>
+                  <p style={s.muted}>
+                    {t("pages.matchConvocation.emailPreviewSubtitle", {
+                      count: emailTargets.length,
+                      missing: emailMissing.length,
+                    })}
+                  </p>
+                </div>
+                <Button
+                  onClick={sendConvocations}
+                  disabled={sendingConvocations || emailTargets.length === 0}
+                >
+                  {sendingConvocations
+                    ? t("pages.matchConvocation.sendConvocationsSending")
+                    : t("pages.matchConvocation.emailPreviewConfirm")}
+                </Button>
+              </div>
+              <div style={s.emailPreviewGrid}>
+                <div style={s.emailPreviewList}>
+                  <span style={s.emailPreviewLabel}>{t("pages.matchConvocation.emailPreviewRecipients")}</span>
+                  {emailTargets.length ? emailTargets.map((player) => (
+                    <div key={player.id} style={s.emailPreviewRow}>
+                      <strong>{getPlayerDisplayName(player)}</strong>
+                      <span>{player.email}</span>
+                    </div>
+                  )) : (
+                    <p style={s.muted}>{t("pages.matchConvocation.sendConvocationsNoEmails")}</p>
+                  )}
+                </div>
+                <div style={s.emailPreviewList}>
+                  <span style={s.emailPreviewLabel}>{t("pages.matchConvocation.emailPreviewMissing")}</span>
+                  {emailMissing.length ? emailMissing.map((player) => (
+                    <div key={player.id} style={s.emailPreviewRow}>
+                      <strong>{getPlayerDisplayName(player)}</strong>
+                      <span>{t("pages.matchConvocation.emailPreviewNoEmail")}</span>
+                    </div>
+                  )) : (
+                    <p style={s.muted}>{t("pages.matchConvocation.emailPreviewNoneMissing")}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={s.rsvpList}>
             {convocati.map((player) => {
@@ -1295,6 +1345,50 @@ const s = {
     color: "#fecaca",
     fontSize: 13,
     fontWeight: 700,
+  },
+  emailPreviewBox: {
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 14,
+    border: "1px solid rgba(59,130,246,0.20)",
+    background: "rgba(59,130,246,0.08)",
+    display: "grid",
+    gap: 12,
+  },
+  emailPreviewHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "flex-start",
+    flexWrap: "wrap",
+  },
+  emailPreviewGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gap: 10,
+  },
+  emailPreviewList: {
+    display: "grid",
+    gap: 8,
+    padding: 10,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(15,23,42,0.35)",
+  },
+  emailPreviewLabel: {
+    color: "#93c5fd",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+  },
+  emailPreviewRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    color: "#cbd5e1",
+    fontSize: 13,
+    flexWrap: "wrap",
   },
   rsvpList: {
     display: "grid",

@@ -86,7 +86,7 @@ export async function respondRsvpAsPlayer({ teamId, matchId, playerId, response 
 }
 
 export async function sendMatchConvocationEmail({
-  to, playerName, teamName, opponent, matchDate, matchTime, matchVenue, rsvpUrl,
+  teamId, to, playerName, teamName, opponent, matchDate, matchTime, matchVenue, rsvpUrl,
 }) {
   if (!isSupabaseConfigured) {
     return { error: new Error("Supabase non configurato") };
@@ -98,7 +98,7 @@ export async function sendMatchConvocationEmail({
     return { error: sessionError || new Error("Sessione non disponibile") };
   }
 
-  const url = `${import.meta.env.VITE_SUPABASE_URL || ""}/functions/v1/send-email`;
+  const url = `${import.meta.env.VITE_SUPABASE_URL || ""}/functions/v1/send-convocation-email`;
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -107,7 +107,7 @@ export async function sendMatchConvocationEmail({
       apikey: import.meta.env.VITE_SUPABASE_ANON_KEY || "",
     },
     body: JSON.stringify({
-      type: "match_convocation",
+      teamId,
       to,
       playerName,
       teamName,
