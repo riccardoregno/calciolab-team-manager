@@ -36,10 +36,11 @@ function statusColor(status) {
   }
 }
 
-export function generateAvailabilityPDF({ players, teamName = "Squadra", date }) {
+export function generateAvailabilityPDF({ players, teamName = "Squadra", date, prepRange, prepDays }) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const dateStr = date ? fmtDate(date) : fmtDate(new Date().toISOString());
+  const hasPlannerData = Array.isArray(prepDays) && prepDays.length > 0;
 
   const UNAVAILABLE = ["Infortunato", "Recupero", "Differenziato", "Squalificato"];
   const available = players.filter((p) => !UNAVAILABLE.includes(p.status || "Disponibile"));
@@ -136,6 +137,70 @@ export function generateAvailabilityPDF({ players, teamName = "Squadra", date })
         }
       },
     });
+  }
+
+  // ── Pianificazione giorno per giorno ───────────────────────────────────────
+  if (hasPlannerData) {
+    if (y > 220) { doc.addPage(); y = 20; }
+
+    const rangeLabel = prepRange?.start && prepRange?.end
+      ? `${fmtDate(prepRange.start)} — ${fmtDate(prepRange.end)}`
+      : "";
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...C.accent);
+    doc.text(`Pianificazione disponibilità${rangeLabel ? ` · ${rangeLabel}` : ""}`, 14, y);
+    y += 3;
+
+    const CRITICAL_RATIO = 0.7;
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: 14, right: 14 },
+      head: [["Giorno", "Data", "Disponibili", "Assenti"]],
+      body: prepDays.map((day) => {
+        const ratio = day.total > 0 ? day.available / day.total : 1;
+        const isCritical = ratio < CRITICAL_RATIO;
+        const absentNames = (day.absentEntries || [])
+          .map((e) => {
+            const name = [e.player?.firstName, e.player?.lastName].filter(Boolean).join(" ") || e.player?.name || "—";
+            const reason = e.info?.reason || e.info?.status || "";
+            return reason ? `${name} (${reason})` : name;
+          })
+          .join(", ") || "—";
+
+        const d = new Date(day.date);
+        const dayLabel = d.toLocaleDateString("it-IT", { weekday: "short" });
+        const dateLabel = d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
+
+        return [
+          dayLabel,
+          dateLabel,
+          { content: `${day.available}/${day.total}`, isCritical },
+          absentNames,
+        ];
+      }),
+      headStyles: { fillColor: C.accent, textColor: C.white, fontSize: 8, fontStyle: "bold" },
+      bodyStyles: { fontSize: 7.5, textColor: C.dark },
+      alternateRowStyles: { fillColor: C.rowAlt },
+      columnStyles: {
+        0: { cellWidth: 14, halign: "center" },
+        1: { cellWidth: 18, halign: "center" },
+        2: { cellWidth: 22, halign: "center" },
+        3: { cellWidth: "auto" },
+      },
+      didParseCell(data) {
+        if (data.section === "body" && data.column.index === 2) {
+          const row = prepDays[data.row.index];
+          if (!row) return;
+          const ratio = row.total > 0 ? row.available / row.total : 1;
+          data.cell.styles.textColor = ratio < CRITICAL_RATIO ? C.red : ratio < 0.9 ? C.orange : C.green;
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+
   }
 
   // ── Footer ─────────────────────────────────────────────────────────────────

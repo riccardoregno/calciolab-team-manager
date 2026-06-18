@@ -572,7 +572,7 @@ export default function Availability({
         <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
           <button
             type="button"
-            onClick={() => generateAvailabilityPDF({ players, teamName })}
+            onClick={() => generateAvailabilityPDF({ players, teamName, prepRange, prepDays })}
             style={{
               display: "flex", alignItems: "center", gap: 6,
               padding: "7px 14px", borderRadius: 10,
@@ -650,7 +650,13 @@ export default function Availability({
             <input
               type="date"
               value={prepRange.start}
-              onChange={(e) => setPrepRange((r) => ({ ...r, start: e.target.value }))}
+              onChange={(e) => {
+                const newStart = e.target.value;
+                setPrepRange((r) => ({
+                  start: newStart,
+                  end: r.end < newStart ? newStart : r.end,
+                }));
+              }}
               style={styles.input}
             />
           </div>
