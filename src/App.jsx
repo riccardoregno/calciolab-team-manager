@@ -48,6 +48,7 @@ const Trainings = lazy(() => import("./pages/Trainings"));
 const Sessions = lazy(() => import("./pages/Sessions"));
 const Matches = lazy(() => import("./pages/Matches"));
 const MatchDay = lazy(() => import("./pages/MatchDay"));
+const MatchLive = lazy(() => import("./pages/MatchLive"));
 const Microcycle = lazy(() => import("./pages/Microcycle"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Statistics = lazy(() => import("./pages/Statistics"));
@@ -893,6 +894,18 @@ function App() {
                       appSettings={previewAppSettings}
                     />
                   </FeatureGate>, "matches")
+                }
+              />
+
+              <Route
+                path="/match-live/:id"
+                element={
+                  gate(technicalRoles, <MatchLive
+                    matches={matches}
+                    setMatches={setMatches}
+                    players={players}
+                    appSettings={previewAppSettings}
+                  />, "matches")
                 }
               />
 

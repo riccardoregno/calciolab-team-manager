@@ -32,6 +32,19 @@ const TABS = [
     },
   },
   {
+    key: "live",
+    label: "⚡ Live",
+    path: (id) => `/match-live/${id}`,
+    getStatus(d) {
+      if (!d) return null;
+      return Array.isArray(d.liveEvents) && d.liveEvents.length > 0 ? "draft" : null;
+    },
+    getCount(d) {
+      const n = Array.isArray(d?.liveEvents) ? d.liveEvents.length : 0;
+      return n > 0 ? String(n) : null;
+    },
+  },
+  {
     key: "statistiche",
     label: "Statistiche",
     path: (id) => `/match-stats/${id}`,

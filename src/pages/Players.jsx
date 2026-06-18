@@ -982,20 +982,32 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete }) {
         flexWrap: "wrap",
       }}
     >
-      <div
-        style={{
-          width: 40, height: 40, borderRadius: 10,
-          background: "linear-gradient(135deg, rgba(56,189,248,0.28), rgba(37,99,235,0.18))",
-          border: "1px solid rgba(255,255,255,0.16)",
-          display: "grid", placeItems: "center",
-          fontSize: 13, fontWeight: 900, color: "white", overflow: "hidden", flexShrink: 0,
-        }}
-      >
-        {player.photo ? (
-          <img src={player.photo} alt={player.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          (player.name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
-        )}
+      <div style={{ position: "relative", flexShrink: 0 }}>
+        <div
+          style={{
+            width: 40, height: 40, borderRadius: 10,
+            background: "linear-gradient(135deg, rgba(56,189,248,0.28), rgba(37,99,235,0.18))",
+            border: "1px solid rgba(255,255,255,0.16)",
+            display: "grid", placeItems: "center",
+            fontSize: 13, fontWeight: 900, color: "white", overflow: "hidden",
+          }}
+        >
+          {player.photo ? (
+            <img src={player.photo} alt={player.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            (player.name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+          )}
+        </div>
+        <span style={{
+          position: "absolute", bottom: -2, right: -2,
+          width: 11, height: 11, borderRadius: "50%",
+          border: "2px solid rgba(15,23,42,0.9)",
+          background:
+            player.status === "Infortunato"   ? "#f87171" :
+            player.status === "Squalificato"  ? "#a78bfa" :
+            player.status === "Recupero" || player.status === "Differenziato" ? "#fb923c" :
+            "#22c55e",
+        }} />
       </div>
 
       <div style={{ flex: "2 1 140px", minWidth: 0 }}>
