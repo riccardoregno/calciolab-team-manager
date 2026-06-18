@@ -18,6 +18,7 @@ import { useAreaPermission } from "../components/auth/permissionContext";
 import { styles } from "../styles/index.js";
 import { createId, formatDate, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 import { useTranslation } from "../i18n";
+import { generateSessionPlanPDF } from "../utils/generateSessionPlanPDF";
 import { sendTeamNotification } from "../services/notifications";
 import RpeMatrix from "../components/statistics/RpeMatrix";
 import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
@@ -693,11 +694,20 @@ function Trainings({
 
           {(form.sessionBlocks || []).length > 0 && (
             <AppCard>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
                 <h3 style={{ margin: 0 }}>🧱 Struttura seduta</h3>
-                <Badge tone="blue">
-                  {(form.sessionBlocks || []).reduce((s, b) => s + (Number(b.duration) || 0), 0)} min totali
-                </Badge>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <Badge tone="blue">
+                    {(form.sessionBlocks || []).reduce((s, b) => s + (Number(b.duration) || 0), 0)} min totali
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    style={{ fontSize: 12, padding: "4px 10px" }}
+                    onClick={() => generateSessionPlanPDF({ session: form, appSettings })}
+                  >
+                    📄 PDF
+                  </Button>
+                </div>
               </div>
               <div style={{ display: "grid", gap: 8 }}>
                 {(form.sessionBlocks || []).map((block) => {
