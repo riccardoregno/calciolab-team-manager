@@ -5,6 +5,7 @@ import Badge from "../ui/Badge";
 import Button from "../ui/Button";
 import PermissionProvider from "./PermissionProvider";
 import { getCurrentUserRole, isRoleAllowed, memberRoles } from "../../utils/helpers";
+import { supabase } from "../../lib/supabaseClient";
 
 // FIX #5: supabaseRole (da team_members.role su Supabase) è la fonte di verità.
 // authConfigured=true → blocca il fallback su localStorage quando Supabase è attivo:
@@ -64,6 +65,7 @@ export default function RoleGate({ allowedRoles = [], appSettings = {}, supabase
     title: "Vista non disponibile",
     badge: "Accesso ruolo",
     message: `Questa sezione non e' prevista per il ruolo ${memberRoles[currentRole]?.label || currentRole}.`,
+    isPlayer: currentRole === "player",
   });
 }
 
@@ -83,7 +85,7 @@ function wrapWithPermission(children, area, level, source) {
   );
 }
 
-function deniedView({ allowedRoles, navigate, title, badge, message }) {
+function deniedView({ allowedRoles, navigate, title, badge, message, isPlayer }) {
   return (
     <div style={gateStyles.page}>
       <AppCard>
@@ -92,12 +94,23 @@ function deniedView({ allowedRoles, navigate, title, badge, message }) {
           <Badge tone="orange">{badge}</Badge>
           <h1 style={gateStyles.title}>{title}</h1>
           <p style={gateStyles.text}>{message}</p>
-          <p style={gateStyles.note}>
-            Ruoli abilitati: {allowedRoles.map((role) => memberRoles[role]?.label || role).join(", ")}.
-          </p>
+          {!isPlayer && (
+            <p style={gateStyles.note}>
+              Ruoli abilitati: {allowedRoles.map((role) => memberRoles[role]?.label || role).join(", ")}.
+            </p>
+          )}
           <div style={gateStyles.actions}>
-            <Button onClick={() => navigate("/")}>Torna alla dashboard</Button>
-            <Button variant="ghost" onClick={() => navigate("/settings")}>Impostazioni</Button>
+            {isPlayer ? (
+              <>
+                <Button onClick={() => navigate("/player-portal")}>Vai al portale giocatore</Button>
+                <Button variant="ghost" onClick={() => supabase.auth.signOut().then(() => navigate("/"))}>Esci</Button>
+              </>
+            ) : (
+              <>
+                <Button onClick={() => navigate("/")}>Torna alla dashboard</Button>
+                <Button variant="ghost" onClick={() => navigate("/settings")}>Impostazioni</Button>
+              </>
+            )}
           </div>
         </div>
       </AppCard>
