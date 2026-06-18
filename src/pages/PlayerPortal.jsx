@@ -50,8 +50,9 @@ export default function PlayerPortal({
   const isMobile = useIsMobile();
 
   const selectedPlayer = isPlayerView
-    ? players.find((p) => sameId(p.id, myPlayerId)) || (myPlayerId ? null : players.find((p) => sameId(p.id, players[0]?.id)))
+    ? players.find((p) => sameId(p.id, myPlayerId)) || null
     : players.find((p) => sameId(p.id, selectedPlayerId || players[0]?.id));
+  const invalidPlayerAccess = isPlayerView && !selectedPlayer;
 
   const summary          = getPlayerSummary(selectedPlayer, { sessions, matches, physicalTests });
   const latestTest       = summary.latestTests[0];
@@ -138,6 +139,28 @@ export default function PlayerPortal({
   async function handleLogout() {
     await supabase.auth.signOut();
     navigate("/");
+  }
+
+  if (invalidPlayerAccess) {
+    return (
+      <div style={ps.page}>
+        <PageHeader
+          title={t("pages.playerPortal.myArea")}
+          subtitle={t("pages.playerPortal.subtitlePlayer")}
+          action={(
+            <button onClick={handleLogout} style={ps.logoutBtn}>
+              Esci
+            </button>
+          )}
+        />
+        <AppCard>
+          <h2 style={{ margin: "0 0 8px" }}>Accesso giocatore non collegato</h2>
+          <p style={{ margin: 0, color: "#94a3b8", lineHeight: 1.6 }}>
+            Questo account non risulta collegato a una scheda giocatore valida. Fai logout e apri il link invito corretto, oppure chiedi al coach di revocare il vecchio accesso e inviare un nuovo invito.
+          </p>
+        </AppCard>
+      </div>
+    );
   }
 
   return (
