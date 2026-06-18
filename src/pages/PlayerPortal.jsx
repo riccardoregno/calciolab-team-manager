@@ -171,6 +171,7 @@ export default function PlayerPortal({
           comms={comms}
           physicalTests={physicalTests}
           sessions={sessions}
+          matches={matches}
           activeProgram={savedProgram}
           activeGoal={savedGoal}
           activeNote={savedNote}
@@ -352,7 +353,7 @@ function StaffView({
 function PlayerView({
   selectedPlayer, summary, latestTest, physicalReference,
   nextEvents, myConvocations,
-  players, portal, comms, physicalTests, sessions = [],
+  players, portal, comms, physicalTests, sessions = [], matches = [],
   activeProgram, activeGoal, activeNote, isMobile,
   teamId, myPlayerId,
 }) {

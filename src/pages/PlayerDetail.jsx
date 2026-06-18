@@ -579,11 +579,7 @@ function PlayerDetail({
     setInvitingPortal(true);
     try {
       const settings = normalizeAppSettings(appSettings) || {};
-      const token = settings.inviteToken || createId("invite").replace("invite-", "");
-      const isNewToken = !settings.inviteToken;
-      const inviteTokenExpiresAt = isNewToken || !settings.inviteTokenExpiresAt
-        ? getInviteExpiryDate()
-        : settings.inviteTokenExpiresAt;
+      const token = createId("player-invite").replace("player-invite-", "");
 
       const pending = {
         id: createId("invite"),
@@ -600,9 +596,12 @@ function PlayerDetail({
 
       const nextSettings = {
         ...settings,
-        inviteToken: token,
-        inviteTokenExpiresAt,
-        pendingInvites: [...(settings.pendingInvites || []), pending],
+        pendingInvites: [
+          ...(settings.pendingInvites || []).filter(
+            (invite) => !(String(invite.playerId) === String(player.id) && invite.role === "player")
+          ),
+          pending,
+        ],
       };
 
       const { error: flushError } = await supabase

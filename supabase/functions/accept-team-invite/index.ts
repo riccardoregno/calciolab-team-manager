@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
 
     const serviceClient = createClient(supabaseUrl, serviceKey);
 
-    const { data: teams, error: teamError } = await serviceClient
+    let { data: teams, error: teamError } = await serviceClient
       .from("teams")
       .select(`${teamSelect}, settings`)
       .eq("settings->>inviteToken", inviteToken)
@@ -62,6 +62,20 @@ Deno.serve(async (req) => {
 
     if (teamError) {
       return json({ error: teamError.message }, 500);
+    }
+
+    if (!teams?.length) {
+      const pendingMatch = { pendingInvites: [{ token: inviteToken }] };
+      const pendingResult = await serviceClient
+        .from("teams")
+        .select(`${teamSelect}, settings`)
+        .contains("settings", pendingMatch)
+        .limit(1);
+
+      if (pendingResult.error) {
+        return json({ error: pendingResult.error.message }, 500);
+      }
+      teams = pendingResult.data;
     }
 
     const team = teams?.[0];
@@ -81,10 +95,19 @@ Deno.serve(async (req) => {
     }
 
     const pendingInvites = Array.isArray(settings.pendingInvites) ? settings.pendingInvites : [];
-    const pendingInvite = pendingInvites.find((invite) =>
+    const pendingInviteByToken = pendingInvites.find((invite) =>
+      String(invite.token || "").trim() === inviteToken
+    );
+    const pendingInviteByEmail = pendingInvites.find((invite) =>
       String(invite.email || "").trim().toLowerCase() === userEmail
     );
+    const isCanonicalTeamToken = String(settings.inviteToken || "").trim() === inviteToken;
+    const pendingInvite = pendingInviteByToken || (isCanonicalTeamToken ? pendingInviteByEmail : null);
     const hasNamedInvites = pendingInvites.some((invite) => Boolean(String(invite.email || "").trim()));
+
+    if (pendingInviteByToken && String(pendingInviteByToken.email || "").trim().toLowerCase() !== userEmail) {
+      return json({ error: "Questo invito è riservato a un'altra email" }, 403);
+    }
 
     if (hasNamedInvites && !pendingInvite) {
       return json({ error: "Questo invito è riservato a un'altra email" }, 403);
@@ -129,6 +152,28 @@ Deno.serve(async (req) => {
     }
 
     if (pendingInvite?.role === "player" && pendingInvite?.playerId) {
+      const { data: existingPlayerAccount, error: existingPlayerAccountError } = await serviceClient
+        .from("player_accounts")
+        .select("id, team_id, player_id")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+
+      if (existingPlayerAccountError) {
+        return json({ error: existingPlayerAccountError.message }, 500);
+      }
+
+      if (
+        existingPlayerAccount &&
+        (
+          String(existingPlayerAccount.team_id) !== String(team.id) ||
+          String(existingPlayerAccount.player_id) !== String(pendingInvite.playerId)
+        )
+      ) {
+        return json({
+          error: "Questo account è già collegato a un altro giocatore. Fai logout e usa un account diverso, oppure chiedi al coach di revocare il vecchio accesso.",
+        }, 409);
+      }
+
       const { error: playerAccountError } = await serviceClient
         .from("player_accounts")
         .upsert(
@@ -143,7 +188,9 @@ Deno.serve(async (req) => {
 
     const nextPendingInvites = pendingInvite
       ? pendingInvites.filter((invite) =>
-        String(invite.email || "").trim().toLowerCase() !== userEmail
+        String(invite.token || "").trim()
+          ? String(invite.token || "").trim() !== String(pendingInvite.token || "").trim()
+          : String(invite.email || "").trim().toLowerCase() !== userEmail
       )
       : pendingInvites;
     const memberName = pendingInvite?.name ||
