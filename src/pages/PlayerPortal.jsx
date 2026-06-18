@@ -7,6 +7,7 @@ import { respondRsvpAsPlayer } from "../services/rsvp";
 import { fetchPlayerAvailability, setPlayerAvailability } from "../services/playerAvailability";
 import { touchPlayerPortalActivity } from "../services/playerPortalActivity";
 import { fetchPlayerRpe, upsertRpe } from "../services/sessionRpe";
+import { upsertWellness } from "../services/wellness";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -367,6 +368,9 @@ function PlayerView({
   const saveWellness = (next) => {
     setWellness(next);
     if (wellnessStorageKey) localStorage.setItem(wellnessStorageKey, JSON.stringify(next));
+    if (teamId && myPlayerId && next.sleep && next.fatigue && next.mood) {
+      upsertWellness({ teamId, playerId: myPlayerId, date: todayKey, ...next });
+    }
   };
 
   const [activeTab, setActiveTab] = useState("home");

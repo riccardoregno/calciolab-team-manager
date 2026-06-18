@@ -1026,6 +1026,7 @@ export const it = {
         fisico:      "Fisico",
         medico:      "Medico",
         sviluppo:    "Sviluppo",
+        wellness:    "Wellness",
       },
       sidebar: {
         alertTitle: "Alert",
@@ -1075,6 +1076,7 @@ export const it = {
       },
       portalInviteSent:  "Invito al portale giocatore inviato",
       portalInviteError: "Invio dell'invito al portale non riuscito",
+      portalInviteEmailFailed: "Invito creato, ma email non inviata: {{error}}. Puoi copiare il link e inviarlo manualmente.",
       portalInviteCancelSuccess: "Invito al portale annullato",
       portalInviteCancelError: "Annullamento dell'invito al portale non riuscito",
       portalRevokeSuccess: "Accesso al portale revocato",
@@ -1498,6 +1500,9 @@ export const it = {
       clubRoleSyncError: "Ruolo salvato localmente, ma la sincronizzazione con l'account del membro è fallita. Riprova tra poco.",
       clubRoleSavedLocalOnly: "Ruolo aggiornato nell'elenco, ma il membro non risulta collegato a un account: dovrà accettare di nuovo l'invito perché l'accesso si sblocchi.",
       inviteFlushError: "Errore nel salvataggio del token invito. Riprova.",
+      inviteEmailSent: "Email invito inviata.",
+      inviteEmailFailed:
+        "Invito creato, ma email non inviata: {{error}}. Puoi copiare il link e inviarlo manualmente.",
       clubMemberRemoved: "Membro rimosso — anche l'accesso al team è stato revocato.",
       clubMemberRemoveSyncError: "Membro rimosso dall'elenco, ma la revoca dell'accesso all'account è fallita. Riprova tra poco o contatta il supporto.",
       clubInviteRequestSent: "Richiesta inviata",

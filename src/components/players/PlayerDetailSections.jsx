@@ -36,6 +36,7 @@ const PLAYER_TABS = [
   { key: "fisico",      labelKey: "pages.playerDetail.tabs.fisico" },
   { key: "medico",      labelKey: "pages.playerDetail.tabs.medico" },
   { key: "sviluppo",    labelKey: "pages.playerDetail.tabs.sviluppo" },
+  { key: "wellness",    labelKey: "pages.playerDetail.tabs.wellness" },
 ];
 
 function formatBirthDateDisplay(raw) {
@@ -1019,6 +1020,91 @@ export function PlayerVideoTab({ clips }) {
         <p style={sectionStyles.muted}>{t("pages.playerDetail.video.noClips")}</p>
       )}
     </AppCard>
+  );
+}
+
+const WELLNESS_META = [
+  { key: "sleep",   label: "Sonno",     emojis: ["😴","😪","😐","😊","🌟"], color: "#38bdf8" },
+  { key: "fatigue", label: "Stanchezza", emojis: ["🏃","😤","😐","😓","🥱"], color: "#fb923c" },
+  { key: "mood",    label: "Umore",     emojis: ["😁","🙂","😐","😕","😞"], color: "#a78bfa" },
+];
+
+export function PlayerWellnessTab({ wellnessHistory = [], loading = false }) {
+  const avg = (key) => {
+    const vals = wellnessHistory.filter((r) => r[key] > 0).map((r) => r[key]);
+    if (!vals.length) return null;
+    return (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1);
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      {/* KPI medi */}
+      <AppCard>
+        <div style={sectionStyles.cardHeader}>
+          <div>
+            <h3 style={{ margin: 0 }}>Wellness — ultimi 14 giorni</h3>
+            <p style={sectionStyles.cardSubtitle}>
+              Check-in giornaliero compilato dal giocatore nel portale personale.
+            </p>
+          </div>
+          <Badge tone={wellnessHistory.length ? "green" : "orange"}>
+            {wellnessHistory.length} rilevazioni
+          </Badge>
+        </div>
+
+        {loading && <p style={sectionStyles.muted}>Caricamento…</p>}
+        {!loading && wellnessHistory.length === 0 && (
+          <p style={sectionStyles.muted}>
+            Nessun dato wellness per questo giocatore. Il giocatore deve compilare il check-in dal proprio portale.
+          </p>
+        )}
+
+        {!loading && wellnessHistory.length > 0 && (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 12, marginBottom: 20 }}>
+              {WELLNESS_META.map(({ key, label, color }) => {
+                const a = avg(key);
+                return (
+                  <div key={key} style={{
+                    padding: "14px 12px", borderRadius: 14,
+                    background: "rgba(255,255,255,0.045)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    textAlign: "center",
+                  }}>
+                    <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 900, textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
+                    <div style={{ fontSize: 28, fontWeight: 900, color: a !== null ? color : "#475569" }}>
+                      {a !== null ? a : "—"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>/ 5</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Storico giornaliero */}
+            <div style={{ display: "grid", gap: 8 }}>
+              {wellnessHistory.map((row) => (
+                <div key={row.date} style={{
+                  display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+                  padding: "10px 14px", borderRadius: 12,
+                  background: "rgba(15,23,42,0.55)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#94a3b8", flexShrink: 0, minWidth: 90 }}>
+                    {new Date(row.date + "T00:00:00").toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "2-digit" })}
+                  </span>
+                  {WELLNESS_META.map(({ key, label, emojis }) => (
+                    <span key={key} title={label} style={{ fontSize: 13 }}>
+                      {emojis[(row[key] || 1) - 1]} <span style={{ color: "#cbd5e1", fontWeight: 700 }}>{row[key] || "—"}</span>
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </AppCard>
+    </div>
   );
 }
 

@@ -1026,6 +1026,7 @@ export const en = {
         fisico:      "Physical",
         medico:      "Medical",
         sviluppo:    "Development",
+        wellness:    "Wellness",
       },
       sidebar: {
         alertTitle: "Alerts",
@@ -1075,6 +1076,7 @@ export const en = {
       },
       portalInviteSent:  "Player portal invite sent",
       portalInviteError: "Failed to send the portal invite",
+      portalInviteEmailFailed: "Invite created, but email was not sent: {{error}}. You can copy the link and send it manually.",
       portalInviteCancelSuccess: "Player portal invite canceled",
       portalInviteCancelError: "Failed to cancel the player portal invite",
       portalRevokeSuccess: "Portal access revoked",
@@ -1488,6 +1490,9 @@ export const en = {
       clubRoleSyncError: "Role saved locally, but syncing with the member's account failed. Please try again shortly.",
       clubRoleSavedLocalOnly: "Role updated in the list, but this member isn't linked to an account yet: they'll need to accept the invite again for access to unlock.",
       inviteFlushError: "Error saving invite token. Please try again.",
+      inviteEmailSent: "Invite email sent.",
+      inviteEmailFailed:
+        "Invite created, but email was not sent: {{error}}. You can copy the link and send it manually.",
       clubMemberRemoved: "Member removed — their team access has been revoked too.",
       clubMemberRemoveSyncError: "Member removed from the list, but revoking their account access failed. Please try again shortly or contact support.",
       clubInviteRequestSent: "Request sent",

@@ -20,6 +20,7 @@ import {
   PlayerTabs,
   PlayerTechnicalOverview,
   PlayerVideoTab,
+  PlayerWellnessTab,
 } from "../components/players/PlayerDetailSections";
 import { getPreventionRecommendations } from "../components/players/playerDetailLogic";
 import { styles } from "../styles/index.js";
@@ -29,6 +30,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
 import { fetchPlayerPortalActivity } from "../services/playerPortalActivity";
+import { getPlayerWellness } from "../services/wellness";
 
 const ABSENCE_TYPES = ["ferie", "permesso", "studio", "lavoro", "altro"];
 
@@ -114,6 +116,7 @@ function PlayerDetail({
   const [portalAccountState, setPortalAccountState] = useState({ playerId: "", accountId: null });
   const [portalActivityState, setPortalActivityState] = useState({ playerId: "", data: null });
   const [portalActivityNow, setPortalActivityNow] = useState(Date.now());
+  const [wellnessHistory, setWellnessHistory] = useState(null); // null = not loaded yet
   const currentPlayerId = String(player?.id || "");
   const portalAccountId = portalAccountState.playerId === currentPlayerId ? portalAccountState.accountId : null;
   const portalActivity = portalActivityState.playerId === currentPlayerId ? portalActivityState.data : null;
@@ -185,6 +188,15 @@ function PlayerDetail({
     const intervalId = window.setInterval(() => setPortalActivityNow(Date.now()), 30000);
     return () => window.clearInterval(intervalId);
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "wellness" || !currentPlayerId || !team?.id) return;
+    let cancelled = false;
+    getPlayerWellness({ teamId: team.id, playerId: currentPlayerId }).then(({ data }) => {
+      if (!cancelled) setWellnessHistory(data || []);
+    });
+    return () => { cancelled = true; };
+  }, [activeTab, currentPlayerId, team?.id]);
 
   const summary = useMemo(
     () => getPlayerSummary(player, { sessions, matches, physicalTests }),
@@ -610,8 +622,7 @@ function PlayerDetail({
 
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
-      // Email fire-and-forget: l'invito è già salvato su Supabase, il link è disponibile
-      fetch(`${import.meta.env.VITE_SUPABASE_URL || ""}/functions/v1/send-email`, {
+      const emailResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL || ""}/functions/v1/send-email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -625,8 +636,15 @@ function PlayerDetail({
           teamName: team.name,
           inviteUrl,
         }),
-      }).catch(() => {});
-      showToast(t("pages.playerDetail.portalInviteSent"), "ok");
+      });
+      const emailResult = await emailResponse.json().catch(() => ({}));
+      if (!emailResponse.ok || emailResult?.error) {
+        showToast(t("pages.playerDetail.portalInviteEmailFailed", {
+          error: emailResult?.error || emailResponse.statusText || "Errore sconosciuto",
+        }), "error");
+      } else {
+        showToast(t("pages.playerDetail.portalInviteSent"), "ok");
+      }
     } catch {
       showToast(t("pages.playerDetail.portalInviteError"), "error");
     } finally {
@@ -761,6 +779,10 @@ function PlayerDetail({
           {activeTab === "statistiche" && <PlayerStatsTab summary={summary} seasonSeries={seasonSeries} />}
 
           {activeTab === "video" && <PlayerVideoTab clips={playerVideoClips} />}
+
+          {activeTab === "wellness" && (
+            <PlayerWellnessTab wellnessHistory={wellnessHistory ?? []} loading={wellnessHistory === null} />
+          )}
 
           {activeTab === "fisico" && (
             <PlayerPhysicalTab

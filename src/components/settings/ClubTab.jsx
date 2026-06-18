@@ -209,15 +209,16 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
     setSentInviteName(pending.name || pending.email);
     setLinkCopied(false);
 
-    // Invia email di invito (fire-and-forget — non blocca la UI)
+    // L'invito resta valido anche se l'email fallisce: in quel caso mostriamo
+    // l'errore reale e il coach può condividere il link manualmente.
     const teamName  = profile.teamName || profile.clubName || "CalcioLab";
     const roleName  = memberRoles?.find?.((r) => r.id === inviteForm.role)?.label || inviteForm.role || "Membro dello staff";
-    supabase.auth.getSession().then(({ data: sessionData }) => {
+    supabase.auth.getSession().then(async ({ data: sessionData }) => {
       const accessToken = sessionData?.session?.access_token || "";
       const inviterName = sessionData?.session?.user?.user_metadata?.first_name
         || sessionData?.session?.user?.email
         || "Il tuo coach";
-      fetch(
+      const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
         {
           method: "POST",
@@ -235,7 +236,21 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
             inviteUrl,
           }),
         }
-      ).catch(() => {}); // silenzioso — l'invito è già salvato anche se l'email fallisce
+      );
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.error) {
+        showToast?.(
+          t("pages.settings.inviteEmailFailed", { error: result?.error || response.statusText || "Errore sconosciuto" }),
+          "error"
+        );
+        return;
+      }
+      showToast?.(t("pages.settings.inviteEmailSent"), "success");
+    }).catch((error) => {
+      showToast?.(
+        t("pages.settings.inviteEmailFailed", { error: error?.message || "Errore rete" }),
+        "error"
+      );
     });
   }
 
