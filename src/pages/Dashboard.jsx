@@ -14,6 +14,7 @@ import { SkeletonStatCard } from "../components/ui/Skeleton";
 import { fetchMatchRsvps } from "../services/rsvp";
 import { useAuth } from "../hooks/useAuth";
 import { loadAllPlayerStats } from "../services/playerProfile";
+import { getTeamWellnessToday } from "../services/wellness";
 import { useTranslation } from "../i18n";
 import { getObjectiveStatusMeta } from "../constants/objectiveStatus";
 
@@ -34,7 +35,7 @@ import {
 
 // TONE_LABEL is now built inside each component that uses it via t()
 
-const DASHBOARD_SECTION_KEYS = ["nextEvent", "kpis", "rosterStatus", "weekFocus", "coachAlerts", "recentActivities", "quickActions", "rewardCenter"];
+const DASHBOARD_SECTION_KEYS = ["nextEvent", "kpis", "rosterStatus", "wellnessToday", "weekFocus", "coachAlerts", "recentActivities", "quickActions", "rewardCenter"];
 const DEFAULT_SECTION_ORDER = DASHBOARD_SECTION_KEYS;
 const PLAYER_STATUS_LABEL_KEYS = {
   Disponibile: "pages.players.statusAvailable",
@@ -158,6 +159,7 @@ function Dashboard({
   const [playerStatsMap, setPlayerStatsMap] = useState({});
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState(null);
+  const [teamWellnessToday, setTeamWellnessToday] = useState([]);
   const [showPersonalize, setShowPersonalize] = useState(false);
   const [pendingRsvpMatches, setPendingRsvpMatches] = useState([]);
   const isMobile = useIsMobile();
@@ -203,6 +205,15 @@ function Dashboard({
     });
     return () => { active = false; };
   }, [auth.team?.id, t]);
+
+  useEffect(() => {
+    if (!auth.team?.id) return;
+    let active = true;
+    getTeamWellnessToday({ teamId: auth.team.id }).then(({ data }) => {
+      if (active) setTeamWellnessToday(data || []);
+    });
+    return () => { active = false; };
+  }, [auth.team?.id]);
 
   const playerStats = useMemo(() => {
     return players.map((player) => {
@@ -662,6 +673,56 @@ function Dashboard({
             </div>
           </AppCard>
         );
+
+      case "wellnessToday": {
+        if (!teamWellnessToday.length) return null;
+        const WELLNESS_EMOJIS = {
+          sleep:   ["😴","😪","😐","😊","🌟"],
+          fatigue: ["🏃","😤","😐","😓","🥱"],
+          mood:    ["😁","🙂","😐","😕","😞"],
+        };
+        const teamAvg = (key) => {
+          const vals = teamWellnessToday.filter((r) => r[key] > 0).map((r) => r[key]);
+          return vals.length ? (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1) : null;
+        };
+        return (
+          <AppCard key="wellnessToday">
+            <SectionTitle title="Wellness squadra oggi" subtitle={`${teamWellnessToday.length} giocator${teamWellnessToday.length === 1 ? "e" : "i"} hanno compilato il check-in`} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 14 }}>
+              {[
+                { key: "sleep",   label: "Sonno",     color: "#38bdf8" },
+                { key: "fatigue", label: "Stanchezza", color: "#fb923c" },
+                { key: "mood",    label: "Umore",     color: "#a78bfa" },
+              ].map(({ key, label, color }) => {
+                const avg = teamAvg(key);
+                return (
+                  <div key={key} style={{ textAlign: "center", padding: "12px 8px", borderRadius: 12, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <div style={{ fontSize: 10, color: "#64748b", fontWeight: 900, textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 24, fontWeight: 900, color: avg ? color : "#475569" }}>{avg ?? "—"}</div>
+                    <div style={{ fontSize: 10, color: "#475569" }}>/ 5</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              {teamWellnessToday.map((row) => {
+                const p = players.find((pl) => String(pl.id) === String(row.player_id));
+                if (!p) return null;
+                return (
+                  <div key={row.player_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 10, background: "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <span style={{ flex: "1 1 100px", fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                    {["sleep","fatigue","mood"].map((k) => (
+                      <span key={k} style={{ fontSize: 16 }} title={k}>
+                        {WELLNESS_EMOJIS[k][(row[k] || 1) - 1]}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </AppCard>
+        );
+      }
 
       case "weekFocus":
         if (!widgets.weekFocus) return null;
