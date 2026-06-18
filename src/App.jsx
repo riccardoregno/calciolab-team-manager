@@ -973,6 +973,7 @@ function App() {
                     sessions={sessions}
                     matches={matches}
                     loading={loading}
+                    teamId={auth.team?.id}
                   />, "players")
                 }
               />

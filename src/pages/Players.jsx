@@ -22,6 +22,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
 import { createUuid, isBirthdayToday, getTeamAverageAge, calcPlayerAge, getPlayerQuickStats } from "../utils/helpers";
+import { loadAllPlayerStats } from "../services/playerProfile";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
 const PLAYER_MODAL_QUERY = "new-player";
@@ -56,7 +57,9 @@ function loadNewPlayerDraft(fallback) {
   }
 }
 
-function Players({ players, setPlayers, sessions = [], matches = [], loading = false }) {
+const SUSPENSION_THRESHOLD = 5;
+
+function Players({ players, setPlayers, sessions = [], matches = [], loading = false, teamId = null }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const GROUP_LABELS = {
@@ -74,6 +77,12 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
 
   const { showToast, ToastContainer } = useToast();
   const [confirmState, setConfirmState] = useState(null);
+  const [playerStatsMap, setPlayerStatsMap] = useState({});
+
+  useEffect(() => {
+    if (!teamId) return;
+    loadAllPlayerStats(teamId).then(({ data }) => setPlayerStatsMap(data || {}));
+  }, [teamId]);
   const [showImport, setShowImport] = useState(false);
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -782,6 +791,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               sessions={sessions}
               matches={matches}
               onDelete={canManage ? () => deletePlayer(player.id) : null}
+              yellowCards={Number(playerStatsMap[String(player.id)]?.yellow_cards || 0)}
             />
           ))}
         </div>
@@ -800,6 +810,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               sessions={sessions}
               matches={matches}
               onDelete={canManage ? () => deletePlayer(player.id) : null}
+              yellowCards={Number(playerStatsMap[String(player.id)]?.yellow_cards || 0)}
             />
           ))}
         </div>
@@ -962,7 +973,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   );
 }
 
-function PlayerListRow({ player, sessions = [], matches = [], onDelete }) {
+function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCards = 0 }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const age = calcPlayerAge(player.birthDate) ?? player.age ?? "-";
@@ -1034,7 +1045,7 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete }) {
         <div style={{ fontSize: 14, fontWeight: 700 }}>{trainingPctValue}</div>
       </div>
 
-      <div style={{ flex: "1 1 70px", minWidth: 0 }}>
+      <div style={{ flex: "1 1 70px", minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
         <Badge tone={
           player.status === "Infortunato" ? "red" :
           player.status === "Squalificato" ? "purple" :
@@ -1043,6 +1054,17 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete }) {
         }>
           {player.status || "Disponibile"}
         </Badge>
+        {yellowCards >= SUSPENSION_THRESHOLD - 1 && (
+          <span style={{
+            fontSize: 10, fontWeight: 900, padding: "2px 6px", borderRadius: 6,
+            background: yellowCards >= SUSPENSION_THRESHOLD ? "rgba(248,113,113,0.18)" : "rgba(251,191,36,0.18)",
+            border: `1px solid ${yellowCards >= SUSPENSION_THRESHOLD ? "rgba(248,113,113,0.4)" : "rgba(251,191,36,0.4)"}`,
+            color: yellowCards >= SUSPENSION_THRESHOLD ? "#f87171" : "#fbbf24",
+            whiteSpace: "nowrap",
+          }}>
+            🟨 {yellowCards} {yellowCards >= SUSPENSION_THRESHOLD ? "SQUALIFICA" : "DIFFIDA"}
+          </span>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: 8, flex: "1 1 100%", flexWrap: "wrap", justifyContent: "flex-end" }}>

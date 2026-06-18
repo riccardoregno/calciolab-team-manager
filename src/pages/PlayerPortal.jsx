@@ -356,6 +356,19 @@ function PlayerView({
   teamId, myPlayerId,
 }) {
   const { t } = useTranslation();
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const wellnessStorageKey = teamId && myPlayerId ? `wellness_${teamId}_${myPlayerId}_${todayKey}` : null;
+  const loadWellness = () => {
+    if (!wellnessStorageKey) return { sleep: 0, fatigue: 0, mood: 0 };
+    try { return JSON.parse(localStorage.getItem(wellnessStorageKey)) || { sleep: 0, fatigue: 0, mood: 0 }; }
+    catch { return { sleep: 0, fatigue: 0, mood: 0 }; }
+  };
+  const [wellness, setWellness] = useState(loadWellness);
+  const saveWellness = (next) => {
+    setWellness(next);
+    if (wellnessStorageKey) localStorage.setItem(wellnessStorageKey, JSON.stringify(next));
+  };
+
   const [activeTab, setActiveTab] = useState("home");
   const [rsvpMap, setRsvpMap] = useState({});
   const [rpeMap, setRpeMap] = useState({});    // eventId → rpe record
@@ -653,6 +666,50 @@ function PlayerView({
                 </div>
               ) : (
                 <p style={ps.muted}>Nessun evento recente registrato.</p>
+              )}
+            </AppCard>
+
+            {/* Wellness check */}
+            <AppCard>
+              <h3 style={{ ...ps.sectionTitle, marginBottom: 4 }}>Come ti senti oggi?</h3>
+              <p style={{ ...ps.muted, fontSize: 13, marginBottom: 14 }}>
+                Registra il tuo stato fisico e mentale di questa mattina.
+              </p>
+              <div style={{ display: "grid", gap: 14 }}>
+                {[
+                  { key: "sleep",   label: "Sonno",     emojis: ["😴","😪","😐","😊","🌟"] },
+                  { key: "fatigue", label: "Stanchezza", emojis: ["🏃","😤","😐","😓","🥱"] },
+                  { key: "mood",    label: "Umore",     emojis: ["😁","🙂","😐","😕","😞"] },
+                ].map(({ key, label, emojis }) => (
+                  <div key={key}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#94a3b8", marginBottom: 8 }}>{label}</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {emojis.map((emoji, i) => {
+                        const val = i + 1;
+                        const active = wellness[key] === val;
+                        return (
+                          <button
+                            key={val}
+                            onClick={() => saveWellness({ ...wellness, [key]: val })}
+                            style={{
+                              flex: 1, padding: "8px 4px", borderRadius: 10, fontSize: 22,
+                              border: active ? "2px solid rgba(56,189,248,0.7)" : "1px solid rgba(255,255,255,0.08)",
+                              background: active ? "rgba(56,189,248,0.15)" : "rgba(255,255,255,0.04)",
+                              cursor: "pointer", transition: "all 0.15s",
+                            }}
+                          >
+                            {emoji}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {(wellness.sleep > 0 || wellness.fatigue > 0 || wellness.mood > 0) && (
+                <p style={{ ...ps.muted, fontSize: 12, marginTop: 12, textAlign: "center" }}>
+                  ✅ Salvato per oggi
+                </p>
               )}
             </AppCard>
 

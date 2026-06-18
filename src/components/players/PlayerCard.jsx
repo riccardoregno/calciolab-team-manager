@@ -5,7 +5,9 @@ import Badge from "../ui/Badge";
 import { useTranslation } from "../../i18n";
 import { calcPlayerAge, getPlayerQuickStats } from "../../utils/helpers";
 
-function PlayerCard({ player, onDelete, sessions = [], matches = [] }) {
+const SUSPENSION_THRESHOLD = 5;
+
+function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards = 0 }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -80,14 +82,26 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [] }) {
             )}
           </div>
 
-          <Badge tone={
-            player.status === "Infortunato" ? "red" :
-            player.status === "Squalificato" ? "purple" :
-            player.status === "Recupero" || player.status === "Differenziato" ? "orange" :
-            "green"
-          }>
-            {player.status || "Disponibile"}
-          </Badge>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+            <Badge tone={
+              player.status === "Infortunato" ? "red" :
+              player.status === "Squalificato" ? "purple" :
+              player.status === "Recupero" || player.status === "Differenziato" ? "orange" :
+              "green"
+            }>
+              {player.status || "Disponibile"}
+            </Badge>
+            {yellowCards >= SUSPENSION_THRESHOLD - 1 && (
+              <span style={{
+                fontSize: 11, fontWeight: 900, padding: "2px 7px", borderRadius: 7,
+                background: yellowCards >= SUSPENSION_THRESHOLD ? "rgba(248,113,113,0.18)" : "rgba(251,191,36,0.18)",
+                border: `1px solid ${yellowCards >= SUSPENSION_THRESHOLD ? "rgba(248,113,113,0.4)" : "rgba(251,191,36,0.4)"}`,
+                color: yellowCards >= SUSPENSION_THRESHOLD ? "#f87171" : "#fbbf24",
+              }}>
+                🟨 {yellowCards} {yellowCards >= SUSPENSION_THRESHOLD ? "SQUALIFICA" : "DIFFIDA"}
+              </span>
+            )}
+          </div>
         </div>
 
         <div style={{ marginTop: 16 }}>
