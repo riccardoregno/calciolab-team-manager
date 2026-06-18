@@ -134,7 +134,8 @@ export async function ensureDefaultTeam(user) {
     // già esistenti: non creiamo mai un workspace nuovo partendo da un link invito.
     // Errori "hard" (rete, 500): restituiamo l'errore perché c'è un problema
     // infrastrutturale che vale la pena segnalare.
-    const isSoftError = inviteStatus === 404 || inviteStatus === 403 || inviteStatus === 410;
+    // 401 = utente non autenticato: token stale, pulisci e prosegui al login normale
+    const isSoftError = inviteStatus === 404 || inviteStatus === 403 || inviteStatus === 410 || inviteStatus === 401;
 
     if (inviteError) {
       if (import.meta.env.DEV) {
