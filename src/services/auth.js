@@ -176,6 +176,32 @@ export async function ensureDefaultTeam(user) {
     };
   }
 
+  // Controlla player_accounts prima di creare un nuovo team.
+  // Un giocatore invitato non ha team_members ma ha player_accounts.
+  const { data: playerAccount } = await supabase
+    .from("player_accounts")
+    .select("team_id, player_id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (playerAccount?.team_id) {
+    const { data: playerTeam } = await supabase
+      .from("teams")
+      .select(teamSelect)
+      .eq("id", playerAccount.team_id)
+      .maybeSingle();
+
+    if (playerTeam) {
+      return {
+        team: {
+          ...playerTeam,
+          role: "player",
+          playerId: playerAccount.player_id || null,
+        },
+      };
+    }
+  }
+
   const { data: team, error: teamError } = await supabase
     .from("teams")
     .insert({
