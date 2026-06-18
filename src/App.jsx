@@ -480,6 +480,9 @@ function App() {
   })();
 
   function gate(allowedRoles, children, featureKey = null) {
+    if (auth.team?.role === "player") {
+      return <Navigate to="/player-portal" replace />;
+    }
     return (
       <RoleGate
         allowedRoles={allowedRoles}

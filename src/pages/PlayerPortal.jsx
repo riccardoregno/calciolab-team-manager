@@ -154,10 +154,28 @@ export default function PlayerPortal({
           )}
         />
         <AppCard>
-          <h2 style={{ margin: "0 0 8px" }}>Accesso giocatore non collegato</h2>
-          <p style={{ margin: 0, color: "#94a3b8", lineHeight: 1.6 }}>
-            Questo account non risulta collegato a una scheda giocatore valida. Fai logout e apri il link invito corretto, oppure chiedi al coach di revocare il vecchio accesso e inviare un nuovo invito.
-          </p>
+          <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔗</div>
+            <h2 style={{ margin: "0 0 10px", fontSize: 20 }}>{t("pages.playerPortal.notLinkedTitle")}</h2>
+            <p style={{ margin: "0 0 20px", color: "#94a3b8", lineHeight: 1.6, maxWidth: 480, marginInline: "auto" }}>
+              {t("pages.playerPortal.notLinkedBody")}
+            </p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+              <button onClick={handleLogout} style={{ ...ps.logoutBtn, padding: "10px 22px", fontSize: 14, borderRadius: 10 }}>
+                {t("pages.playerPortal.notLinkedLogout")}
+              </button>
+              <a
+                href="mailto:?"
+                style={{
+                  padding: "10px 22px", fontSize: 14, borderRadius: 10, fontWeight: 700,
+                  background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.3)",
+                  color: "#38bdf8", textDecoration: "none", display: "inline-block",
+                }}
+              >
+                {t("pages.playerPortal.notLinkedContact")}
+              </a>
+            </div>
+          </div>
         </AppCard>
       </div>
     );

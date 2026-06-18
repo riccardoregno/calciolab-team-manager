@@ -2804,6 +2804,10 @@ export const en = {
     playerPortal: {
       title: "Player Area",
       myArea: "My area",
+      notLinkedTitle: "Account not linked",
+      notLinkedBody: "This account is not linked to a player profile. Sign out and open the invite link sent by your coach, or ask your coach to revoke the old access and send you a new invite.",
+      notLinkedLogout: "Sign out",
+      notLinkedContact: "Contact coach",
       subtitle: "Manage call-ups, communications, individual programmes and portal preview.",
       subtitlePlayer: "Call-ups, personal programme, staff communications and performance.",
       badgeActive: "Portal active",

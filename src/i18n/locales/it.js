@@ -2822,6 +2822,10 @@ export const it = {
     playerPortal: {
       title: "Area Giocatori",
       myArea: "La mia area",
+      notLinkedTitle: "Account non collegato",
+      notLinkedBody: "Questo account non è collegato a una scheda giocatore. Esci e apri il link invito ricevuto dal coach, oppure chiedi al coach di revocare il vecchio accesso e inviarti un nuovo invito.",
+      notLinkedLogout: "Esci",
+      notLinkedContact: "Contatta il coach",
       subtitle: "Gestisci convocazioni, comunicazioni, programmi individuali e anteprima portale.",
       subtitlePlayer: "Convocazioni, programma personale, comunicazioni staff e rendimento.",
       badgeActive: "Portale attivo",
