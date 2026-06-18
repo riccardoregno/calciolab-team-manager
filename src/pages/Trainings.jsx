@@ -573,6 +573,12 @@ function Trainings({
     )}
   </AppCard>
 
+  {/* ── Session Builder: blocchi strutturati ── */}
+  <SessionBlockBuilder
+    blocks={form.sessionBlocks || []}
+    onChange={(blocks) => setForm({ ...form, sessionBlocks: blocks })}
+  />
+
           <AppCard>
             <div
               style={{
@@ -684,6 +690,34 @@ function Trainings({
               </div>
             )}
           </AppCard>
+
+          {(form.sessionBlocks || []).length > 0 && (
+            <AppCard>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <h3 style={{ margin: 0 }}>🧱 Struttura seduta</h3>
+                <Badge tone="blue">
+                  {(form.sessionBlocks || []).reduce((s, b) => s + (Number(b.duration) || 0), 0)} min totali
+                </Badge>
+              </div>
+              <div style={{ display: "grid", gap: 8 }}>
+                {(form.sessionBlocks || []).map((block) => {
+                  const phaseColor = PHASE_OPTIONS.find((p) => p.id === block.phase)?.color || "#94a3b8";
+                  return (
+                    <div key={block.id} style={{
+                      display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap",
+                      padding: "10px 14px", borderRadius: 12,
+                      background: "rgba(15,23,42,0.5)", border: `1px solid ${phaseColor}33`,
+                    }}>
+                      <span style={{ fontSize: 11, fontWeight: 900, color: phaseColor, flexShrink: 0, paddingTop: 2 }}>{block.phase.toUpperCase()}</span>
+                      <span style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{block.name || "—"}</span>
+                      <span style={{ color: "#94a3b8", fontSize: 12, flexShrink: 0 }}>{block.duration} min · Int. {block.intensity}/10</span>
+                      {block.notes && <span style={{ width: "100%", color: "#64748b", fontSize: 12, paddingLeft: 2 }}>{block.notes}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </AppCard>
+          )}
 
           {selectedExercises.length > 0 && (
             <AppCard>
@@ -1037,6 +1071,7 @@ function emptyTraining() {
     sourceSummary: "",
     objectiveStatus: "todo",
     objectiveReview: "",
+    sessionBlocks: [],
   };
 }
 
@@ -1081,6 +1116,14 @@ function PrintBox({ title, value }) {
 // Box giocatori disponibili nel form seduta
 // ─────────────────────────────────────────────
 const UNAVAILABLE_STATUSES = ["Infortunato", "Squalificato"];
+
+const PHASE_OPTIONS = [
+  { id: "Riscaldamento",    color: "#fb923c" },
+  { id: "Tecnico-tattica",  color: "#38bdf8" },
+  { id: "Parte principale", color: "#a78bfa" },
+  { id: "Fisico",           color: "#4ade80" },
+  { id: "Defaticamento",    color: "#94a3b8" },
+];
 
 function AvailablePlayers({ players }) {
   const { t } = useTranslation();
@@ -1425,6 +1468,158 @@ const trainingStyles = {
     fontSize: 11,
     paddingTop: 12,
   },
+};
+
+/* ── Session Builder ──────────────────────────────────────────── */
+
+function emptyBlock() {
+  return { id: Math.random().toString(36).slice(2), phase: "Parte principale", name: "", duration: 15, intensity: 5, notes: "" };
+}
+
+function SessionBlockBuilder({ blocks, onChange }) {
+  const [open, setOpen] = useState(false);
+
+  function addBlock() {
+    onChange([...blocks, emptyBlock()]);
+    setOpen(true);
+  }
+
+  function removeBlock(id) {
+    onChange(blocks.filter((b) => b.id !== id));
+  }
+
+  function updateBlock(id, field, value) {
+    onChange(blocks.map((b) => b.id === id ? { ...b, [field]: value } : b));
+  }
+
+  function moveBlock(idx, dir) {
+    const next = [...blocks];
+    const swap = idx + dir;
+    if (swap < 0 || swap >= next.length) return;
+    [next[idx], next[swap]] = [next[swap], next[idx]];
+    onChange(next);
+  }
+
+  const totalMin = blocks.reduce((s, b) => s + (Number(b.duration) || 0), 0);
+
+  return (
+    <AppCard>
+      <div
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", marginBottom: open ? 16 : 0 }}
+        onClick={() => setOpen((v) => !v)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && setOpen((v) => !v)}
+      >
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 18 }}>🧱</span>
+            <strong style={{ fontSize: 16 }}>Struttura seduta</strong>
+            {blocks.length > 0 && <Badge tone="blue">{blocks.length} blocchi · {totalMin} min</Badge>}
+          </div>
+          <p style={{ color: "#64748b", margin: "4px 0 0", fontSize: 13 }}>
+            Definisci riscaldamento, esercitazioni e defaticamento con durata e intensità
+          </p>
+        </div>
+        <span style={{ fontSize: 20, color: "#475569", flexShrink: 0 }}>{open ? "▲" : "▼"}</span>
+      </div>
+
+      {open && (
+        <div>
+          {blocks.length === 0 && (
+            <p style={{ color: "#475569", fontSize: 13, textAlign: "center", padding: "20px 0" }}>
+              Nessun blocco ancora. Aggiungine uno per strutturare la seduta.
+            </p>
+          )}
+
+          <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+            {blocks.map((block, idx) => {
+              const phaseColor = PHASE_OPTIONS.find((p) => p.id === block.phase)?.color || "#94a3b8";
+              return (
+                <div
+                  key={block.id}
+                  style={{
+                    padding: "12px 14px", borderRadius: 14,
+                    background: "rgba(15,23,42,0.55)",
+                    border: `1px solid ${phaseColor}44`,
+                    display: "grid", gap: 10,
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    {/* Fase */}
+                    <select
+                      value={block.phase}
+                      onChange={(e) => updateBlock(block.id, "phase", e.target.value)}
+                      style={{ ...styles.input, flex: "0 0 auto", width: "auto", fontSize: 12, padding: "4px 8px", color: phaseColor, fontWeight: 800 }}
+                    >
+                      {PHASE_OPTIONS.map((p) => <option key={p.id} value={p.id}>{p.id}</option>)}
+                    </select>
+
+                    {/* Nome esercizio */}
+                    <input
+                      placeholder="Nome esercizio / esercitazione…"
+                      value={block.name}
+                      onChange={(e) => updateBlock(block.id, "name", e.target.value)}
+                      style={{ ...styles.input, flex: "1 1 160px", fontSize: 13, padding: "4px 10px" }}
+                    />
+
+                    {/* Durata */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                      <input
+                        type="number" min={1} max={120}
+                        value={block.duration}
+                        onChange={(e) => updateBlock(block.id, "duration", Number(e.target.value))}
+                        style={{ ...styles.input, width: 52, fontSize: 13, padding: "4px 6px", textAlign: "center" }}
+                      />
+                      <span style={{ color: "#64748b", fontSize: 12 }}>min</span>
+                    </div>
+
+                    {/* Intensità */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                      <span style={{ color: "#64748b", fontSize: 11 }}>Int.</span>
+                      <input
+                        type="number" min={1} max={10}
+                        value={block.intensity}
+                        onChange={(e) => updateBlock(block.id, "intensity", Number(e.target.value))}
+                        style={{ ...styles.input, width: 44, fontSize: 13, padding: "4px 6px", textAlign: "center" }}
+                      />
+                      <span style={{ color: "#64748b", fontSize: 12 }}>/10</span>
+                    </div>
+
+                    {/* Controlli ordine + rimozione */}
+                    <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+                      <button onClick={() => moveBlock(idx, -1)} disabled={idx === 0} style={sbtnStyle}>↑</button>
+                      <button onClick={() => moveBlock(idx, 1)} disabled={idx === blocks.length - 1} style={sbtnStyle}>↓</button>
+                      <button onClick={() => removeBlock(block.id)} style={{ ...sbtnStyle, color: "#f87171" }}>✕</button>
+                    </div>
+                  </div>
+
+                  {/* Note opzionali */}
+                  <input
+                    placeholder="Note (opzionali)…"
+                    value={block.notes}
+                    onChange={(e) => updateBlock(block.id, "notes", e.target.value)}
+                    style={{ ...styles.input, fontSize: 12, padding: "4px 10px", color: "#94a3b8" }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <Button variant="ghost" onClick={addBlock} style={{ width: "100%" }}>
+            + Aggiungi blocco
+          </Button>
+        </div>
+      )}
+    </AppCard>
+  );
+}
+
+const sbtnStyle = {
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 7, padding: "3px 8px",
+  cursor: "pointer", fontSize: 13, color: "#94a3b8",
 };
 
 export default Trainings;

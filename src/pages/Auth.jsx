@@ -10,7 +10,12 @@ const STATS_VALUES = ["120+", "4.8k", "98%"];
 /* ─── Auth ──────────────────────────────────────────────────── */
 function Auth() {
   const { t } = useTranslation();
-  const [mode, setMode] = useState("login"); // "login" | "register" | "reset"
+  const [mode, setMode] = useState(() => {
+    if (typeof window === "undefined") return "login";
+    const params = new URLSearchParams(window.location.search);
+    const resolved = params.get("invite_mode") || params.get("mode");
+    return resolved === "register" || resolved === "login" || resolved === "reset" ? resolved : "login";
+  }); // "login" | "register" | "reset"
 
   /* form fields */
   const [firstName,        setFirstName]        = useState("");
@@ -26,6 +31,11 @@ function Auth() {
   const [feedback,     setFeedback]     = useState(null); // { type: "ok"|"error", text }
   const [showResend,   setShowResend]   = useState(false); // mostra il pulsante "Reinvia email"
   const [resendLoading,setResendLoading]= useState(false);
+  const [clearingInviteSession, setClearingInviteSession] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    return Boolean((params.get("invite_mode") || params.get("token")) && isSupabaseConfigured && supabase);
+  });
   const [visible,      setVisible]      = useState(true);
   const [isMobile,     setIsMobile]     = useState(
     () => typeof window !== "undefined" && window.innerWidth < 680
@@ -53,9 +63,11 @@ function Auth() {
       sessionStorage.setItem("calciolab_invite_token", inviteToken);
       localStorage.setItem("calciolab_invite_token", inviteToken);
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (resolved === "register") setMode("register");
-    else if (resolved === "login") setMode("login");
+    if ((inviteToken || inviteMode) && isSupabaseConfigured && supabase) {
+      supabase.auth.getSession()
+        .then(({ data }) => (data?.session ? supabase.auth.signOut() : null))
+        .finally(() => setClearingInviteSession(false));
+    }
     // Pulisce i parametri dall'URL senza ricaricare la pagina
     if (resolved) {
       const clean = window.location.pathname;
@@ -96,6 +108,8 @@ function Auth() {
   async function handleSubmit(e) {
     e.preventDefault();
     setFeedback(null);
+
+    if (clearingInviteSession) return;
 
     /* ─ Reset password ─ */
     if (mode === "reset") {
@@ -213,6 +227,20 @@ function Auth() {
         setTimeout(() => switchMode("login"), 2800);
       }
     } finally { setLoading(false); }
+  }
+
+  if (clearingInviteSession) {
+    return (
+      <div style={s.page}>
+        <div style={s.card}>
+          <div style={s.cardHeader}>
+            <p style={s.eyebrow}>{t("pages.auth.loading")}</p>
+            <h1 style={s.title}>{t("pages.auth.preparingInviteAccess")}</h1>
+          </div>
+          <p style={s.subtitle}>{t("pages.auth.preparingInviteAccessDesc")}</p>
+        </div>
+      </div>
+    );
   }
 
   /* ── Validazione campi per disabilitare il bottone ── */
