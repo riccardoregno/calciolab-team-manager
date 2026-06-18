@@ -225,7 +225,7 @@ function getMedicalType(status, injuryType, differentiatedType) {
 // Componente principale
 // ─────────────────────────────────────────────
 export default function Availability({
-  players = [], setPlayers, sessions = [], matches = [], loading = false, teamId = null }) {
+  players = [], setPlayers, sessions = [], matches = [], loading = false, teamId = null, appSettings = {} }) {
 
   const { t } = useTranslation();
   const location = useLocation();
@@ -572,7 +572,7 @@ export default function Availability({
         <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
           <button
             type="button"
-            onClick={() => generateAvailabilityPDF({ players, teamName, prepRange, prepDays })}
+            onClick={() => generateAvailabilityPDF({ players, teamName, prepRange, prepDays, teamLogoUrl: appSettings?.workspaceProfile?.logo || null })}
             style={{
               display: "flex", alignItems: "center", gap: 6,
               padding: "7px 14px", borderRadius: 10,

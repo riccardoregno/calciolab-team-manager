@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" role="img" aria-labelledby="title desc">
+  <title id="title">CalcioLab vertical logo</title>
+  <desc id="desc">Logo SVG vettoriale CalcioLab con scudo, grafico dati, pallone stilizzato e wordmark verticale.</desc>
+
+  <defs>
+    <style>
+      .navy { fill: #071A3A; }
+      .navy-text { fill: #061A3A; }
+      .cyan { fill: #16BDF2; }
+      .white { fill: #FFFFFF; }
+      .word {
+        font-family: Inter, Manrope, Sora, Montserrat, Arial, sans-serif;
+        font-weight: 800;
+        letter-spacing: -6px;
+      }
+    </style>
+  </defs>
+
+  <g id="icon" transform="translate(314 138)">
+    <path class="navy" d="M286 0 L558 112 C570 117 578 129 578 143 V388 C578 528 486 636 286 724 C86 636 0 528 0 388 V143 C0 129 8 117 20 112 Z"/>
+
+    <path class="cyan" d="M76 270 V186 C76 178 80 174 88 174 H118 C126 174 130 178 130 186 V248 Z"/>
+    <path class="cyan" d="M150 238 V136 C150 128 154 124 162 124 H193 C201 124 205 128 205 136 V216 Z"/>
+    <path class="cyan" d="M228 204 V86 C228 78 232 74 240 74 H272 C280 74 284 78 284 86 V183 Z"/>
+    <path class="cyan" d="M308 174 V36 C308 28 312 24 320 24 H352 C360 24 364 28 364 36 V156 Z"/>
+
+    <circle class="white" cx="430" cy="72" r="36"/>
+    <circle class="white" cx="430" cy="156" r="34"/>
+    <circle class="white" cx="544" cy="132" r="36"/>
+    <rect class="white" x="419" y="98" width="22" height="76" rx="11"/>
+    <path class="white" d="M453 145 L510 133 C519 131 527 137 529 146 C531 155 525 163 516 165 L459 177 C450 179 442 173 440 164 C438 155 444 147 453 145 Z"/>
+
+    <path class="cyan" d="M44 360 C188 262 366 226 550 218 C559 218 565 224 565 233 V263 C565 270 560 275 553 276 C369 284 193 326 52 422 C45 427 36 422 36 414 V377 C36 370 39 364 44 360 Z"/>
+
+    <path class="cyan" d="M58 470 L114 428 L153 494 L143 582 L90 548 Z"/>
+    <path class="white" d="M172 388 L278 356 C293 352 309 356 320 367 L362 408 C372 418 375 433 369 446 L337 523 C331 537 318 546 303 548 L196 558 C181 559 167 552 160 539 L115 454 C107 438 112 418 127 407 Z"/>
+    <path class="white" d="M346 438 L469 414 C484 411 499 416 509 428 L563 491 C572 501 574 516 570 529 L533 615 C527 629 515 638 501 641 L381 663 C365 666 349 660 340 647 L286 574 C278 563 276 549 280 536 L313 462 C319 449 331 441 346 438 Z"/>
+    <path class="white" d="M476 322 L554 318 C562 318 568 324 568 332 V382 L545 356 Z"/>
+    <path class="white" d="M383 704 L498 674 C509 671 518 681 513 692 L492 742 C489 748 484 753 478 755 L340 810 C328 815 317 802 324 791 L361 722 C365 714 373 707 383 704 Z"/>
+  </g>
+
+  <g id="wordmark">
+    <text class="word navy-text" x="100" y="1040" font-size="150">Calcio</text>
+    <text class="word cyan" x="705" y="1040" font-size="150">Lab</text>
+  </g>
+</svg>

@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { loadBrandingAssets } from "./pdfBranding";
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 const C = {
@@ -30,25 +31,42 @@ function sectionHeader(doc, title, y) {
   return y + 13;
 }
 
-function addPageChrome(doc, teamName) {
+function addPageChrome(doc, teamName, calciolabLogo, teamLogo) {
   const W = doc.internal.pageSize.width;
   const H = doc.internal.pageSize.height;
 
   doc.setFillColor(...C.dark);
   doc.rect(0, 0, W, 14, "F");
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...C.accentL);
-  doc.text("⚽ CalcioLab", 14, 9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...C.muted);
-  doc.text(teamName || "", W - 14, 9, { align: "right" });
+
+  // CalcioLab logo or text on left
+  if (calciolabLogo) {
+    try { doc.addImage(calciolabLogo, "PNG", 14, 2, 10, 10); } catch { /* skip */ }
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...C.accentL);
+    doc.text("CalcioLab", 26, 9);
+  } else {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...C.accentL);
+    doc.text("⚽ CalcioLab", 14, 9);
+  }
+
+  // Team logo or name on right
+  if (teamLogo) {
+    try { doc.addImage(teamLogo, "PNG", W - 24, 2, 10, 10); } catch { /* skip */ }
+  } else {
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...C.muted);
+    doc.text(teamName || "", W - 14, 9, { align: "right" });
+  }
 
   doc.setDrawColor(...C.border);
   doc.line(14, H - 10, W - 14, H - 10);
   doc.setFontSize(8);
   doc.setTextColor(...C.muted);
   doc.text(`Pagina ${doc.internal.getCurrentPageInfo().pageNumber}`, W / 2, H - 5, { align: "center" });
+  doc.text("calciolab.org", W - 14, H - 5, { align: "right" });
 }
 
 function box(doc, label, value, x, y, w, h) {
@@ -83,8 +101,11 @@ function getLineup(match) {
  * @param {array}  opts.players
  * @param {object} opts.appSettings
  */
-export function generateMatchReportPDF({ match, players = [], appSettings = {}, doc: sharedDoc, save = true }) {
+export async function generateMatchReportPDF({ match, players = [], appSettings = {}, doc: sharedDoc, save = true }) {
   if (!match) return;
+
+  const teamLogoUrl = appSettings?.workspaceProfile?.logo || null;
+  const { calciolabLogo, teamLogo } = await loadBrandingAssets(teamLogoUrl);
 
   const doc = sharedDoc || new jsPDF({ unit: "mm", format: "a4", putOnlyUsedFonts: true });
   const W = doc.internal.pageSize.width;
@@ -92,7 +113,7 @@ export function generateMatchReportPDF({ match, players = [], appSettings = {}, 
   const report = match.postMatch || {};
 
   if (sharedDoc) doc.addPage();
-  addPageChrome(doc, teamName);
+  addPageChrome(doc, teamName, calciolabLogo, teamLogo);
   let y = 22;
 
   // ── Header partita ──────────────────────────────────────────────────────

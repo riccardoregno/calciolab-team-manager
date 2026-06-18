@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { loadBrandingAssets, drawBrandedHeader, drawBrandedFooters } from "./pdfBranding";
 
 const C = {
   dark:    [15,  23,  42],
@@ -36,9 +37,10 @@ function statusColor(status) {
   }
 }
 
-export function generateAvailabilityPDF({ players, teamName = "Squadra", date, prepRange, prepDays }) {
+export async function generateAvailabilityPDF({ players, teamName = "Squadra", date, prepRange, prepDays, teamLogoUrl }) {
+  const { calciolabLogo, teamLogo } = await loadBrandingAssets(teamLogoUrl);
+
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const W = doc.internal.pageSize.getWidth();
   const dateStr = date ? fmtDate(date) : fmtDate(new Date().toISOString());
   const hasPlannerData = Array.isArray(prepDays) && prepDays.length > 0;
 
@@ -46,19 +48,7 @@ export function generateAvailabilityPDF({ players, teamName = "Squadra", date, p
   const available = players.filter((p) => !UNAVAILABLE.includes(p.status || "Disponibile"));
   const unavailable = players.filter((p) => UNAVAILABLE.includes(p.status || "Disponibile"));
 
-  // ── Header ──────────────────────────────────────────────────────────────────
-  doc.setFillColor(...C.accent);
-  doc.rect(0, 0, W, 22, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.setTextColor(...C.white);
-  doc.text(teamName, 14, 10);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text("Report disponibilità", 14, 16);
-  doc.text(dateStr, W - 14, 16, { align: "right" });
-
-  let y = 30;
+  let y = drawBrandedHeader(doc, { teamName, subtitle: "Report disponibilità", dateStr, teamLogo });
 
   // ── Disponibili ────────────────────────────────────────────────────────────
   doc.setFont("helvetica", "bold");
@@ -203,16 +193,7 @@ export function generateAvailabilityPDF({ players, teamName = "Squadra", date, p
 
   }
 
-  // ── Footer ─────────────────────────────────────────────────────────────────
-  const pages = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pages; i++) {
-    doc.setPage(i);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(...C.muted);
-    doc.text(`CalcioLab · ${teamName} · ${dateStr}`, 14, 292);
-    doc.text(`${i}/${pages}`, W - 14, 292, { align: "right" });
-  }
+  drawBrandedFooters(doc, { teamName, dateStr, calciolabLogo });
 
   const safeName = teamName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
   doc.save(`disponibilita_${safeName}_${new Date().toISOString().slice(0, 10)}.pdf`);

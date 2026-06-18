@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { loadBrandingAssets } from "./pdfBranding";
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 const C = {
@@ -55,28 +56,30 @@ function sectionHeader(doc, title, y) {
 }
 
 // ─── Cover page ──────────────────────────────────────────────────────────────
-function drawCover(doc, { teamName, season, generatedAt }) {
+function drawCover(doc, { teamName, season, generatedAt, calciolabLogo, teamLogo }) {
   const W = doc.internal.pageSize.width;
   const H = doc.internal.pageSize.height;
 
-  // Background gradient via rect
   doc.setFillColor(...C.dark);
   doc.rect(0, 0, W, H, "F");
 
-  // Accent bar top
   doc.setFillColor(...C.accent);
   doc.rect(0, 0, W, 3, "F");
 
-  // Big icon
-  doc.setFontSize(52);
-  doc.setTextColor(...C.accentL);
-  doc.text("⚽", W / 2, 80, { align: "center" });
+  // CalcioLab logo or text
+  if (calciolabLogo) {
+    try { doc.addImage(calciolabLogo, "PNG", W / 2 - 22, 60, 44, 38); } catch { /* skip */ }
+  } else {
+    doc.setFontSize(52);
+    doc.setTextColor(...C.accentL);
+    doc.text("⚽", W / 2, 80, { align: "center" });
+  }
 
   // App name
   doc.setFontSize(28);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...C.white);
-  doc.text("CalcioLab", W / 2, 105, { align: "center" });
+  doc.text("CalcioLab", W / 2, 108, { align: "center" });
 
   // Title
   doc.setFontSize(14);
@@ -84,27 +87,33 @@ function drawCover(doc, { teamName, season, generatedAt }) {
   doc.setTextColor(...C.muted);
   doc.text("Report Stagione", W / 2, 118, { align: "center" });
 
-  // Team name box
-  doc.setFillColor(...C.mid);
-  doc.roundedRect(W / 2 - 55, 130, 110, 22, 4, 4, "F");
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...C.accentL);
-  doc.text(teamName || "La mia squadra", W / 2, 145, { align: "center" });
+  // Team logo + name box
+  if (teamLogo) {
+    try { doc.addImage(teamLogo, "PNG", W / 2 - 12, 126, 24, 24); } catch { /* skip */ }
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...C.white);
+    doc.text(teamName || "La mia squadra", W / 2, 160, { align: "center" });
+  } else {
+    doc.setFillColor(...C.mid);
+    doc.roundedRect(W / 2 - 55, 130, 110, 22, 4, 4, "F");
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...C.accentL);
+    doc.text(teamName || "La mia squadra", W / 2, 145, { align: "center" });
+  }
 
-  // Season + date
   if (season) {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...C.muted);
-    doc.text(`Stagione ${season}`, W / 2, 165, { align: "center" });
+    doc.text(`Stagione ${season}`, W / 2, 170, { align: "center" });
   }
 
   doc.setFontSize(9);
   doc.setTextColor(...C.border);
   doc.text(`Generato il ${generatedAt}`, W / 2, H - 20, { align: "center" });
 
-  // Accent bar bottom
   doc.setFillColor(...C.accent);
   doc.rect(0, H - 3, W, 3, "F");
 }
@@ -143,7 +152,10 @@ function addPageChrome(doc, teamName) {
  * @param {array}  opts.physicalTests
  * @param {object} opts.appSettings
  */
-export function generateSeasonReport({ players = [], sessions = [], matches = [], physicalTests = [], appSettings = {} }) {
+export async function generateSeasonReport({ players = [], sessions = [], matches = [], physicalTests = [], appSettings = {} }) {
+  const teamLogoUrl = appSettings?.workspaceProfile?.logo || null;
+  const { calciolabLogo, teamLogo } = await loadBrandingAssets(teamLogoUrl);
+
   const doc = new jsPDF({ unit: "mm", format: "a4", putOnlyUsedFonts: true });
   const W   = doc.internal.pageSize.width;
 
@@ -152,7 +164,7 @@ export function generateSeasonReport({ players = [], sessions = [], matches = []
   const generatedAt = new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" });
 
   // ── 1. Cover ──────────────────────────────────────────────────────────────
-  drawCover(doc, { teamName, season, generatedAt });
+  drawCover(doc, { teamName, season, generatedAt, calciolabLogo, teamLogo });
 
   // ── 2. Riepilogo stagione ─────────────────────────────────────────────────
   doc.addPage();
