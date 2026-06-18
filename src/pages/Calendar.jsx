@@ -75,7 +75,7 @@ function Calendar({
         ...base,
         type:       "Partita",
         opponent,
-        title:      `CalcioLab - ${opponent}`,
+        title:      opponent,
         location:   "Casa",
         formation:  "4-2-3-1",
         result:     "",
@@ -439,7 +439,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                           onClick={() => onSelect(event.id)}
                           style={{ flex: 1, cursor: "pointer", fontSize: 11, fontWeight: 700, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", border: "none", background: "transparent", padding: 0, textAlign: "left", minHeight: 0 }}
                         >
-                          {event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}{" "}{event.title}
+                          {event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}{" "}{event.type === "Partita" ? (event.opponent || event.title) : event.title}
                         </button>
                         {canManage && cell.events.length > 1 && (
                           <>
@@ -654,7 +654,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                               <span style={{ fontSize: 15 }}>{event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}</span>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <p style={{ margin: 0, fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                  {event.title}
+                                  {event.type === "Partita" ? (event.opponent || event.title) : event.title}
                                 </p>
                                 {(event.theme || event.opponent || event.notes) && (
                                   <p style={{ margin: 0, fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -682,7 +682,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                                   </div>
                                 )}
                               </div>
-                              <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 13 }}>{event.title}</p>
+                              <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 13 }}>{event.type === "Partita" ? (event.opponent || event.title) : event.title}</p>
                               {(event.theme || event.opponent || event.objective || event.notes) && (
                                 <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
                                   {event.theme || event.opponent || event.objective || event.notes}
@@ -928,7 +928,7 @@ function EventEditModal({ event, onSave, onClose }) {
     const updates = isMatch
       ? {
           opponent: form.title,
-          title:    `CalcioLab - ${form.title}`,
+          title:    form.title,
           date:     form.date,
           notes:    form.notes,
           location: form.location,
@@ -1214,7 +1214,7 @@ function DragPreviewChip({ event }) {
       <Badge tone={event.type === "Partita" ? "orange" : event.type === "Altro" ? "blue" : "green"}>
         {t(EVENT_TYPES.find((et) => et.value === event.type)?.labelKey ?? "pages.calendar.typeTraining")}
       </Badge>
-      <p style={{ margin: "4px 0 0" }}>{event.title}</p>
+      <p style={{ margin: "4px 0 0" }}>{event.type === "Partita" ? (event.opponent || event.title) : event.title}</p>
     </div>
   );
 }
