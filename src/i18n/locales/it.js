@@ -718,6 +718,8 @@ export const it = {
       gdprNote: "I tuoi dati sono trattati in conformità al GDPR (Reg. UE 2016/679). Non li condivideremo mai con terze parti senza il tuo consenso.",
       loading: "Attendere…",
       pleaseWait: "Attendere…",
+      preparingInviteAccess: "Preparazione invito...",
+      preparingInviteAccessDesc: "Stiamo separando questa registrazione dalla sessione già aperta.",
       sending: "Invio in corso…",
       sendingResend: "Invio in corso…",
       resendConfirmation: "Reinvia email di conferma",

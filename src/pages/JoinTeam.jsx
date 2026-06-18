@@ -11,6 +11,7 @@
  *    → Auth.jsx rileva il token e lo include nella registrazione
  */
 import { useEffect, useState } from "react";
+import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 const SUPPORT_EMAIL = "support@calciolab.org";
 
@@ -18,6 +19,7 @@ export default function JoinTeam() {
   const [token, setToken]                 = useState("");
   const [copied, setCopied]               = useState(false);
   const [supportCopied, setSupportCopied] = useState(false);
+  const [redirecting, setRedirecting]     = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -30,8 +32,18 @@ export default function JoinTeam() {
     }
   }, []);
 
-  function goTo(mode) {
-    window.location.href = `/?invite_mode=${mode}&token=${token}`;
+  async function goTo(mode) {
+    setRedirecting(true);
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session) {
+          await supabase.auth.signOut();
+        }
+      }
+    } finally {
+      window.location.href = `/?invite_mode=${mode}&token=${token}`;
+    }
   }
 
   function buildSupportHref() {
@@ -105,17 +117,17 @@ export default function JoinTeam() {
             type="button"
             style={s.btnPrimary}
             onClick={() => goTo("register")}
-            disabled={!token}
+            disabled={!token || redirecting}
           >
-            Crea account gratuito →
+            {redirecting ? "Preparazione..." : "Crea account gratuito →"}
           </button>
           <button
             type="button"
             style={s.btnGhost}
             onClick={() => goTo("login")}
-            disabled={!token}
+            disabled={!token || redirecting}
           >
-            Ho già un account — Accedi
+            {redirecting ? "Preparazione..." : "Ho già un account — Accedi"}
           </button>
         </div>
 

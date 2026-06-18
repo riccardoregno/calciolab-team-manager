@@ -718,6 +718,8 @@ export const en = {
       gdprNote: "Your data is processed in accordance with GDPR (EU Reg. 2016/679). We will never share it with third parties without your consent.",
       loading: "Please wait…",
       pleaseWait: "Please wait…",
+      preparingInviteAccess: "Preparing invite...",
+      preparingInviteAccessDesc: "We are separating this registration from the session already open in this browser.",
       sending: "Sending…",
       sendingResend: "Sending…",
       resendConfirmation: "Resend confirmation email",

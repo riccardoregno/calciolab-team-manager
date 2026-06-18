@@ -309,6 +309,10 @@ function App() {
 
   // Pagine pubbliche — accessibili senza autenticazione
   const _path = typeof window !== "undefined" ? window.location.pathname : "";
+  const _authParams = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search)
+    : new URLSearchParams();
+  const authRequested = _authParams.has("invite_mode") || _authParams.has("mode") || _authParams.has("token");
   if (_path === "/terms")                  return <BrowserRouter><Suspense fallback={null}><Terms /></Suspense></BrowserRouter>;
   if (_path === "/privacy")                return <BrowserRouter><Suspense fallback={null}><Privacy /></Suspense></BrowserRouter>;
   if (_path.startsWith("/join"))           return <Suspense fallback={null}><JoinTeam /></Suspense>;
@@ -330,16 +334,11 @@ function App() {
     );
   }
 
+  if (authRequested) {
+    return <Auth />;
+  }
+
   if (!auth.user) {
-    const unauthParams = typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search)
-      : new URLSearchParams();
-    const authRequested = unauthParams.has("invite_mode") || unauthParams.has("mode") || unauthParams.has("token");
-
-    if (authRequested) {
-      return <Auth />;
-    }
-
     // Landing pubblica su "/" — Auth su "/login" o con query mode=register
     if (_path === "/" || _path === "") {
       return (
