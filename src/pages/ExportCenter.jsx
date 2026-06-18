@@ -18,6 +18,7 @@ import { generateMatchReportPDF } from "../utils/generateMatchReportPDF";
 import { generateTrainingPDF } from "../utils/generateTrainingPDF";
 import { generateMatchDayPDF } from "../utils/generateMatchDayPDF";
 import { generatePlayerReportPDF } from "../utils/generatePlayerReportPDF";
+import { generateMicrocyclePDF } from "../utils/generateMicrocyclePDF";
 
 const EXPORT_TYPE_KEYS = [
   { id: "season",    labelKey: "pages.exportCenter.typeSeason",    descKey: "pages.exportCenter.typeSeasonDesc" },
@@ -84,8 +85,8 @@ export default function ExportCenter({
         await generatePlayerReportPDF({ player: selectedPlayer, sessions, matches, physicalTests, appSettings });
       } else if (type === "season") {
         await generateSeasonReport({ players, sessions, matches, physicalTests, appSettings });
-      } else {
-        window.print();
+      } else if (type === "microcycle") {
+        await generateMicrocyclePDF({ match: selectedMatch, sessions, gpsSessions, appSettings });
       }
     } finally {
       setTimeout(() => setGeneratingPdf(false), 800);
@@ -94,7 +95,7 @@ export default function ExportCenter({
 
   const canGeneratePdf = type === "training"
     ? Boolean(selectedSession)
-    : type === "matchday" || type === "postmatch"
+    : type === "matchday" || type === "postmatch" || type === "microcycle"
     ? Boolean(selectedMatch)
     : type === "player"
     ? Boolean(selectedPlayer)

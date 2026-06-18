@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, rateLimitedResponse } from "../_shared/rateLimit.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const FROM_EMAIL = Deno.env.get("EMAIL_FROM") ?? "CalcioLab <noreply@calciolab.org>";
@@ -31,6 +32,9 @@ Deno.serve(async (req) => {
     });
     const { data: authData, error: authError } = await authClient.auth.getUser();
     if (authError || !authData.user) return json({ error: "Utente non autenticato" }, 401);
+
+    const rlKey = `convocation:${authData.user.id}`;
+    if (!checkRateLimit(rlKey, 20, 60_000)) return rateLimitedResponse(rlKey, CORS);
 
     const payload = await req.json();
     const teamId = String(payload.teamId || "").trim();

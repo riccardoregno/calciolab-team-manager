@@ -61,7 +61,7 @@ export function finishBrandedPdf(doc, { teamName, dateStr, assets, filename, sav
 }
 
 export function sectionTitle(doc, title, y) {
-  ensureSpace(doc, y, 18);
+  y = ensureSpace(doc, y, 18);
   doc.setFillColor(...PDF_COLORS.blue);
   doc.roundedRect(14, y, 182, 8, 2, 2, "F");
   doc.setFont("helvetica", "bold");
@@ -79,7 +79,7 @@ export function keyValueGrid(doc, items, y, { columns = 4, rowHeight = 20 } = {}
 
   items.forEach((item, index) => {
     if (index > 0 && index % columns === 0) cursorY += rowHeight + gap;
-    ensureSpace(doc, cursorY, rowHeight + 8);
+    cursorY = ensureSpace(doc, cursorY, rowHeight + 8);
     const col = index % columns;
     const x = 14 + col * (width + gap);
     doc.setFillColor(248, 250, 252);
@@ -99,7 +99,7 @@ export function keyValueGrid(doc, items, y, { columns = 4, rowHeight = 20 } = {}
 }
 
 export function textBox(doc, label, value, x, y, w, h = 26) {
-  ensureSpace(doc, y, h + 8);
+  y = ensureSpace(doc, y, h + 8);
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(...PDF_COLORS.border);
   doc.roundedRect(x, y, w, h, 2, 2, "FD");
