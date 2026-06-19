@@ -155,6 +155,11 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards
             }}
           >
             {player.role || t("components.playerCard.noRole")}
+            {player.birthDate && (
+              <span style={{ fontWeight: 400, marginLeft: 6 }}>
+                · {new Date(player.birthDate).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })}
+              </span>
+            )}
           </p>
         </div>
 

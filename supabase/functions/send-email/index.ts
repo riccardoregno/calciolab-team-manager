@@ -74,71 +74,100 @@ function baseLayout(content: string, previewText = "") {
   const safePreview = previewText
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${previewText}</div>`
     : "";
-  return `<!doctype html>
+  return `<!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CalcioLab</title>
 </head>
-<body style="margin:0;background:#0b1118;font-family:Inter,Arial,sans-serif;color:#e5edf8;">
+<body style="margin:0;padding:0;background-color:#0f1115;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
 ${safePreview}
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b1118;padding:32px 16px;">
-  <tr>
-    <td align="center">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#111827;border:1px solid #223047;border-radius:18px;overflow:hidden;">
-        <tr>
-          <td style="padding:28px 28px 18px;border-bottom:1px solid #223047;">
-            <div style="font-size:24px;font-weight:900;color:#ffffff;letter-spacing:.2px;">CalcioLab</div>
-            <div style="margin-top:6px;font-size:13px;font-weight:700;color:#8fb4ff;">Coach Platform</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#0f1115;">
+  <tr><td align="center" style="padding:48px 16px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;">
+      <tr><td align="center" style="padding-bottom:40px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+          <td align="center" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8);border-radius:16px;width:56px;height:56px;">
+            <span style="display:block;color:#fff;font-size:22px;font-weight:800;line-height:56px;text-align:center;width:56px;">CL</span>
           </td>
-        </tr>
-        <tr>
-          <td style="padding:30px 28px;">
+          <td style="padding-left:14px;">
+            <span style="display:block;color:#fff;font-size:24px;font-weight:700;">CalcioLab</span>
+            <span style="display:block;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Team Manager</span>
+          </td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="background-color:#161a21;border-radius:20px;border:1px solid #1e2530;overflow:hidden;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <tr><td style="height:4px;background:linear-gradient(90deg,#0ea5e9,#38bdf8,#7dd3fc);border-radius:20px 20px 0 0;"></td></tr>
+        </table>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <tr><td style="padding:48px;">
             ${content}
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:18px 28px;background:#0f1724;border-top:1px solid #223047;font-size:12px;line-height:1.6;color:#73839a;">
-            Questa email e' stata generata per proteggere l'accesso al tuo account CalcioLab.
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:36px 24px 0;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <tr><td style="height:1px;background:#1e2530;padding-bottom:24px;"></td></tr>
+          <tr><td align="center" style="padding-top:24px;padding-bottom:12px;">
+            <p style="margin:0;font-size:12px;color:#334155;text-align:center;">CalcioLab</p>
+          </td></tr>
+          <tr><td align="center">
+            <p style="margin:0;font-size:12px;text-align:center;">
+              <a href="${APP_URL}/privacy" style="color:#38bdf8;text-decoration:none;">Privacy Policy</a>
+              <span style="color:#334155;padding:0 8px;">·</span>
+              <a href="${APP_URL}/terms" style="color:#38bdf8;text-decoration:none;">Termini di Servizio</a>
+            </p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
 </table>
 </body></html>`;
 }
 
 function btnPrimary(label: string, url: string) {
-  return `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:28px 0;">
-    <tr>
-      <td style="border-radius:12px;background:#3b82f6;">
-        <a href="${url}" style="display:inline-block;padding:14px 22px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:900;">${label}</a>
-      </td>
-    </tr>
+  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:32px;">
+    <tr><td style="border-radius:12px;background:linear-gradient(135deg,#0ea5e9,#38bdf8);box-shadow:0 4px 24px rgba(56,189,248,0.35);">
+      <a href="${url}" target="_blank" style="display:inline-block;padding:16px 40px;font-size:16px;font-weight:700;color:#fff;text-decoration:none;border-radius:12px;">${label}</a>
+    </td></tr>
   </table>`;
 }
 
 function h1(text: string) {
-  return `<h1 style="margin:0 0 12px;font-size:24px;font-weight:900;color:#ffffff;line-height:1.25;">${text}</h1>`;
+  return `<h1 style="margin:0 0 16px;font-size:28px;font-weight:700;color:#fff;line-height:1.25;">${text}</h1>`;
 }
 
 function p(text: string) {
-  return `<p style="margin:0 0 18px;font-size:15px;color:#b7c4d8;line-height:1.7;">${text}</p>`;
+  return `<p style="margin:0 0 12px;font-size:16px;color:#94a3b8;line-height:1.65;">${text}</p>`;
 }
 
 function divider() {
-  return `<div style="height:1px;background:#223047;margin:24px 0;"></div>`;
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:24px;">
+    <tr><td style="height:1px;background:#1e2530;"></td></tr>
+  </table>`;
 }
 
 function fallbackUrl(url: string) {
   return `
-    <p style="margin:0 0 12px;font-size:13px;line-height:1.6;color:#94a3b8;">
-      Se il pulsante non funziona, copia e incolla questo link nel browser:
-    </p>
-    <p style="margin:0;padding:12px;border-radius:10px;background:#0b1118;border:1px solid #26364f;font-size:12px;line-height:1.5;color:#9fb2cc;word-break:break-all;">${url}</p>
+    ${divider()}
+    <p style="margin:0 0 8px;font-size:13px;color:#64748b;">Se il pulsante non funziona, copia questo link nel browser:</p>
+    <p style="margin:0;font-size:13px;word-break:break-all;"><a href="${url}" style="color:#38bdf8;">${url}</a></p>
   `;
+}
+
+function infoBox(text: string) {
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr><td style="padding:0 48px 48px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+        <tr><td style="background:#0c1520;border:1px solid #1e2d3d;border-radius:12px;padding:20px 24px;">
+          <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">${text}</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>`;
 }
 
 /* ── Template: Welcome ───────────────────────────── */
