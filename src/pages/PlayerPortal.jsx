@@ -142,20 +142,30 @@ export default function PlayerPortal({
     navigate("/");
   }
 
-  if (invalidPlayerAccess && !playersLoading) {
-    // DEBUG TEMP
-    console.warn("[PlayerPortal] invalidPlayerAccess", { myPlayerId, playersLen: players.length, playerIds: players.map((p) => p.id) });
-    return (
-      <div style={ps.page}>
-        <PageHeader
-          title={t("pages.playerPortal.myArea")}
-          subtitle={t("pages.playerPortal.subtitlePlayer")}
-          action={(
-            <button onClick={handleLogout} style={ps.logoutBtn}>
-              Esci
-            </button>
-          )}
-        />
+  return (
+    <div style={ps.page}>
+      <PageHeader
+        title={isPlayerView ? t("pages.playerPortal.myArea") : t("pages.playerPortal.title")}
+        subtitle={
+          isPlayerView
+            ? t("pages.playerPortal.subtitlePlayer")
+            : t("pages.playerPortal.subtitle")
+        }
+        badge={portal.enabled ? t("pages.playerPortal.badgeActive") : t("pages.playerPortal.badgeOff")}
+        action={isPlayerView ? (
+          <button onClick={handleLogout} style={ps.logoutBtn}>
+            Esci
+          </button>
+        ) : null}
+      />
+
+      {isPlayerView && playersLoading ? (
+        <AppCard>
+          <div style={{ height: 120, display: "grid", placeItems: "center", color: "#64748b", fontSize: 14 }}>
+            Caricamento...
+          </div>
+        </AppCard>
+      ) : isPlayerView && invalidPlayerAccess ? (
         <AppCard>
           <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>🔗</div>
@@ -180,28 +190,7 @@ export default function PlayerPortal({
             </div>
           </div>
         </AppCard>
-      </div>
-    );
-  }
-
-  return (
-    <div style={ps.page}>
-      <PageHeader
-        title={isPlayerView ? t("pages.playerPortal.myArea") : t("pages.playerPortal.title")}
-        subtitle={
-          isPlayerView
-            ? t("pages.playerPortal.subtitlePlayer")
-            : t("pages.playerPortal.subtitle")
-        }
-        badge={portal.enabled ? t("pages.playerPortal.badgeActive") : t("pages.playerPortal.badgeOff")}
-        action={isPlayerView ? (
-          <button onClick={handleLogout} style={ps.logoutBtn}>
-            Esci
-          </button>
-        ) : null}
-      />
-
-      {isPlayerView ? (
+      ) : isPlayerView ? (
         <PlayerView
           selectedPlayer={selectedPlayer}
           summary={summary}
