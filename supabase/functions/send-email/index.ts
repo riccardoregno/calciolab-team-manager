@@ -267,7 +267,7 @@ function templateTeamInvite(
   const subject = `${inviterName} ti invita in ${teamName} su CalcioLab`;
   const html = baseLayout(`
     ${h1(`Invito staff per ${teamName}`)}
-    ${p(`<strong style="color:#ffffff;">${inviterName}</strong> ti ha invitato a unirti alla squadra <strong style="color:#ffffff;">${teamName}</strong> come <strong style="color:#ffffff;">${roleName}</strong>.`)}
+    ${p(`<strong style="color:#ffffff;">${inviterName}</strong> ti ha invitato a unirti allo staff di <strong style="color:#ffffff;">${teamName}</strong> su CalcioLab come <strong style="color:#ffffff;">${roleName}</strong>.`)}
     ${btnPrimary("Accetta invito", inviteUrl)}
     ${fallbackUrl(inviteUrl)}
   `, `${inviterName} ti invita in ${teamName} — accetta l'invito`);
@@ -283,7 +283,7 @@ function templatePlayerInvite(
   const subject = `Attiva il tuo accesso al portale giocatore di ${teamName}`;
   const html = baseLayout(`
     ${h1("Attiva il tuo portale giocatore")}
-    ${p(`Ciao ${playerName}, sei stato invitato dallo staff di <strong style="color:#ffffff;">${teamName}</strong>. Attiva il tuo account per accedere alla tua area riservata.`)}
+    ${p(`Ciao ${playerName}, <strong style="color:#ffffff;">${teamName}</strong> ti ha invitato ad accedere al portale giocatore su CalcioLab. Da qui potrai consultare convocazioni, disponibilita' e comunicazioni dello staff.`)}
     ${btnPrimary("Attiva accesso", inviteUrl)}
     ${fallbackUrl(inviteUrl)}
   `, `${teamName} ti invita ad attivare il portale giocatore`);
