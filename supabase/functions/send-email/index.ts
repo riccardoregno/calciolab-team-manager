@@ -100,7 +100,7 @@ ${safePreview}
         </tr>
         <tr>
           <td style="padding:18px 28px;background:#0f1724;border-top:1px solid #223047;font-size:12px;line-height:1.6;color:#73839a;">
-            Questa email e' stata generata da CalcioLab. Se non aspettavi questo messaggio, puoi ignorarlo.
+            Questa email e' stata generata per proteggere l'accesso al tuo account CalcioLab.
           </td>
         </tr>
       </table>
@@ -238,12 +238,9 @@ function templateTeamInvite(
   const subject = `${inviterName} ti invita in ${teamName} su CalcioLab`;
   const html = baseLayout(`
     ${h1(`Invito staff per ${teamName}`)}
-    ${p(`<strong style="color:#ffffff;">${inviterName}</strong> ti ha invitato a unirti alla squadra <strong style="color:#ffffff;">${teamName}</strong> su CalcioLab come <strong style="color:#ffffff;">${roleName}</strong>.`)}
-    ${p("Accetta l'invito per accedere al workspace e collaborare alla gestione della stagione.")}
+    ${p(`<strong style="color:#ffffff;">${inviterName}</strong> ti ha invitato a unirti alla squadra <strong style="color:#ffffff;">${teamName}</strong> come <strong style="color:#ffffff;">${roleName}</strong>.`)}
     ${btnPrimary("Accetta invito", inviteUrl)}
     ${fallbackUrl(inviteUrl)}
-    ${divider()}
-    ${p("Se non aspettavi questo invito, puoi ignorare questa email.")}
   `, `${inviterName} ti invita in ${teamName} — accetta l'invito`);
   return { subject, html };
 }
@@ -257,12 +254,9 @@ function templatePlayerInvite(
   const subject = `Attiva il tuo accesso al portale giocatore di ${teamName}`;
   const html = baseLayout(`
     ${h1("Attiva il tuo portale giocatore")}
-    ${p(`Ciao ${playerName}, lo staff di <strong style="color:#ffffff;">${teamName}</strong> ti ha invitato ad attivare il tuo accesso personale a CalcioLab.`)}
-    ${p("Nel portale potrai consultare convocazioni, disponibilita', programmi personalizzati e comunicazioni dello staff.")}
+    ${p(`Ciao ${playerName}, sei stato invitato dallo staff di <strong style="color:#ffffff;">${teamName}</strong>. Attiva il tuo account per accedere alla tua area riservata.`)}
     ${btnPrimary("Attiva accesso", inviteUrl)}
     ${fallbackUrl(inviteUrl)}
-    ${divider()}
-    ${p("Se non aspettavi questo invito, puoi ignorare questa email.")}
   `, `${teamName} ti invita ad attivare il portale giocatore`);
   return { subject, html };
 }
