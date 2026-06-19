@@ -1064,6 +1064,7 @@ export const en = {
         invitePortal:      "Invite to portal",
         invitePortalSending: "Sending...",
         invitePortalPending: "Invite sent",
+        resendPortalInvite: "Resend email",
         invitePortalNoEmail: "Set the player's email to send the invite",
         cancelPortalInvite: "Cancel invite",
         portalAccessActive: "Player access active",

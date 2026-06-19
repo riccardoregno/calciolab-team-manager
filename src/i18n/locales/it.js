@@ -1064,6 +1064,7 @@ export const it = {
         invitePortal:      "Invita al portale",
         invitePortalSending: "Invio in corso...",
         invitePortalPending: "Invito inviato",
+        resendPortalInvite: "Reinvia email",
         invitePortalNoEmail: "Imposta l'email del giocatore per inviare l'invito",
         cancelPortalInvite: "Annulla invito",
         portalAccessActive: "Accesso giocatore attivo",

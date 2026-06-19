@@ -568,9 +568,13 @@ function PlayerDetail({
   }
 
   const playerSettings = normalizeAppSettings(appSettings) || {};
-  const portalInvitePending = (playerSettings.pendingInvites || []).some(
+  const portalPendingInvite = (playerSettings.pendingInvites || []).find(
     (invite) => String(invite.playerId) === String(player.id) && invite.role === "player"
   );
+  const portalInvitePending = Boolean(portalPendingInvite);
+  const pendingPortalInviteLink = portalPendingInvite?.token && typeof window !== "undefined"
+    ? `${window.location.origin}/join?token=${portalPendingInvite.token}`
+    : "";
 
   async function invitePlayerToPortal() {
     if (!canManage) return;
@@ -764,7 +768,7 @@ function PlayerDetail({
               onInvitePortal={canManage ? invitePlayerToPortal : undefined}
               invitingPortal={invitingPortal}
               portalInvitePending={portalInvitePending}
-              portalInviteLink={portalAccountId ? "" : portalInviteLink}
+              portalInviteLink={portalAccountId ? "" : portalInviteLink || pendingPortalInviteLink}
               portalAccountLinked={Boolean(portalAccountId)}
               portalActivity={portalActivity}
               portalActivityNow={portalActivityNow}

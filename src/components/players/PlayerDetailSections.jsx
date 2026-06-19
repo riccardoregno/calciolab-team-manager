@@ -283,6 +283,18 @@ export function PlayerProfileTab({
             {portalInviteLink}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
+            {onInvitePortal && (
+              <button
+                type="button"
+                onClick={onInvitePortal}
+                disabled={invitingPortal || !form.email}
+                style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid rgba(96,165,250,0.30)", background: "rgba(59,130,246,0.14)", color: "#93c5fd", fontSize: 12, fontWeight: 700, cursor: invitingPortal || !form.email ? "not-allowed" : "pointer", opacity: invitingPortal || !form.email ? 0.65 : 1 }}
+              >
+                {invitingPortal
+                  ? t("pages.playerDetail.profile.invitePortalSending")
+                  : t("pages.playerDetail.profile.resendPortalInvite")}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
