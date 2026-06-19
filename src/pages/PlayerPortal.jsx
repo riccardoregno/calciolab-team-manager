@@ -143,6 +143,8 @@ export default function PlayerPortal({
   }
 
   if (invalidPlayerAccess && !playersLoading) {
+    // DEBUG TEMP
+    console.warn("[PlayerPortal] invalidPlayerAccess", { myPlayerId, playersLen: players.length, playerIds: players.map((p) => p.id) });
     return (
       <div style={ps.page}>
         <PageHeader
