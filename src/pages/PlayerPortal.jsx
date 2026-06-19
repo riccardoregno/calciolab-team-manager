@@ -35,6 +35,7 @@ export default function PlayerPortal({
   teamId = null,
   myPlayerId = null,
   supabaseRole = null,
+  playersLoading = false,
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -142,7 +143,7 @@ export default function PlayerPortal({
     navigate("/");
   }
 
-  if (invalidPlayerAccess) {
+  if (invalidPlayerAccess && !playersLoading) {
     return (
       <div style={ps.page}>
         <PageHeader

@@ -803,6 +803,9 @@ function App() {
               <Route
                 path="/player-portal"
                 element={
+                  // Mentre il team sta caricando non mostriamo nulla per evitare il
+                  // flash del branch coach (auth.team=null → role≠"player" → vista coach).
+                  auth.teamLoading ? null :
                   gate(["owner", "headCoach", "director", "player"],
                     // I player invitati bypassano la FeatureGate: l'accesso al portale
                     // è garantito dall'invito, indipendentemente dal piano del team.
@@ -818,6 +821,7 @@ function App() {
                         teamId={auth.team?.id}
                         myPlayerId={auth.team?.playerId || null}
                         supabaseRole="player"
+                        playersLoading={loading}
                       />
                     ) : (
                       <FeatureGate featureKey="playerPortal" appSettings={previewAppSettings}>
