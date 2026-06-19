@@ -139,6 +139,10 @@ function formatSyncAge(iso, t) {
   });
 }
 
+// React Router v6 chiama cloneElement() sull'element prop della Route,
+// quindi null causa un crash. Questo componente ritorna null in modo sicuro.
+function Blank() { return null; }
+
 function App() {
   const { t } = useTranslation();
   const auth = useAuth();
@@ -585,7 +589,8 @@ function App() {
               <Route
                 path="/"
                 element={
-                  auth.team?.role === "player" ? (
+                  (auth.teamLoading || !auth.team) ? <Blank /> :
+                  auth.team.role === "player" ? (
                     <Navigate to="/player-portal" replace />
                   ) : (
                     gate(allRoles, <Dashboard
@@ -803,9 +808,7 @@ function App() {
               <Route
                 path="/player-portal"
                 element={
-                  // Aspetta che team sia risolto prima di scegliere il branch:
-                  // auth.team=null o teamLoading=true → entrambi causano il flash coach.
-                  (auth.teamLoading || !auth.team) ? null :
+                  (auth.teamLoading || !auth.team) ? <Blank /> :
                   gate(["owner", "headCoach", "director", "player"],
                     // I player invitati bypassano la FeatureGate: l'accesso al portale
                     // è garantito dall'invito, indipendentemente dal piano del team.
