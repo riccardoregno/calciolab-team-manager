@@ -7,6 +7,11 @@ import { useTranslation } from "../i18n";
 const STATS_KEYS = ["activeTeams", "plannedSessions", "staffSatisfaction"];
 const STATS_VALUES = ["120+", "4.8k", "98%"];
 
+function getAuthRedirectUrl(path = "/") {
+  if (typeof window === "undefined") return undefined;
+  return `${window.location.origin}${path}`;
+}
+
 /* ─── Auth ──────────────────────────────────────────────────── */
 function Auth() {
   const { t } = useTranslation();
@@ -95,7 +100,11 @@ function Auth() {
     if (authUnavailable) { setFeedback({ type: "error", text: t("pages.auth.supabaseNotConfigured") }); return; }
     setResendLoading(true);
     try {
-      const { error } = await supabase.auth.resend({ type: "signup", email });
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: getAuthRedirectUrl("/") },
+      });
       if (error) setFeedback({ type: "error", text: error.message });
       else {
         setFeedback({ type: "ok", text: t("pages.auth.confirmEmailSent") });
@@ -170,6 +179,7 @@ function Auth() {
           email,
           password,
           options: {
+            emailRedirectTo: getAuthRedirectUrl("/"),
             data: {
               first_name:        firstName,
               last_name:         lastName,
