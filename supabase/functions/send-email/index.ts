@@ -52,7 +52,17 @@ function isAppUrl(value?: string) {
   try {
     const expected = new URL(APP_URL);
     const actual = new URL(value);
-    return actual.origin === expected.origin;
+    const allowedOrigins = new Set([expected.origin]);
+
+    if (expected.hostname === "calciolab.org") {
+      allowedOrigins.add(`${expected.protocol}//www.calciolab.org`);
+    }
+
+    if (expected.hostname === "www.calciolab.org") {
+      allowedOrigins.add(`${expected.protocol}//calciolab.org`);
+    }
+
+    return allowedOrigins.has(actual.origin);
   } catch {
     return false;
   }
