@@ -62,7 +62,8 @@ function isAppUrl(value?: string) {
       allowedOrigins.add(`${expected.protocol}//calciolab.org`);
     }
 
-    return allowedOrigins.has(actual.origin);
+    const isLocalDev = actual.hostname === "localhost" || actual.hostname === "127.0.0.1";
+    return allowedOrigins.has(actual.origin) || isLocalDev;
   } catch {
     return false;
   }
@@ -389,6 +390,7 @@ Deno.serve(async (req: Request) => {
 
   // ── Validazione email destinatario ────────────────────────────────────────
   if (!EMAIL_RE.test(String(to))) {
+    console.warn("[send-email] invalid recipient", { to });
     return json({ error: "Indirizzo email non valido" }, 400);
   }
 
@@ -410,9 +412,19 @@ Deno.serve(async (req: Request) => {
   }
 
   if ((type === "team_invite" || type === "player_invite") && !isAppUrl(body.inviteUrl)) {
+    console.warn("[send-email] invalid invite url", {
+      type,
+      inviteUrl: body.inviteUrl,
+      appUrl: APP_URL,
+    });
     return json({ error: "URL non valido" }, 400);
   }
   if (type === "match_convocation" && !isAppUrl(body.rsvpUrl)) {
+    console.warn("[send-email] invalid rsvp url", {
+      type,
+      rsvpUrl: body.rsvpUrl,
+      appUrl: APP_URL,
+    });
     return json({ error: "URL non valido" }, 400);
   }
 
