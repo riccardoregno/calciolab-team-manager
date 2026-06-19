@@ -71,72 +71,74 @@ function isAppUrl(value?: string) {
 
 /* ─── HTML Templates ────────────────────────────────────────────── */
 function baseLayout(content: string, previewText = "") {
-  return `<!DOCTYPE html>
+  const safePreview = previewText
+    ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${previewText}</div>`
+    : "";
+  return `<!doctype html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CalcioLab</title>
-${previewText ? `<span style="display:none;max-height:0;overflow:hidden;">${previewText}</span>` : ""}
-<style>
-  body { margin:0; padding:0; background:#080b12; font-family:Inter,Arial,sans-serif; color:#e2e8f0; }
-  a { color:#60a5fa; text-decoration:none; }
-</style>
 </head>
-<body>
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#080b12; padding:40px 0;">
-  <tr><td align="center">
-    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-      <!-- Header -->
-      <tr><td style="padding:0 0 32px;">
-        <table cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="width:36px;height:36px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:9px;text-align:center;vertical-align:middle;">
-              <span style="font-size:18px;line-height:36px;">⚡</span>
-            </td>
-            <td style="padding-left:10px;font-size:18px;font-weight:900;color:white;">CalcioLab</td>
-          </tr>
-        </table>
-      </td></tr>
-
-      <!-- Content -->
-      <tr><td style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:36px 40px;">
-        ${content}
-      </td></tr>
-
-      <!-- Footer -->
-      <tr><td style="padding:28px 0 0;text-align:center;">
-        <p style="margin:0 0 8px;font-size:12px;color:#334155;">
-          © ${new Date().getFullYear()} CalcioLab — La piattaforma per allenatori di calcio
-        </p>
-        <p style="margin:0;font-size:12px;">
-          <a href="${APP_URL}/terms" style="color:#475569;">Termini</a>
-          &nbsp;·&nbsp;
-          <a href="${APP_URL}/privacy" style="color:#475569;">Privacy</a>
-          &nbsp;·&nbsp;
-          <a href="${APP_URL}" style="color:#475569;">calciolab.org</a>
-        </p>
-      </td></tr>
-    </table>
-  </td></tr>
+<body style="margin:0;background:#0b1118;font-family:Inter,Arial,sans-serif;color:#e5edf8;">
+${safePreview}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b1118;padding:32px 16px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#111827;border:1px solid #223047;border-radius:18px;overflow:hidden;">
+        <tr>
+          <td style="padding:28px 28px 18px;border-bottom:1px solid #223047;">
+            <div style="font-size:24px;font-weight:900;color:#ffffff;letter-spacing:.2px;">CalcioLab</div>
+            <div style="margin-top:6px;font-size:13px;font-weight:700;color:#8fb4ff;">Coach Platform</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:30px 28px;">
+            ${content}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:18px 28px;background:#0f1724;border-top:1px solid #223047;font-size:12px;line-height:1.6;color:#73839a;">
+            Questa email e' stata generata da CalcioLab. Se non aspettavi questo messaggio, puoi ignorarlo.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
 </table>
 </body></html>`;
 }
 
 function btnPrimary(label: string, url: string) {
-  return `<a href="${url}" style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:white;font-size:15px;font-weight:800;padding:14px 32px;border-radius:12px;text-decoration:none;margin-top:24px;">${label}</a>`;
+  return `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:28px 0;">
+    <tr>
+      <td style="border-radius:12px;background:#3b82f6;">
+        <a href="${url}" style="display:inline-block;padding:14px 22px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:900;">${label}</a>
+      </td>
+    </tr>
+  </table>`;
 }
 
 function h1(text: string) {
-  return `<h1 style="margin:0 0 16px;font-size:26px;font-weight:900;color:white;line-height:1.2;">${text}</h1>`;
+  return `<h1 style="margin:0 0 12px;font-size:24px;font-weight:900;color:#ffffff;line-height:1.25;">${text}</h1>`;
 }
 
 function p(text: string) {
-  return `<p style="margin:0 0 14px;font-size:15px;color:#94a3b8;line-height:1.7;">${text}</p>`;
+  return `<p style="margin:0 0 18px;font-size:15px;color:#b7c4d8;line-height:1.7;">${text}</p>`;
 }
 
 function divider() {
-  return `<hr style="border:none;border-top:1px solid rgba(255,255,255,0.07);margin:24px 0;">`;
+  return `<div style="height:1px;background:#223047;margin:24px 0;"></div>`;
+}
+
+function fallbackUrl(url: string) {
+  return `
+    <p style="margin:0 0 12px;font-size:13px;line-height:1.6;color:#94a3b8;">
+      Se il pulsante non funziona, copia e incolla questo link nel browser:
+    </p>
+    <p style="margin:0;padding:12px;border-radius:10px;background:#0b1118;border:1px solid #26364f;font-size:12px;line-height:1.5;color:#9fb2cc;word-break:break-all;">${url}</p>
+  `;
 }
 
 /* ── Template: Welcome ───────────────────────────── */
@@ -235,13 +237,11 @@ function templateTeamInvite(
 ) {
   const subject = `${inviterName} ti invita in ${teamName} su CalcioLab`;
   const html = baseLayout(`
-    ${h1(`Sei stato invitato in <span style="color:#60a5fa;">${teamName}</span>! 🏆`)}
-    ${p(`<strong style="color:white;">${inviterName}</strong> ti ha invitato a unirti alla squadra <strong style="color:white;">${teamName}</strong> su CalcioLab come <strong style="color:white;">${roleName}</strong>.`)}
-    ${p("CalcioLab è la piattaforma completa per la gestione di squadre di calcio: allenamenti, partite, statistiche, tattiche e molto altro.")}
-    ${btnPrimary("Accetta l'invito →", inviteUrl)}
-    ${divider()}
-    ${p("Se non riesci a cliccare il bottone, copia e incolla questo link nel browser:")}
-    <p style="margin:0;font-size:12px;color:#475569;word-break:break-all;">${inviteUrl}</p>
+    ${h1(`Invito staff per ${teamName}`)}
+    ${p(`<strong style="color:#ffffff;">${inviterName}</strong> ti ha invitato a unirti alla squadra <strong style="color:#ffffff;">${teamName}</strong> su CalcioLab come <strong style="color:#ffffff;">${roleName}</strong>.`)}
+    ${p("Accetta l'invito per accedere al workspace e collaborare alla gestione della stagione.")}
+    ${btnPrimary("Accetta invito", inviteUrl)}
+    ${fallbackUrl(inviteUrl)}
     ${divider()}
     ${p("Se non aspettavi questo invito, puoi ignorare questa email.")}
   `, `${inviterName} ti invita in ${teamName} — accetta l'invito`);
@@ -256,13 +256,11 @@ function templatePlayerInvite(
 ) {
   const subject = `Attiva il tuo accesso al portale giocatore di ${teamName}`;
   const html = baseLayout(`
-    ${h1(`Benvenuto nel portale giocatore di <span style="color:#60a5fa;">${teamName}</span>! ⚽`)}
-    ${p(`Ciao ${playerName}, lo staff di <strong style="color:white;">${teamName}</strong> ti ha invitato ad attivare il tuo accesso personale a CalcioLab.`)}
-    ${p("Dal portale giocatore potrai consultare le tue convocazioni, i tuoi obiettivi e i programmi personalizzati assegnati dallo staff.")}
-    ${btnPrimary("Attiva il tuo accesso →", inviteUrl)}
-    ${divider()}
-    ${p("Se non riesci a cliccare il bottone, copia e incolla questo link nel browser:")}
-    <p style="margin:0;font-size:12px;color:#475569;word-break:break-all;">${inviteUrl}</p>
+    ${h1("Attiva il tuo portale giocatore")}
+    ${p(`Ciao ${playerName}, lo staff di <strong style="color:#ffffff;">${teamName}</strong> ti ha invitato ad attivare il tuo accesso personale a CalcioLab.`)}
+    ${p("Nel portale potrai consultare convocazioni, disponibilita', programmi personalizzati e comunicazioni dello staff.")}
+    ${btnPrimary("Attiva accesso", inviteUrl)}
+    ${fallbackUrl(inviteUrl)}
     ${divider()}
     ${p("Se non aspettavi questo invito, puoi ignorare questa email.")}
   `, `${teamName} ti invita ad attivare il portale giocatore`);
