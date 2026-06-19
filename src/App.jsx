@@ -585,8 +585,7 @@ function App() {
               <Route
                 path="/"
                 element={
-                  (auth.teamLoading || !auth.team) ? null :
-                  auth.team.role === "player" ? (
+                  auth.team?.role === "player" ? (
                     <Navigate to="/player-portal" replace />
                   ) : (
                     gate(allRoles, <Dashboard
