@@ -75,16 +75,16 @@ function baseLayout(content: string, previewText = "") {
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${previewText}</div>`
     : "";
   return `<!DOCTYPE html>
-<html lang="it">
+<html lang="it" style="background-color:#0f1115;">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CalcioLab</title>
 </head>
-<body style="margin:0;padding:0;background-color:#0f1115;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+<body bgcolor="#0f1115" style="margin:0;padding:0;background-color:#0f1115;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
 ${safePreview}
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#0f1115;">
-  <tr><td align="center" style="padding:48px 16px;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#0f1115" style="background-color:#0f1115;">
+  <tr><td align="center" bgcolor="#0f1115" style="padding:48px 16px;background-color:#0f1115;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;">
       <tr><td align="center" style="padding-bottom:40px;">
         <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
@@ -97,7 +97,7 @@ ${safePreview}
           </td>
         </tr></table>
       </td></tr>
-      <tr><td style="background-color:#161a21;border-radius:20px;border:1px solid #1e2530;overflow:hidden;">
+      <tr><td bgcolor="#161a21" style="background-color:#161a21;border-radius:20px;border:1px solid #1e2530;overflow:hidden;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
           <tr><td style="height:4px;background:linear-gradient(90deg,#0ea5e9,#38bdf8,#7dd3fc);border-radius:20px 20px 0 0;"></td></tr>
         </table>
