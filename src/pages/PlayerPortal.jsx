@@ -34,13 +34,14 @@ export default function PlayerPortal({
   setAppSettings,
   teamId = null,
   myPlayerId = null,
+  supabaseRole = null,
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const settings     = normalizeAppSettings(appSettings);
   const portal       = settings.playerPortal;
   const comms        = settings.communications || [];
-  const currentRole  = getCurrentUserRole(settings);
+  const currentRole  = supabaseRole || getCurrentUserRole(settings);
   const isPlayerView = currentRole === "player";
 
   const [selectedPlayerId, setSelectedPlayerId] = useState("");

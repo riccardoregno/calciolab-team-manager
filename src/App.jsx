@@ -480,7 +480,7 @@ function App() {
   })();
 
   function gate(allowedRoles, children, featureKey = null) {
-    if (auth.team?.role === "player") {
+    if (auth.team?.role === "player" && !allowedRoles.includes("player")) {
       return <Navigate to="/player-portal" replace />;
     }
     return (
@@ -817,6 +817,7 @@ function App() {
                         setAppSettings={setAppSettings}
                         teamId={auth.team?.id}
                         myPlayerId={auth.team?.playerId || null}
+                        supabaseRole="player"
                       />
                     ) : (
                       <FeatureGate featureKey="playerPortal" appSettings={previewAppSettings}>
@@ -829,6 +830,7 @@ function App() {
                           setAppSettings={setAppSettings}
                           teamId={auth.team?.id}
                           myPlayerId={null}
+                          supabaseRole={auth.team?.role || null}
                         />
                       </FeatureGate>
                     ),
