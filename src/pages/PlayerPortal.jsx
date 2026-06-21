@@ -211,6 +211,8 @@ export default function PlayerPortal({
           isMobile={isMobile}
           teamId={teamId}
           myPlayerId={myPlayerId}
+          onUpdatePortal={updatePortal}
+          myPrefs={portal.playerPrefs?.[myPlayerId] || {}}
         />
       ) : (
         <StaffView
@@ -388,11 +390,14 @@ function PlayerView({
   nextEvents, myConvocations,
   players, portal, comms, physicalTests, sessions = [], matches = [],
   activeProgram, activeGoal, activeNote, isMobile,
-  teamId, myPlayerId,
+  teamId, myPlayerId, onUpdatePortal, myPrefs = {},
 }) {
   const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState("home");
+  const today = new Date();
+  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calMonth, setCalMonth] = useState(today.getMonth());
   const [myMatchStats, setMyMatchStats] = useState(null); // null = non ancora caricato
   const [rsvpMap, setRsvpMap] = useState({});
   const [rpeMap, setRpeMap] = useState({});    // eventId → rpe record
@@ -534,6 +539,8 @@ function PlayerView({
     { id: "home",          label: "Home",          icon: "🏠" },
     { id: "convocazioni",  label: "Convocazioni",  icon: "📅", badge: upcoming.length || null },
     { id: "statistiche",   label: "Statistiche",   icon: "📊" },
+    { id: "calendario",    label: "Calendario",    icon: "📆" },
+    { id: "profilo",       label: "Profilo",       icon: "👤" },
     { id: "fisico",        label: "Fisico",        icon: "💪" },
     { id: "medico",        label: "Medico",        icon: "🩺", badge: activeInjuries.length || null },
     { id: "comunicazioni", label: "Comunicazioni", icon: "📢", badge: comms.length || null },
@@ -996,6 +1003,35 @@ function PlayerView({
               </div>
             )}
           </AppCard>
+        )}
+
+        {/* CALENDARIO */}
+        {activeTab === "calendario" && (
+          <CalendarioTab
+            year={calYear}
+            month={calMonth}
+            onPrev={() => {
+              if (calMonth === 0) { setCalYear((y) => y - 1); setCalMonth(11); }
+              else setCalMonth((m) => m - 1);
+            }}
+            onNext={() => {
+              if (calMonth === 11) { setCalYear((y) => y + 1); setCalMonth(0); }
+              else setCalMonth((m) => m + 1);
+            }}
+            sessions={sessions}
+            myConvocations={myConvocations}
+          />
+        )}
+
+        {/* PROFILO / PREFERENZE TATTICHE */}
+        {activeTab === "profilo" && (
+          <ProfiloTab
+            selectedPlayer={selectedPlayer}
+            myPrefs={myPrefs}
+            portal={portal}
+            myPlayerId={myPlayerId}
+            onUpdatePortal={onUpdatePortal}
+          />
         )}
       </div>
     </div>
@@ -1819,6 +1855,252 @@ function todayStart() { const d = new Date(); d.setHours(0,0,0,0); return d; }
 // ─────────────────────────────────────────────
 // Styles
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Tab Calendario
+// ─────────────────────────────────────────────
+const CAL_MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+const CAL_DAYS   = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
+
+function CalendarioTab({ year, month, onPrev, onNext, sessions, myConvocations }) {
+  const [selectedDay, setSelectedDay] = useState(null);
+
+  const monthStr    = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startDow    = (new Date(year, month, 1).getDay() + 6) % 7; // 0=Mon
+  const todayStr    = new Date().toISOString().slice(0, 10);
+
+  // eventMap: "dd" → [{...event, _type}]
+  const eventMap = {};
+  function pushEvent(e, type) {
+    if (!e.date?.startsWith(monthStr)) return;
+    const dd = e.date.slice(8, 10);
+    if (!eventMap[dd]) eventMap[dd] = [];
+    eventMap[dd].push({ ...e, _type: type });
+  }
+  sessions.forEach((s) => pushEvent(s, "session"));
+  myConvocations.forEach((m) => pushEvent(m, "match"));
+
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const selectedEvents = selectedDay
+    ? (eventMap[String(selectedDay).padStart(2, "0")] || [])
+    : [];
+
+  const navBtn = {
+    background: "none", border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: 8, color: "#94a3b8", cursor: "pointer",
+    padding: "6px 14px", fontSize: 18, lineHeight: 1,
+  };
+
+  return (
+    <AppCard>
+      {/* Navigazione mese */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <button onClick={onPrev} style={navBtn}>‹</button>
+        <span style={{ fontWeight: 800, fontSize: 16, color: "#f8fafc" }}>{CAL_MONTHS[month]} {year}</span>
+        <button onClick={onNext} style={navBtn}>›</button>
+      </div>
+
+      {/* Intestazione giorni */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 4 }}>
+        {CAL_DAYS.map((d) => (
+          <div key={d} style={{ textAlign: "center", fontSize: 10, fontWeight: 800, color: "#475569", textTransform: "uppercase", padding: "4px 0" }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Griglia giorni */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
+        {cells.map((day, i) => {
+          if (day === null) return <div key={`e${i}`} />;
+          const dd          = String(day).padStart(2, "0");
+          const dateStr     = `${monthStr}-${dd}`;
+          const dayEvents   = eventMap[dd] || [];
+          const isToday     = dateStr === todayStr;
+          const isSelected  = day === selectedDay;
+          const hasMatch    = dayEvents.some((e) => e._type === "match");
+          const hasSession  = dayEvents.some((e) => e._type === "session");
+          return (
+            <button
+              key={day}
+              onClick={() => setSelectedDay(dayEvents.length ? (day === selectedDay ? null : day) : null)}
+              style={{
+                padding: "8px 4px 6px", borderRadius: 10,
+                border: isSelected
+                  ? "1px solid rgba(56,189,248,0.55)"
+                  : isToday
+                  ? "1px solid rgba(56,189,248,0.28)"
+                  : "1px solid transparent",
+                background: isSelected
+                  ? "rgba(56,189,248,0.13)"
+                  : isToday
+                  ? "rgba(56,189,248,0.06)"
+                  : "transparent",
+                cursor: dayEvents.length ? "pointer" : "default",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: isToday ? 900 : 500, color: isToday ? "#38bdf8" : "#cbd5e1" }}>{day}</span>
+              {(hasMatch || hasSession) && (
+                <div style={{ display: "flex", gap: 2 }}>
+                  {hasMatch   && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#38bdf8" }} />}
+                  {hasSession && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80" }} />}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Legenda */}
+      <div style={{ display: "flex", gap: 16, marginTop: 14, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#38bdf8" }} />
+          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>Partita</span>
+        </div>
+        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80" }} />
+          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>Allenamento</span>
+        </div>
+      </div>
+
+      {/* Dettaglio giorno */}
+      {selectedDay && selectedEvents.length > 0 && (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>
+            {String(selectedDay).padStart(2, "0")} {CAL_MONTHS[month]}
+          </p>
+          <div style={{ display: "grid", gap: 8 }}>
+            {selectedEvents.map((e, i) => (
+              <div key={i} style={{
+                padding: "10px 14px", borderRadius: 10,
+                background: e._type === "match" ? "rgba(56,189,248,0.08)" : "rgba(34,197,94,0.08)",
+                border: `1px solid ${e._type === "match" ? "rgba(56,189,248,0.22)" : "rgba(34,197,94,0.22)"}`,
+              }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 18, lineHeight: 1.3 }}>{e._type === "match" ? "⚽" : "🏃"}</span>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>
+                      {e._type === "match"
+                        ? `vs ${e.opponent || e.title || "Partita"}`
+                        : (e.title || "Allenamento")}
+                    </p>
+                    {e.location && <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{e.location}</p>}
+                    {e._type === "match" && e.convocazione?.details?.matchTime && (
+                      <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>⏰ {e.convocazione.details.matchTime}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </AppCard>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Tab Profilo / Preferenze tattiche
+// ─────────────────────────────────────────────
+const PREF_ROLES = ["Portiere","Difensore","Terzino","Centrocampista","Mezzala","Trequartista","Ala","Prima Punta","Seconda Punta","Attaccante"];
+const PREF_FEET  = ["Dx","Sinistro","Entrambi"];
+
+function ProfiloTab({ selectedPlayer, myPrefs, portal, myPlayerId, onUpdatePortal }) {
+  const [prefRole,      setPrefRole]      = useState(myPrefs.preferredRole  || "");
+  const [prefSecondary, setPrefSecondary] = useState(myPrefs.secondaryRole  || "");
+  const [prefFoot,      setPrefFoot]      = useState(myPrefs.preferredFoot  || "");
+  const [saved,         setSaved]         = useState(false);
+
+  const changed =
+    prefRole      !== (myPrefs.preferredRole || "") ||
+    prefSecondary !== (myPrefs.secondaryRole || "") ||
+    prefFoot      !== (myPrefs.preferredFoot || "");
+
+  function handleSave() {
+    if (!onUpdatePortal) return;
+    onUpdatePortal({
+      playerPrefs: {
+        ...(portal.playerPrefs || {}),
+        [myPlayerId]: { preferredRole: prefRole, secondaryRole: prefSecondary, preferredFoot: prefFoot },
+      },
+    });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2200);
+  }
+
+  const selectStyle = { ...styles.input, marginTop: 6 };
+
+  return (
+    <AppCard>
+      <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 800 }}>Preferenze tattiche</h3>
+      <p style={{ ...ps.muted, fontSize: 13, marginBottom: 20 }}>
+        Dichiara il tuo ruolo e piede preferiti. Il mister le vedrà nella tua scheda.
+      </p>
+
+      <div style={{ display: "grid", gap: 14 }}>
+        <label style={ps.fieldLabel}>
+          Ruolo preferito
+          <select value={prefRole} onChange={(e) => setPrefRole(e.target.value)} style={selectStyle}>
+            <option value="">— Seleziona —</option>
+            {PREF_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </label>
+
+        <label style={ps.fieldLabel}>
+          Ruolo secondario
+          <select value={prefSecondary} onChange={(e) => setPrefSecondary(e.target.value)} style={selectStyle}>
+            <option value="">— Nessuno —</option>
+            {PREF_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </label>
+
+        <label style={ps.fieldLabel}>
+          Piede forte
+          <select value={prefFoot} onChange={(e) => setPrefFoot(e.target.value)} style={selectStyle}>
+            <option value="">— Seleziona —</option>
+            {PREF_FEET.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </label>
+
+        <Button onClick={handleSave} disabled={!changed && !saved} style={{ marginTop: 4 }}>
+          {saved ? "✅ Salvato!" : "Salva preferenze"}
+        </Button>
+      </div>
+
+      {/* Ruolo assegnato dal mister (read-only) */}
+      {(selectedPlayer?.role || selectedPlayer?.secondaryRole || selectedPlayer?.foot) && (
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <p style={{ ...ps.muted, fontSize: 11, fontWeight: 800, textTransform: "uppercase", marginBottom: 10 }}>
+            Ruolo assegnato dal mister
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(110px,1fr))", gap: 8 }}>
+            {selectedPlayer.role && (
+              <div style={ps.infoBlock}>
+                <p style={ps.infoTitle}>Ruolo</p>
+                <p style={ps.infoValue}>{selectedPlayer.role}</p>
+              </div>
+            )}
+            {selectedPlayer.secondaryRole && (
+              <div style={ps.infoBlock}>
+                <p style={ps.infoTitle}>Secondario</p>
+                <p style={ps.infoValue}>{selectedPlayer.secondaryRole}</p>
+              </div>
+            )}
+            {selectedPlayer.foot && (
+              <div style={ps.infoBlock}>
+                <p style={ps.infoTitle}>Piede</p>
+                <p style={ps.infoValue}>{selectedPlayer.foot}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </AppCard>
+  );
+}
+
 const ps = {
   page:        { display: "grid", gap: 20 },
   staffLayout: { display: "grid", gridTemplateColumns: "360px minmax(0,1fr)", gap: 20, alignItems: "start" },
