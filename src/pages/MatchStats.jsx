@@ -91,6 +91,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState(null); // "ok" | "error"
   const [validationErrors, setValidationErrors] = useState({}); // { [pid]: string[] }
+  const [quickMode, setQuickMode] = useState(false);
 
   useEffect(() => {
     if (!auth.team?.id || !id) {
@@ -227,7 +228,19 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
 
       <AppCard>
         <div style={s.topBar}>
-          <span style={s.muted}>{t("pages.matchStats.topBarHint")}</span>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <span style={s.muted}>{t("pages.matchStats.topBarHint")}</span>
+            <button
+              onClick={() => setQuickMode((v) => !v)}
+              style={{
+                padding: "4px 10px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)",
+                background: quickMode ? "rgba(56,189,248,0.18)" : "rgba(255,255,255,0.05)",
+                color: quickMode ? "#38bdf8" : "#64748b", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              {quickMode ? "📋 Schede" : "⚡ Vista rapida"}
+            </button>
+          </div>
           <div style={s.topActions}>
             <Button variant="ghost" onClick={() => navigate("/matches")}>{t("pages.matchStats.btnBack")}</Button>
             <Button onClick={handleSave} disabled={saving || loading}>
@@ -268,6 +281,43 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
               </>
             )}
           </p>
+        </AppCard>
+      ) : quickMode ? (
+        <AppCard>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr>
+                  {["Giocatore","Min","Gol","Ass","🟨","🟥","Voto"].map((h) => (
+                    <th key={h} style={{ padding: "6px 8px", textAlign: "left", fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", whiteSpace: "nowrap", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {convocati.map((player) => {
+                  const pid = String(player.id);
+                  const row = rows[pid] || EMPTY_ROW;
+                  const isStarter = (match.lineup?.starterIds || []).map(String).includes(pid);
+                  const name = [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "—";
+                  const qi = { width: "52px", padding: "4px 6px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "#f8fafc", fontSize: 13, textAlign: "center" };
+                  return (
+                    <tr key={pid} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
+                        <span style={{ fontWeight: 700 }}>{name}</span>
+                        <span style={{ marginLeft: 6, fontSize: 10, color: isStarter ? "#4ade80" : "#38bdf8", fontWeight: 800 }}>{isStarter ? "T" : "P"}</span>
+                      </td>
+                      <td style={{ padding: "4px 6px" }}><input style={{ ...qi, width: 48 }} type="number" min="0" max="120" placeholder="—" value={row.minutes_played} onChange={(e) => updateCell(pid, "minutes_played", e.target.value)} /></td>
+                      <td style={{ padding: "4px 6px" }}><input style={qi} type="number" min="0" placeholder="—" value={row.goals} onChange={(e) => updateCell(pid, "goals", e.target.value)} /></td>
+                      <td style={{ padding: "4px 6px" }}><input style={qi} type="number" min="0" placeholder="—" value={row.assists} onChange={(e) => updateCell(pid, "assists", e.target.value)} /></td>
+                      <td style={{ padding: "4px 6px" }}><input style={qi} type="number" min="0" max="2" placeholder="—" value={row.yellow_cards} onChange={(e) => updateCell(pid, "yellow_cards", e.target.value)} /></td>
+                      <td style={{ padding: "4px 6px" }}><input style={qi} type="number" min="0" max="1" placeholder="—" value={row.red_cards} onChange={(e) => updateCell(pid, "red_cards", e.target.value)} /></td>
+                      <td style={{ padding: "4px 6px" }}><input style={{ ...qi, width: 56 }} type="number" min="0" max="10" step="0.5" placeholder="—" value={row.rating} onChange={(e) => updateCell(pid, "rating", e.target.value)} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </AppCard>
       ) : (
         <AppCard>

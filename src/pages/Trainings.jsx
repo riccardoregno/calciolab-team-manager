@@ -71,6 +71,8 @@ function Trainings({
   const [editingId, setEditingId] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [pickerBlock, setPickerBlock] = useState("Tutti");
+  const [sessionsView, setSessionsView] = useState("lista"); // "lista" | "settimana"
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = settimana corrente
 
   // Carica catalogo FP5 in background
   const [fp5Catalog, setFp5Catalog] = useState([]);
@@ -924,9 +926,37 @@ function Trainings({
               </p>
             </div>
 
-            <Badge tone="blue">{t("pages.trainings.savedCount", { count: sessions.length })}</Badge>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <Badge tone="blue">{t("pages.trainings.savedCount", { count: sessions.length })}</Badge>
+              <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: 3, gap: 2 }}>
+                {[["lista","≡"],["settimana","◫"]].map(([v, icon]) => (
+                  <button key={v} onClick={() => setSessionsView(v)} style={{
+                    padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700,
+                    background: sessionsView === v ? "rgba(56,189,248,0.2)" : "transparent",
+                    color: sessionsView === v ? "#38bdf8" : "#64748b",
+                  }} title={v === "lista" ? "Vista lista" : "Vista settimana"}>{icon}</button>
+                ))}
+              </div>
+            </div>
           </div>
 
+          {sessionsView === "settimana" && (
+            <WeekView
+              sessions={sessions}
+              weekOffset={weekOffset}
+              onPrevWeek={() => setWeekOffset((o) => o - 1)}
+              onNextWeek={() => setWeekOffset((o) => o + 1)}
+              onThisWeek={() => setWeekOffset(0)}
+              onEditSession={(session) => {
+                setEditingId(session.id);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onNavigateAttendance={(id) => navigate(`/session-attendance/${id}`)}
+              canManage={canManage}
+            />
+          )}
+
+          {sessionsView === "lista" && <>
           {loading && sessions.length === 0 ? (
             <SkeletonList rows={3} cols={2} />
           ) : sessions.length === 0 ? (
@@ -1057,6 +1087,7 @@ function Trainings({
               })}
             </div>
           )}
+          </>}
         </AppCard>
       </div>
     </div>
@@ -1287,6 +1318,106 @@ function FieldLabel({ label, children }) {
       <span>{label}</span>
       {children}
     </label>
+  );
+}
+
+// ─── WeekView ──────────────────────────────────────────────────────
+const DAYS_IT_SHORT = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
+
+function getWeekStart(offset) {
+  const d = new Date();
+  const dow = (d.getDay() + 6) % 7; // 0=Mon
+  d.setDate(d.getDate() - dow + offset * 7);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, onEditSession, onNavigateAttendance }) {
+  const weekStart = getWeekStart(weekOffset);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const weekLabel = `${days[0].toLocaleDateString("it-IT", { day: "2-digit", month: "short" })} – ${days[6].toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })}`;
+
+  const sessionsByDay = {};
+  days.forEach((d) => { sessionsByDay[d.toISOString().slice(0, 10)] = []; });
+  sessions.forEach((s) => {
+    if (s.date && sessionsByDay[s.date]) sessionsByDay[s.date].push(s);
+  });
+
+  const navBtn = {
+    background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8,
+    color: "#94a3b8", cursor: "pointer", padding: "5px 12px", fontSize: 16,
+  };
+
+  return (
+    <div>
+      {/* Nav */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <button onClick={onPrevWeek} style={navBtn}>‹</button>
+        <span style={{ flex: 1, fontWeight: 700, fontSize: 14, color: "#e2e8f0" }}>{weekLabel}</span>
+        {weekOffset !== 0 && (
+          <button onClick={onThisWeek} style={{ ...navBtn, fontSize: 12, padding: "5px 10px", color: "#38bdf8", borderColor: "rgba(56,189,248,0.3)" }}>
+            Oggi
+          </button>
+        )}
+        <button onClick={onNextWeek} style={navBtn}>›</button>
+      </div>
+
+      {/* Grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
+        {days.map((d, i) => {
+          const dateStr = d.toISOString().slice(0, 10);
+          const isToday = dateStr === todayStr;
+          const daySessions = sessionsByDay[dateStr] || [];
+          return (
+            <div key={dateStr} style={{
+              borderRadius: 10, minHeight: 90, padding: "8px 6px",
+              background: isToday ? "rgba(56,189,248,0.07)" : "rgba(255,255,255,0.025)",
+              border: `1px solid ${isToday ? "rgba(56,189,248,0.3)" : "rgba(255,255,255,0.06)"}`,
+            }}>
+              <div style={{ marginBottom: 6, textAlign: "center" }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: "#475569", textTransform: "uppercase" }}>{DAYS_IT_SHORT[i]}</div>
+                <div style={{ fontSize: 14, fontWeight: isToday ? 900 : 600, color: isToday ? "#38bdf8" : "#cbd5e1" }}>
+                  {d.getDate()}
+                </div>
+              </div>
+              <div style={{ display: "grid", gap: 4 }}>
+                {daySessions.map((s) => (
+                  <div key={s.id} style={{
+                    borderRadius: 6, padding: "5px 7px",
+                    background: "rgba(56,189,248,0.13)", border: "1px solid rgba(56,189,248,0.25)",
+                    cursor: "pointer",
+                  }}
+                    onClick={() => onEditSession(s)}
+                    title={s.title || "Allenamento"}
+                  >
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "#38bdf8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {s.title || "Allenamento"}
+                    </div>
+                    {s.exercises?.length > 0 && (
+                      <div style={{ fontSize: 10, color: "#64748b" }}>
+                        {s.exercises.reduce((t, e) => t + Number(e.customDuration || 0), 0)} min
+                      </div>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onNavigateAttendance(s.id); }}
+                      style={{ marginTop: 4, width: "100%", fontSize: 9, fontWeight: 700, padding: "2px 0", borderRadius: 4, border: "1px solid rgba(56,189,248,0.3)", background: "rgba(56,189,248,0.08)", color: "#38bdf8", cursor: "pointer" }}
+                    >
+                      Presenze
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
