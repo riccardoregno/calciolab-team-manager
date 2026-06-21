@@ -226,6 +226,7 @@ function PlayerDetail({
   );
 
   const coachParameters = normalizeAppSettings(appSettings)?.coachParameters;
+  const playerPrefs = normalizeAppSettings(appSettings)?.playerPortal?.playerPrefs?.[player?.id] || null;
   const injuryComparisons = useMemo(() => {
     const playerTests = physicalTests
       .filter((test) => String(test.playerId) === String(player?.id))
@@ -776,6 +777,7 @@ function PlayerDetail({
               cancellingPortalInvite={cancellingPortalInvite}
               onRevokePortal={canManage ? revokePlayerPortalAccess : undefined}
               revokingPortal={revokingPortal}
+              playerPrefs={playerPrefs}
             />
           )}
 

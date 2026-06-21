@@ -189,6 +189,7 @@ export function PlayerProfileTab({
   portalInviteLink,
   portalActivity,
   portalActivityNow,
+  playerPrefs,
 }) {
   const { t } = useTranslation();
   const [linkCopied, setLinkCopied] = React.useState(false);
@@ -349,6 +350,34 @@ export function PlayerProfileTab({
           onChange={(v) => onFieldChange?.("birthDate", v)}
         />
       </div>
+
+      {playerPrefs && (playerPrefs.preferredRole || playerPrefs.secondaryRole || playerPrefs.preferredFoot) && (
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            👤 Preferenze dichiarate dal giocatore
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {playerPrefs.preferredRole && (
+              <div style={{ padding: "6px 12px", borderRadius: 8, background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)" }}>
+                <p style={{ margin: 0, fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Ruolo preferito</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#38bdf8" }}>{playerPrefs.preferredRole}</p>
+              </div>
+            )}
+            {playerPrefs.secondaryRole && (
+              <div style={{ padding: "6px 12px", borderRadius: 8, background: "rgba(56,189,248,0.05)", border: "1px solid rgba(56,189,248,0.15)" }}>
+                <p style={{ margin: 0, fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Ruolo secondario</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#94a3b8" }}>{playerPrefs.secondaryRole}</p>
+              </div>
+            )}
+            {playerPrefs.preferredFoot && (
+              <div style={{ padding: "6px 12px", borderRadius: 8, background: "rgba(56,189,248,0.05)", border: "1px solid rgba(56,189,248,0.15)" }}>
+                <p style={{ margin: 0, fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Piede forte</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#94a3b8" }}>{playerPrefs.preferredFoot}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </AppCard>
   );
 }
