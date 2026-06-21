@@ -35,7 +35,7 @@ import {
 
 // TONE_LABEL is now built inside each component that uses it via t()
 
-const DASHBOARD_SECTION_KEYS = ["nextEvent", "kpis", "rosterStatus", "wellnessToday", "weekFocus", "coachAlerts", "recentActivities", "quickActions", "rewardCenter"];
+const DASHBOARD_SECTION_KEYS = ["nextEvent", "kpis", "rosterStatus", "weeklyLoad", "wellnessToday", "weekFocus", "coachAlerts", "recentActivities", "quickActions", "rewardCenter"];
 const DEFAULT_SECTION_ORDER = DASHBOARD_SECTION_KEYS;
 const PLAYER_STATUS_LABEL_KEYS = {
   Disponibile: "pages.players.statusAvailable",
@@ -683,6 +683,8 @@ function Dashboard({
               />
             </div>
 
+            <RosterGrid players={players} />
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
               <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>
                 {t("pages.dashboard.totalRoster")} {players.length}
@@ -693,6 +695,10 @@ function Dashboard({
             </div>
           </AppCard>
         );
+
+      case "weeklyLoad":
+        if (!widgets.weeklyLoad) return null;
+        return <WeeklyLoadWidget sessions={sessions} />;
 
       case "wellnessToday": {
         if (!teamWellnessToday.length) return null;
@@ -1099,6 +1105,7 @@ function Dashboard({
               ["kpis", t("pages.dashboard.widgetKpi")],
               ["weekFocus", t("pages.dashboard.widgetWeek")],
               ["rosterStatus", t("pages.dashboard.widgetRoster")],
+              ["weeklyLoad", "Carico settimanale"],
               ["coachAlerts", t("pages.dashboard.widgetAlerts")],
               ["recentActivities", t("pages.dashboard.widgetActivities")],
               ["quickActions", t("pages.dashboard.widgetActions")],
@@ -1955,6 +1962,117 @@ function MiniStatus({ label, value, tone }) {
   );
 }
 
+// ─── RosterGrid — griglia individuale status giocatori ───────────────
+function playerStatusDot(status) {
+  if (!status || status === "Disponibile") return { color: "#4ade80", bg: "rgba(34,197,94,0.15)" };
+  if (status === "Infortunato")            return { color: "#f87171", bg: "rgba(248,113,113,0.15)" };
+  if (status === "Squalificato")           return { color: "#c084fc", bg: "rgba(192,132,252,0.15)" };
+  return                                          { color: "#fb923c", bg: "rgba(251,146,60,0.15)" };
+}
+
+function RosterGrid({ players }) {
+  const [expanded, setExpanded] = useState(false);
+  const sorted = [...players].sort((a, b) => {
+    const order = { "Infortunato": 0, "Squalificato": 1, "Recupero": 2, "Differenziato": 3 };
+    return (order[a.status] ?? 4) - (order[b.status] ?? 4);
+  });
+  const visible = expanded ? sorted : sorted.slice(0, 12);
+
+  if (!players.length) return null;
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 6 }}>
+        {visible.map((p) => {
+          const dot = playerStatusDot(p.status);
+          return (
+            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 10px", borderRadius: 8, background: dot.bg, border: `1px solid ${dot.color}33` }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: dot.color, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#e2e8f0" }}>
+                {p.name}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {players.length > 12 && (
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          style={{ marginTop: 8, background: "none", border: "none", color: "#38bdf8", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0 }}
+        >
+          {expanded ? "Mostra meno ▲" : `+${players.length - 12} altri ▼`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── WeeklyLoadWidget — grafico a barre carico settimanale ───────────
+function WeeklyLoadWidget({ sessions }) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 13);
+
+  const recent = sessions
+    .filter((s) => s.date && new Date(s.date) >= cutoff && new Date(s.date) < new Date(new Date().toDateString() + " 23:59"))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const bars = recent.map((s) => {
+    const att = s.attendance || {};
+    const vals = Object.values(att)
+      .map((v) => Number(v?.rpe || 0))
+      .filter((v) => v > 0);
+    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    return { date: s.date, title: s.title || "Seduta", avg: Math.round(avg * 10) / 10, count: vals.length };
+  }).filter((b) => b.avg > 0);
+
+  if (!bars.length) return null;
+
+  const maxVal = Math.max(...bars.map((b) => b.avg), 1);
+  const BAR_H = 80;
+
+  const barColor = (v) => {
+    if (v <= 4) return "#4ade80";
+    if (v <= 6) return "#facc15";
+    if (v <= 8) return "#fb923c";
+    return "#f87171";
+  };
+
+  return (
+    <AppCard>
+      <SectionTitle
+        title="Carico settimanale"
+        subtitle="RPE medio della squadra per seduta (ultimi 14 giorni)"
+      />
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+        {bars.map((b, i) => {
+          const h = Math.max(8, Math.round((b.avg / maxVal) * BAR_H));
+          const color = barColor(b.avg);
+          const d = new Date(b.date);
+          const label = d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
+          return (
+            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 42, flex: "1 1 42px" }}>
+              <span style={{ fontSize: 11, fontWeight: 900, color }}>{b.avg}</span>
+              <div
+                title={`${b.title} — RPE medio ${b.avg} (${b.count} giocatori)`}
+                style={{ width: "100%", height: h, borderRadius: "5px 5px 0 0", background: color, opacity: 0.85, transition: "height 0.3s ease", minHeight: 8 }}
+              />
+              <span style={{ fontSize: 10, color: "#475569", fontWeight: 700, whiteSpace: "nowrap" }}>{label}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
+        {[["≤4 Leggero","#4ade80"],["5-6 Moderato","#facc15"],["7-8 Intenso","#fb923c"],["9-10 Massimale","#f87171"]].map(([l,c]) => (
+          <div key={l} style={{ display: "flex", gap: 5, alignItems: "center" }}>
+            <div style={{ width: 8, height: 8, borderRadius: 2, background: c }} />
+            <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>{l}</span>
+          </div>
+        ))}
+      </div>
+    </AppCard>
+  );
+}
+
 function QuickAction({ label, icon, onClick }) {
   return (
     <button
@@ -2195,6 +2313,10 @@ function NextMatchCard({ match, navigate, clubName, rsvpSummary }) {
   const lineupReady  = match.lineup?.ready;
   const checklistProgress = getMatchChecklistProgress(match);
 
+  const daysUntil = Math.ceil((new Date(match.date) - new Date(new Date().toDateString())) / 86400000);
+  const countdownLabel = daysUntil === 0 ? "OGGI" : daysUntil === 1 ? "DOMANI" : `${daysUntil} giorni`;
+  const countdownColor = daysUntil === 0 ? "#f87171" : daysUntil <= 2 ? "#fb923c" : "#38bdf8";
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
@@ -2209,9 +2331,15 @@ function NextMatchCard({ match, navigate, clubName, rsvpSummary }) {
             {match.formation ? ` · ${match.formation}` : ""}
           </p>
         </div>
-        <Badge tone={lineupReady ? "green" : "orange"}>
-          {lineupReady ? t("pages.dashboard.lineupReady") : t("pages.dashboard.lineupDraft")}
-        </Badge>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          <div style={{ textAlign: "center", padding: "6px 14px", borderRadius: 10, background: "rgba(0,0,0,0.25)", border: `1px solid ${countdownColor}44` }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: countdownColor, lineHeight: 1 }}>{countdownLabel}</div>
+            {daysUntil > 1 && <div style={{ fontSize: 9, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 2 }}>alla partita</div>}
+          </div>
+          <Badge tone={lineupReady ? "green" : "orange"}>
+            {lineupReady ? t("pages.dashboard.lineupReady") : t("pages.dashboard.lineupDraft")}
+          </Badge>
+        </div>
       </div>
 
       {rsvpSummary && (

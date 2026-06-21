@@ -669,6 +669,7 @@ export function normalizeAppSettings(settings = {}){
       kpis: true,
       weekFocus: true,
       rosterStatus: true,
+      weeklyLoad: true,
       coachAlerts: true,
       recentActivities: true,
       quickActions: true,
