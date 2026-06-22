@@ -3,22 +3,34 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 const acceptTeamInviteUrl = import.meta.env.VITE_ACCEPT_TEAM_INVITE_URL ||
   "https://sglevvqhlzpllrjrgbod.functions.supabase.co/accept-team-invite";
 const INVITE_TOKEN_KEY = "calciolab_invite_token";
+const FAILED_INVITE_TOKEN_KEY = "calciolab_failed_invite_token";
 
+// user.user_metadata.invite_token resta scritto per sempre nel JWT dal momento
+// della registrazione: se l'invito fallisce (soft error) non possiamo "pulirlo"
+// da lì, quindi marchiamo il token come fallito e lo ignoriamo nei tentativi
+// successivi, altrimenti ensureDefaultTeam lo ritenterebbe a ogni mount.
 function getStoredInviteToken(user) {
-  if (typeof window === "undefined") {
-    return user?.user_metadata?.invite_token || "";
-  }
+  const failedToken = typeof window !== "undefined" ? localStorage.getItem(FAILED_INVITE_TOKEN_KEY) : "";
 
-  return sessionStorage.getItem(INVITE_TOKEN_KEY) ||
-    localStorage.getItem(INVITE_TOKEN_KEY) ||
-    user?.user_metadata?.invite_token ||
-    "";
+  const candidate = typeof window === "undefined"
+    ? user?.user_metadata?.invite_token || ""
+    : sessionStorage.getItem(INVITE_TOKEN_KEY) ||
+      localStorage.getItem(INVITE_TOKEN_KEY) ||
+      user?.user_metadata?.invite_token ||
+      "";
+
+  return candidate && candidate === failedToken ? "" : candidate;
 }
 
 function clearStoredInviteToken() {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(INVITE_TOKEN_KEY);
   localStorage.removeItem(INVITE_TOKEN_KEY);
+}
+
+function markInviteTokenFailed(token) {
+  if (typeof window === "undefined" || !token) return;
+  localStorage.setItem(FAILED_INVITE_TOKEN_KEY, token);
 }
 
 export async function getAuthSession() {
@@ -145,8 +157,11 @@ export async function ensureDefaultTeam(user) {
         // Errore hard (rete null/500): blocca e segnala
         return { team: null, error: inviteError };
       }
-      // Errore soft: pulisci il token e prosegui al fallback membership
+      // Errore soft: pulisci il token e prosegui al fallback membership.
+      // Marca anche il token come fallito: se proviene da user_metadata (JWT),
+      // clearStoredInviteToken() non basta perché lì non si può rimuovere.
       clearStoredInviteToken();
+      markInviteTokenFailed(inviteToken);
     }
   }
 
