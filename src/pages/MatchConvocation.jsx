@@ -298,10 +298,6 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
     setSaved(true);
   }
 
-  function printConvocationSheet() {
-    window.print();
-  }
-
   function downloadDistinta() {
     const profile = normalizeAppSettings(appSettings).workspaceProfile;
     const staff   = normalizeAppSettings(appSettings).members || [];
@@ -938,7 +934,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
               {!published && <span style={{ ...s.muted, marginLeft: 8, fontSize: 13 }}>{t("pages.matchConvocation.sheetDraftNote")}</span>}
             </h3>
             <div style={s.sheetToolbarActions}>
-              <Button variant="ghost" onClick={printConvocationSheet}>
+              <Button variant="ghost" onClick={downloadDistinta}>
                 {t("pages.matchConvocation.printPdf")}
               </Button>
               {canManage && (
