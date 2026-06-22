@@ -1,7 +1,7 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 export async function upsertWellness({ teamId, playerId, date, sleep, fatigue, mood }) {
-  if (!isSupabaseConfigured()) return { error: "not configured" };
+  if (!isSupabaseConfigured) return { error: "not configured" };
   return supabase
     .from("player_wellness")
     .upsert(
@@ -11,7 +11,7 @@ export async function upsertWellness({ teamId, playerId, date, sleep, fatigue, m
 }
 
 export async function getPlayerWellness({ teamId, playerId, days = 14 }) {
-  if (!isSupabaseConfigured()) return { data: [], error: null };
+  if (!isSupabaseConfigured) return { data: [], error: null };
   const since = new Date();
   since.setDate(since.getDate() - days);
   return supabase
@@ -24,7 +24,7 @@ export async function getPlayerWellness({ teamId, playerId, days = 14 }) {
 }
 
 export async function getTeamWellnessToday({ teamId }) {
-  if (!isSupabaseConfigured()) return { data: [], error: null };
+  if (!isSupabaseConfigured) return { data: [], error: null };
   const today = new Date().toISOString().slice(0, 10);
   return supabase
     .from("player_wellness")

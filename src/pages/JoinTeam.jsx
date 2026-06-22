@@ -67,7 +67,7 @@ export default function JoinTeam() {
         <div style={s.logoRow}>
           <div style={s.brandMark}>CL</div>
           <div>
-            <p style={s.eyebrow}>Invito workspace</p>
+            <p style={s.eyebrow}>Invito</p>
             <strong style={{ fontSize: 20, lineHeight: 1.1, color: "white" }}>CalcioLab</strong>
           </div>
         </div>
@@ -77,9 +77,8 @@ export default function JoinTeam() {
           <div style={s.inviteIcon}>📨</div>
           <h1 style={s.title}>Sei stato invitato!</h1>
           <p style={s.subtitle}>
-            Qualcuno ti ha invitato a collaborare su un workspace <strong>CalcioLab</strong>.
-            Crea il tuo account gratuito oppure accedi se ne hai già uno — verrai aggiunto
-            automaticamente al team con il ruolo assegnato.
+            Hai ricevuto un invito su <strong>CalcioLab</strong>.
+            Crea il tuo account o accedi: ti porteremo automaticamente nell&apos;area corretta.
           </p>
         </div>
 
@@ -119,7 +118,7 @@ export default function JoinTeam() {
             onClick={() => goTo("register")}
             disabled={!token || redirecting}
           >
-            {redirecting ? "Preparazione..." : "Crea account gratuito →"}
+            {redirecting ? "Preparazione..." : "Crea account →"}
           </button>
           <button
             type="button"
@@ -127,16 +126,16 @@ export default function JoinTeam() {
             onClick={() => goTo("login")}
             disabled={!token || redirecting}
           >
-            {redirecting ? "Preparazione..." : "Ho già un account — Accedi"}
+            {redirecting ? "Preparazione..." : "Ho già un account"}
           </button>
         </div>
 
         {/* What to expect */}
         <div style={s.features}>
           {[
-            { icon: "📋", text: "Accesso alle sedute e al calendario del team" },
-            { icon: "👥", text: "Visibilità sulla rosa in base al tuo ruolo" },
-            { icon: "⚽", text: "Match day, report e lavagna tattica condivisi" },
+            { icon: "📋", text: "Accesso alle sedute e al calendario della squadra" },
+            { icon: "👥", text: "Contenuti visibili in base al tuo ruolo" },
+            { icon: "⚽", text: "Convocazioni e comunicazioni in un unico posto" },
             { icon: "🔒", text: "I tuoi dati sono protetti e mai condivisi" },
           ].map(({ icon, text }) => (
             <div key={text} style={s.featureItem}>
