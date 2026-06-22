@@ -233,7 +233,9 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
     }
   }
   const today = new Date();
-  const todayKey = today.toISOString().slice(0, 10);
+  // Data locale, non UTC: toISOString() sbaglierebbe giorno nelle ore vicine alla
+  // mezzanotte per chi non è in UTC+0 (stesso bug corretto in WeekView).
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const month = useMemo(() => {
     const year = monthDate.getFullYear();
     const monthIndex = monthDate.getMonth();
@@ -518,14 +520,15 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
   }
 
   const week         = buildWeek(offset);
-  const weekStart    = week[0].date;
-  const weekEnd      = week[6].date;
 
-  // filtra solo gli eventi della settimana visualizzata
-  const weekEvents   = events.filter((e) => {
-    const d = new Date(e.date);
-    return d >= weekStart && d <= weekEnd;
-  });
+  // Filtra gli eventi della settimana confrontando le chiavi YYYY-MM-DD come stringhe
+  // (non Date object): week[0].date/week[6].date conservano l'orario di "adesso" invece
+  // di essere normalizzati a mezzanotte, mentre "2026-06-22" viene interpretato come
+  // mezzanotte UTC — il confronto Date >= /<= escludeva quindi gli eventi di oggi ogni
+  // volta che l'ora locale corrente era passata la mezzanotte (sempre).
+  const weekStartKey = week[0].key;
+  const weekEndKey   = week[6].key;
+  const weekEvents    = events.filter((e) => e.date >= weekStartKey && e.date <= weekEndKey);
   const sessions     = weekEvents.filter((e) => e.type !== "Partita");
   const matches      = weekEvents.filter((e) => e.type === "Partita");
   const availability = getAvailabilityGroups(players);
@@ -533,6 +536,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const isCurrentWeek = offset === 0;
 
   // Label periodo settimana
@@ -576,8 +580,8 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
         <div style={{ ...wv.grid, gridTemplateColumns: isMobile ? "1fr" : "repeat(7,minmax(0,1fr))" }}>
           {week.map((day, index) => {
             const dayEvents  = weekEvents.filter((e) => e.date === day.key);
-            const isToday    = day.date.getTime() === today.getTime();
-            const isPast     = day.date < today;
+            const isToday    = day.key === todayKey;
+            const isPast     = day.key < todayKey;
             const isOpen     = openDay === day.key;
 
             return (
