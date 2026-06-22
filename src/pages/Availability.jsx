@@ -15,7 +15,6 @@ import { useTranslation } from "../i18n";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { fetchPlayerAvailability } from "../services/playerAvailability";
 import { useAuth } from "../hooks/useAuth";
-import { generateAvailabilityPDF, generateAvailabilityCSV } from "../utils/generateAvailabilityExport";
 
 // Limite di giorni renderizzati nella pianificazione "giorno per giorno" —
 // evita di costruire liste enormi se l'utente seleziona un range troppo ampio.
@@ -234,6 +233,7 @@ export default function Availability({
   const { canManage } = useAreaPermission();
   const auth = useAuth();
   const teamName = auth.profile?.teamName || auth.profile?.clubName || auth.team?.name || "Squadra";
+
   const [selfAvailData, setSelfAvailData] = useState([]);
   const [selfAvailLoading, setSelfAvailLoading] = useState(true);
 
@@ -300,6 +300,22 @@ export default function Availability({
     () => prepDays.filter((day) => day.total > 0 && day.available / day.total < PREP_CRITICAL_RATIO),
     [prepDays]
   );
+
+  async function exportAvailabilityPDF() {
+    const { generateAvailabilityPDF } = await import("../utils/generateAvailabilityExport");
+    await generateAvailabilityPDF({
+      players,
+      teamName,
+      prepRange,
+      prepDays,
+      teamLogoUrl: appSettings?.workspaceProfile?.logo || null,
+    });
+  }
+
+  async function exportAvailabilityCSV() {
+    const { generateAvailabilityCSV } = await import("../utils/generateAvailabilityExport");
+    await generateAvailabilityCSV({ players, teamName });
+  }
 
   const injuredPlayers = players.filter((p) => UNAVAILABLE.includes(p.status || "Disponibile"));
   const availablePlayers = players.filter((p) => !UNAVAILABLE.includes(p.status || "Disponibile"));
@@ -572,7 +588,7 @@ export default function Availability({
         <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
           <button
             type="button"
-            onClick={() => generateAvailabilityPDF({ players, teamName, prepRange, prepDays, teamLogoUrl: appSettings?.workspaceProfile?.logo || null })}
+            onClick={exportAvailabilityPDF}
             style={{
               display: "flex", alignItems: "center", gap: 6,
               padding: "7px 14px", borderRadius: 10,
@@ -585,7 +601,7 @@ export default function Availability({
           </button>
           <button
             type="button"
-            onClick={() => generateAvailabilityCSV({ players, teamName })}
+            onClick={exportAvailabilityCSV}
             style={{
               display: "flex", alignItems: "center", gap: 6,
               padding: "7px 14px", borderRadius: 10,

@@ -8,8 +8,6 @@ import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { formatDate, normalizeAppSettings } from "../utils/helpers";
-import { generateDistintaPDF } from "../utils/generateDistintaPDF";
-import { generateMatchPackagePDF } from "../utils/generateMatchPackagePDF";
 import { useTranslation } from "../i18n";
 import { createRsvpLink, fetchMatchRsvps, sendMatchConvocationEmail } from "../services/rsvp";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -298,16 +296,18 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
     setSaved(true);
   }
 
-  function downloadDistinta() {
+  async function downloadDistinta() {
     const profile = normalizeAppSettings(appSettings).workspaceProfile;
     const staff   = normalizeAppSettings(appSettings).members || [];
-    generateDistintaPDF(match, players, profile, staff);
+    const { generateDistintaPDF } = await import("../utils/generateDistintaPDF");
+    await generateDistintaPDF(match, players, profile, staff);
   }
 
-  function downloadMatchPackage() {
+  async function downloadMatchPackage() {
     const profile = normalizeAppSettings(appSettings).workspaceProfile;
     const staff   = normalizeAppSettings(appSettings).members || [];
-    generateMatchPackagePDF({ match, allPlayers: players, profile, staffList: staff, appSettings });
+    const { generateMatchPackagePDF } = await import("../utils/generateMatchPackagePDF");
+    await generateMatchPackagePDF({ match, allPlayers: players, profile, staffList: staff, appSettings });
   }
 
   async function copyConvocation(kind, text) {

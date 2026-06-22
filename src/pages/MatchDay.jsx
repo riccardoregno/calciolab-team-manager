@@ -11,7 +11,6 @@ import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { styles } from "../styles/index.js";
 import { createId, formatDate, getLineup, normalizeAppSettings, uniqueIds } from "../utils/helpers";
-import { generateMatchDayPDF } from "../utils/generateMatchDayPDF";
 import { deleteTeamAttachment, uploadTeamAttachment } from "../services/attachments";
 import { useAuth } from "../hooks/useAuth";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -452,6 +451,11 @@ function MatchDay({
     updateLineup(getLineup(previous));
   }
 
+  async function exportMatchDayPDF() {
+    const { generateMatchDayPDF } = await import("../utils/generateMatchDayPDF");
+    await generateMatchDayPDF({ match: selectedMatch, players, appSettings });
+  }
+
   return (
     <div style={styles.page}>
       <ToastContainer />
@@ -517,7 +521,7 @@ function MatchDay({
           >
             {lineup.ready ? t("pages.matchDay.lineupReady") : t("pages.matchDay.markReady")}
           </Button>
-          <Button onClick={() => generateMatchDayPDF({ match: selectedMatch, players, appSettings })}>
+          <Button onClick={exportMatchDayPDF}>
             {t("pages.matchDay.exportPdf")}
           </Button>
         </div>

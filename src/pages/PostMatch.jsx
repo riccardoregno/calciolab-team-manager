@@ -9,7 +9,6 @@ import { styles } from "../styles/index.js";
 import { createId, formatDate, normalizeAppSettings } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { getObjectiveStatusMeta } from "../constants/objectiveStatus";
-import { generateMatchReportPDF } from "../utils/generateMatchReportPDF";
 
 const clipCategories = [
   { value: "Tattica",        labelKey: "pages.postMatch.clipCatTactics" },
@@ -182,6 +181,11 @@ export default function PostMatch({
     navigate("/trainings", { state: { draftTraining } });
   }
 
+  async function exportMatchReportPDF() {
+    const { generateMatchReportPDF } = await import("../utils/generateMatchReportPDF");
+    await generateMatchReportPDF({ match, players, appSettings });
+  }
+
   if (!match) {
     return (
       <div style={{ display: "grid", gap: 18 }}>
@@ -327,7 +331,7 @@ export default function PostMatch({
           <Button variant="ghost" onClick={() => navigate(`/match-stats/${match.id}`)}>{t("pages.postMatch.btnStats")}</Button>
           <Button variant="ghost" onClick={() => navigate(`/match-day/${match.id}`)}>{t("pages.postMatch.btnMatchDay")}</Button>
           <Button variant="ghost" onClick={() => navigate("/microcycle")}>{t("pages.postMatch.btnMicrocycle")}</Button>
-          <Button variant="ghost" onClick={() => generateMatchReportPDF({ match, players, appSettings })}>{t("pages.postMatch.btnPrint")}</Button>
+          <Button variant="ghost" onClick={exportMatchReportPDF}>{t("pages.postMatch.btnPrint")}</Button>
           <Button variant="ghost" onClick={createStaffTasksFromReport}>{t("pages.postMatch.btnCreateTasks")}</Button>
           <Button onClick={createTrainingFromReport}>{t("pages.postMatch.btnCreateSession")}</Button>
         </div>

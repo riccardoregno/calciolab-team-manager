@@ -13,12 +13,6 @@ import {
   getPlayerSummary,
   RPE_BY_MATCH_DAY,
 } from "../utils/helpers";
-import { generateSeasonReport } from "../utils/generateSeasonReport";
-import { generateMatchReportPDF } from "../utils/generateMatchReportPDF";
-import { generateTrainingPDF } from "../utils/generateTrainingPDF";
-import { generateMatchDayPDF } from "../utils/generateMatchDayPDF";
-import { generatePlayerReportPDF } from "../utils/generatePlayerReportPDF";
-import { generateMicrocyclePDF } from "../utils/generateMicrocyclePDF";
 
 const EXPORT_TYPE_KEYS = [
   { id: "season",    labelKey: "pages.exportCenter.typeSeason",    descKey: "pages.exportCenter.typeSeasonDesc" },
@@ -76,16 +70,22 @@ export default function ExportCenter({
     setGeneratingPdf(true);
     try {
       if (type === "training") {
+        const { generateTrainingPDF } = await import("../utils/generateTrainingPDF");
         await generateTrainingPDF({ session: selectedSession, exercises, appSettings });
       } else if (type === "matchday") {
+        const { generateMatchDayPDF } = await import("../utils/generateMatchDayPDF");
         await generateMatchDayPDF({ match: selectedMatch, players, appSettings });
       } else if (type === "postmatch") {
+        const { generateMatchReportPDF } = await import("../utils/generateMatchReportPDF");
         await generateMatchReportPDF({ match: selectedMatch, players, appSettings });
       } else if (type === "player") {
+        const { generatePlayerReportPDF } = await import("../utils/generatePlayerReportPDF");
         await generatePlayerReportPDF({ player: selectedPlayer, sessions, matches, physicalTests, appSettings });
       } else if (type === "season") {
+        const { generateSeasonReport } = await import("../utils/generateSeasonReport");
         await generateSeasonReport({ players, sessions, matches, physicalTests, appSettings });
       } else if (type === "microcycle") {
+        const { generateMicrocyclePDF } = await import("../utils/generateMicrocyclePDF");
         await generateMicrocyclePDF({ match: selectedMatch, sessions, gpsSessions, appSettings });
       }
     } finally {
@@ -805,7 +805,8 @@ function SeasonReportPanel({ players, sessions, matches, physicalTests, appSetti
   async function handleDownload() {
     setGenerating(true);
     try {
-      generateSeasonReport({ players, sessions, matches, physicalTests, appSettings });
+      const { generateSeasonReport } = await import("../utils/generateSeasonReport");
+      await generateSeasonReport({ players, sessions, matches, physicalTests, appSettings });
     } finally {
       setTimeout(() => setGenerating(false), 800);
     }

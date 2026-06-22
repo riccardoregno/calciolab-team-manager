@@ -18,7 +18,6 @@ import { useAreaPermission } from "../components/auth/permissionContext";
 import { styles } from "../styles/index.js";
 import { createId, formatDate, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 import { useTranslation } from "../i18n";
-import { generateSessionPlanPDF } from "../utils/generateSessionPlanPDF";
 import { sendTeamNotification } from "../services/notifications";
 import RpeMatrix from "../components/statistics/RpeMatrix";
 import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
@@ -319,6 +318,11 @@ function Trainings({
     setEditingId(null);
     setForm(emptyTraining());
     setFormErrors({});
+  }
+
+  async function exportSessionPlanPDF() {
+    const { generateSessionPlanPDF } = await import("../utils/generateSessionPlanPDF");
+    await generateSessionPlanPDF({ session: form, appSettings });
   }
 
   return (
@@ -705,7 +709,7 @@ function Trainings({
                   <Button
                     variant="ghost"
                     style={{ fontSize: 12, padding: "4px 10px" }}
-                    onClick={() => generateSessionPlanPDF({ session: form, appSettings })}
+                    onClick={exportSessionPlanPDF}
                   >
                     📄 PDF
                   </Button>

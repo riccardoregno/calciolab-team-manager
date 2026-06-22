@@ -19,7 +19,6 @@ import Badge from "../components/ui/Badge";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { formatShortDate, getAvailabilityGroups, getSessionLoad, createId } from "../utils/helpers";
-import { generateWeekCalendarPDF } from "../utils/generateWeekCalendarPDF";
 import { styles } from "../styles/index.js";
 import { useTranslation } from "../i18n";
 
@@ -539,6 +538,11 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
   // Label periodo settimana
   const weekLabel = `${formatShortDate(week[0].key)} – ${formatShortDate(week[6].key)}`;
 
+  async function exportWeekCalendarPDF() {
+    const { generateWeekCalendarPDF } = await import("../utils/generateWeekCalendarPDF");
+    await generateWeekCalendarPDF({ weekLabel, weekEvents, availability, appSettings });
+  }
+
   return (
     <div style={{ display: "grid", gap: 20 }}>
       {/* Navigazione settimana */}
@@ -716,7 +720,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
             <h3 style={{ margin: 0, lineHeight: 1.2 }}>{t("pages.calendar.alertTitle")}</h3>
             <p style={{ ...wv.muted, marginTop: 6 }}>{t("pages.calendar.alertSubtitle")}</p>
           </div>
-          <Button variant="ghost" onClick={() => generateWeekCalendarPDF({ weekLabel, weekEvents, availability, appSettings })}>
+          <Button variant="ghost" onClick={exportWeekCalendarPDF}>
             {t("pages.calendar.printWeek")}
           </Button>
         </div>

@@ -9,7 +9,6 @@ import PageHeader from "../components/ui/PageHeader";
 import TacticalMiniPreview from "../components/ui/TacticalMiniPreview";
 import { styles } from "../styles/index.js";
 import { getCurrentUserRole } from "../utils/helpers";
-import { generateSetPlaysPDF } from "../utils/generateSetPlaysPDF";
 
 // ─── Dati iniziali ────────────────────────────────────────────────────────────
 function emptySetPlays() {
@@ -744,6 +743,11 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
     setSetPlays({ ...data, [section]: { ...data[section], ...updates } });
   }
 
+  async function exportSetPlaysPDF() {
+    const { generateSetPlaysPDF } = await import("../utils/generateSetPlaysPDF");
+    await generateSetPlaysPDF({ setPlays: data, players, appSettings });
+  }
+
   function applyCornerDefPreset(presetKey) {
     const preset = CORNER_DEF_PRESETS[presetKey] || [];
     const updated = expandAssignments(data.corners.defAssignments, 10, { playerId: "", task: "", opponent: "", zone: "" })
@@ -936,7 +940,7 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
           subtitle="Angoli, punizioni e rigori — schemi offensivi e difensivi"
           badge={<Badge tone="blue">Set Plays</Badge>}
           action={
-            <Button onClick={() => generateSetPlaysPDF({ setPlays: data, players, appSettings })} variant="secondary" size="sm">
+            <Button onClick={exportSetPlaysPDF} variant="secondary" size="sm">
               📄 Esporta PDF
             </Button>
           }
