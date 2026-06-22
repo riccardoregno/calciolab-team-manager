@@ -1338,6 +1338,7 @@ export function getCoachAlerts({ players = [], matches = [], physicalTests = [],
       alerts.push({
         tone: "green",
         text: tr("common.alerts.birthday", { name: player.name || player.firstName || "", age: ageStr }),
+        path: "/players",
       });
     }
   });
@@ -1348,11 +1349,11 @@ export function getCoachAlerts({ players = [], matches = [], physicalTests = [],
       .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
     if (!latestTest || new Date(latestTest.date) < thirtyDaysAgo) {
-      alerts.push({ tone: "orange", text: tr("common.alerts.physicalTestOutdated", { name: player.name }) });
+      alerts.push({ tone: "orange", text: tr("common.alerts.physicalTestOutdated", { name: player.name }), path: "/physical-tests" });
     }
 
     if (player.status === "Infortunato" && player.expectedReturn) {
-      alerts.push({ tone: "red", text: tr("common.alerts.injuryReturn", { name: player.name, date: player.expectedReturn }) });
+      alerts.push({ tone: "red", text: tr("common.alerts.injuryReturn", { name: player.name, date: player.expectedReturn }), path: "/players" });
     }
   });
 
@@ -1360,16 +1361,16 @@ export function getCoachAlerts({ players = [], matches = [], physicalTests = [],
     .filter((match) => new Date(match.date) >= now)
     .forEach((match) => {
       if (!match.lineup?.ready) {
-        alerts.push({ tone: "blue", text: tr("common.alerts.lineupNotReady", { title: match.title }) });
+        alerts.push({ tone: "blue", text: tr("common.alerts.lineupNotReady", { title: match.title }), path: `/match-day/${match.id}` });
       }
       if (!match.opponentScouting?.formation && !match.opponentScouting?.lineup?.length) {
-        alerts.push({ tone: "purple", text: tr("common.alerts.scoutingMissing", { opponent: match.opponent || "?" }) });
+        alerts.push({ tone: "purple", text: tr("common.alerts.scoutingMissing", { opponent: match.opponent || "?" }), path: `/match-day/${match.id}` });
       }
     });
 
   sessions.forEach((session) => {
     if (!session.objective) {
-      alerts.push({ tone: "orange", text: tr("common.alerts.sessionNoObjective", { title: session.title }) });
+      alerts.push({ tone: "orange", text: tr("common.alerts.sessionNoObjective", { title: session.title }), path: "/trainings" });
     }
   });
 
@@ -1383,11 +1384,13 @@ export function getCoachAlerts({ players = [], matches = [], physicalTests = [],
       alerts.push({
         tone: "red",
         text: tr("common.alerts.playerSuspended", { name: player.name, yellows }),
+        path: "/players",
       });
     } else if (yellows === SUSPENSION_THRESHOLD - 1) {
       alerts.push({
         tone: "orange",
         text: tr("common.alerts.playerCautioned", { name: player.name, yellows, threshold: SUSPENSION_THRESHOLD }),
+        path: "/players",
       });
     }
   });
@@ -1408,6 +1411,7 @@ export function getCoachAlerts({ players = [], matches = [], physicalTests = [],
         alerts.push({
           tone: "red",
           text: tr("common.alerts.wellnessCritical", { name }),
+          path: "/players",
         });
       } else if (minScore === 3) {
         const player = playerById[String(row.player_id)];
@@ -1415,6 +1419,7 @@ export function getCoachAlerts({ players = [], matches = [], physicalTests = [],
         alerts.push({
           tone: "orange",
           text: tr("common.alerts.wellnessLow", { name }),
+          path: "/players",
         });
       }
     });

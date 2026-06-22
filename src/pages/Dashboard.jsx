@@ -810,6 +810,7 @@ function Dashboard({
                   return (
                   <div
                     key={`${alert.text}-${index}`}
+                    onClick={alert.path ? () => navigate(alert.path) : undefined}
                     style={{
                       display: "flex",
                       gap: 10,
@@ -818,6 +819,7 @@ function Dashboard({
                       borderRadius: 14,
                       background: "rgba(255,255,255,0.045)",
                       border: "1px solid rgba(255,255,255,0.08)",
+                      cursor: alert.path ? "pointer" : "default",
                     }}
                   >
                     <Badge tone={alert.tone}>{toneLabels[alert.tone] || alert.tone}</Badge>
@@ -1685,7 +1687,8 @@ function PhysicalRoleDashboard({ players, matches, physicalTests, coachAlerts })
                 return (
                 <div
                   key={`${alert.text}-${index}`}
-                  style={roleDashboardStyles.alertRow}
+                  onClick={alert.path ? () => navigate(alert.path) : undefined}
+                  style={{ ...roleDashboardStyles.alertRow, cursor: alert.path ? "pointer" : "default" }}
                 >
                   <Badge tone={alert.tone}>{toneLabels[alert.tone] || alert.tone}</Badge>
                   <span>{alert.text}</span>
@@ -1738,7 +1741,7 @@ function CoachControlRoom({
     },
     coachAlerts.length > 0 && {
       label: t("pages.dashboard.checkAlerts"),
-      path: "/players",
+      path: coachAlerts[0]?.path || "/players",
       variant: "ghost",
     },
     setup.next && {
@@ -1806,7 +1809,11 @@ function CoachControlRoom({
             {(coachAlerts.length ? coachAlerts.slice(0, 2) : [
               { text: t("pages.dashboard.noOperationalUrgency"), tone: "green" },
             ]).map((alert, index) => (
-              <div key={`${alert.text}-${index}`} style={controlRoomStyles.alert}>
+              <div
+                key={`${alert.text}-${index}`}
+                style={{ ...controlRoomStyles.alert, cursor: alert.path ? "pointer" : "default" }}
+                onClick={alert.path ? () => navigate(alert.path) : undefined}
+              >
                 <Badge tone={alert.tone || "blue"}>{toneLabels[alert.tone] || alert.tone || t("common.info")}</Badge>
                 <span>{alert.text}</span>
               </div>
@@ -2439,6 +2446,7 @@ function getMatchOperationalAlerts(match, t) {
         done: progress.done,
         total: progress.total,
       }),
+      path: `/match-day/${match.id}`,
     },
   ];
 }
