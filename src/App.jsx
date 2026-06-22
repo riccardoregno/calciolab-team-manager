@@ -999,6 +999,7 @@ function App() {
                     setMatches={setMatches}
                     sessions={sessions}
                     matches={matches}
+                    appSettings={previewAppSettings}
                   />, "calendar")
                 }
               />

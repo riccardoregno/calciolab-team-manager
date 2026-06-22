@@ -19,6 +19,7 @@ import Badge from "../components/ui/Badge";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { formatShortDate, getAvailabilityGroups, getSessionLoad, createId } from "../utils/helpers";
+import { generateWeekCalendarPDF } from "../utils/generateWeekCalendarPDF";
 import { styles } from "../styles/index.js";
 import { useTranslation } from "../i18n";
 
@@ -53,7 +54,7 @@ function buildWeek(offsetWeeks = 0) {
 }
 
 function Calendar({
-  events, players, setSessions, setMatches, sessions = [], matches = [] }) {
+  events, players, setSessions, setMatches, sessions = [], matches = [], appSettings = {} }) {
 
   const { t } = useTranslation();
   const [view, setView] = useTabState("view", "week");
@@ -175,6 +176,7 @@ function Calendar({
             onQuickCreate={quickCreate}
             onDeleteEvent={requestDeleteEvent}
             canManage={canManage}
+            appSettings={appSettings}
             onEditEvent={(event, updates) => {
               if (!canManage) return;
               if (event.type === "Partita") setMatches?.(matches.map((m) => String(m.id) === String(event.id) ? { ...m, ...updates } : m));
@@ -486,7 +488,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
 // ─────────────────────────────────────────────
 // Vista Settimana (ex WeekPlan)
 // ─────────────────────────────────────────────
-function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, canManage = true }) {
+function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, canManage = true, appSettings = {} }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [offset, setOffset] = useState(0);
@@ -714,7 +716,9 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
             <h3 style={{ margin: 0, lineHeight: 1.2 }}>{t("pages.calendar.alertTitle")}</h3>
             <p style={{ ...wv.muted, marginTop: 6 }}>{t("pages.calendar.alertSubtitle")}</p>
           </div>
-          <Button variant="ghost" onClick={() => window.print()}>{t("pages.calendar.printWeek")}</Button>
+          <Button variant="ghost" onClick={() => generateWeekCalendarPDF({ weekLabel, weekEvents, availability, appSettings })}>
+            {t("pages.calendar.printWeek")}
+          </Button>
         </div>
 
         <div style={wv.alertGrid}>
