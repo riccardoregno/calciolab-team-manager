@@ -1594,6 +1594,7 @@ export const en = {
       opponentNamePlaceholder: "Opponent name",
       sessionTitlePlaceholder: "Session title",
       fieldDate: "Date",
+      fieldTime: "Time",
       fieldLocation: "Venue",
       locationHome: "Home",
       locationAway: "Away",

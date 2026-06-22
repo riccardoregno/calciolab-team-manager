@@ -664,6 +664,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                               <span style={{ fontSize: 15 }}>{event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}</span>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <p style={{ margin: 0, fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {event.time && <span style={{ color: "#38bdf8", marginRight: 5 }}>{event.time}</span>}
                                   {event.type === "Partita" ? (event.opponent || event.title) : event.title}
                                 </p>
                                 {(event.theme || event.opponent || event.notes) && (
@@ -692,7 +693,10 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                                   </div>
                                 )}
                               </div>
-                              <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 13 }}>{event.type === "Partita" ? (event.opponent || event.title) : event.title}</p>
+                              <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 13 }}>
+                                {event.time && <span style={{ color: "#38bdf8", marginRight: 5 }}>{event.time}</span>}
+                                {event.type === "Partita" ? (event.opponent || event.title) : event.title}
+                              </p>
                               {(event.theme || event.opponent || event.objective || event.notes) && (
                                 <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
                                   {event.theme || event.opponent || event.objective || event.notes}
@@ -927,6 +931,7 @@ function EventEditModal({ event, onSave, onClose }) {
   const [form, setForm] = useState({
     title:    isMatch ? (event.opponent || "") : (event.title || ""),
     date:     event.date || "",
+    time:     event.time || "",
     notes:    event.notes || "",
     // match-only
     location: event.location || "Casa",
@@ -942,6 +947,7 @@ function EventEditModal({ event, onSave, onClose }) {
           opponent: form.title,
           title:    form.title,
           date:     form.date,
+          time:     form.time,
           notes:    form.notes,
           location: form.location,
           result:   form.result,
@@ -949,6 +955,7 @@ function EventEditModal({ event, onSave, onClose }) {
       : {
           title:    form.title,
           date:     form.date,
+          time:     form.time,
           notes:    form.notes,
           duration: Number(form.duration) || 0,
           theme:    form.theme,
@@ -982,6 +989,14 @@ function EventEditModal({ event, onSave, onClose }) {
             style={em.input}
             value={form.date}
             onChange={(e) => setForm({ ...form, date: e.target.value })}
+          />
+
+          <label style={em.label}>{t("pages.calendar.fieldTime")}</label>
+          <input
+            type="time"
+            style={em.input}
+            value={form.time}
+            onChange={(e) => setForm({ ...form, time: e.target.value })}
           />
 
           {isMatch && (

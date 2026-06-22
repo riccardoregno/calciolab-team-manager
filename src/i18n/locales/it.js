@@ -1605,6 +1605,7 @@ export const it = {
       sessionTitlePlaceholder: "Titolo seduta",
       fieldTitle: "Titolo",
       fieldDate: "Data",
+      fieldTime: "Orario",
       fieldLocation: "Campo",
       locationHome: "Casa",
       locationAway: "Trasferta",
