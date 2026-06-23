@@ -948,6 +948,7 @@ function App() {
                     players={players}
                     sessions={sessions}
                     setSessions={setSessions}
+                    teamId={auth.team?.id}
                   />, "sessions")
                 }
               />

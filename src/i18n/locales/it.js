@@ -1764,6 +1764,7 @@ export const it = {
       sessionFallback: "Seduta",
       cycleStatus: "Cambia stato",
       rpeFor: "RPE per {{name}}",
+      rpeSelfReported: "Valore inserito dal giocatore — modificabile",
       noSessionsTitle: "Nessuna seduta nel mese",
       noSessionsText: "Crea o seleziona un mese con sedute per compilare il registro.",
       createSession: "Crea seduta",

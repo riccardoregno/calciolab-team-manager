@@ -1753,6 +1753,7 @@ export const en = {
       sessionFallback: "Session",
       cycleStatus: "Change status",
       rpeFor: "RPE for {{name}}",
+      rpeSelfReported: "Value entered by the player — editable",
       noSessionsTitle: "No sessions this month",
       noSessionsText: "Create or select a month with sessions to fill the register.",
       createSession: "Create session",

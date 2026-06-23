@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import AppCard from "../components/ui/AppCard";
@@ -10,6 +10,7 @@ import SearchBar from "../components/ui/SearchBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { styles } from "../styles/index.js";
 import { formatShortDate } from "../utils/helpers";
+import { fetchTeamRpe } from "../services/sessionRpe";
 import { useTranslation } from "../i18n";
 
 const STATUS_FLOW = ["Presente", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"];
@@ -34,7 +35,21 @@ function getSessionMonth(session) {
   return String(session.date || "").slice(0, 7);
 }
 
-function getDefaultStatus(player) {
+// Assenze pianificate (ferie/permessi/studio/lavoro) dalla scheda giocatore:
+// se la data della seduta cade in un intervallo dichiarato, lo stato di default
+// non deve essere "Presente" — il mister non dovrebbe doverlo correggere a mano
+// per ogni seduta in cui il giocatore è già segnalato assente.
+function getAbsenceStatus(player, dateStr) {
+  if (!dateStr) return null;
+  const absence = (player.absences || []).find(
+    (a) => a.dateStart && a.dateEnd && dateStr >= a.dateStart && dateStr <= a.dateEnd
+  );
+  return absence ? "Permesso" : null;
+}
+
+function getDefaultStatus(player, dateStr) {
+  const absenceStatus = getAbsenceStatus(player, dateStr);
+  if (absenceStatus) return absenceStatus;
   if (player.status === "Infortunato") return "Infortunato";
   if (player.status === "Squalificato") return "Squalificato";
   if (player.status === "Recupero" || player.status === "Differenziato") return "Recupero";
@@ -48,7 +63,7 @@ function getDuration(session) {
   );
 }
 
-export default function AttendanceRegister({ players = [], sessions = [], setSessions }) {
+export default function AttendanceRegister({ players = [], sessions = [], setSessions, teamId }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { canManage } = useAreaPermission();
@@ -60,6 +75,24 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
       .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
     return latest?.date ? latest.date.slice(0, 7) : new Date().toISOString().slice(0, 7);
   });
+
+  // RPE autodichiarato dai giocatori dal portale (tabella session_rpe) — usato come
+  // pre-compilazione quando il mister non ha ancora inserito/corretto un valore.
+  const [playerRpe, setPlayerRpe] = useState([]);
+  useEffect(() => {
+    if (!teamId) return;
+    let active = true;
+    fetchTeamRpe({ teamId }).then(({ data }) => {
+      if (active) setPlayerRpe(data || []);
+    });
+    return () => { active = false; };
+  }, [teamId]);
+
+  const playerRpeIndex = useMemo(() => {
+    const index = {};
+    playerRpe.forEach((r) => { index[`${r.player_id}:${r.event_id}`] = r.rpe_value; });
+    return index;
+  }, [playerRpe]);
 
   const trainingSessions = useMemo(
     () => [...sessions]
@@ -92,8 +125,8 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   }, [players, groupFilter, search]);
 
   const registerStats = useMemo(
-    () => buildRegisterStats(visiblePlayers, visibleSessions),
-    [visiblePlayers, visibleSessions]
+    () => buildRegisterStats(visiblePlayers, visibleSessions, playerRpeIndex),
+    [visiblePlayers, visibleSessions, playerRpeIndex]
   );
 
   function updateAttendance(sessionId, playerId, patch) {
@@ -116,7 +149,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   function cycleStatus(session, player) {
     if (!canManage) return;
     const playerId = String(player.id);
-    const current = session.attendance?.[playerId]?.status || getDefaultStatus(player);
+    const current = session.attendance?.[playerId]?.status || getDefaultStatus(player, session.date);
     const currentIndex = STATUS_FLOW.indexOf(current);
     const nextStatus = STATUS_FLOW[(currentIndex + 1) % STATUS_FLOW.length] || "Presente";
     updateAttendance(session.id, playerId, { status: nextStatus });
@@ -248,7 +281,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
               </thead>
               <tbody>
                 {visiblePlayers.map((player) => {
-                  const rowStats = buildPlayerStats(player, visibleSessions);
+                  const rowStats = buildPlayerStats(player, visibleSessions, playerRpeIndex);
                   return (
                     <tr key={player.id}>
                       <td style={{ ...ar.td, ...ar.playerTd }}>
@@ -261,9 +294,11 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                       {visibleSessions.map((session) => {
                         const playerId = String(player.id);
                         const entry = session.attendance?.[playerId] || {};
-                        const status = entry.status || getDefaultStatus(player);
+                        const status = entry.status || getDefaultStatus(player, session.date);
                         const meta = STATUS_META[status] || STATUS_META.Presente;
                         const showRpe = status === "Presente" || status === "Recupero";
+                        const playerSubmittedRpe = playerRpeIndex[`${playerId}:${session.id}`];
+                        const effectiveRpe = entry.rpe ?? playerSubmittedRpe ?? "";
 
                         return (
                           <td key={`${session.id}-${playerId}`} style={ar.td}>
@@ -288,11 +323,15 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                                   min="1"
                                   max="10"
                                   step="0.5"
-                                  value={entry.rpe || ""}
+                                  value={effectiveRpe}
                                   onChange={(event) => updateAttendance(session.id, playerId, { rpe: event.target.value })}
                                   disabled={!canManage}
                                   placeholder="RPE"
-                                  style={ar.rpeInput}
+                                  style={{
+                                    ...ar.rpeInput,
+                                    ...(entry.rpe == null && playerSubmittedRpe != null ? ar.rpeInputSelf : {}),
+                                  }}
+                                  title={entry.rpe == null && playerSubmittedRpe != null ? t("pages.attendanceRegister.rpeSelfReported") : undefined}
                                   aria-label={t("pages.attendanceRegister.rpeFor", { name: getPlayerName(player) })}
                                 />
                               )}
@@ -321,7 +360,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   );
 }
 
-function buildRegisterStats(players, sessions) {
+function buildRegisterStats(players, sessions, playerRpeIndex = {}) {
   let present = 0;
   let absences = 0;
   let injuries = 0;
@@ -332,11 +371,12 @@ function buildRegisterStats(players, sessions) {
     sessions.forEach((session) => {
       cells += 1;
       const entry = session.attendance?.[String(player.id)] || {};
-      const status = entry.status || getDefaultStatus(player);
+      const status = entry.status || getDefaultStatus(player, session.date);
+      const effectiveRpe = entry.rpe ?? playerRpeIndex[`${player.id}:${session.id}`];
       if (PRESENT_STATUSES.has(status)) present += 1;
       if (ABSENT_STATUSES.has(status)) absences += 1;
       if (status === "Infortunato") injuries += 1;
-      if (PRESENT_STATUSES.has(status) && Number(entry.rpe || 0)) rpes.push(Number(entry.rpe));
+      if (PRESENT_STATUSES.has(status) && Number(effectiveRpe || 0)) rpes.push(Number(effectiveRpe));
     });
   });
 
@@ -348,16 +388,17 @@ function buildRegisterStats(players, sessions) {
   };
 }
 
-function buildPlayerStats(player, sessions) {
+function buildPlayerStats(player, sessions, playerRpeIndex = {}) {
   let present = 0;
   let load = 0;
 
   sessions.forEach((session) => {
     const entry = session.attendance?.[String(player.id)] || {};
-    const status = entry.status || getDefaultStatus(player);
+    const status = entry.status || getDefaultStatus(player, session.date);
+    const effectiveRpe = entry.rpe ?? playerRpeIndex[`${player.id}:${session.id}`];
     if (PRESENT_STATUSES.has(status)) {
       present += 1;
-      load += getDuration(session) * Number(entry.rpe || 0);
+      load += getDuration(session) * Number(effectiveRpe || 0);
     }
   });
 
@@ -538,6 +579,10 @@ const ar = {
     fontSize: 12,
     textAlign: "center",
     outline: "none",
+  },
+  rpeInputSelf: {
+    border: "1px solid rgba(168,85,247,0.4)",
+    background: "rgba(168,85,247,0.1)",
   },
   loadValue: {
     color: "#cbd5e1",
