@@ -61,11 +61,12 @@ function Calendar({
   const [confirmState, setConfirmState] = useState(null);
   const { canManage } = useAreaPermission();
 
-  function quickCreate({ date, type, title, notes }) {
+  function quickCreate({ date, type, title, time, notes }) {
     if (!canManage) return;
     const base = {
       id:    createId(type === "Partita" ? "match" : "session"),
       date,
+      time:  time || "",
       notes: notes || "",
       attendance: {},
     };
@@ -857,12 +858,14 @@ function QuickAddForm({ date, onSave, onCancel, compact = false }) {
   const { t } = useTranslation();
   const [type,  setType]  = useState("Allenamento");
   const [title, setTitle] = useState("");
+  const [time,  setTime]  = useState("");
   const [notes, setNotes] = useState("");
 
   function handleSave() {
-    onSave({ date, type, title: title.trim(), notes: notes.trim() });
+    onSave({ date, type, title: title.trim(), time, notes: notes.trim() });
     setType("Allenamento");
     setTitle("");
+    setTime("");
     setNotes("");
   }
 
@@ -884,14 +887,22 @@ function QuickAddForm({ date, onSave, onCancel, compact = false }) {
         ))}
       </div>
 
-      {/* Titolo / avversario */}
-      <input
-        style={qa.input}
-        placeholder={type === "Partita" ? t("pages.calendar.opponentPlaceholder") : t("pages.calendar.titlePlaceholder")}
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        autoFocus
-      />
+      {/* Titolo / avversario + orario */}
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          style={{ ...qa.input, flex: 1 }}
+          placeholder={type === "Partita" ? t("pages.calendar.opponentPlaceholder") : t("pages.calendar.titlePlaceholder")}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          autoFocus
+        />
+        <input
+          type="time"
+          style={{ ...qa.input, flex: "0 0 110px" }}
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+        />
+      </div>
 
       {/* Note — solo in modalità non-compact */}
       {!compact && (
