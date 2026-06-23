@@ -52,14 +52,47 @@ function buildWeek(offsetWeeks = 0) {
   });
 }
 
+// Conversioni per mantenere lo stesso periodo visualizzato quando si passa
+// da vista Mese a vista Settimana e viceversa.
+function mondayOf(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+
+function weekOffsetForDate(date) {
+  const todayMonday  = mondayOf(new Date());
+  const targetMonday = mondayOf(date);
+  const diffDays = Math.round((targetMonday - todayMonday) / 86400000);
+  return Math.round(diffDays / 7);
+}
+
+function monthDateForWeekOffset(offsetWeeks) {
+  return buildWeek(offsetWeeks)[0].date;
+}
+
 function Calendar({
   events, players, setSessions, setMatches, sessions = [], matches = [], appSettings = {} }) {
 
   const { t } = useTranslation();
   const [view, setView] = useTabState("view", "week");
   const [monthDate, setMonthDate] = useState(() => new Date());
+  const [weekOffset, setWeekOffset] = useState(0);
   const [confirmState, setConfirmState] = useState(null);
   const { canManage } = useAreaPermission();
+
+  // Mantiene lo stesso periodo visualizzato quando si passa da Mese a Settimana
+  // e viceversa, invece di tornare sempre alla settimana/mese corrente.
+  function changeView(nextView) {
+    if (nextView === view) return;
+    if (nextView === "week") {
+      setWeekOffset(weekOffsetForDate(monthDate));
+    } else if (nextView === "month") {
+      setMonthDate(monthDateForWeekOffset(weekOffset));
+    }
+    setView(nextView);
+  }
 
   function quickCreate({ date, type, title, time, notes }) {
     if (!canManage) return;
@@ -155,13 +188,13 @@ function Calendar({
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Button
             variant={view === "week" ? "primary" : "ghost"}
-            onClick={() => setView("week")}
+            onClick={() => changeView("week")}
           >
             {t("pages.calendar.viewWeek")}
           </Button>
           <Button
             variant={view === "month" ? "primary" : "ghost"}
-            onClick={() => setView("month")}
+            onClick={() => changeView("month")}
           >
             {t("pages.calendar.viewMonth")}
           </Button>
@@ -177,6 +210,8 @@ function Calendar({
             onDeleteEvent={requestDeleteEvent}
             canManage={canManage}
             appSettings={appSettings}
+            offset={weekOffset}
+            setOffset={setWeekOffset}
             onEditEvent={(event, updates) => {
               if (!canManage) return;
               if (event.type === "Partita") setMatches?.(matches.map((m) => String(m.id) === String(event.id) ? { ...m, ...updates } : m));
@@ -443,7 +478,9 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                           onClick={() => onSelect(event.id)}
                           style={{ flex: 1, cursor: "pointer", fontSize: 11, fontWeight: 700, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", border: "none", background: "transparent", padding: 0, textAlign: "left", minHeight: 0 }}
                         >
-                          {event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}{" "}{event.type === "Partita" ? (event.opponent || event.title) : event.title}
+                          {event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}{" "}
+                          {event.time && <span style={{ opacity: 0.85 }}>{event.time}{" "}</span>}
+                          {event.type === "Partita" ? (event.opponent || event.title) : event.title}
                         </button>
                         {canManage && cell.events.length > 1 && (
                           <>
@@ -490,10 +527,9 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
 // ─────────────────────────────────────────────
 // Vista Settimana (ex WeekPlan)
 // ─────────────────────────────────────────────
-function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, canManage = true, appSettings = {} }) {
+function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, canManage = true, appSettings = {}, offset = 0, setOffset }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const [offset, setOffset] = useState(0);
   const [openDay, setOpenDay] = useState(null); // dateKey del giorno con form aperto
   const [editingEvent, setEditingEvent] = useState(null);
   const [activeEvent, setActiveEvent] = useState(null);
