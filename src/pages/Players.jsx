@@ -95,7 +95,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   const [filterRoleFamily, setFilterRoleFamily] = useState("tutti");
   const [filterFoot, setFilterFoot] = useState("tutti");
   const [filterAge, setFilterAge] = useState("tutti");
-  const [gruppoFilter, setGruppoFilter] = useState(urlGruppo);
+  const gruppoFilter = urlGruppo;
   const [viewMode, setViewMode] = useState(() => {
     try {
       return localStorage.getItem("calciolab_players_view") === "list" ? "list" : "grid";
@@ -252,7 +252,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     setFilterRoleFamily("tutti");
     setFilterFoot("tutti");
     setFilterAge("tutti");
-    setGruppoFilter("prima");
+    changeGroupFilter("prima", { replace: true });
   }
 
   function filterByStatus(status) {
@@ -260,7 +260,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   }
 
   function filterByGroup(group) {
-    setGruppoFilter(group);
+    changeGroupFilter(group);
   }
 
   function filterByRoleFamily(family) {
@@ -355,6 +355,20 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     };
 
     reader.readAsDataURL(file);
+  }
+
+  function changeGroupFilter(group, { replace = false } = {}) {
+    const params = new URLSearchParams(location.search);
+    if (group && group !== "prima") {
+      params.set("gruppo", group);
+    } else {
+      params.delete("gruppo");
+    }
+    const searchString = params.toString();
+    navigate(
+      { pathname: location.pathname, search: searchString ? `?${searchString}` : "" },
+      { replace }
+    );
   }
 
   function openNewPlayerModal() {
@@ -729,7 +743,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               <button
                 key={g}
                 type="button"
-                onClick={() => setGruppoFilter(g)}
+                onClick={() => changeGroupFilter(g)}
                 style={{
                   ...pStyles.tab,
                   background: gruppoFilter === g ? "rgba(37,99,235,0.18)" : "rgba(255,255,255,0.04)",
@@ -767,7 +781,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
                   setFilterRoleFamily("tutti");
                   setFilterFoot("tutti");
                   setFilterAge("tutti");
-                  setGruppoFilter("prima");
+                  changeGroupFilter("prima", { replace: true });
                 }}
                 style={{
                   marginTop: 12, padding: "8px 18px", borderRadius: 10,
