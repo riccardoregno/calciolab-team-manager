@@ -3577,6 +3577,7 @@ export const en = {
       age: "Age",
       appearances: "Apps",
       trainingPct: "Training",
+      trainingPctAbbr: "% Att.",
       noRole: "Role not set",
     },
     trainingTimeline: {
