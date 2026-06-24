@@ -220,8 +220,13 @@ function Dashboard({
     return () => { active = false; };
   }, [auth.team?.id]);
 
+  const primaPlayers = useMemo(
+    () => players.filter((player) => (player.gruppo || "prima") === "prima"),
+    [players]
+  );
+
   const playerStats = useMemo(() => {
-    return players.map((player) => {
+    return primaPlayers.map((player) => {
       const stat = playerStatsMap[String(player.id)] || {};
       const avgRating = playerRatingsMap[String(player.id)] ?? null;
 
@@ -238,7 +243,7 @@ function Dashboard({
         avgRating,
       };
     });
-  }, [players, playerStatsMap, playerRatingsMap]);
+  }, [primaPlayers, playerStatsMap, playerRatingsMap]);
 
   const totalGoals = playerStats.reduce((sum, p) => sum + p.goals, 0);
   const totalAssists = playerStats.reduce((sum, p) => sum + p.assists, 0);
@@ -344,10 +349,10 @@ function Dashboard({
   const upcomingWeekEvents = upcomingWeekAgenda.length;
   const openCorrections = getOpenPostMatchCorrections(sessions, matches);
 
-  const availablePlayers = players.filter(
+  const availablePlayers = primaPlayers.filter(
     (p) => !p.status || p.status === "Disponibile"
   ).length;
-  const unavailablePlayers = Math.max(0, players.length - availablePlayers);
+  const unavailablePlayers = Math.max(0, primaPlayers.length - availablePlayers);
 
   const recentActivities = [...events]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
@@ -357,8 +362,8 @@ function Dashboard({
 
   const coachAlerts = useMemo(() => [
     ...getMatchOperationalAlerts(nextMatch, t),
-    ...getCoachAlerts({ players, matches, physicalTests, sessions, playerStatsMap, teamWellnessToday, t }),
-  ], [players, matches, physicalTests, sessions, playerStatsMap, teamWellnessToday, nextMatch, t]);
+    ...getCoachAlerts({ players: primaPlayers, matches, physicalTests, sessions, playerStatsMap, teamWellnessToday, t }),
+  ], [primaPlayers, matches, physicalTests, sessions, playerStatsMap, teamWellnessToday, nextMatch, t]);
 
   const sectionOrder = Array.isArray(settings.dashboardSectionOrder)
     ? settings.dashboardSectionOrder.filter((key) => DASHBOARD_SECTION_KEYS.includes(key))
@@ -419,7 +424,7 @@ function Dashboard({
                 upcomingWeekEvents={upcomingWeekEvents}
                 availablePlayers={availablePlayers}
                 unavailablePlayers={unavailablePlayers}
-                playersCount={players.length}
+                playersCount={primaPlayers.length}
                 coachAlerts={coachAlerts}
                 setup={setup}
                 navigate={navigate}
@@ -497,7 +502,7 @@ function Dashboard({
                 <>
                   <KpiCard
                     label={t("pages.dashboard.teamPlayers")}
-                    value={players.length}
+                    value={primaPlayers.length}
                     icon="👥"
                     note={`${availablePlayers} ${t("pages.dashboard.available")}`}
                   />
@@ -663,31 +668,31 @@ function Dashboard({
             >
               <MiniStatus
                 label={t("pages.dashboard.availableCount")}
-                value={players.filter((p) => !p.status || p.status === "Disponibile").length}
+                value={availablePlayers}
                 tone="green"
               />
               <MiniStatus
                 label={t("pages.dashboard.injuredCount")}
-                value={players.filter((p) => p.status === "Infortunato").length}
+                value={primaPlayers.filter((p) => p.status === "Infortunato").length}
                 tone="red"
               />
               <MiniStatus
                 label={t("pages.dashboard.suspendedCount")}
-                value={players.filter((p) => p.status === "Squalificato").length}
+                value={primaPlayers.filter((p) => p.status === "Squalificato").length}
                 tone="purple"
               />
               <MiniStatus
                 label={t("pages.dashboard.recoveringCount")}
-                value={players.filter((p) => p.status === "Recupero" || p.status === "Differenziato").length}
+                value={primaPlayers.filter((p) => p.status === "Recupero" || p.status === "Differenziato").length}
                 tone="orange"
               />
             </div>
 
-            <RosterGrid players={players} />
+            <RosterGrid players={primaPlayers} />
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
               <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>
-                {t("pages.dashboard.totalRoster")} {players.length}
+                {t("pages.dashboard.totalRoster")} {primaPlayers.length}
               </span>
               <Button variant="ghost" onClick={() => navigate("/players")}>
                 {t("pages.dashboard.goToRoster")}
