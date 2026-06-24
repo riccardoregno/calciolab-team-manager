@@ -116,7 +116,7 @@ export const en = {
       dashboard: "Dashboard",
       onboarding: "Onboarding",
       calendar: "Calendar",
-      roster: "Squad",
+      roster: "First Team Squad",
       availability: "Availability",
       physicalTests: "Physical tests",
       physicalWorkouts: "Physical workouts",

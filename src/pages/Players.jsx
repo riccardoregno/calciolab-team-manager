@@ -72,7 +72,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   const location = useLocation();
   const navigate = useNavigate();
   const { canManage } = useAreaPermission();
-  const urlGruppo = new URLSearchParams(location.search).get("gruppo") || "tutti";
+  const urlGruppo = new URLSearchParams(location.search).get("gruppo") || "prima";
   const openModal = new URLSearchParams(location.search).get("modal") === PLAYER_MODAL_QUERY;
 
   const { showToast, ToastContainer } = useToast();
@@ -145,8 +145,13 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   // Birthday players (today)
   const birthdayPlayers = players.filter((p) => isBirthdayToday(p.birthDate));
 
-  // Average team age
-  const averageAge = getTeamAverageAge(players);
+  // I contatori "totale", "disponibili", "infortunati", "età media" e i reparti
+  // riguardano solo la Prima Squadra: i Juniores sono un gruppo a parte e non
+  // devono alterare le statistiche complessive della rosa principale.
+  const primaPlayers = players.filter((p) => (p.gruppo || "prima") === "prima");
+
+  // Average team age (solo prima squadra)
+  const averageAge = getTeamAverageAge(primaPlayers);
 
   // Gruppi presenti nella rosa
   const presentGroups = [...new Set(players.map((p) => p.gruppo || "prima"))];
@@ -231,7 +236,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     return null;
   }
 
-  const countByPosition = players.reduce(
+  const countByPosition = primaPlayers.reduce(
     (acc, p) => {
       const family = getRoleFamily(p.role);
       if (family) acc[family] = (acc[family] || 0) + 1;
@@ -247,7 +252,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     setFilterRoleFamily("tutti");
     setFilterFoot("tutti");
     setFilterAge("tutti");
-    setGruppoFilter("tutti");
+    setGruppoFilter("prima");
   }
 
   function filterByStatus(status) {
@@ -267,15 +272,15 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     {
       key: "total",
       label: t("pages.players.totalPlayers"),
-      value: players.length,
+      value: primaPlayers.length,
       color: "#60a5fa",
       onClick: resetRosterFilters,
-      active: activeFilterCount === 0 && gruppoFilter === "tutti" && !search,
+      active: activeFilterCount === 0 && gruppoFilter === "prima" && !search,
     },
     {
       key: "available",
       label: t("pages.players.available"),
-      value: players.filter((p) => (p.status || "Disponibile") === "Disponibile").length,
+      value: primaPlayers.filter((p) => (p.status || "Disponibile") === "Disponibile").length,
       color: "#22c55e",
       onClick: () => filterByStatus("Disponibile"),
       active: filterStatus === "Disponibile",
@@ -283,7 +288,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     {
       key: "injured",
       label: t("pages.players.injured"),
-      value: players.filter((p) => p.status === "Infortunato").length,
+      value: primaPlayers.filter((p) => p.status === "Infortunato").length,
       color: "#f87171",
       onClick: () => filterByStatus("Infortunato"),
       active: filterStatus === "Infortunato",
@@ -762,7 +767,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
                   setFilterRoleFamily("tutti");
                   setFilterFoot("tutti");
                   setFilterAge("tutti");
-                  setGruppoFilter("tutti");
+                  setGruppoFilter("prima");
                 }}
                 style={{
                   marginTop: 12, padding: "8px 18px", borderRadius: 10,
