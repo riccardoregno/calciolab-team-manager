@@ -1757,6 +1757,7 @@ export const it = {
       month: "Mese",
       group: "Gruppo",
       allGroups: "Tutti i gruppi",
+      junioresHint: "I Juniores entrano in disponibilità solo quando li segni presenti nelle sedute.",
       search: "Cerca giocatore...",
       metricSessions: "Sedute",
       metricPresence: "% presenza",

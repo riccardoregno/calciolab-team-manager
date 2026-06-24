@@ -128,10 +128,20 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
       .sort((a, b) => getPlayerName(a).localeCompare(getPlayerName(b)));
   }, [players, groupFilter, search]);
 
+  const visiblePrimaryPlayers = useMemo(
+    () => visiblePlayers.filter((player) => (player.gruppo || "prima") !== "juniores"),
+    [visiblePlayers]
+  );
+  const visibleJuniorPlayers = useMemo(
+    () => visiblePlayers.filter((player) => (player.gruppo || "prima") === "juniores"),
+    [visiblePlayers]
+  );
+
   const registerStats = useMemo(
     () => buildRegisterStats(visiblePlayers, visibleSessions, playerRpeIndex),
     [visiblePlayers, visibleSessions, playerRpeIndex]
   );
+
 
   function updateAttendance(sessionId, playerId, patch) {
     if (!canManage) return;
@@ -159,13 +169,13 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
     updateAttendance(session.id, playerId, { status: nextStatus });
   }
 
-  function markSession(sessionId, status) {
+  function markSession(sessionId, status, targetPlayers = visiblePlayers) {
     if (!canManage) return;
     setSessions((prevSessions) =>
       prevSessions.map((session) => {
         if (String(session.id) !== String(sessionId)) return session;
         const nextAttendance = { ...(session.attendance || {}) };
-        visiblePlayers.forEach((player) => {
+        targetPlayers.forEach((player) => {
           const playerId = String(player.id);
           nextAttendance[playerId] = {
             ...(nextAttendance[playerId] || {}),
@@ -174,6 +184,127 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
         });
         return { ...session, attendance: nextAttendance };
       })
+    );
+  }
+
+  function renderAttendanceTable(tablePlayers, { title = "", subtitle = "" } = {}) {
+    if (!tablePlayers.length) return null;
+
+    return (
+      <AppCard style={{ overflow: "hidden", padding: 0 }}>
+        {title && (
+          <div style={ar.tableSectionHeader}>
+            <div>
+              <h3 style={ar.tableSectionTitle}>{title}</h3>
+              {subtitle && <p style={ar.tableSectionSubtitle}>{subtitle}</p>}
+            </div>
+            <Badge tone="blue">{tablePlayers.length}</Badge>
+          </div>
+        )}
+        <div style={ar.tableScroller}>
+          <table style={ar.table}>
+            <thead>
+              <tr>
+                <th style={{ ...ar.th, ...ar.playerTh }}>{t("pages.attendanceRegister.player")}</th>
+                {visibleSessions.map((session) => (
+                  <th key={session.id} style={ar.th}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/session-attendance/${session.id}`)}
+                      style={ar.sessionLink}
+                      title={session.title || t("pages.attendanceRegister.sessionFallback")}
+                    >
+                      <span>{formatShortDate(session.date)}</span>
+                      <small>{session.title || t("pages.attendanceRegister.sessionFallback")}</small>
+                    </button>
+                    {canManage && (
+                      <div style={ar.columnActions}>
+                        <button type="button" onClick={() => markSession(session.id, "Presente", tablePlayers)} style={ar.miniAction}>P</button>
+                        <button type="button" onClick={() => markSession(session.id, "Assente", tablePlayers)} style={ar.miniAction}>A</button>
+                      </div>
+                    )}
+                  </th>
+                ))}
+                <th style={ar.th}>{t("pages.attendanceRegister.presencePct")}</th>
+                <th style={ar.th}>{t("pages.attendanceRegister.load")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tablePlayers.map((player) => {
+                const rowStats = buildPlayerStats(player, visibleSessions, playerRpeIndex);
+                return (
+                  <tr key={player.id}>
+                    <td style={{ ...ar.td, ...ar.playerTd }}>
+                      <div style={ar.playerCell}>
+                        <strong>{getPlayerName(player)}</strong>
+                        <span>{player.role || "-"}{player.shirtNumber ? ` · #${player.shirtNumber}` : ""}</span>
+                      </div>
+                    </td>
+
+                    {visibleSessions.map((session) => {
+                      const playerId = String(player.id);
+                      const entry = session.attendance?.[playerId] || {};
+                      const status = entry.status || getDefaultStatus(player, session.date);
+                      const meta = STATUS_META[status] || STATUS_META.Presente;
+                      const showRpe = status === "Presente" || status === "Recupero";
+                      const playerSubmittedRpe = playerRpeIndex[`${playerId}:${session.id}`];
+                      const effectiveRpe = entry.rpe ?? playerSubmittedRpe ?? "";
+
+                      return (
+                        <td key={`${session.id}-${playerId}`} style={ar.td}>
+                          <div style={ar.cellStack}>
+                            <button
+                              type="button"
+                              onClick={() => cycleStatus(session, player)}
+                              disabled={!canManage}
+                              style={{
+                                ...ar.statusCell,
+                                color: meta.color,
+                                background: meta.bg,
+                                borderColor: meta.border,
+                              }}
+                              title={t("pages.attendanceRegister.cycleStatus")}
+                            >
+                              {meta.code}
+                            </button>
+                            {showRpe && (
+                              <input
+                                type="number"
+                                min="1"
+                                max="10"
+                                step="0.5"
+                                value={effectiveRpe}
+                                onChange={(event) => updateAttendance(session.id, playerId, { rpe: event.target.value })}
+                                disabled={!canManage}
+                                placeholder="RPE"
+                                style={{
+                                  ...ar.rpeInput,
+                                  ...(entry.rpe == null && playerSubmittedRpe != null ? ar.rpeInputSelf : {}),
+                                }}
+                                title={entry.rpe == null && playerSubmittedRpe != null ? t("pages.attendanceRegister.rpeSelfReported") : undefined}
+                                aria-label={t("pages.attendanceRegister.rpeFor", { name: getPlayerName(player) })}
+                              />
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+
+                    <td style={ar.td}>
+                      <Badge tone={rowStats.presencePct < 70 ? "red" : rowStats.presencePct < 85 ? "orange" : "green"}>
+                        {rowStats.presencePct}%
+                      </Badge>
+                    </td>
+                    <td style={ar.td}>
+                      <span style={ar.loadValue}>{rowStats.load}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </AppCard>
     );
   }
 
@@ -254,111 +385,13 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
           text={t("pages.attendanceRegister.noPlayersText")}
         />
       ) : (
-        <AppCard style={{ overflow: "hidden", padding: 0 }}>
-          <div style={ar.tableScroller}>
-            <table style={ar.table}>
-              <thead>
-                <tr>
-                  <th style={{ ...ar.th, ...ar.playerTh }}>{t("pages.attendanceRegister.player")}</th>
-                  {visibleSessions.map((session) => (
-                    <th key={session.id} style={ar.th}>
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/session-attendance/${session.id}`)}
-                        style={ar.sessionLink}
-                        title={session.title || t("pages.attendanceRegister.sessionFallback")}
-                      >
-                        <span>{formatShortDate(session.date)}</span>
-                        <small>{session.title || t("pages.attendanceRegister.sessionFallback")}</small>
-                      </button>
-                      {canManage && (
-                        <div style={ar.columnActions}>
-                          <button type="button" onClick={() => markSession(session.id, "Presente")} style={ar.miniAction}>P</button>
-                          <button type="button" onClick={() => markSession(session.id, "Assente")} style={ar.miniAction}>A</button>
-                        </div>
-                      )}
-                    </th>
-                  ))}
-                  <th style={ar.th}>{t("pages.attendanceRegister.presencePct")}</th>
-                  <th style={ar.th}>{t("pages.attendanceRegister.load")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visiblePlayers.map((player) => {
-                  const rowStats = buildPlayerStats(player, visibleSessions, playerRpeIndex);
-                  return (
-                    <tr key={player.id}>
-                      <td style={{ ...ar.td, ...ar.playerTd }}>
-                        <div style={ar.playerCell}>
-                          <strong>{getPlayerName(player)}</strong>
-                          <span>{player.role || "-"}{player.shirtNumber ? ` · #${player.shirtNumber}` : ""}</span>
-                        </div>
-                      </td>
-
-                      {visibleSessions.map((session) => {
-                        const playerId = String(player.id);
-                        const entry = session.attendance?.[playerId] || {};
-                        const status = entry.status || getDefaultStatus(player, session.date);
-                        const meta = STATUS_META[status] || STATUS_META.Presente;
-                        const showRpe = status === "Presente" || status === "Recupero";
-                        const playerSubmittedRpe = playerRpeIndex[`${playerId}:${session.id}`];
-                        const effectiveRpe = entry.rpe ?? playerSubmittedRpe ?? "";
-
-                        return (
-                          <td key={`${session.id}-${playerId}`} style={ar.td}>
-                            <div style={ar.cellStack}>
-                              <button
-                                type="button"
-                                onClick={() => cycleStatus(session, player)}
-                                disabled={!canManage}
-                                style={{
-                                  ...ar.statusCell,
-                                  color: meta.color,
-                                  background: meta.bg,
-                                  borderColor: meta.border,
-                                }}
-                                title={t("pages.attendanceRegister.cycleStatus")}
-                              >
-                                {meta.code}
-                              </button>
-                              {showRpe && (
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="10"
-                                  step="0.5"
-                                  value={effectiveRpe}
-                                  onChange={(event) => updateAttendance(session.id, playerId, { rpe: event.target.value })}
-                                  disabled={!canManage}
-                                  placeholder="RPE"
-                                  style={{
-                                    ...ar.rpeInput,
-                                    ...(entry.rpe == null && playerSubmittedRpe != null ? ar.rpeInputSelf : {}),
-                                  }}
-                                  title={entry.rpe == null && playerSubmittedRpe != null ? t("pages.attendanceRegister.rpeSelfReported") : undefined}
-                                  aria-label={t("pages.attendanceRegister.rpeFor", { name: getPlayerName(player) })}
-                                />
-                              )}
-                            </div>
-                          </td>
-                        );
-                      })}
-
-                      <td style={ar.td}>
-                        <Badge tone={rowStats.presencePct < 70 ? "red" : rowStats.presencePct < 85 ? "orange" : "green"}>
-                          {rowStats.presencePct}%
-                        </Badge>
-                      </td>
-                      <td style={ar.td}>
-                        <span style={ar.loadValue}>{rowStats.load}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </AppCard>
+        <div style={ar.tableSections}>
+          {renderAttendanceTable(visiblePrimaryPlayers)}
+          {renderAttendanceTable(visibleJuniorPlayers, {
+            title: t("pages.players.groupJuniores"),
+            subtitle: t("pages.attendanceRegister.junioresHint"),
+          })}
+        </div>
       )}
     </div>
   );
@@ -479,6 +512,30 @@ const ar = {
     border: "1px solid rgba(255,255,255,0.08)",
     fontSize: 12,
     fontWeight: 800,
+  },
+  tableSections: {
+    display: "grid",
+    gap: 18,
+  },
+  tableSectionHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    padding: "14px 16px",
+    background: "rgba(59,130,246,0.07)",
+    borderBottom: "1px solid rgba(148,163,184,0.18)",
+  },
+  tableSectionTitle: {
+    margin: 0,
+    fontSize: 16,
+    fontWeight: 950,
+    color: "#e2e8f0",
+  },
+  tableSectionSubtitle: {
+    margin: "4px 0 0",
+    fontSize: 12,
+    color: "#94a3b8",
   },
   tableScroller: {
     overflow: "auto",

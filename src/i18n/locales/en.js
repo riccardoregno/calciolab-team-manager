@@ -1746,6 +1746,7 @@ export const en = {
       month: "Month",
       group: "Group",
       allGroups: "All groups",
+      junioresHint: "Juniors enter availability only when you mark them present in sessions.",
       search: "Search player...",
       metricSessions: "Sessions",
       metricPresence: "% attendance",
