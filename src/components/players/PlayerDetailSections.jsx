@@ -335,6 +335,21 @@ export function PlayerProfileTab({
       <div style={sectionStyles.formGrid}>
         <Field label={t("pages.playerDetail.profile.fieldName")}        value={form.name}        editing={editing} onChange={(v) => onFieldChange?.("name", v)} />
         <Field label={t("pages.playerDetail.profile.fieldRole")}        value={form.role}        editing={editing} onChange={(v) => onFieldChange?.("role", v)} />
+        <div style={{ minWidth: 0 }}>
+          <FieldLabel>{t("pages.playerDetail.profile.fieldGroup")}</FieldLabel>
+          {editing ? (
+            <select
+              value={form.gruppo || "prima"}
+              onChange={(e) => onFieldChange?.("gruppo", e.target.value)}
+              style={{ ...styles.input, width: "100%", minWidth: 0, boxSizing: "border-box" }}
+            >
+              <option value="prima">{t("pages.players.groupPrima")}</option>
+              <option value="juniores">{t("pages.players.groupJuniores")}</option>
+            </select>
+          ) : (
+            <ReadOnlyBox>{form.gruppo === "juniores" ? t("pages.players.groupJuniores") : t("pages.players.groupPrima")}</ReadOnlyBox>
+          )}
+        </div>
         <Field label={t("pages.playerDetail.profile.fieldShirt")}       value={form.shirtNumber} editing={editing} onChange={(v) => onFieldChange?.("shirtNumber", v)} />
         <Field label={t("pages.playerDetail.profile.fieldFoot")}        value={form.foot}        editing={editing} onChange={(v) => onFieldChange?.("foot", v)} />
         <Field label={t("pages.playerDetail.profile.fieldHeight")}      value={form.height}      editing={editing} onChange={(v) => onFieldChange?.("height", v)} />

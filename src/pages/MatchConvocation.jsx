@@ -77,17 +77,26 @@ const CONVOCATION_DETAIL_FIELDS = [
   "matchTime",
   "meetingTime",
   "meetingPlace",
+  "field",
   "lockerRoom",
   "kit",
   "staffContact",
   "message",
 ];
 
-function getDefaultConvocationDetails(match, isHomeMatch, venue) {
+function getAwayField(match = {}) {
+  return [match.venueName, match.venueAddress]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(" — ");
+}
+
+function getDefaultConvocationDetails(match, isHomeMatch, venue, homeVenue = "") {
   return {
     matchTime: match?.time || "",
     meetingTime: "",
-    meetingPlace: isHomeMatch || venue ? venue : "",
+    meetingPlace: isHomeMatch ? venue : homeVenue,
+    field: isHomeMatch ? venue : getAwayField(match),
     lockerRoom: "",
     kit: "",
     staffContact: "",
@@ -110,9 +119,19 @@ function getPlayerDisplayName(player = {}) {
   return [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "-";
 }
 
-function buildConvocationText({ clubName, match, details, meetingInfo, sheetVenue, notes, convocati, t }) {
+function buildConvocationText({ clubName, match, details, meetingInfo, fieldInfo, notes, convocati, isHomeMatch, t }) {
   const matchContext = [match.competition, match.matchday].filter(Boolean).join(" · ");
   const opponent = match.opponent || t("pages.matchConvocation.defaultOpponent");
+
+  if (!isHomeMatch) {
+    return [
+      t("pages.matchConvocation.convTextTitle", { club: clubName, opponent }),
+      t("pages.matchConvocation.convTextDate", { value: formatDate(match.date) }),
+      t("pages.matchConvocation.convTextMeeting", { value: meetingInfo || "" }),
+      t("pages.matchConvocation.convTextField", { value: fieldInfo || "" }),
+    ].join("\n");
+  }
+
   const lines = [
     t("pages.matchConvocation.convTextTitle", { club: clubName, opponent }),
     matchContext ? t("pages.matchConvocation.convTextCompetition", { value: matchContext }) : "",
@@ -120,7 +139,7 @@ function buildConvocationText({ clubName, match, details, meetingInfo, sheetVenu
     match.location ? t("pages.matchConvocation.convTextLocation", { value: match.location }) : "",
     details.matchTime ? t("pages.matchConvocation.convTextMatchTime", { value: details.matchTime }) : "",
     meetingInfo ? t("pages.matchConvocation.convTextMeeting", { value: meetingInfo }) : "",
-    sheetVenue ? t("pages.matchConvocation.convTextField", { value: sheetVenue }) : "",
+    fieldInfo ? t("pages.matchConvocation.convTextField", { value: fieldInfo }) : "",
     details.lockerRoom ? t("pages.matchConvocation.convTextLockerRoom", { value: details.lockerRoom }) : "",
     details.kit ? t("pages.matchConvocation.convTextKit", { value: details.kit }) : "",
     details.staffContact ? t("pages.matchConvocation.convTextStaffContact", { value: details.staffContact }) : "",
@@ -182,7 +201,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   const defaultNotes = matchVenue
     ? t("pages.matchConvocation.defaultNotesTemplate", { venue: matchVenue })
     : "";
-  const defaultDetails = getDefaultConvocationDetails(match, isHomeMatch, matchVenue);
+  const defaultDetails = getDefaultConvocationDetails(match, isHomeMatch, matchVenue, homeVenue);
 
   const [selectedIds, setSelectedIds] = useState(() =>
     Array.isArray(existing.playerIds) ? existing.playerIds.map(String) : []
@@ -190,6 +209,10 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   const [notes, setNotes]       = useState(existing.notes || defaultNotes);
   const [details, setDetails] = useState(() =>
     normalizeConvocationDetails(existing.details, defaultDetails)
+  );
+  const [communicationText, setCommunicationText] = useState(existing.communicationText || "");
+  const [communicationEdited, setCommunicationEdited] = useState(
+    Boolean(existing.communicationEdited ?? existing.communicationText)
   );
   const [published, setPublished] = useState(Boolean(existing.published));
   const [saved, setSaved]       = useState(false);
@@ -204,15 +227,37 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   useEffect(() => {
     const c = match?.convocazione || {};
     const nextMatchVenue = getMatchVenue(match, homeVenue);
-    const nextDefaults = getDefaultConvocationDetails(match, isHomeMatch, nextMatchVenue);
+    const nextDefaults = getDefaultConvocationDetails(match, isHomeMatch, nextMatchVenue, homeVenue);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIds(Array.isArray(c.playerIds) ? c.playerIds.map(String) : []);
     setNotes(c.notes || defaultNotes);
     setDetails(normalizeConvocationDetails(c.details, nextDefaults));
+    setCommunicationText(c.communicationText || "");
+    setCommunicationEdited(Boolean(c.communicationEdited ?? c.communicationText));
     setPublished(Boolean(c.published));
     setCopiedLabel("");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, defaultNotes, homeVenue, isHomeMatch, match?.time, match?.venueName, match?.venueAddress]);
+
+  useEffect(() => {
+    if (!match || communicationEdited) return;
+    const currentConvocati = selectedIds
+      .map((pid) => players.find((p) => String(p.id) === pid))
+      .filter(Boolean);
+    const generatedText = buildConvocationText({
+      clubName,
+      match,
+      details,
+      meetingInfo: formatMeeting(details),
+      fieldInfo: details.field || (isHomeMatch ? matchVenue : ""),
+      notes,
+      convocati: currentConvocati,
+      isHomeMatch,
+      t,
+    });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCommunicationText(generatedText);
+  }, [clubName, communicationEdited, details, isHomeMatch, match, matchVenue, notes, players, selectedIds, t]);
 
   useEffect(() => {
     let active = true;
@@ -282,6 +327,8 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
       playerIds:   selectedIds,
       notes:       notes.trim(),
       details:     cleanDetails,
+      communicationText: communicationText.trim(),
+      communicationEdited,
       published:   pub,
       publishedAt: pub ? (existing.publishedAt || new Date().toISOString()) : (existing.publishedAt || null),
       sentAt:      existing.sentAt || null,
@@ -426,6 +473,8 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
       playerIds: selectedIds,
       notes: notes.trim(),
       details: cleanDetails,
+      communicationText: communicationText.trim(),
+      communicationEdited,
       published,
       publishedAt: published ? (existing.publishedAt || sentAt) : (existing.publishedAt || null),
       sentAt,
@@ -479,20 +528,30 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   }, {});
   const sheetVenue = matchVenue || match.location;
   const meetingInfo = formatMeeting(details);
+  const fieldInfo = details.field || (isHomeMatch ? sheetVenue : "");
   const matchContext = [match.competition, match.matchday].filter(Boolean).join(" · ");
   const matchType = match.location || t("pages.matchConvocation.printToBeDefined");
   const publishedLabel = published ? t("pages.matchConvocation.publishedLabel") : t("pages.matchConvocation.draftLabel");
-  const fullMessage = buildConvocationText({
+  const generatedMessage = buildConvocationText({
     clubName,
     match,
     details,
     meetingInfo,
-    sheetVenue,
+    fieldInfo,
     notes,
     convocati,
+    isHomeMatch,
     t,
   });
+  const fullMessage = communicationEdited ? communicationText : (communicationText || generatedMessage);
   const rosterMessage = buildConvocationRosterText(convocati);
+
+  function restoreGeneratedMessage() {
+    if (!canManage) return;
+    setCommunicationEdited(false);
+    setCommunicationText(generatedMessage);
+    setSaved(false);
+  }
 
   return (
     <div style={s.page}>
@@ -616,7 +675,17 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
               value={details.meetingPlace}
               onChange={(e) => updateDetails("meetingPlace", e.target.value)}
               disabled={!canManage}
-              placeholder={matchVenue || homeVenue || t("pages.matchConvocation.meetingPlacePlaceholder")}
+              placeholder={homeVenue || matchVenue || t("pages.matchConvocation.meetingPlacePlaceholder")}
+              style={s.input}
+            />
+          </label>
+          <label style={s.labelFull}>
+            {t("pages.matchConvocation.fieldMatchField")}
+            <input
+              value={details.field}
+              onChange={(e) => updateDetails("field", e.target.value)}
+              disabled={!canManage}
+              placeholder={isHomeMatch ? matchVenue : t("pages.matchConvocation.matchFieldPlaceholder")}
               style={s.input}
             />
           </label>
@@ -691,13 +760,28 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
         </div>
 
         <textarea
-          readOnly
+          aria-label={t("pages.matchConvocation.commTitle")}
+          data-testid="convocation-communication-editor"
+          disabled={false}
+          readOnly={false}
           rows={Math.min(12, Math.max(7, convocati.length + 5))}
+          spellCheck={false}
+          tabIndex={0}
           value={fullMessage}
-          style={{ ...s.textarea, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" }}
+          onChange={(e) => {
+            setCommunicationText(e.target.value);
+            setCommunicationEdited(true);
+            setSaved(false);
+          }}
+          style={s.communicationEditor}
         />
 
         <div style={s.communicationActions}>
+          {canManage && (
+            <Button variant="ghost" onClick={restoreGeneratedMessage}>
+              {t("pages.matchConvocation.restoreAutoText")}
+            </Button>
+          )}
           <Button
             variant="ghost"
             onClick={() => copyConvocation(t("pages.matchConvocation.copiedLabelMessage"), fullMessage)}
@@ -1184,6 +1268,26 @@ const s = {
     lineHeight: 1.6,
     outline: "none",
     resize: "vertical",
+  },
+  communicationEditor: {
+    marginTop: 10,
+    width: "100%",
+    boxSizing: "border-box",
+    minHeight: 170,
+    padding: "10px 14px",
+    borderRadius: 12,
+    border: "1px solid rgba(147,197,253,0.35)",
+    background: "rgba(15,23,42,0.72)",
+    color: "#e2e8f0",
+    caretColor: "#60a5fa",
+    cursor: "text",
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+    fontSize: 14,
+    lineHeight: 1.6,
+    outline: "none",
+    pointerEvents: "auto",
+    resize: "vertical",
+    userSelect: "text",
   },
   formGrid: {
     display: "grid",
