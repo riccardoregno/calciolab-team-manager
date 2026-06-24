@@ -35,6 +35,9 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards
   const ageValue = computedAge ?? player.age ?? "-";
   const { appearances, trainingPct } = getPlayerQuickStats(player, sessions, matches);
   const trainingPctValue = trainingPct === null ? "-" : `${trainingPct}%`;
+  const trainingPctLabelKey = "components.playerCard.trainingPctAbbr";
+  const trainingPctLabel = t(trainingPctLabelKey);
+  const safeTrainingPctLabel = trainingPctLabel === trainingPctLabelKey ? "% All." : trainingPctLabel;
 
   const initials = player.name
     ? player.name
@@ -172,7 +175,11 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards
           }}
         >
           <MiniValue label={t("components.playerCard.appearances")} value={appearances} />
-          <MiniValue label={t("components.playerCard.trainingPctAbbr")} value={trainingPctValue} />
+          <MiniValue
+            label={safeTrainingPctLabel}
+            title={t("components.playerCard.trainingPct")}
+            value={trainingPctValue}
+          />
           <MiniValue label={t("components.playerCard.age")} value={ageValue} />
         </div>
 
@@ -209,9 +216,10 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards
   );
 }
 
-function MiniValue({ label, value }) {
+function MiniValue({ label, value, title }) {
   return (
     <div
+      title={title || label}
       style={{
         borderRadius: 12,
         background: "rgba(255,255,255,0.055)",

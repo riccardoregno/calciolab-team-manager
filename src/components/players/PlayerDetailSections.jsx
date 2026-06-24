@@ -35,6 +35,7 @@ const PLAYER_TABS = [
   { key: "video",       labelKey: "pages.playerDetail.tabs.video" },
   { key: "fisico",      labelKey: "pages.playerDetail.tabs.fisico" },
   { key: "medico",      labelKey: "pages.playerDetail.tabs.medico" },
+  { key: "assenze",     labelKey: "pages.playerDetail.tabs.assenze" },
   { key: "sviluppo",    labelKey: "pages.playerDetail.tabs.sviluppo" },
   { key: "wellness",    labelKey: "pages.playerDetail.tabs.wellness" },
 ];
@@ -882,7 +883,7 @@ function getAbsenceStatus(absence) {
   return "ongoing";
 }
 
-export function PlayerAbsencesSection({ absences = [], onAddAbsence, onRemoveAbsence }) {
+export function PlayerAbsencesSection({ absences = [], onAddAbsence, onEditAbsence, onRemoveAbsence }) {
   const { t } = useTranslation();
   const sorted = [...absences].sort((a, b) => new Date(a.dateStart || 0) - new Date(b.dateStart || 0));
   const upcomingOrOngoing = sorted.filter((a) => getAbsenceStatus(a) !== "past");
@@ -932,6 +933,11 @@ export function PlayerAbsencesSection({ absences = [], onAddAbsence, onRemoveAbs
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Badge tone={tone}>{statusLabel}</Badge>
+                    {onEditAbsence && (
+                      <Button variant="ghost" onClick={() => onEditAbsence(absence)}>
+                        {t("pages.playerDetail.absences.editBtn")}
+                      </Button>
+                    )}
                     {onRemoveAbsence && (
                       <Button variant="ghost" onClick={() => onRemoveAbsence(absence.id)}>
                         {t("pages.playerDetail.absences.removeBtn")}

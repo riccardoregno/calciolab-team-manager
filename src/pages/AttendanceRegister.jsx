@@ -53,6 +53,10 @@ function getDefaultStatus(player, dateStr) {
   if (player.status === "Infortunato") return "Infortunato";
   if (player.status === "Squalificato") return "Squalificato";
   if (player.status === "Recupero" || player.status === "Differenziato") return "Recupero";
+  // I Juniores non fanno parte del gruppo base: di default risultano Assenti
+  // per ogni seduta, finché il mister non li marca manualmente Presenti
+  // (a quel punto contano come un disponibile aggiuntivo rispetto alla prima squadra).
+  if ((player.gruppo || "prima") === "juniores") return "Assente";
   return "Presente";
 }
 

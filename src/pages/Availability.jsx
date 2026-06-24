@@ -41,6 +41,12 @@ function buildPrepDays(players, start, end) {
     return { days: [], truncated: false };
   }
 
+  // La pianificazione preparazione ragiona sulla prima squadra (il numero "X/Y" che
+  // serve per organizzare le sedute); i Juniores disponibili quel giorno vengono
+  // mostrati come aggiunta opzionale, coi nomi, senza alterare il rapporto principale.
+  const primaPlayers = players.filter((p) => (p.gruppo || "prima") === "prima");
+  const juniorPlayers = players.filter((p) => (p.gruppo || "prima") === "juniores");
+
   const days = [];
   const cursor = new Date(startDate);
   let truncated = false;
@@ -50,15 +56,19 @@ function buildPrepDays(players, start, end) {
       break;
     }
     const dateStr = cursor.toISOString().slice(0, 10);
-    const absentEntries = players
+    const absentEntries = primaPlayers
       .map((player) => ({ player, info: getPlayerUnavailabilityOnDate(player, dateStr) }))
       .filter((entry) => entry.info);
+    const availableJuniors = juniorPlayers.filter(
+      (player) => !getPlayerUnavailabilityOnDate(player, dateStr)
+    );
 
     days.push({
       date: dateStr,
-      total: players.length,
-      available: players.length - absentEntries.length,
+      total: primaPlayers.length,
+      available: primaPlayers.length - absentEntries.length,
       absentEntries,
+      availableJuniors,
     });
     cursor.setDate(cursor.getDate() + 1);
   }
@@ -318,7 +328,11 @@ export default function Availability({
   }
 
   const injuredPlayers = players.filter((p) => UNAVAILABLE.includes(p.status || "Disponibile"));
-  const availablePlayers = players.filter((p) => !UNAVAILABLE.includes(p.status || "Disponibile"));
+  // Il conteggio "Disponibili" in testa alla pagina riguarda solo la prima squadra:
+  // i Juniores sono un gruppo a parte (vedi anche Rosa) e non devono alterare
+  // il numero di riferimento usato per organizzare gli allenamenti della prima squadra.
+  const primaPlayers = players.filter((p) => (p.gruppo || "prima") === "prima");
+  const availablePlayers = primaPlayers.filter((p) => !UNAVAILABLE.includes(p.status || "Disponibile"));
 
   const injuryReport = useMemo(() => {
     const today = new Date();
@@ -716,12 +730,29 @@ export default function Availability({
                     <span style={{ ...av.badge, color: tone, background: `${tone}18`, border: `1px solid ${tone}55` }}>
                       {t("pages.availability.prepAvailableCount", { available: day.available, total: day.total })}
                     </span>
+                    {day.availableJuniors.length > 0 && (
+                      <span style={{ ...av.badge, color: "#a78bfa", background: "rgba(167,139,250,0.14)", border: "1px solid rgba(167,139,250,0.4)" }}>
+                        +{day.availableJuniors.length} Juniores
+                      </span>
+                    )}
+                    {day.availableJuniors.length > 0 && (
+                      <span style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>
+                        Totale: {day.available + day.availableJuniors.length}
+                      </span>
+                    )}
                   </div>
                   {day.absentEntries.length > 0 && (
                     <p style={{ ...av.muted, margin: "6px 0 0" }}>
                       {day.absentEntries.map(({ player, info }) => {
                         const name = [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "—";
                         return `${name} (${info.label})`;
+                      }).join(" · ")}
+                    </p>
+                  )}
+                  {day.availableJuniors.length > 0 && (
+                    <p style={{ ...av.muted, margin: "4px 0 0", color: "#a78bfa" }}>
+                      Juniores disponibili: {day.availableJuniors.map((player) => {
+                        return [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "—";
                       }).join(" · ")}
                     </p>
                   )}

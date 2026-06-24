@@ -98,6 +98,7 @@ function PlayerDetail({
   const [form, setForm] = useState({ ...player });
   const [medicalModal, setMedicalModal] = useState(null);
   const [absenceModal, setAbsenceModal] = useState(false);
+  const [editingAbsenceId, setEditingAbsenceId] = useState(null);
   const [absenceForm, setAbsenceForm] = useState(() => emptyAbsenceForm());
   const [conflictModal, setConflictModal] = useState(false);
   const [medicalForm, setMedicalForm] = useState({
@@ -498,7 +499,20 @@ function PlayerDetail({
 
   function openAddAbsenceModal() {
     if (!canManage) return;
+    setEditingAbsenceId(null);
     setAbsenceForm(emptyAbsenceForm());
+    setAbsenceModal(true);
+  }
+
+  function openEditAbsenceModal(absence) {
+    if (!canManage || !absence) return;
+    setEditingAbsenceId(absence.id || null);
+    setAbsenceForm({
+      type: absence.type || ABSENCE_TYPES[0],
+      dateStart: absence.dateStart || new Date().toISOString().slice(0, 10),
+      dateEnd: absence.dateEnd || absence.dateStart || new Date().toISOString().slice(0, 10),
+      notes: absence.notes || "",
+    });
     setAbsenceModal(true);
   }
 
@@ -513,7 +527,7 @@ function PlayerDetail({
       return;
     }
     const record = {
-      id: createId("absence"),
+      id: editingAbsenceId || createId("absence"),
       type: absenceForm.type,
       dateStart: absenceForm.dateStart,
       dateEnd: absenceForm.dateEnd,
@@ -521,10 +535,20 @@ function PlayerDetail({
     };
     updateMedicalRecord((current) => ({
       ...current,
-      absences: [...(current.absences || []), record],
+      absences: editingAbsenceId
+        ? (current.absences || []).map((absence) =>
+            String(absence.id) === String(editingAbsenceId) ? record : absence
+          )
+        : [...(current.absences || []), record],
     }));
     setAbsenceModal(false);
-    showToast(t("pages.playerDetail.absences.toastAdded"), "ok");
+    setEditingAbsenceId(null);
+    showToast(
+      editingAbsenceId
+        ? t("pages.playerDetail.absences.toastUpdated")
+        : t("pages.playerDetail.absences.toastAdded"),
+      "ok"
+    );
   }
 
   function removeAbsenceRecord(absenceId) {
@@ -816,10 +840,11 @@ function PlayerDetail({
             />
           )}
 
-          {activeTab === "medico" && (
+          {activeTab === "assenze" && (
             <PlayerAbsencesSection
               absences={absenceHistory}
               onAddAbsence={canManage ? openAddAbsenceModal : undefined}
+              onEditAbsence={canManage ? openEditAbsenceModal : undefined}
               onRemoveAbsence={canManage ? removeAbsenceRecord : undefined}
             />
           )}
@@ -862,7 +887,13 @@ function PlayerDetail({
       )}
 
       {absenceModal && (
-        <Modal title={t("pages.playerDetail.absences.modalTitle")} onClose={() => setAbsenceModal(false)}>
+        <Modal
+          title={t(editingAbsenceId ? "pages.playerDetail.absences.modalEditTitle" : "pages.playerDetail.absences.modalTitle")}
+          onClose={() => {
+            setAbsenceModal(false);
+            setEditingAbsenceId(null);
+          }}
+        >
           <div style={modalStyles.stack}>
             <label style={modalStyles.field}>
               <span style={modalStyles.label}>{t("pages.playerDetail.absences.fieldType")}</span>
@@ -908,7 +939,15 @@ function PlayerDetail({
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-            <Button variant="ghost" onClick={() => setAbsenceModal(false)}>{t("common.cancel")}</Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setAbsenceModal(false);
+                setEditingAbsenceId(null);
+              }}
+            >
+              {t("common.cancel")}
+            </Button>
             <Button onClick={saveAbsenceRecord}>{t("pages.playerDetail.absences.saveBtn")}</Button>
           </div>
         </Modal>
