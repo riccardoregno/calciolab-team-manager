@@ -63,10 +63,13 @@ function getDefaultStatus(player, dateStr) {
 
 // Le partite ufficiali (campionato/coppa) non hanno una riga "attendance"
 // modificabile come le sedute: la presenza è quella decisa in Convocazione
-// (match.convocazione.playerIds). Chi non è stato convocato e non ha
-// un'assenza/infortunio dichiarato risulta "Assente" anche qui, per non
-// perdere giorni utili al conteggio delle presenze. Le amichevoli invece
-// non richiedono convocazione: si comportano come un allenamento normale
+// (match.convocazione.playerIds). "Assente" va segnato SOLO se c'è una vera
+// indisponibilità dichiarata (ferie/permesso/infortunio/squalifica) per quella
+// data, oppure se la convocazione è stata effettivamente pubblicata (almeno un
+// convocato) e il giocatore non ne fa parte. Se la convocazione non è ancora
+// stata fatta, non si deve assumere che tutti siano assenti: di default
+// risultano Presenti, come per un allenamento. Le amichevoli invece non
+// richiedono affatto convocazione: si comportano come un allenamento normale
 // (vedi getSessionStatus), con stato di default e modificabile a mano.
 function getMatchStatus(player, session) {
   const absenceStatus = getAbsenceStatus(player, session.date);
@@ -74,6 +77,7 @@ function getMatchStatus(player, session) {
   if (player.status === "Infortunato") return "Infortunato";
   if (player.status === "Squalificato") return "Squalificato";
   const convocatiIds = session.convocatiIds || [];
+  if (!convocatiIds.length) return "Presente";
   return convocatiIds.includes(String(player.id)) ? "Presente" : "Assente";
 }
 
