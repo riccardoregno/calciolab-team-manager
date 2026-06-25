@@ -573,6 +573,10 @@ export const it = {
       matchdayPlaceholder: "Giornata",
       venueNamePlaceholder: "Nome campo",
       venueAddressPlaceholder: "Indirizzo campo",
+      matchKindHint: "Tipo partita: le amichevoli non richiedono convocazione e contano come un allenamento",
+      matchKindCampionato: "Campionato",
+      matchKindCoppa: "Coppa",
+      matchKindAmichevole: "Amichevole",
     },
     statistics: {
       title: "Statistiche",

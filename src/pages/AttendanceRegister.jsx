@@ -61,11 +61,13 @@ function getDefaultStatus(player, dateStr) {
   return "Presente";
 }
 
-// Le partite (amichevoli/campionato/coppa) non hanno una riga "attendance"
+// Le partite ufficiali (campionato/coppa) non hanno una riga "attendance"
 // modificabile come le sedute: la presenza è quella decisa in Convocazione
 // (match.convocazione.playerIds). Chi non è stato convocato e non ha
 // un'assenza/infortunio dichiarato risulta "Assente" anche qui, per non
-// perdere giorni utili al conteggio delle presenze e delle multe.
+// perdere giorni utili al conteggio delle presenze. Le amichevoli invece
+// non richiedono convocazione: si comportano come un allenamento normale
+// (vedi getSessionStatus), con stato di default e modificabile a mano.
 function getMatchStatus(player, session) {
   const absenceStatus = getAbsenceStatus(player, session.date);
   if (absenceStatus) return absenceStatus;
@@ -76,18 +78,19 @@ function getMatchStatus(player, session) {
 }
 
 function getSessionStatus(player, session) {
-  if (session.isMatch) return getMatchStatus(player, session);
+  if (session.isMatch && !session.isFriendly) return getMatchStatus(player, session);
   const entry = session.attendance?.[String(player.id)] || {};
   return entry.status || getDefaultStatus(player, session.date);
 }
 
 // Giorni multabili: assenze non giustificate (status "Assente") oppure ferie
 // dichiarate dal giocatore (player.absences con type "ferie"). Permesso/Studio/
-// Lavoro restano giustificati e non vengono contati. Contando solo le sedute
-// di allenamento realmente esistenti (le partite sono visibili nel registro
-// ma escluse qui: un "non convocato" può dipendere da scelte tecniche, non
-// da una colpa del giocatore), un giorno senza seduta non pesa mai sul
-// conteggio (es. sabato senza allenamento non allunga l'assenza).
+// Lavoro restano giustificati e non vengono contati. Si contano allenamenti e
+// amichevoli (equivalenti a un allenamento), ma non campionato/coppa: un
+// "non convocato" a una gara ufficiale può dipendere da scelte tecniche, non
+// da una colpa del giocatore. Contando solo le sedute realmente esistenti,
+// un giorno senza impegno non pesa mai sul conteggio (es. sabato senza
+// allenamento non allunga l'assenza).
 function getFineEntry(player, session) {
   const dateStr = session.date;
   const status = getSessionStatus(player, session);
@@ -131,7 +134,7 @@ function getDuration(session) {
   );
 }
 
-export default function AttendanceRegister({ players = [], sessions = [], setSessions, matches = [], teamId }) {
+export default function AttendanceRegister({ players = [], sessions = [], setSessions, matches = [], setMatches, teamId }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { canManage } = useAreaPermission();
@@ -175,7 +178,9 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
         title: match.opponent || match.title || "Partita",
         type: "Partita",
         isMatch: true,
+        isFriendly: match.matchKind === "Amichevole",
         convocatiIds: (match.convocazione?.playerIds || []).map(String),
+        attendance: match.attendance || {},
       })),
     [matches]
   );
@@ -185,11 +190,22 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
     [sessions]
   );
 
+  const friendlyMatchSessions = useMemo(
+    () => matchSessions.filter((session) => session.isFriendly),
+    [matchSessions]
+  );
+
+  // Sedute che contano per il Report multe: allenamenti + amichevoli (sono
+  // equivalenti a un allenamento, niente convocazione necessaria). Campionato
+  // e coppa restano fuori — vedi nota su getFineEntry.
+  const finableSessions = useMemo(
+    () => [...trainingSessions, ...friendlyMatchSessions],
+    [trainingSessions, friendlyMatchSessions]
+  );
+
   // Tutte le sedute di allenamento + le partite (amichevoli/campionato/coppa),
   // ordinate cronologicamente: la tabella presenze mostra anche i giorni di
-  // gara, ma il "non convocato" può dipendere da scelte tecniche, non da una
-  // colpa del giocatore — per questo il Report multe considera solo gli
-  // allenamenti (vedi buildFineRows più sotto, usa trainingSessions).
+  // gara.
   const allSessions = useMemo(
     () => [...trainingSessions, ...matchSessions]
       .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)),
@@ -234,8 +250,8 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   );
 
   const fineRows = useMemo(
-    () => buildFineRows(visiblePlayers, trainingSessions, finesRange.start, finesRange.end),
-    [visiblePlayers, trainingSessions, finesRange]
+    () => buildFineRows(visiblePlayers, finableSessions, finesRange.start, finesRange.end),
+    [visiblePlayers, finableSessions, finesRange]
   );
 
   async function exportFinesPDF() {
@@ -254,38 +270,39 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
     }
   }
 
-  function updateAttendance(sessionId, playerId, patch) {
+  function updateAttendance(session, playerId, patch) {
     if (!canManage) return;
-    setSessions((prevSessions) =>
-      prevSessions.map((session) => {
-        if (String(session.id) !== String(sessionId)) return session;
-        const current = session.attendance?.[playerId] || {};
+    const updater = (prevList) =>
+      prevList.map((item) => {
+        if (String(item.id) !== String(session.id)) return item;
+        const current = item.attendance?.[playerId] || {};
         return {
-          ...session,
+          ...item,
           attendance: {
-            ...(session.attendance || {}),
+            ...(item.attendance || {}),
             [playerId]: { ...current, ...patch },
           },
         };
-      })
-    );
+      });
+    if (session.isMatch) setMatches?.(updater);
+    else setSessions(updater);
   }
 
   function cycleStatus(session, player) {
-    if (!canManage || session.isMatch) return;
+    if (!canManage || (session.isMatch && !session.isFriendly)) return;
     const playerId = String(player.id);
     const current = session.attendance?.[playerId]?.status || getDefaultStatus(player, session.date);
     const currentIndex = STATUS_FLOW.indexOf(current);
     const nextStatus = STATUS_FLOW[(currentIndex + 1) % STATUS_FLOW.length] || "Presente";
-    updateAttendance(session.id, playerId, { status: nextStatus });
+    updateAttendance(session, playerId, { status: nextStatus });
   }
 
-  function markSession(sessionId, status, targetPlayers = visiblePlayers) {
-    if (!canManage) return;
-    setSessions((prevSessions) =>
-      prevSessions.map((session) => {
-        if (String(session.id) !== String(sessionId)) return session;
-        const nextAttendance = { ...(session.attendance || {}) };
+  function markSession(session, status, targetPlayers = visiblePlayers) {
+    if (!canManage || (session.isMatch && !session.isFriendly)) return;
+    const updater = (prevList) =>
+      prevList.map((item) => {
+        if (String(item.id) !== String(session.id)) return item;
+        const nextAttendance = { ...(item.attendance || {}) };
         targetPlayers.forEach((player) => {
           const playerId = String(player.id);
           nextAttendance[playerId] = {
@@ -293,9 +310,10 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
             status,
           };
         });
-        return { ...session, attendance: nextAttendance };
-      })
-    );
+        return { ...item, attendance: nextAttendance };
+      });
+    if (session.isMatch) setMatches?.(updater);
+    else setSessions(updater);
   }
 
   function renderAttendanceTable(tablePlayers, { title = "", subtitle = "" } = {}) {
@@ -319,7 +337,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                 <th style={{ ...ar.th, ...ar.playerTh }}>{t("pages.attendanceRegister.player")}</th>
                 {visibleSessions.map((session) => (
                   <th key={session.id} style={ar.th}>
-                    {session.isMatch ? (
+                    {session.isMatch && !session.isFriendly ? (
                       <button
                         type="button"
                         onClick={() => navigate(`/match-convocation/${session.id}`)}
@@ -327,8 +345,13 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                         title={t("pages.attendanceRegister.editInConvocation")}
                       >
                         <span>{formatShortDate(session.date)}</span>
-                        <small>⚽ {session.title}</small>
+                        <small>🏆 {session.title}</small>
                       </button>
+                    ) : session.isFriendly ? (
+                      <div style={ar.sessionLink}>
+                        <span>{formatShortDate(session.date)}</span>
+                        <small>🤝 {session.title}</small>
+                      </div>
                     ) : (
                       <button
                         type="button"
@@ -340,10 +363,10 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                         <small>{session.title || t("pages.attendanceRegister.sessionFallback")}</small>
                       </button>
                     )}
-                    {canManage && !session.isMatch && (
+                    {canManage && (!session.isMatch || session.isFriendly) && (
                       <div style={ar.columnActions}>
-                        <button type="button" onClick={() => markSession(session.id, "Presente", tablePlayers)} style={ar.miniAction}>P</button>
-                        <button type="button" onClick={() => markSession(session.id, "Assente", tablePlayers)} style={ar.miniAction}>A</button>
+                        <button type="button" onClick={() => markSession(session, "Presente", tablePlayers)} style={ar.miniAction}>P</button>
+                        <button type="button" onClick={() => markSession(session, "Assente", tablePlayers)} style={ar.miniAction}>A</button>
                       </div>
                     )}
                   </th>
@@ -369,6 +392,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                       const entry = session.attendance?.[playerId] || {};
                       const status = getSessionStatus(player, session);
                       const meta = STATUS_META[status] || STATUS_META.Presente;
+                      const isReadOnlyMatch = session.isMatch && !session.isFriendly;
                       const showRpe = !session.isMatch && (status === "Presente" || status === "Recupero");
                       const playerSubmittedRpe = playerRpeIndex[`${playerId}:${session.id}`];
                       const effectiveRpe = entry.rpe ?? playerSubmittedRpe ?? "";
@@ -379,15 +403,15 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                             <button
                               type="button"
                               onClick={() => cycleStatus(session, player)}
-                              disabled={!canManage || session.isMatch}
+                              disabled={!canManage || isReadOnlyMatch}
                               style={{
                                 ...ar.statusCell,
                                 color: meta.color,
                                 background: meta.bg,
                                 borderColor: meta.border,
-                                cursor: session.isMatch ? "default" : "pointer",
+                                cursor: isReadOnlyMatch ? "default" : "pointer",
                               }}
-                              title={session.isMatch ? t("pages.attendanceRegister.editInConvocation") : t("pages.attendanceRegister.cycleStatus")}
+                              title={isReadOnlyMatch ? t("pages.attendanceRegister.editInConvocation") : t("pages.attendanceRegister.cycleStatus")}
                             >
                               {meta.code}
                             </button>
@@ -398,7 +422,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                                 max="10"
                                 step="0.5"
                                 value={effectiveRpe}
-                                onChange={(event) => updateAttendance(session.id, playerId, { rpe: event.target.value })}
+                                onChange={(event) => updateAttendance(session, playerId, { rpe: event.target.value })}
                                 disabled={!canManage}
                                 placeholder="RPE"
                                 style={{

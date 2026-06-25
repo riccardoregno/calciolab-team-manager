@@ -587,6 +587,17 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
               <option value="Neutro">{t("pages.matches.neutral")}</option>
             </select>
 
+            <select
+              value={form.matchKind}
+              onChange={(e) => setForm({ ...form, matchKind: e.target.value })}
+              style={styles.input}
+              title={t("pages.matches.matchKindHint")}
+            >
+              <option value="Campionato">{t("pages.matches.matchKindCampionato")}</option>
+              <option value="Coppa">{t("pages.matches.matchKindCoppa")}</option>
+              <option value="Amichevole">{t("pages.matches.matchKindAmichevole")}</option>
+            </select>
+
             {/* Risultato strutturato: due campi numerici separati da "–" */}
             <label style={{ display: "grid", gap: 6, color: "#94a3b8", fontSize: 12, fontWeight: 700, textTransform: "uppercase" }}>
               <span>{t("pages.matches.scoreLabel")}</span>
@@ -955,6 +966,7 @@ function matchToForm(match) {
     goalsAgainst: parsed ? String(parsed.goalsAgainst) : "",
     formation: match.formation || "4-2-3-1",
     notes: match.notes || "",
+    matchKind: match.matchKind || "Campionato",
     competition: match.competition || "",
     matchday: match.matchday || "",
     venueName: match.venueName || "",
@@ -979,6 +991,7 @@ function emptyMatch(homeLogo = "") {
     goalsAgainst: "",
     formation: "4-2-3-1",
     notes: "",
+    matchKind: "Campionato",
     competition: "",
     matchday: "",
     venueName: "",

@@ -573,6 +573,10 @@ export const en = {
       matchdayPlaceholder: "Matchday",
       venueNamePlaceholder: "Venue name",
       venueAddressPlaceholder: "Venue address",
+      matchKindHint: "Match type: friendlies don't need a call-up and count as a training session",
+      matchKindCampionato: "League",
+      matchKindCoppa: "Cup",
+      matchKindAmichevole: "Friendly",
     },
     statistics: {
       title: "Statistics",
