@@ -127,7 +127,10 @@ function buildFineRows(players, sessions, rangeStart, rangeEnd) {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
+const MATCH_DEFAULT_DURATION = 90;
+
 function getDuration(session) {
+  if (session.isMatch) return Number(session.duration || 0) || MATCH_DEFAULT_DURATION;
   return Number(session.duration || 0) || (session.exercises || []).reduce(
     (sum, item) => sum + Number(item.customDuration || item.duration || 0),
     0
@@ -393,7 +396,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                       const status = getSessionStatus(player, session);
                       const meta = STATUS_META[status] || STATUS_META.Presente;
                       const isReadOnlyMatch = session.isMatch && !session.isFriendly;
-                      const showRpe = !session.isMatch && (status === "Presente" || status === "Recupero");
+                      const showRpe = status === "Presente" || status === "Recupero";
                       const playerSubmittedRpe = playerRpeIndex[`${playerId}:${session.id}`];
                       const effectiveRpe = entry.rpe ?? playerSubmittedRpe ?? "";
 
