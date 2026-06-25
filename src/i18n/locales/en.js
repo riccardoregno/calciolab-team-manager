@@ -1758,6 +1758,7 @@ export const en = {
       load: "Load",
       sessionFallback: "Session",
       cycleStatus: "Change status",
+      editInConvocation: "Edit the call-up on the match page",
       rpeFor: "RPE for {{name}}",
       rpeSelfReported: "Value entered by the player — editable",
       noSessionsTitle: "No sessions this month",
@@ -1775,7 +1776,7 @@ export const en = {
       },
       fines: {
         title: "Fines report",
-        subtitle: "Unjustified absences or vacation days in range, counting only actual training sessions",
+        subtitle: "Unjustified absences or vacation days at trainings in range (matches are shown in the table but excluded, since being left out of a call-up can be a tactical choice)",
         from: "From",
         to: "To",
         exportPdf: "Export PDF",
