@@ -8,6 +8,7 @@ import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
 import SearchBar from "../components/ui/SearchBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
+import { useAuth } from "../hooks/useAuth";
 import { styles } from "../styles/index.js";
 import { formatShortDate } from "../utils/helpers";
 import { fetchTeamRpe } from "../services/sessionRpe";
@@ -60,6 +61,48 @@ function getDefaultStatus(player, dateStr) {
   return "Presente";
 }
 
+// Giorni multabili: assenze non giustificate (status "Assente") oppure ferie
+// dichiarate dal giocatore (player.absences con type "ferie"). Permesso/Studio/
+// Lavoro restano giustificati e non vengono contati. Contando solo le sedute
+// di allenamento realmente esistenti, un giorno senza seduta non pesa mai sul
+// conteggio (es. sabato senza allenamento non allunga l'assenza).
+function getFineEntry(player, session) {
+  const dateStr = session.date;
+  const entry = session.attendance?.[String(player.id)] || {};
+  const status = entry.status || getDefaultStatus(player, dateStr);
+  if (status === "Assente") return { reason: "Assente" };
+  if (status === "Permesso") {
+    const absence = (player.absences || []).find(
+      (a) => a.dateStart && a.dateEnd && dateStr >= a.dateStart && dateStr <= a.dateEnd
+    );
+    if (absence?.type === "ferie") return { reason: "Ferie" };
+  }
+  return null;
+}
+
+function buildFineRows(players, sessions, rangeStart, rangeEnd) {
+  if (!rangeStart || !rangeEnd) return [];
+  const inRange = sessions.filter((session) => session.date >= rangeStart && session.date <= rangeEnd);
+  return players
+    .map((player) => {
+      const entries = inRange
+        .map((session) => {
+          const fine = getFineEntry(player, session);
+          return fine ? { date: session.date, reason: fine.reason } : null;
+        })
+        .filter(Boolean);
+      return {
+        playerId: player.id,
+        name: getPlayerName(player),
+        role: player.role || "",
+        count: entries.length,
+        entries,
+      };
+    })
+    .filter((row) => row.count > 0)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
 function getDuration(session) {
   return Number(session.duration || 0) || (session.exercises || []).reduce(
     (sum, item) => sum + Number(item.customDuration || item.duration || 0),
@@ -71,8 +114,12 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { canManage } = useAreaPermission();
+  const auth = useAuth();
+  const teamName = auth.profile?.teamName || auth.profile?.clubName || auth.team?.name || "Squadra";
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("tutti");
+  const [finesRange, setFinesRange] = useState({ start: "", end: "" });
+  const [exportingFines, setExportingFines] = useState(false);
   const [month, setMonth] = useState(() => {
     const latest = [...sessions]
       .filter((session) => session.date)
@@ -142,6 +189,26 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
     [visiblePlayers, visibleSessions, playerRpeIndex]
   );
 
+  const fineRows = useMemo(
+    () => buildFineRows(visiblePlayers, trainingSessions, finesRange.start, finesRange.end),
+    [visiblePlayers, trainingSessions, finesRange]
+  );
+
+  async function exportFinesPDF() {
+    if (!fineRows.length) return;
+    setExportingFines(true);
+    try {
+      const { generateFinesReportPDF } = await import("../utils/generateFinesReportPDF");
+      await generateFinesReportPDF({
+        rows: fineRows,
+        rangeStart: finesRange.start,
+        rangeEnd: finesRange.end,
+        teamName,
+      });
+    } finally {
+      setExportingFines(false);
+    }
+  }
 
   function updateAttendance(sessionId, playerId, patch) {
     if (!canManage) return;
@@ -371,6 +438,58 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
         </div>
       </AppCard>
 
+      <AppCard>
+        <div style={ar.finesHeader}>
+          <div>
+            <h3 style={ar.finesTitle}>{t("pages.attendanceRegister.fines.title")}</h3>
+            <p style={ar.finesSubtitle}>{t("pages.attendanceRegister.fines.subtitle")}</p>
+          </div>
+          <div style={ar.finesRangeInputs}>
+            <input
+              type="date"
+              value={finesRange.start}
+              onChange={(event) => setFinesRange((prev) => ({ ...prev, start: event.target.value }))}
+              style={styles.input}
+              aria-label={t("pages.attendanceRegister.fines.from")}
+            />
+            <input
+              type="date"
+              value={finesRange.end}
+              onChange={(event) => setFinesRange((prev) => ({ ...prev, end: event.target.value }))}
+              style={styles.input}
+              aria-label={t("pages.attendanceRegister.fines.to")}
+            />
+            <Button
+              variant="ghost"
+              disabled={!fineRows.length || exportingFines}
+              onClick={exportFinesPDF}
+            >
+              {exportingFines ? t("pages.attendanceRegister.fines.exporting") : t("pages.attendanceRegister.fines.exportPdf")}
+            </Button>
+          </div>
+        </div>
+
+        {!finesRange.start || !finesRange.end ? (
+          <p style={ar.finesEmpty}>{t("pages.attendanceRegister.fines.pickRange")}</p>
+        ) : !fineRows.length ? (
+          <p style={ar.finesEmpty}>{t("pages.attendanceRegister.fines.none")}</p>
+        ) : (
+          <div style={ar.finesList}>
+            {fineRows.map((row) => (
+              <div key={row.playerId} style={ar.finesRow}>
+                <div style={ar.finesRowHead}>
+                  <strong>{row.name}</strong>
+                  <Badge tone="red">{t("pages.attendanceRegister.fines.daysCount", { count: row.count })}</Badge>
+                </div>
+                <p style={ar.finesDates}>
+                  {row.entries.map((e) => `${formatShortDate(e.date)} (${e.reason})`).join(" · ")}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </AppCard>
+
       {!visibleSessions.length ? (
         <EmptyState
           icon="📋"
@@ -512,6 +631,57 @@ const ar = {
     border: "1px solid rgba(255,255,255,0.08)",
     fontSize: 12,
     fontWeight: 800,
+  },
+  finesHeader: {
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: 14,
+  },
+  finesTitle: {
+    margin: 0,
+    fontSize: 15,
+    fontWeight: 900,
+    color: "#e2e8f0",
+  },
+  finesSubtitle: {
+    margin: "4px 0 0",
+    fontSize: 12,
+    color: "#94a3b8",
+  },
+  finesRangeInputs: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    alignItems: "center",
+  },
+  finesEmpty: {
+    margin: "14px 0 0",
+    fontSize: 13,
+    color: "#64748b",
+  },
+  finesList: {
+    display: "grid",
+    gap: 8,
+    marginTop: 14,
+  },
+  finesRow: {
+    padding: "10px 12px",
+    borderRadius: 10,
+    background: "rgba(248,113,113,0.06)",
+    border: "1px solid rgba(248,113,113,0.18)",
+  },
+  finesRowHead: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+  },
+  finesDates: {
+    margin: "6px 0 0",
+    fontSize: 12,
+    color: "#94a3b8",
   },
   tableSections: {
     display: "grid",

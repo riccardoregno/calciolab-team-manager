@@ -1784,6 +1784,17 @@ export const it = {
         Permesso: "Permesso",
         Squalificato: "Squalificato",
       },
+      fines: {
+        title: "Report multe",
+        subtitle: "Giorni di assenza ingiustificata o ferie nel periodo, contando solo le sedute di allenamento effettive",
+        from: "Dal",
+        to: "Al",
+        exportPdf: "Esporta PDF",
+        exporting: "Esporto...",
+        pickRange: "Seleziona un periodo per calcolare i giorni multabili.",
+        none: "Nessuna assenza multabile nel periodo selezionato.",
+        daysCount: "{{count}} giorni",
+      },
     },
     exercises: {
       title: "Editor esercizi",

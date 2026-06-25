@@ -1773,6 +1773,17 @@ export const en = {
         Permesso: "Permission",
         Squalificato: "Suspended",
       },
+      fines: {
+        title: "Fines report",
+        subtitle: "Unjustified absences or vacation days in range, counting only actual training sessions",
+        from: "From",
+        to: "To",
+        exportPdf: "Export PDF",
+        exporting: "Exporting...",
+        pickRange: "Select a range to calculate finable days.",
+        none: "No finable absences in the selected range.",
+        daysCount: "{{count}} days",
+      },
     },
     exercises: {
       title: "Exercise editor",
