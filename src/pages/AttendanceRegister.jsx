@@ -106,7 +106,9 @@ function getFineEntry(player, session) {
 
 function buildFineRows(players, sessions, rangeStart, rangeEnd) {
   if (!rangeStart || !rangeEnd) return [];
-  const inRange = sessions.filter((session) => session.date >= rangeStart && session.date <= rangeEnd);
+  const inRange = sessions
+    .filter((session) => session.date >= rangeStart && session.date <= rangeEnd)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
   return players
     .map((player) => {
       const entries = inRange
