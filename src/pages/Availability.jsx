@@ -74,6 +74,8 @@ function buildPrepDays(players, sessions, matches, start, end) {
     const absentEntries = primaPlayers
       .map((player) => ({ player, info: getPlayerUnavailabilityOnDate(player, dateStr) }))
       .filter((entry) => entry.info);
+    const absentIds = new Set(absentEntries.map((entry) => entry.player.id));
+    const availablePlayers = primaPlayers.filter((player) => !absentIds.has(player.id));
     const trainingSession = trainingByDate.get(dateStr);
     const availableJuniors = juniorPlayers.filter(
       (player) => {
@@ -88,6 +90,7 @@ function buildPrepDays(players, sessions, matches, start, end) {
       total: primaPlayers.length,
       available: primaPlayers.length - absentEntries.length,
       absentEntries,
+      availablePlayers,
       availableJuniors,
     });
     cursor.setDate(cursor.getDate() + 1);
@@ -316,6 +319,7 @@ export default function Availability({
   const [historyPlayerId, setHistoryPlayerId] = useState(null);
   const [recoveryDate, setRecoveryDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [prepRange, setPrepRange] = useState(() => getDefaultPrepRange());
+  const [expandedPrepDay, setExpandedPrepDay] = useState(null);
 
   // Pianificazione "giorno per giorno": per ogni data del periodo selezionato,
   // stima quanti giocatori saranno disponibili incrociando infortuni attivi
@@ -747,9 +751,20 @@ export default function Availability({
                 <div key={day.date} style={av.prepDayRow}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0", minWidth: 88 }}>{label}</span>
-                    <span style={{ ...av.badge, color: tone, background: `${tone}18`, border: `1px solid ${tone}55` }}>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedPrepDay((current) => (current === day.date ? null : day.date))}
+                      style={{
+                        ...av.badge,
+                        color: tone,
+                        background: `${tone}18`,
+                        border: `1px solid ${tone}55`,
+                        cursor: "pointer",
+                      }}
+                      title={t("pages.availability.prepShowAvailable")}
+                    >
                       {t("pages.availability.prepAvailableCount", { available: day.available, total: day.total })}
-                    </span>
+                    </button>
                     {day.availableJuniors.length > 0 && (
                       <span style={{ ...av.badge, color: "#a78bfa", background: "rgba(167,139,250,0.14)", border: "1px solid rgba(167,139,250,0.4)" }}>
                         +{day.availableJuniors.length} Juniores
@@ -774,6 +789,13 @@ export default function Availability({
                       Juniores disponibili: {day.availableJuniors.map((player) => {
                         return [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "—";
                       }).join(" · ")}
+                    </p>
+                  )}
+                  {expandedPrepDay === day.date && (
+                    <p style={{ ...av.muted, margin: "6px 0 0", color: "#4ade80" }}>
+                      {t("pages.availability.prepAvailableNames")}: {day.availablePlayers.length
+                        ? day.availablePlayers.map((player) => [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "—").join(" · ")
+                        : t("pages.availability.prepNoneAvailable")}
                     </p>
                   )}
                 </div>
