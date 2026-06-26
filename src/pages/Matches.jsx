@@ -809,6 +809,8 @@ function TeamBox({ logo, logoSize = 100, name, fallback, gradient }) {
         alignItems: "center",
         textAlign: "center",
         minWidth: 0,
+        width: "100%",
+        overflow: "hidden",
       }}
     >
       {logo ? (
@@ -856,12 +858,14 @@ function TeamBox({ logo, logoSize = 100, name, fallback, gradient }) {
 
       <strong
         style={{
-          maxWidth: 160,
+          display: "block",
+          maxWidth: "100%",
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
           lineHeight: 1.2,
         }}
+        title={name}
       >
         {name}
       </strong>
