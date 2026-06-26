@@ -10,7 +10,7 @@ import SearchBar from "../components/ui/SearchBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { useAuth } from "../hooks/useAuth";
 import { styles } from "../styles/index.js";
-import { formatShortDate } from "../utils/helpers";
+import { formatShortDate, getPlayerUnavailabilityOnDate } from "../utils/helpers";
 import { fetchTeamRpe } from "../services/sessionRpe";
 import { useTranslation } from "../i18n";
 
@@ -36,23 +36,24 @@ function getSessionMonth(session) {
   return String(session.date || "").slice(0, 7);
 }
 
-// Assenze pianificate (ferie/permessi/studio/lavoro) dalla scheda giocatore:
-// se la data della seduta cade in un intervallo dichiarato, lo stato di default
-// non deve essere "Presente" — il mister non dovrebbe doverlo correggere a mano
-// per ogni seduta in cui il giocatore è già segnalato assente.
-function getAbsenceStatus(player, dateStr) {
-  if (!dateStr) return null;
-  const absence = (player.absences || []).find(
-    (a) => a.dateStart && a.dateEnd && dateStr >= a.dateStart && dateStr <= a.dateEnd
-  );
-  return absence ? "Permesso" : null;
+// Indisponibilità "forte" per una data: lo status esplicito sulla scheda
+// giocatore (player.status) ha sempre la priorità più alta perché è una
+// decisione attiva del mister; poi gli infortuni datati (player.injuries[]);
+// infine le assenze pianificate (player.absences[]: ferie/permesso/studio/
+// lavoro). Un infortunio batte sempre una ferie sovrapposta sullo stesso
+// giorno — non deve mai diventare una multa.
+function getUnavailabilityStatus(player, dateStr) {
+  if (player.status === "Infortunato") return "Infortunato";
+  if (player.status === "Squalificato") return "Squalificato";
+  const unavailability = getPlayerUnavailabilityOnDate(player, dateStr);
+  if (unavailability?.type === "injury") return "Infortunato";
+  if (unavailability?.type === "absence") return "Permesso";
+  return null;
 }
 
 function getDefaultStatus(player, dateStr) {
-  const absenceStatus = getAbsenceStatus(player, dateStr);
-  if (absenceStatus) return absenceStatus;
-  if (player.status === "Infortunato") return "Infortunato";
-  if (player.status === "Squalificato") return "Squalificato";
+  const unavailableStatus = getUnavailabilityStatus(player, dateStr);
+  if (unavailableStatus) return unavailableStatus;
   if (player.status === "Recupero" || player.status === "Differenziato") return "Recupero";
   // I Juniores non fanno parte del gruppo base: di default risultano Assenti
   // per ogni seduta, finché il mister non li marca manualmente Presenti
@@ -63,48 +64,53 @@ function getDefaultStatus(player, dateStr) {
 
 // Le partite ufficiali (campionato/coppa) non hanno una riga "attendance"
 // modificabile come le sedute: la presenza è quella decisa in Convocazione
-// (match.convocazione.playerIds). "Assente" va segnato SOLO se c'è una vera
+// (match.convocazione.playerIds), ma SOLO se la convocazione è stata
+// effettivamente pubblicata (match.convocazione.published === true) — una
+// bozza con dei nomi selezionati ma non pubblicata non conta ancora come
+// decisione definitiva. "Assente" va segnato SOLO se c'è una vera
 // indisponibilità dichiarata (ferie/permesso/infortunio/squalifica) per quella
-// data, oppure se la convocazione è stata effettivamente pubblicata (almeno un
-// convocato) e il giocatore non ne fa parte. Se la convocazione non è ancora
-// stata fatta, non si deve assumere che tutti siano assenti: di default
-// risultano Presenti, come per un allenamento. Le amichevoli invece non
-// richiedono affatto convocazione: si comportano come un allenamento normale
-// (vedi getSessionStatus), con stato di default e modificabile a mano.
+// data, oppure se la convocazione è pubblicata e il giocatore non ne fa parte.
+// Le amichevoli invece non richiedono affatto convocazione: si comportano
+// come un allenamento normale (vedi getSessionStatus).
 function getMatchStatus(player, session) {
-  const absenceStatus = getAbsenceStatus(player, session.date);
-  if (absenceStatus) return absenceStatus;
-  if (player.status === "Infortunato") return "Infortunato";
-  if (player.status === "Squalificato") return "Squalificato";
+  const unavailableStatus = getUnavailabilityStatus(player, session.date);
+  if (unavailableStatus) return unavailableStatus;
+  if (!session.convocationPublished) return "Presente";
   const convocatiIds = session.convocatiIds || [];
-  if (!convocatiIds.length) return "Presente";
   return convocatiIds.includes(String(player.id)) ? "Presente" : "Assente";
 }
 
 function getSessionStatus(player, session) {
   if (session.isMatch && !session.isFriendly) return getMatchStatus(player, session);
   const entry = session.attendance?.[String(player.id)] || {};
-  return entry.status || getDefaultStatus(player, session.date);
+  // Uno status salvato ma non riconosciuto (dato corrotto/malformato) non deve
+  // mai "vincere" silenziosamente: si ricalcola il default come se non fosse
+  // stato impostato, così resta coerente con le statistiche aggregate.
+  if (entry.status && STATUS_META[entry.status]) return entry.status;
+  return getDefaultStatus(player, session.date);
 }
 
 // Giorni multabili: assenze non giustificate (status "Assente") oppure ferie
-// dichiarate dal giocatore (player.absences con type "ferie"). Permesso/Studio/
-// Lavoro restano giustificati e non vengono contati. Si contano SOLO i giorni
-// in cui c'è davvero una seduta/impegno multabile (allenamento o amichevole):
-// un giorno senza seduta (es. riposo) non deve mai comparire, anche se cade
-// dentro un periodo di ferie dichiarato. Campionato/coppa restano fuori: un
-// "non convocato" può dipendere da scelte tecniche, non da una colpa del
-// giocatore.
+// dichiarate dal giocatore (player.absences con type "ferie", verificate
+// direttamente e non tramite lo status aggregato, perché più assenze di tipo
+// diverso possono sovrapporsi sulla stessa data). Permesso/Studio/Lavoro
+// restano giustificati e non vengono contati. Un infortunio o una squalifica
+// bloccano sempre la multa, anche se quel giorno cade anche dentro un periodo
+// di ferie. Si contano SOLO i giorni in cui c'è davvero una seduta/impegno
+// multabile (allenamento o amichevole): un giorno senza seduta (es. riposo)
+// non deve mai comparire, anche se cade dentro un periodo di ferie
+// dichiarato. Campionato/coppa restano fuori: un "non convocato" può
+// dipendere da scelte tecniche, non da una colpa del giocatore.
 function getFineEntry(player, session) {
   const dateStr = session.date;
+  const blockingStatus = getUnavailabilityStatus(player, dateStr);
+  if (blockingStatus === "Infortunato" || blockingStatus === "Squalificato") return null;
   const status = getSessionStatus(player, session);
   if (status === "Assente") return { reason: "Assente" };
-  if (status === "Permesso") {
-    const absence = (player.absences || []).find(
-      (a) => a.dateStart && a.dateEnd && dateStr >= a.dateStart && dateStr <= a.dateEnd
-    );
-    if (absence?.type === "ferie") return { reason: "Ferie" };
-  }
+  const ferie = (player.absences || []).find(
+    (a) => a.type === "ferie" && a.dateStart && a.dateEnd && dateStr >= a.dateStart && dateStr <= a.dateEnd
+  );
+  if (ferie) return { reason: "Ferie" };
   return null;
 }
 
@@ -115,12 +121,15 @@ function buildFineRows(players, sessions, rangeStart, rangeEnd) {
     .sort((a, b) => new Date(a.date) - new Date(b.date));
   return players
     .map((player) => {
-      const entries = inRange
-        .map((session) => {
-          const fine = getFineEntry(player, session);
-          return fine ? { date: session.date, reason: fine.reason } : null;
-        })
-        .filter(Boolean);
+      // Più sedute nello stesso giorno (es. doppia seduta) non devono contare
+      // come più "giorni" multabili: si deduplica per data.
+      const entriesByDate = new Map();
+      inRange.forEach((session) => {
+        if (entriesByDate.has(session.date)) return;
+        const fine = getFineEntry(player, session);
+        if (fine) entriesByDate.set(session.date, { date: session.date, reason: fine.reason });
+      });
+      const entries = [...entriesByDate.values()];
       return {
         playerId: player.id,
         name: getPlayerName(player),
@@ -188,6 +197,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
         type: "Partita",
         isMatch: true,
         isFriendly: match.matchKind === "Amichevole",
+        convocationPublished: Boolean(match.convocazione?.published),
         convocatiIds: (match.convocazione?.playerIds || []).map(String),
         attendance: match.attendance || {},
       })),
