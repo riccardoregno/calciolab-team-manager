@@ -39,13 +39,17 @@ function getSessionMonth(session) {
 // Le date sono confrontate come stringhe "YYYY-MM-DD": funziona solo se sono
 // sempre già in quel formato esatto. Normalizziamo qui ogni data "in ingresso"
 // (sedute, partite, range del report) così un formato diverso (es. "2026-8-4"
-// senza zero-padding, o un timestamp ISO completo) non rompe silenziosamente
-// i confronti `>=`/`<=`.
+// senza zero-padding) non rompe silenziosamente i confronti `>=`/`<=`.
 function normalizeDateStr(value) {
   if (!value) return "";
-  const direct = String(value).slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(direct)) return direct;
-  const parsed = new Date(value);
+  const raw = String(value);
+  // Data pura "YYYY-MM-DD" senza orario: nessuna conversione di fuso da fare.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  // Se arriva un timestamp con orario (es. ISO con "T..."), NON si può
+  // prendere lo slice dei primi 10 caratteri: quello è il giorno in UTC, ma
+  // un orario serale italiano vicino alla mezzanotte UTC può "scivolare" al
+  // giorno sbagliato. Si usano i componenti della data nel fuso locale.
+  const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) return "";
   const year = parsed.getFullYear();
   const month = String(parsed.getMonth() + 1).padStart(2, "0");
@@ -107,30 +111,37 @@ function getSessionStatus(player, session) {
   return getDefaultStatus(player, session.date);
 }
 
-// Giorni multabili: assenze non giustificate (status "Assente") oppure ferie
-// dichiarate dal giocatore (player.absences con type "ferie", verificate
-// direttamente e non tramite lo status aggregato, perché più assenze di tipo
-// diverso possono sovrapporsi sulla stessa data). Permesso/Studio/Lavoro
-// restano giustificati e non vengono contati. Un infortunio o una squalifica
-// bloccano sempre la multa, anche se quel giorno cade anche dentro un periodo
-// di ferie. Si contano SOLO i giorni in cui c'è davvero una seduta/impegno
-// multabile (allenamento o amichevole): un giorno senza seduta (es. riposo)
-// non deve mai comparire, anche se cade dentro un periodo di ferie
-// dichiarato. Campionato/coppa restano fuori: un "non convocato" può
-// dipendere da scelte tecniche, non da una colpa del giocatore.
-function getFineEntry(player, session) {
-  const dateStr = session.date;
-  const blockingStatus = getUnavailabilityStatus(player, dateStr);
-  if (blockingStatus === "Infortunato" || blockingStatus === "Squalificato") return null;
-  const status = getSessionStatus(player, session);
-  if (status === "Assente") return { reason: "Assente" };
-  const ferie = (player.absences || []).find((a) => {
-    if (a.type !== "ferie") return false;
+function findOverlappingAbsence(player, dateStr, { type, excludeType } = {}) {
+  return (player.absences || []).find((a) => {
+    if (type && a.type !== type) return false;
+    if (excludeType && a.type === excludeType) return false;
     const start = normalizeDateStr(a.dateStart);
     const end = normalizeDateStr(a.dateEnd);
     return start && end && dateStr >= start && dateStr <= end;
   });
-  if (ferie) return { reason: "Ferie" };
+}
+
+// Giorni multabili: assenze non giustificate (status "Assente") oppure ferie
+// dichiarate dal giocatore (player.absences con type "ferie", verificate
+// direttamente e non tramite lo status aggregato, perché più assenze di tipo
+// diverso possono sovrapporsi sulla stessa data). Permesso/Studio/Lavoro
+// restano SEMPRE giustificati e bloccano la multa — anche se quel giorno la
+// seduta è stata marcata manualmente "Assente", o se la stessa data è anche
+// dentro un periodo di ferie: una giustificazione non-ferie prevale sempre.
+// Un infortunio o una squalifica bloccano sempre la multa allo stesso modo.
+// Si contano SOLO i giorni in cui c'è davvero una seduta/impegno multabile
+// (allenamento o amichevole): un giorno senza seduta (es. riposo) non deve
+// mai comparire, anche se cade dentro un periodo di ferie dichiarato.
+// Campionato/coppa restano fuori: un "non convocato" può dipendere da scelte
+// tecniche, non da una colpa del giocatore.
+function getFineEntry(player, session) {
+  const dateStr = session.date;
+  const blockingStatus = getUnavailabilityStatus(player, dateStr);
+  if (blockingStatus === "Infortunato" || blockingStatus === "Squalificato") return null;
+  if (findOverlappingAbsence(player, dateStr, { excludeType: "ferie" })) return null;
+  const status = getSessionStatus(player, session);
+  if (status === "Assente") return { reason: "Assente" };
+  if (findOverlappingAbsence(player, dateStr, { type: "ferie" })) return { reason: "Ferie" };
   return null;
 }
 
@@ -168,10 +179,13 @@ const MATCH_DEFAULT_DURATION = 90;
 
 function getDuration(session) {
   if (session.isMatch) return Number(session.duration || 0) || MATCH_DEFAULT_DURATION;
-  return Number(session.duration || 0) || (session.exercises || []).reduce(
-    (sum, item) => sum + Number(item.customDuration || item.duration || 0),
-    0
-  );
+  const explicit = Number(session.duration || 0);
+  if (explicit) return explicit;
+  const exercises = Array.isArray(session.exercises) ? session.exercises : [];
+  return exercises.reduce((sum, item) => {
+    const value = Number(item?.customDuration || item?.duration || 0);
+    return sum + (Number.isFinite(value) ? value : 0);
+  }, 0);
 }
 
 export default function AttendanceRegister({ players = [], sessions = [], setSessions, matches = [], setMatches, teamId }) {
@@ -560,6 +574,10 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
             {t("pages.attendanceRegister.includeJuniorsInStats")}
           </label>
 
+          {groupFilter === "juniores" && !includeJuniorsInStats && (
+            <p style={ar.statsScopeNote}>{t("pages.attendanceRegister.juniorsScopeNote")}</p>
+          )}
+
           <div style={ar.filters}>
             <input
               type="month"
@@ -834,6 +852,12 @@ const ar = {
     fontSize: 12,
     color: "#94a3b8",
     cursor: "pointer",
+  },
+  statsScopeNote: {
+    margin: 0,
+    fontSize: 12,
+    color: "#fbbf24",
+    fontWeight: 700,
   },
   finesList: {
     display: "grid",

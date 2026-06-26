@@ -1791,6 +1791,7 @@ export const en = {
         invalidRange: "Invalid range: the \"From\" date is after the \"To\" date.",
       },
       includeJuniorsInStats: "Include Juniores in statistics",
+      juniorsScopeNote: "You're viewing the Juniores table, but metrics and the fines report still exclude Juniores: check the box above to include them.",
     },
     exercises: {
       title: "Exercise editor",

@@ -1802,6 +1802,7 @@ export const it = {
         invalidRange: "Intervallo non valido: la data \"Dal\" è successiva alla data \"Al\".",
       },
       includeJuniorsInStats: "Includi Juniores nelle statistiche",
+      juniorsScopeNote: "Stai visualizzando la tabella Juniores, ma metriche e Report multe escludono ancora i Juniores: spunta la casella qui sopra per includerli.",
     },
     exercises: {
       title: "Editor esercizi",
