@@ -1788,7 +1788,9 @@ export const en = {
         pickRange: "Select a range to calculate finable days.",
         none: "No finable absences in the selected range.",
         daysCount: "{{count}} days",
+        invalidRange: "Invalid range: the \"From\" date is after the \"To\" date.",
       },
+      includeJuniorsInStats: "Include Juniores in statistics",
     },
     exercises: {
       title: "Exercise editor",

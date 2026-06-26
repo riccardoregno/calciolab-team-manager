@@ -1799,7 +1799,9 @@ export const it = {
         pickRange: "Seleziona un periodo per calcolare i giorni multabili.",
         none: "Nessuna assenza multabile nel periodo selezionato.",
         daysCount: "{{count}} giorni",
+        invalidRange: "Intervallo non valido: la data \"Dal\" è successiva alla data \"Al\".",
       },
+      includeJuniorsInStats: "Includi Juniores nelle statistiche",
     },
     exercises: {
       title: "Editor esercizi",

@@ -36,6 +36,23 @@ function getSessionMonth(session) {
   return String(session.date || "").slice(0, 7);
 }
 
+// Le date sono confrontate come stringhe "YYYY-MM-DD": funziona solo se sono
+// sempre già in quel formato esatto. Normalizziamo qui ogni data "in ingresso"
+// (sedute, partite, range del report) così un formato diverso (es. "2026-8-4"
+// senza zero-padding, o un timestamp ISO completo) non rompe silenziosamente
+// i confronti `>=`/`<=`.
+function normalizeDateStr(value) {
+  if (!value) return "";
+  const direct = String(value).slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(direct)) return direct;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 // Indisponibilità "forte" per una data: lo status esplicito sulla scheda
 // giocatore (player.status) ha sempre la priorità più alta perché è una
 // decisione attiva del mister; poi gli infortuni datati (player.injuries[]);
@@ -107,15 +124,20 @@ function getFineEntry(player, session) {
   if (blockingStatus === "Infortunato" || blockingStatus === "Squalificato") return null;
   const status = getSessionStatus(player, session);
   if (status === "Assente") return { reason: "Assente" };
-  const ferie = (player.absences || []).find(
-    (a) => a.type === "ferie" && a.dateStart && a.dateEnd && dateStr >= a.dateStart && dateStr <= a.dateEnd
-  );
+  const ferie = (player.absences || []).find((a) => {
+    if (a.type !== "ferie") return false;
+    const start = normalizeDateStr(a.dateStart);
+    const end = normalizeDateStr(a.dateEnd);
+    return start && end && dateStr >= start && dateStr <= end;
+  });
   if (ferie) return { reason: "Ferie" };
   return null;
 }
 
-function buildFineRows(players, sessions, rangeStart, rangeEnd) {
-  if (!rangeStart || !rangeEnd) return [];
+function buildFineRows(players, sessions, rangeStartRaw, rangeEndRaw) {
+  const rangeStart = normalizeDateStr(rangeStartRaw);
+  const rangeEnd = normalizeDateStr(rangeEndRaw);
+  if (!rangeStart || !rangeEnd || rangeStart > rangeEnd) return [];
   const inRange = sessions
     .filter((session) => session.date >= rangeStart && session.date <= rangeEnd)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -160,6 +182,10 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   const teamName = auth.profile?.teamName || auth.profile?.clubName || auth.team?.name || "Squadra";
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("tutti");
+  // Le statistiche aggregate in testa alla pagina rappresentano di default
+  // solo la Prima Squadra (coerente con Players.jsx/Availability.jsx); i
+  // Juniores entrano nel calcolo solo se il mister lo richiede esplicitamente.
+  const [includeJuniorsInStats, setIncludeJuniorsInStats] = useState(false);
   const [finesRange, setFinesRange] = useState({ start: "", end: "" });
   const [exportingFines, setExportingFines] = useState(false);
   const [month, setMonth] = useState(() => {
@@ -192,11 +218,13 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
       .filter((match) => match.date)
       .map((match) => ({
         id: match.id,
-        date: match.date,
+        date: normalizeDateStr(match.date),
         title: match.opponent || match.title || "Partita",
         type: "Partita",
         isMatch: true,
-        isFriendly: match.matchKind === "Amichevole",
+        // Case-insensitive: il valore arriva dal select della pagina Partite,
+        // ma normalizziamo comunque per non rompersi su dati importati o futuri.
+        isFriendly: String(match.matchKind || "").trim().toLowerCase() === "amichevole",
         convocationPublished: Boolean(match.convocazione?.published),
         convocatiIds: (match.convocazione?.playerIds || []).map(String),
         attendance: match.attendance || {},
@@ -205,7 +233,9 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   );
 
   const trainingSessions = useMemo(
-    () => sessions.filter((session) => (session.type || "Allenamento") === "Allenamento"),
+    () => sessions
+      .filter((session) => (session.type || "Allenamento") === "Allenamento")
+      .map((session) => ({ ...session, date: normalizeDateStr(session.date) })),
     [sessions]
   );
 
@@ -263,14 +293,33 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
     [visiblePlayers]
   );
 
+  // Indipendente dal filtro gruppo usato per le tabelle: le metriche restano
+  // scoped alla Prima Squadra a meno che non si spunti esplicitamente di
+  // includere anche i Juniores.
+  const statsPlayers = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return players
+      .filter((player) => includeJuniorsInStats || (player.gruppo || "prima") !== "juniores")
+      .filter((player) => {
+        if (!needle) return true;
+        return `${getPlayerName(player)} ${player.role || ""} ${player.shirtNumber || ""}`
+          .toLowerCase()
+          .includes(needle);
+      });
+  }, [players, includeJuniorsInStats, search]);
+
   const registerStats = useMemo(
-    () => buildRegisterStats(visiblePlayers, visibleSessions, playerRpeIndex),
-    [visiblePlayers, visibleSessions, playerRpeIndex]
+    () => buildRegisterStats(statsPlayers, visibleSessions, playerRpeIndex),
+    [statsPlayers, visibleSessions, playerRpeIndex]
+  );
+
+  const isFinesRangeInverted = Boolean(
+    finesRange.start && finesRange.end && normalizeDateStr(finesRange.start) > normalizeDateStr(finesRange.end)
   );
 
   const fineRows = useMemo(
-    () => buildFineRows(visiblePlayers, finableSessions, finesRange.start, finesRange.end),
-    [visiblePlayers, finableSessions, finesRange]
+    () => buildFineRows(statsPlayers, finableSessions, finesRange.start, finesRange.end),
+    [statsPlayers, finableSessions, finesRange]
   );
 
   async function exportFinesPDF() {
@@ -502,6 +551,15 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
             <Metric label={t("pages.attendanceRegister.metricAvgRpe")} value={registerStats.avgRpe || "-"} tone="purple" />
           </div>
 
+          <label style={ar.statsScopeToggle}>
+            <input
+              type="checkbox"
+              checked={includeJuniorsInStats}
+              onChange={(event) => setIncludeJuniorsInStats(event.target.checked)}
+            />
+            {t("pages.attendanceRegister.includeJuniorsInStats")}
+          </label>
+
           <div style={ar.filters}>
             <input
               type="month"
@@ -561,7 +619,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
             />
             <Button
               variant="ghost"
-              disabled={!fineRows.length || exportingFines}
+              disabled={!fineRows.length || exportingFines || isFinesRangeInverted}
               onClick={exportFinesPDF}
             >
               {exportingFines ? t("pages.attendanceRegister.fines.exporting") : t("pages.attendanceRegister.fines.exportPdf")}
@@ -569,7 +627,9 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
           </div>
         </div>
 
-        {!finesRange.start || !finesRange.end ? (
+        {isFinesRangeInverted ? (
+          <p style={ar.finesError}>{t("pages.attendanceRegister.fines.invalidRange")}</p>
+        ) : !finesRange.start || !finesRange.end ? (
           <p style={ar.finesEmpty}>{t("pages.attendanceRegister.fines.pickRange")}</p>
         ) : !fineRows.length ? (
           <p style={ar.finesEmpty}>{t("pages.attendanceRegister.fines.none")}</p>
@@ -760,6 +820,20 @@ const ar = {
     margin: "14px 0 0",
     fontSize: 13,
     color: "#64748b",
+  },
+  finesError: {
+    margin: "14px 0 0",
+    fontSize: 13,
+    color: "#f87171",
+    fontWeight: 700,
+  },
+  statsScopeToggle: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: 12,
+    color: "#94a3b8",
+    cursor: "pointer",
   },
   finesList: {
     display: "grid",
