@@ -16,7 +16,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useAreaPermission } from "../components/auth/permissionContext";
 
 import { styles } from "../styles/index.js";
-import { createId, formatDate, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
+import { createId, formatDate, getPlayerUnavailabilityOnDate, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { sendTeamNotification } from "../services/notifications";
 import RpeMatrix from "../components/statistics/RpeMatrix";
@@ -165,9 +165,10 @@ function Trainings({
     (sum, item) => sum + Number(item.customDuration || item.duration || 0),
     0
   );
-  const availablePlayersCount = players.filter(
-    (player) => !UNAVAILABLE_STATUSES.includes(player.status || "Disponibile")
-  ).length;
+  const sessionAvailability = useMemo(
+    () => getSessionAvailability(players, form.date),
+    [players, form.date]
+  );
   const objectiveStatusMeta = getObjectiveStatusMeta(form.objectiveStatus);
   const trainingMetricItems = [
     {
@@ -191,7 +192,7 @@ function Trainings({
     {
       key: "available",
       label: t("pages.trainings.printAvailablePlayers"),
-      value: players.length ? `${availablePlayersCount}/${players.length}` : "-",
+      value: sessionAvailability.total ? `${sessionAvailability.available.length}/${sessionAvailability.total}` : "-",
       color: "#22c55e",
     },
   ];
@@ -399,7 +400,7 @@ function Trainings({
                   <PrintKpi title={t("pages.trainings.printRpeTarget")} value={`${rpeTarget.min}-${rpeTarget.max}`} />
                   <PrintKpi
                     title={t("pages.trainings.printAvailablePlayers")}
-                    value={players.length ? `${availablePlayersCount}/${players.length}` : "-"}
+                    value={sessionAvailability.total ? `${sessionAvailability.available.length}/${sessionAvailability.total}` : "-"}
                   />
                 </section>
 
@@ -591,7 +592,7 @@ function Trainings({
 
     {/* Giocatori disponibili per questa seduta */}
     {players.length > 0 && (
-      <AvailablePlayers players={players} />
+      <AvailablePlayers players={players} date={form.date} />
     )}
   </AppCard>
   </div>
@@ -1207,6 +1208,32 @@ function PrintBox({ title, value }) {
 // ─────────────────────────────────────────────
 const UNAVAILABLE_STATUSES = ["Infortunato", "Squalificato"];
 
+function getPlayerAvailabilityOnDate(player, date) {
+  if ((player.gruppo || "prima") === "juniores") {
+    return { available: false, reason: "Juniores" };
+  }
+  if (UNAVAILABLE_STATUSES.includes(player.status || "Disponibile")) {
+    return { available: false, reason: player.status };
+  }
+  const unavailability = getPlayerUnavailabilityOnDate(player, date);
+  if (unavailability) {
+    return { available: false, reason: unavailability.label || unavailability.type || "Non disponibile" };
+  }
+  return { available: true, reason: "" };
+}
+
+function getSessionAvailability(players, date) {
+  const primaryPlayers = players.filter((player) => (player.gruppo || "prima") !== "juniores");
+  const available = [];
+  const unavailable = [];
+  primaryPlayers.forEach((player) => {
+    const availability = getPlayerAvailabilityOnDate(player, date);
+    if (availability.available) available.push(player);
+    else unavailable.push({ player, reason: availability.reason });
+  });
+  return { available, unavailable, total: primaryPlayers.length };
+}
+
 const PHASE_OPTIONS = [
   { id: "Riscaldamento",    color: "#fb923c" },
   { id: "Tecnico-tattica",  color: "#38bdf8" },
@@ -1215,14 +1242,9 @@ const PHASE_OPTIONS = [
   { id: "Defaticamento",    color: "#94a3b8" },
 ];
 
-function AvailablePlayers({ players }) {
+function AvailablePlayers({ players, date }) {
   const { t } = useTranslation();
-  const available = players.filter(
-    (p) => !UNAVAILABLE_STATUSES.includes(p.status || "Disponibile")
-  );
-  const unavailable = players.filter(
-    (p) => UNAVAILABLE_STATUSES.includes(p.status || "Disponibile")
-  );
+  const { available, unavailable, total } = getSessionAvailability(players, date);
 
   return (
     <div style={{
@@ -1238,7 +1260,7 @@ function AvailablePlayers({ players }) {
           fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999,
           background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#22c55e",
         }}>
-          {available.length} / {players.length}
+          {available.length} / {total}
         </span>
         {unavailable.length > 0 && (
           <span style={{
@@ -1268,11 +1290,11 @@ function AvailablePlayers({ players }) {
       {/* Chip non disponibili */}
       {unavailable.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-          {unavailable.map((p) => {
+          {unavailable.map(({ player: p, reason }) => {
             const name = [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
-            const isInjured = p.status === "Infortunato";
+            const isInjured = p.status === "Infortunato" || String(reason).toLowerCase().includes("infortun");
             return (
-              <span key={p.id} title={`${p.status}${p.injuryType ? ` · ${p.injuryType}` : ""}`} style={{
+              <span key={p.id} title={`${reason || p.status || "Non disponibile"}${p.injuryType ? ` · ${p.injuryType}` : ""}`} style={{
                 fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999,
                 background: isInjured ? "rgba(248,113,113,0.08)" : "rgba(168,85,247,0.08)",
                 border: isInjured ? "1px solid rgba(248,113,113,0.2)" : "1px solid rgba(168,85,247,0.2)",
