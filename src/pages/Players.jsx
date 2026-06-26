@@ -21,7 +21,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
-import { createUuid, isBirthdayToday, getTeamAverageAge, calcPlayerAge, getPlayerQuickStats } from "../utils/helpers";
+import { createUuid, isBirthdayToday, getTeamAverageAge, calcPlayerAge, getPlayerQuickStats, comparePlayersByName } from "../utils/helpers";
 import { loadAllPlayerStats, loadAllPlayerAvgRatings, loadTeamRecentRatings } from "../services/playerProfile";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
@@ -207,9 +207,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     const orderA = ROLE_ORDER[a.role] ?? 99;
     const orderB = ROLE_ORDER[b.role] ?? 99;
     if (orderA !== orderB) return orderA - orderB;
-    const nameA = `${a.first_name || a.firstName || ""} ${a.last_name || a.lastName || ""}`.trim() || a.name || "";
-    const nameB = `${b.first_name || b.firstName || ""} ${b.last_name || b.lastName || ""}`.trim() || b.name || "";
-    return nameA.localeCompare(nameB);
+    return comparePlayersByName(a, b);
   });
 
   // Contatori per gruppo

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { loadPlayerMatchesForPeriod } from "../../services/playerProfile";
 import { useAuth } from "../../hooks/useAuth";
+import { comparePlayersByName } from "../../utils/helpers";
 
 const CELL_W = 46;
 const HEADER_H = 110;
@@ -58,9 +59,7 @@ export default function MinutaggioMatrix({ players, matches }) {
     .filter((e) => e.type === "Partita")
     .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 
-  const sortedPlayers = [...players].sort((a, b) =>
-    (a.name || "").localeCompare(b.name || "")
-  );
+  const sortedPlayers = [...players].sort(comparePlayersByName);
 
   useEffect(() => {
     if (!auth.team?.id || sortedMatches.length === 0) return;

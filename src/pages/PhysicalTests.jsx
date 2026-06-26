@@ -12,7 +12,7 @@ import { useToast } from "../components/ui/Toast";
 import { useAreaPermission } from "../components/auth/permissionContext";
 
 import { styles } from "../styles/index.js";
-import { createId, formatShortDate, getPhysicalReference } from "../utils/helpers";
+import { comparePlayersByName, createId, formatShortDate, getPhysicalReference } from "../utils/helpers";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
@@ -239,7 +239,10 @@ function ChartSVG({ points, metric }) {
 // Componente principale
 // ─────────────────────────────────────────────
 export default function PhysicalTests({
-  players = [], physicalTests = [], setPhysicalTests, appSettings }) {
+  players: playersProp = [], physicalTests = [], setPhysicalTests, appSettings }) {
+
+  // Ordine standard per cognome e nome in tutte le viste (cards, dropdown).
+  const players = [...playersProp].sort(comparePlayersByName);
 
   const { t } = useTranslation();
   const isMobile = useIsMobile();

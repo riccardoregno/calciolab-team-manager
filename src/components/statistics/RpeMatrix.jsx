@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchTeamRpe } from "../../services/sessionRpe";
 import AppCard from "../ui/AppCard";
-import { formatShortDate } from "../../utils/helpers";
+import { comparePlayersByName, formatShortDate } from "../../utils/helpers";
 
 const BORG_LABELS = {
   1: "Molto leggero", 2: "Leggero", 3: "Moderato",
@@ -31,26 +31,28 @@ export default function RpeMatrix({ teamId, players = [], sessions = [], matches
     }).catch(() => setLoading(false));
   }, [teamId]);
 
-  // Ultimi 10 eventi (sessioni + partite) per data decrescente
+  // Ultimi 12 eventi (sessioni + partite), ordine cronologico crescente
   const events = [
     ...sessions.map((s) => ({ ...s, eventType: "session", label: s.title || "Allenamento", date: s.date })),
     ...matches.map((m)  => ({ ...m, eventType: "match",   label: `vs ${m.opponent || "?"}`, date: m.date })),
   ]
     .filter((e) => e.date)
     .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .slice(0, 12);
+    .slice(0, 12)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   // Indice rpe: "playerId:eventId" → record
   const rpeIndex = {};
   rpeData.forEach((r) => { rpeIndex[`${r.player_id}:${r.event_id}`] = r; });
 
-  // Giocatori attivi (con almeno una valutazione) + tutti gli altri
-  const activePlayers = players.filter((p) =>
-    events.some((e) => rpeIndex[`${p.id}:${e.id}`])
-  );
-  const otherPlayers = players.filter((p) =>
-    !events.some((e) => rpeIndex[`${p.id}:${e.id}`])
-  );
+  // Giocatori attivi (con almeno una valutazione) + tutti gli altri, ciascun
+  // gruppo ordinato per cognome e nome.
+  const activePlayers = players
+    .filter((p) => events.some((e) => rpeIndex[`${p.id}:${e.id}`]))
+    .sort(comparePlayersByName);
+  const otherPlayers = players
+    .filter((p) => !events.some((e) => rpeIndex[`${p.id}:${e.id}`]))
+    .sort(comparePlayersByName);
   const orderedPlayers = [...activePlayers, ...otherPlayers];
 
   // Medie per evento

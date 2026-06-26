@@ -1716,6 +1716,8 @@ export const it = {
       step2: "Esercizi",
       libraryTitle: "Libreria esercizi",
       librarySubtitle: "Clicca per aggiungere o rimuovere esercizi dalla seduta",
+      libraryCollapse: "Riduci la libreria esercizi",
+      libraryExpand: "Espandi la libreria esercizi",
       searchPlaceholder: "Cerca esercizio...",
       filterAll: "Tutti",
       noExercisesFound: "Nessun esercizio trovato",

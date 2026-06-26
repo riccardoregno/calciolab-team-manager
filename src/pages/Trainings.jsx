@@ -71,6 +71,7 @@ function Trainings({
   const [formErrors, setFormErrors] = useState({});
   const [pickerBlock, setPickerBlock] = useState("Tutti");
   const [sessionsView, setSessionsView] = useState("lista"); // "lista" | "settimana"
+  const [libraryCollapsed, setLibraryCollapsed] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0); // 0 = settimana corrente
 
   // Carica catalogo FP5 in background
@@ -605,24 +606,51 @@ function Trainings({
                 flexWrap: "wrap",
               }}
             >
-              <div>
-                <div style={trainingStyles.stepHeader}>
-                  <span style={trainingStyles.stepBadge}>2</span>
-                  <span>{t("pages.trainings.step2")}</span>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setLibraryCollapsed((v) => !v)}
+                  title={libraryCollapsed ? t("pages.trainings.libraryExpand") : t("pages.trainings.libraryCollapse")}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(255,255,255,0.05)",
+                    color: "#94a3b8",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    flexShrink: 0,
+                    marginTop: 2,
+                  }}
+                >
+                  {libraryCollapsed ? "▸" : "▾"}
+                </button>
+                <div>
+                  <div style={trainingStyles.stepHeader}>
+                    <span style={trainingStyles.stepBadge}>2</span>
+                    <span>{t("pages.trainings.step2")}</span>
+                  </div>
+                  <h3 style={{ margin: 0, lineHeight: 1.2 }}>{t("pages.trainings.libraryTitle")}</h3>
+                  {!libraryCollapsed && (
+                    <p style={{ color: "#94a3b8", margin: "6px 0 0", lineHeight: 1.45 }}>
+                      {t("pages.trainings.librarySubtitle")}
+                    </p>
+                  )}
                 </div>
-                <h3 style={{ margin: 0, lineHeight: 1.2 }}>{t("pages.trainings.libraryTitle")}</h3>
-                <p style={{ color: "#94a3b8", margin: "6px 0 0", lineHeight: 1.45 }}>
-                  {t("pages.trainings.librarySubtitle")}
-                </p>
               </div>
 
-              <SearchBar
-                value={search}
-                onChange={setSearch}
-                placeholder={t("pages.trainings.searchPlaceholder")}
-              />
+              {!libraryCollapsed && (
+                <SearchBar
+                  value={search}
+                  onChange={setSearch}
+                  placeholder={t("pages.trainings.searchPlaceholder")}
+                />
+              )}
             </div>
 
+            {libraryCollapsed ? null : (
+              <>
             {/* Filtro per Training Block */}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
               <BlockBtn active={pickerBlock === "Tutti"} onClick={() => setPickerBlock("Tutti")} color="default">
@@ -703,6 +731,8 @@ function Trainings({
                   );
                 })}
               </div>
+            )}
+              </>
             )}
           </AppCard>
 

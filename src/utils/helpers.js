@@ -92,6 +92,27 @@ export function createUuid(){
   });
 }
 
+// Ordinamento standard dei giocatori per cognome + nome, usato in tutte le
+// tabelle dell'app. Se firstName/lastName non sono disponibili separatamente
+// (es. solo un campo "name" unico), si usa l'ultima parola come cognome —
+// approssimazione accettabile per i casi legacy.
+export function getPlayerSortKey(player) {
+  const firstName = player?.firstName || player?.first_name || "";
+  const lastName = player?.lastName || player?.last_name || "";
+  if (firstName || lastName) {
+    return `${lastName} ${firstName}`.trim().toLowerCase();
+  }
+  const fullName = String(player?.name || "").trim();
+  if (!fullName) return "";
+  const parts = fullName.split(/\s+/);
+  const last = parts.length > 1 ? parts.pop() : "";
+  return `${last} ${parts.join(" ")}`.trim().toLowerCase();
+}
+
+export function comparePlayersByName(a, b) {
+  return getPlayerSortKey(a).localeCompare(getPlayerSortKey(b));
+}
+
 export function normalizePlayer(player){
   // Fast-path: skip normalization if player already has all required fields
   if (

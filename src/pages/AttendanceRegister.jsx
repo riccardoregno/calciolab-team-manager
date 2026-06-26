@@ -10,7 +10,7 @@ import SearchBar from "../components/ui/SearchBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { useAuth } from "../hooks/useAuth";
 import { styles } from "../styles/index.js";
-import { formatShortDate, getPlayerUnavailabilityOnDate } from "../utils/helpers";
+import { comparePlayersByName, formatShortDate, getPlayerSortKey, getPlayerUnavailabilityOnDate } from "../utils/helpers";
 import { fetchTeamRpe } from "../services/sessionRpe";
 import { useTranslation } from "../i18n";
 
@@ -166,13 +166,14 @@ function buildFineRows(players, sessions, rangeStartRaw, rangeEndRaw) {
       return {
         playerId: player.id,
         name: getPlayerName(player),
+        sortKey: getPlayerSortKey(player),
         role: player.role || "",
         count: entries.length,
         entries,
       };
     })
     .filter((row) => row.count > 0)
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    .sort((a, b) => b.count - a.count || a.sortKey.localeCompare(b.sortKey));
 }
 
 const MATCH_DEFAULT_DURATION = 90;
@@ -295,7 +296,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
           .toLowerCase()
           .includes(needle);
       })
-      .sort((a, b) => getPlayerName(a).localeCompare(getPlayerName(b)));
+      .sort(comparePlayersByName);
   }, [players, groupFilter, search]);
 
   const visiblePrimaryPlayers = useMemo(

@@ -1705,6 +1705,8 @@ export const en = {
       step2: "Exercises",
       libraryTitle: "Exercise library",
       librarySubtitle: "Click to add or remove exercises from the session",
+      libraryCollapse: "Collapse the exercise library",
+      libraryExpand: "Expand the exercise library",
       searchPlaceholder: "Search exercise...",
       filterAll: "All",
       noExercisesFound: "No exercises found",
