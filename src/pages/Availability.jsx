@@ -33,7 +33,7 @@ function getDefaultPrepRange() {
   };
 }
 
-function buildPrepDays(players, sessions, start, end) {
+function buildPrepDays(players, sessions, matches, start, end) {
   if (!start || !end) return { days: [], truncated: false };
   const startDate = new Date(start);
   const endDate = new Date(end);
@@ -46,11 +46,21 @@ function buildPrepDays(players, sessions, start, end) {
   // mostrati come aggiunta opzionale, coi nomi, senza alterare il rapporto principale.
   const primaPlayers = players.filter((p) => (p.gruppo || "prima") === "prima");
   const juniorPlayers = players.filter((p) => (p.gruppo || "prima") === "juniores");
+  // Le amichevoli non richiedono convocazione e si comportano come un
+  // allenamento normale (vedi AttendanceRegister.jsx): vanno incluse qui,
+  // altrimenti un giorno di amichevole sembra "senza seduta" e i Juniores
+  // disponibili quel giorno non vengono mai contati, anche se sono marcati
+  // Presenti nel registro.
   const trainingByDate = new Map(
     sessions
       .filter((session) => (session.type || "Allenamento") === "Allenamento" && session.date)
       .map((session) => [session.date, session])
   );
+  (matches || [])
+    .filter((match) => match.date && String(match.matchKind || "").trim().toLowerCase() === "amichevole")
+    .forEach((match) => {
+      trainingByDate.set(match.date, { date: match.date, attendance: match.attendance || {} });
+    });
 
   const days = [];
   const cursor = new Date(startDate);
@@ -313,8 +323,8 @@ export default function Availability({
   // giocatore → Permessi). Aiuta a capire dove servono doppi allenamenti o
   // spostamenti di giorno durante la preparazione.
   const { days: prepDays, truncated: prepTruncated } = useMemo(
-    () => buildPrepDays(players, sessions, prepRange.start, prepRange.end),
-    [players, sessions, prepRange.start, prepRange.end]
+    () => buildPrepDays(players, sessions, matches, prepRange.start, prepRange.end),
+    [players, sessions, matches, prepRange.start, prepRange.end]
   );
   const prepCriticalDays = useMemo(
     () => prepDays.filter((day) => day.total > 0 && day.available / day.total < PREP_CRITICAL_RATIO),
