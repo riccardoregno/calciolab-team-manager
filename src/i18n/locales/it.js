@@ -1791,7 +1791,7 @@ export const it = {
       },
       fines: {
         title: "Report multe",
-        subtitle: "Ferie contate come giorni calendario nel periodo; assenze ingiustificate solo su allenamenti e amichevoli",
+        subtitle: "Giorni di assenza ingiustificata o ferie negli allenamenti e nelle amichevoli nel periodo (le partite ufficiali sono visibili in tabella ma escluse, perché un \"non convocato\" può dipendere da scelte tecniche)",
         from: "Dal",
         to: "Al",
         exportPdf: "Esporta PDF",
