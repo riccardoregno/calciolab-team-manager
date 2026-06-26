@@ -22,6 +22,16 @@ function getDefaultRpeRange(sessions, matches) {
   return { start: allDates[0] || "", end: allDates[allDates.length - 1] || "" };
 }
 
+function getPlayerNameParts(player) {
+  const fallbackParts = String(player.name || "").trim().split(/\s+/).filter(Boolean);
+  const firstName = player.firstName || fallbackParts.slice(0, -1).join(" ") || player.name || "";
+  const lastName = player.lastName || (fallbackParts.length > 1 ? fallbackParts[fallbackParts.length - 1] : "");
+  return {
+    firstName,
+    lastName,
+  };
+}
+
 export default function RpeMatrix({ teamId, players = [], sessions = [], matches = [] }) {
   const [rpeData, setRpeData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -145,14 +155,15 @@ export default function RpeMatrix({ teamId, players = [], sessions = [], matches
             {orderedPlayers.map((player) => {
               const avg = playerAvg(player.id);
               const { bg: avgBg, text: avgText } = rpeColor(avg ? Math.round(Number(avg)) : null);
+              const nameParts = getPlayerNameParts(player);
               return (
                 <tr key={player.id}>
                   <td style={{ ...s.td, position: "sticky", left: 0, background: "#0f172a", zIndex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: "#e2e8f0" }}>
-                      {player.firstName || player.name?.split(" ")[0] || player.name}
+                      {nameParts.lastName || nameParts.firstName || "—"}
                     </div>
                     <div style={{ fontSize: 11, color: "#64748b" }}>
-                      {player.lastName || ""}{player.shirtNumber ? ` · #${player.shirtNumber}` : ""}
+                      {nameParts.lastName ? nameParts.firstName : ""}{player.shirtNumber ? ` · #${player.shirtNumber}` : ""}
                     </div>
                   </td>
                   {events.map((e) => {
