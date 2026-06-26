@@ -17,9 +17,18 @@ function rpeColor(v) {
   return          { bg: "rgba(248,113,113,0.22)",    text: "#f87171" };
 }
 
+function getDefaultRpeRange(sessions, matches) {
+  const allDates = [...sessions, ...matches].map((e) => e.date).filter(Boolean).sort();
+  return { start: allDates[0] || "", end: allDates[allDates.length - 1] || "" };
+}
+
 export default function RpeMatrix({ teamId, players = [], sessions = [], matches = [] }) {
   const [rpeData, setRpeData] = useState([]);
   const [loading, setLoading] = useState(false);
+  // Di default mostra tutte le sedute/partite disponibili (dalla prima
+  // all'ultima): prima si mostravano solo le ultime 12, escludendo
+  // silenziosamente l'inizio stagione. Il periodo resta modificabile.
+  const [range, setRange] = useState(() => getDefaultRpeRange(sessions, matches));
 
   useEffect(() => {
     if (!teamId) return;
@@ -31,14 +40,12 @@ export default function RpeMatrix({ teamId, players = [], sessions = [], matches
     }).catch(() => setLoading(false));
   }, [teamId]);
 
-  // Ultimi 12 eventi (sessioni + partite), ordine cronologico crescente
+  // Eventi (sessioni + partite) nel periodo selezionato, ordine cronologico crescente
   const events = [
     ...sessions.map((s) => ({ ...s, eventType: "session", label: s.title || "Allenamento", date: s.date })),
     ...matches.map((m)  => ({ ...m, eventType: "match",   label: `vs ${m.opponent || "?"}`, date: m.date })),
   ]
-    .filter((e) => e.date)
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .slice(0, 12)
+    .filter((e) => e.date && (!range.start || e.date >= range.start) && (!range.end || e.date <= range.end))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   // Indice rpe: "playerId:eventId" → record
@@ -70,20 +77,48 @@ export default function RpeMatrix({ teamId, players = [], sessions = [], matches
   }
 
   if (loading) return <AppCard><p style={s.muted}>Caricamento RPE…</p></AppCard>;
-  if (events.length === 0) return null;
+  if (sessions.length === 0 && matches.length === 0) return null;
 
   return (
     <AppCard>
-      <div style={{ marginBottom: 16 }}>
-        <h3 style={s.title}>Matrice RPE (Borg 1–10)</h3>
-        <p style={s.muted}>Valutazione soggettiva dello sforzo percepito dai giocatori dopo ogni seduta o partita.</p>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
-          {[[1,3,"#4ade80","Leggero"],[4,6,"#facc15","Medio"],[7,8,"#fb923c","Intenso"],[9,10,"#f87171","Massimale"]].map(([lo,hi,color,label]) => (
-            <span key={label} style={{ fontSize: 11, color, fontWeight: 700 }}>● {lo}–{hi} {label}</span>
-          ))}
-          <span style={{ fontSize: 11, color: "#475569", fontWeight: 700 }}>— Non compilato</span>
+      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div>
+          <h3 style={s.title}>Matrice RPE (Borg 1–10)</h3>
+          <p style={s.muted}>Valutazione soggettiva dello sforzo percepito dai giocatori dopo ogni seduta o partita.</p>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+            {[[1,3,"#4ade80","Leggero"],[4,6,"#facc15","Medio"],[7,8,"#fb923c","Intenso"],[9,10,"#f87171","Massimale"]].map(([lo,hi,color,label]) => (
+              <span key={label} style={{ fontSize: 11, color, fontWeight: 700 }}>● {lo}–{hi} {label}</span>
+            ))}
+            <span style={{ fontSize: 11, color: "#475569", fontWeight: 700 }}>— Non compilato</span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <label style={{ display: "grid", gap: 4 }}>
+            <span style={s.rangeLabel}>Dal</span>
+            <input
+              type="date"
+              value={range.start}
+              onChange={(e) => setRange((r) => ({ ...r, start: e.target.value }))}
+              style={s.rangeInput}
+            />
+          </label>
+          <label style={{ display: "grid", gap: 4 }}>
+            <span style={s.rangeLabel}>Al</span>
+            <input
+              type="date"
+              value={range.end}
+              onChange={(e) => setRange((r) => ({ ...r, end: e.target.value }))}
+              style={s.rangeInput}
+            />
+          </label>
         </div>
       </div>
+
+      {events.length === 0 ? (
+        <p style={s.muted}>Nessuna seduta o partita nel periodo selezionato.</p>
+      ) : (
+        <>
 
       <div style={{ overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 500 }}>
@@ -163,6 +198,8 @@ export default function RpeMatrix({ teamId, players = [], sessions = [], matches
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </AppCard>
   );
 }
@@ -170,6 +207,15 @@ export default function RpeMatrix({ teamId, players = [], sessions = [], matches
 const s = {
   title: { margin: "0 0 4px", fontSize: 15, fontWeight: 800, color: "#f8fafc" },
   muted: { color: "#64748b", margin: 0, fontSize: 13 },
+  rangeLabel: { fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase" },
+  rangeInput: {
+    padding: "6px 8px",
+    borderRadius: 8,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.04)",
+    color: "#e2e8f0",
+    fontSize: 12,
+  },
   th: {
     padding: "8px 6px", fontSize: 11, fontWeight: 700,
     color: "#94a3b8", textTransform: "uppercase",
