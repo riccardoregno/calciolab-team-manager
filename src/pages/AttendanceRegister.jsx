@@ -87,24 +87,35 @@ function getSessionStatus(player, session) {
   return entry.status || getDefaultStatus(player, session.date);
 }
 
-// Giorni multabili: assenze non giustificate (status "Assente") oppure ferie
-// dichiarate dal giocatore (player.absences con type "ferie"). Permesso/Studio/
-// Lavoro restano giustificati e non vengono contati. Si contano allenamenti e
-// amichevoli (equivalenti a un allenamento), ma non campionato/coppa: un
-// "non convocato" a una gara ufficiale può dipendere da scelte tecniche, non
-// da una colpa del giocatore. Contando solo le sedute realmente esistenti,
-// un giorno senza impegno non pesa mai sul conteggio (es. sabato senza
-// allenamento non allunga l'assenza).
+function addDateDays(dateStr, days) {
+  const [year, month, day] = String(dateStr).split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
+  return date.toISOString().slice(0, 10);
+}
+
+function buildFerieEntries(player, rangeStart, rangeEnd) {
+  const entries = [];
+  (player.absences || [])
+    .filter((absence) => absence.type === "ferie" && absence.dateStart && absence.dateEnd)
+    .forEach((absence) => {
+      let cursor = absence.dateStart > rangeStart ? absence.dateStart : rangeStart;
+      const end = absence.dateEnd < rangeEnd ? absence.dateEnd : rangeEnd;
+      while (cursor <= end) {
+        entries.push({ date: cursor, reason: "Ferie" });
+        cursor = addDateDays(cursor, 1);
+      }
+    });
+  return entries;
+}
+
+// Giorni multabili: assenze non giustificate sulle sedute/impegni multabili,
+// più le ferie dichiarate dal giocatore contate come giorni calendario nel
+// periodo selezionato. Permesso/Studio/Lavoro restano giustificati e non vengono
+// contati. Campionato/coppa restano fuori: un "non convocato" può dipendere da
+// scelte tecniche, non da una colpa del giocatore.
 function getFineEntry(player, session) {
-  const dateStr = session.date;
   const status = getSessionStatus(player, session);
   if (status === "Assente") return { reason: "Assente" };
-  if (status === "Permesso") {
-    const absence = (player.absences || []).find(
-      (a) => a.dateStart && a.dateEnd && dateStr >= a.dateStart && dateStr <= a.dateEnd
-    );
-    if (absence?.type === "ferie") return { reason: "Ferie" };
-  }
   return null;
 }
 
@@ -115,12 +126,17 @@ function buildFineRows(players, sessions, rangeStart, rangeEnd) {
     .sort((a, b) => new Date(a.date) - new Date(b.date));
   return players
     .map((player) => {
-      const entries = inRange
-        .map((session) => {
-          const fine = getFineEntry(player, session);
-          return fine ? { date: session.date, reason: fine.reason } : null;
-        })
-        .filter(Boolean);
+      const entriesByDate = new Map();
+      buildFerieEntries(player, rangeStart, rangeEnd).forEach((entry) => {
+        entriesByDate.set(entry.date, entry);
+      });
+      inRange.forEach((session) => {
+        const fine = getFineEntry(player, session);
+        if (fine && !entriesByDate.has(session.date)) {
+          entriesByDate.set(session.date, { date: session.date, reason: fine.reason });
+        }
+      });
+      const entries = [...entriesByDate.values()].sort((a, b) => new Date(a.date) - new Date(b.date));
       return {
         playerId: player.id,
         name: getPlayerName(player),

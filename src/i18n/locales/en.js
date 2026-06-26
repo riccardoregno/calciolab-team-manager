@@ -1780,7 +1780,7 @@ export const en = {
       },
       fines: {
         title: "Fines report",
-        subtitle: "Unjustified absences or vacation days at trainings in range (matches are shown in the table but excluded, since being left out of a call-up can be a tactical choice)",
+        subtitle: "Vacation days count as calendar days in range; unjustified absences count only on trainings and friendlies",
         from: "From",
         to: "To",
         exportPdf: "Export PDF",
