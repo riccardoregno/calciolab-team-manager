@@ -123,6 +123,14 @@ function Trainings({
   // RPE calcolato dalla distanza dalla gara
   const rpeTarget = RPE_BY_MATCH_DAY[form.matchDayDistance] || RPE_BY_MATCH_DAY["MD-3"];
 
+  // L'elenco "Sedute salvate" deve seguire l'ordine cronologico delle sedute,
+  // non l'ordine grezzo con cui arrivano dal backend (che può essere
+  // qualsiasi cosa, es. ordine di sincronizzazione).
+  const sortedSessions = useMemo(
+    () => [...sessions].sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)),
+    [sessions]
+  );
+
   const filteredExercises = allExercises.filter((exercise) => {
     const matchSearch = `${exercise.title} ${exercise.category} ${exercise.objective}`
       .toLowerCase()
@@ -985,7 +993,7 @@ function Trainings({
             />
           ) : (
             <div style={{ display: "grid", gap: 14 }}>
-              {sessions.map((session) => {
+              {sortedSessions.map((session) => {
                 const sessionTotal = (session.exercises || []).reduce(
                   (sum, item) => sum + Number(item.customDuration || 0),
                   0
