@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import ActionBar from "../components/ui/ActionBar";
@@ -73,6 +73,11 @@ function Trainings({
   const [sessionsView, setSessionsView] = useState("lista"); // "lista" | "settimana"
   const [libraryCollapsed, setLibraryCollapsed] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0); // 0 = settimana corrente
+  const formCardRef = useRef(null);
+
+  function scrollToTrainingForm() {
+    formCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   // Carica catalogo FP5 in background
   const [fp5Catalog, setFp5Catalog] = useState([]);
@@ -295,7 +300,7 @@ function Trainings({
       objectiveReview: session.objectiveReview || "",
     });
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    requestAnimationFrame(scrollToTrainingForm);
   }
 
   function deleteTraining(id) {
@@ -470,6 +475,7 @@ function Trainings({
             </section>
           </div>
 
+  <div ref={formCardRef}>
   <AppCard>
     <div style={trainingStyles.formHero}>
       <div style={{ minWidth: 0 }}>
@@ -588,6 +594,7 @@ function Trainings({
       <AvailablePlayers players={players} />
     )}
   </AppCard>
+  </div>
 
   {/* ── Session Builder: blocchi strutturati ── */}
   <SessionBlockBuilder
@@ -991,7 +998,7 @@ function Trainings({
               onThisWeek={() => setWeekOffset(0)}
               onEditSession={(session) => {
                 setEditingId(session.id);
-                window.scrollTo({ top: 0, behavior: "smooth" });
+                requestAnimationFrame(scrollToTrainingForm);
               }}
               onNavigateAttendance={(id) => navigate(`/session-attendance/${id}`)}
               canManage={canManage}
