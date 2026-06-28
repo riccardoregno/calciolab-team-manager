@@ -7,6 +7,7 @@ import { respondRsvpAsPlayer } from "../services/rsvp";
 import { fetchPlayerAvailability, setPlayerAvailability } from "../services/playerAvailability";
 import { touchPlayerPortalActivity } from "../services/playerPortalActivity";
 import { fetchPlayerRpe, upsertRpe } from "../services/sessionRpe";
+import { deleteTeamAttachment, uploadTeamAttachment } from "../services/attachments";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -131,6 +132,8 @@ export default function PlayerPortal({
   }
 
   function deleteComm(commId) {
+    const comm = comms.find((c) => c.id === commId);
+    if (comm?.attachment) deleteTeamAttachment(comm.attachment);
     setAppSettings?.({
       ...settings,
       communications: comms.filter((c) => c.id !== commId),
@@ -238,6 +241,7 @@ export default function PlayerPortal({
           onAddComm={addComm}
           onDeleteComm={deleteComm}
           isMobile={isMobile}
+          teamId={teamId}
         />
       )}
     </div>
@@ -253,7 +257,7 @@ function StaffView({
   portal, comms,
   activeProgram, activeGoal, activeNote,
   onUpdatePortal, onPlayerChange, onProgramChange, onGoalChange, onNoteChange,
-  onSave, onAddComm, onDeleteComm, isMobile,
+  onSave, onAddComm, onDeleteComm, isMobile, teamId,
 }) {
   const { t } = useTranslation();
   return (
@@ -287,7 +291,7 @@ function StaffView({
         </AppCard>
 
         {/* Comunicazioni */}
-        <CommPanel comms={comms} onAdd={onAddComm} onDelete={onDeleteComm} />
+        <CommPanel comms={comms} onAdd={onAddComm} onDelete={onDeleteComm} teamId={teamId} />
 
         {/* Programma individuale */}
         <AppCard>
@@ -1041,18 +1045,47 @@ function PlayerView({
 // ─────────────────────────────────────────────
 // Pannello Comunicazioni (solo staff)
 // ─────────────────────────────────────────────
-function CommPanel({ comms, onAdd, onDelete }) {
+function CommPanel({ comms, onAdd, onDelete, teamId }) {
   const { t } = useTranslation();
   const [title,    setTitle]    = useState("");
   const [body,     setBody]     = useState("");
   const [priority, setPriority] = useState("info");
+  const [attachment, setAttachment] = useState(null);
+  const [uploading, setUploading]   = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  async function handleFileChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadError("");
+    setUploading(true);
+    try {
+      const uploaded = await uploadTeamAttachment({
+        teamId,
+        folder: "player-portal/communications",
+        file,
+      });
+      setAttachment(uploaded);
+    } catch (error) {
+      setUploadError(error?.message || t("pages.playerPortal.commUploadFailed"));
+    } finally {
+      setUploading(false);
+    }
+    event.target.value = "";
+  }
+
+  async function removeAttachment() {
+    if (attachment) await deleteTeamAttachment(attachment);
+    setAttachment(null);
+  }
 
   function handleAdd() {
     if (!title.trim()) return;
-    onAdd({ title: title.trim(), body: body.trim(), priority, date: new Date().toISOString().slice(0, 10) });
+    onAdd({ title: title.trim(), body: body.trim(), priority, attachment, date: new Date().toISOString().slice(0, 10) });
     setTitle("");
     setBody("");
     setPriority("info");
+    setAttachment(null);
   }
 
   return (
@@ -1079,6 +1112,35 @@ function CommPanel({ comms, onAdd, onDelete }) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />
+
+        {/* Allegato PDF (es. programma di pre-preparazione) */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {attachment ? (
+            <span style={{ ...ps.badge, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              📄 {attachment.name}
+              <button
+                type="button"
+                onClick={removeAttachment}
+                style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 13, padding: 0 }}
+              >
+                ×
+              </button>
+            </span>
+          ) : (
+            <label style={{ ...styles.input, display: "inline-flex", alignItems: "center", cursor: "pointer", width: "auto" }}>
+              {uploading ? t("pages.playerPortal.commUploading") : `📎 ${t("pages.playerPortal.commAttachPdf")}`}
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={handleFileChange}
+                disabled={uploading}
+                style={{ display: "none" }}
+              />
+            </label>
+          )}
+        </div>
+        {uploadError && <span style={{ fontSize: 12, color: "#f87171" }}>{uploadError}</span>}
+
         <div style={{ display: "flex", gap: 8 }}>
           <select
             style={{ ...styles.input, flex: 1 }}
@@ -1088,7 +1150,7 @@ function CommPanel({ comms, onAdd, onDelete }) {
             <option value="info">{t("pages.playerPortal.commPriorityInfo")}</option>
             <option value="urgent">{t("pages.playerPortal.commPriorityUrgent")}</option>
           </select>
-          <Button onClick={handleAdd} disabled={!title.trim()}>
+          <Button onClick={handleAdd} disabled={!title.trim() || uploading}>
             {t("pages.playerPortal.commPublish")}
           </Button>
         </div>
@@ -1114,6 +1176,11 @@ function CommPanel({ comms, onAdd, onDelete }) {
                   </div>
                   <strong style={{ fontSize: 14, lineHeight: 1.25 }}>{c.title}</strong>
                   {c.body && <p style={{ ...ps.muted, fontSize: 13, marginTop: 4 }}>{c.body}</p>}
+                  {c.attachment && (
+                    <a href={c.attachment.url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 6, color: "#38bdf8", fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
+                      📄 {c.attachment.name}
+                    </a>
+                  )}
                 </div>
                 <button
                   onClick={() => onDelete(c.id)}
@@ -1264,6 +1331,16 @@ function CommCard({ comm }) {
       </div>
       <strong style={{ fontSize: 14, lineHeight: 1.25 }}>{comm.title}</strong>
       {comm.body && <p style={{ ...ps.muted, fontSize: 13, marginTop: 4 }}>{comm.body}</p>}
+      {comm.attachment && (
+        <a
+          href={comm.attachment.url}
+          target="_blank"
+          rel="noreferrer"
+          style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 6, color: "#38bdf8", fontSize: 13, fontWeight: 700, textDecoration: "none" }}
+        >
+          📄 {t("pages.playerPortal.commOpenPdf")}
+        </a>
+      )}
     </div>
   );
 }

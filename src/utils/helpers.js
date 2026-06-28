@@ -767,11 +767,12 @@ export function normalizeAppSettings(settings = {}){
 
 export function normalizeComm(c = {}) {
   return {
-    id:       c.id       || createId("comm"),
-    title:    c.title    || "",
-    body:     c.body     || "",
-    date:     c.date     || new Date().toISOString().slice(0, 10),
-    priority: c.priority === "urgent" ? "urgent" : "info",
+    id:         c.id       || createId("comm"),
+    title:      c.title    || "",
+    body:       c.body     || "",
+    date:       c.date     || new Date().toISOString().slice(0, 10),
+    priority:   c.priority === "urgent" ? "urgent" : "info",
+    attachment: c.attachment || null,
   };
 }
 
