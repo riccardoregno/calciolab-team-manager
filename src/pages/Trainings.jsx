@@ -601,6 +601,8 @@ function Trainings({
   <SessionBlockBuilder
     blocks={form.sessionBlocks || []}
     onChange={(blocks) => setForm({ ...form, sessionBlocks: blocks })}
+    onSave={canManage ? saveTraining : null}
+    saveLabel={editingId ? t("pages.trainings.updateSession") : t("pages.trainings.saveSession")}
   />
 
           <AppCard>
@@ -1688,7 +1690,7 @@ function emptyBlock() {
   return { id: Math.random().toString(36).slice(2), phase: "Parte principale", name: "", duration: 15, intensity: 5, notes: "" };
 }
 
-function SessionBlockBuilder({ blocks, onChange }) {
+function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel }) {
   const [open, setOpen] = useState(false);
 
   function addBlock() {
@@ -1818,9 +1820,16 @@ function SessionBlockBuilder({ blocks, onChange }) {
             })}
           </div>
 
-          <Button variant="ghost" onClick={addBlock} style={{ width: "100%" }}>
-            + Aggiungi blocco
-          </Button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Button variant="ghost" onClick={addBlock} style={{ flex: 1 }}>
+              + Aggiungi blocco
+            </Button>
+            {onSave && (
+              <Button onClick={(e) => { e.stopPropagation(); onSave(); }} style={{ flex: 1 }}>
+                💾 {saveLabel}
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </AppCard>

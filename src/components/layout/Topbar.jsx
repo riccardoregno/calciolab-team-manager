@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { supabase } from "../../lib/supabaseClient";
 import { styles } from "../../styles/index.js";
@@ -22,9 +22,20 @@ export default function Topbar({
   onDevelopmentRolePreviewChange,
 }) {
   const { t } = useTranslation();
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [openNotifications, setOpenNotifications] = useState(false);
   const [openProfileDesktop, setOpenProfileDesktop] = useState(false);
+
+  // Se siamo già su /trainings, il Link non naviga da nessuna parte (stessa
+  // rotta): bisogna invece scorrere fino al costruttore di seduta in alto,
+  // altrimenti il pulsante sembra non fare nulla.
+  function handleNewSessionClick(event) {
+    if (location.pathname === "/trainings") {
+      event.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
 
   const { notifications, unreadCount, isRead, markAllRead, markRead } = useInAppNotifications({
     players, sessions, matches, staffTasks, chatUnread,
@@ -223,7 +234,7 @@ export default function Topbar({
           )}
         </div>
 
-        <Link to="/trainings" style={styles.topbarPrimaryAction}>
+        <Link to="/trainings" onClick={handleNewSessionClick} style={styles.topbarPrimaryAction}>
           <span style={styles.topbarPlus}>+</span>
           {t("topbar.newSession")}
         </Link>
