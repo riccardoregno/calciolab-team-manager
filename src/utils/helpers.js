@@ -1567,7 +1567,12 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
     };
   }
 
-  const events = [...sessions, ...matches];
+  // Solo sedute/partite già svolte (data <= oggi): il mister spesso pre-compila
+  // le presenze per l'intero mese in anticipo, ma le statistiche del giocatore
+  // devono riflettere solo ciò che è realmente accaduto finora, non gli
+  // allenamenti futuri già marcati di default.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const events = [...sessions, ...matches].filter((event) => event.date && event.date <= todayStr);
   const playerEvents = events
     .map((event) => {
       const data = event.attendance?.[player.id];
