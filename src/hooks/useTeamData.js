@@ -19,6 +19,51 @@ import {
 } from "../utils/helpers";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 
+// Entità salvate come array di record con id (vedi ENTITY_TABLES in teamData.js).
+// Tenute qui in sync manualmente: sono le stesse chiavi usate per il merge
+// pre-salvataggio che evita di perdere modifiche fatte da un'altra scheda/
+// dispositivo aperto in contemporanea (vedi commento sull'effetto di sync sotto).
+const ARRAY_ENTITY_KEYS = [
+  "players", "exercises", "sessions", "matches",
+  "physicalTests", "gpsSessions", "staffTasks", "injuryRecords",
+];
+
+// Merge a 3 vie per id: confronta lo stato locale con l'ultimo stato
+// sincronizzato (baseline) per capire SOLO quali record sono stati davvero
+// aggiunti/modificati/eliminati in questa scheda, poi applica solo quella
+// differenza sopra al remoto fresco. Usare "locale vince sempre" sarebbe
+// sbagliato: lo stato locale contiene comunque TUTTI i record (anche quelli
+// mai toccati in questa scheda), quindi sovrascriverebbe alla cieca le
+// modifiche fatte nel frattempo da un'altra scheda/dispositivo su record
+// diversi da quello appena modificato qui.
+function diffEntityArray(baselineArr = [], localArr = []) {
+  const baselineById = new Map((baselineArr || []).map((item) => [String(item.id), item]));
+  const localById = new Map((localArr || []).filter((item) => item?.id != null).map((item) => [String(item.id), item]));
+
+  const changedOrAdded = [];
+  localById.forEach((item, id) => {
+    const baselineItem = baselineById.get(id);
+    if (!baselineItem || JSON.stringify(baselineItem) !== JSON.stringify(item)) {
+      changedOrAdded.push(item);
+    }
+  });
+
+  const deletedIds = [];
+  baselineById.forEach((_item, id) => {
+    if (!localById.has(id)) deletedIds.push(id);
+  });
+
+  return { changedOrAdded, deletedIds };
+}
+
+function mergeEntityArrayWithRemote(baselineArr, localArr, remoteArr) {
+  const { changedOrAdded, deletedIds } = diffEntityArray(baselineArr, localArr);
+  const byId = new Map((remoteArr || []).map((item) => [String(item.id), item]));
+  changedOrAdded.forEach((item) => byId.set(String(item.id), item));
+  deletedIds.forEach((id) => byId.delete(id));
+  return Array.from(byId.values());
+}
+
 export function useTeamData({ teamId } = {}) {
   const [state, setState] = useState(() => normalizeAppState({
     players: [],
@@ -43,6 +88,9 @@ export function useTeamData({ teamId } = {}) {
   const pendingSaveCount = useRef(0);
   const hasUnsyncedLocalChanges = useRef(false);
   const stateRef = useRef(state);
+  // Ultimo stato conosciuto come sincronizzato (da hydration o refresh remoto):
+  // baseline per il merge a 3 vie nel salvataggio debounced, vedi sopra.
+  const lastSyncedSnapshotRef = useRef(null);
 
   useEffect(() => {
     stateRef.current = state;
@@ -50,6 +98,7 @@ export function useTeamData({ teamId } = {}) {
 
   const applyLoadedState = useCallback(({ state: loadedState, source, error }) => {
     setState(loadedState);
+    lastSyncedSnapshotRef.current = loadedState;
     setStorageSource(source);
     setStorageError(error?.message || null);
     const canSyncRemote = (source === "supabase" || source === "pending-upload") && !error;
@@ -196,10 +245,30 @@ export function useTeamData({ teamId } = {}) {
     hasUnsyncedLocalChanges.current = true;
     pendingSaveCount.current += 1;
     const timeoutId = window.setTimeout(async () => {
-      const result = await saveTeamTablesState(normalized, teamId);
+      // Prima di sovrascrivere la tabella remota, rilegge lo stato attuale e
+      // unisce le modifiche locali sopra: se un'altra scheda/dispositivo ha
+      // salvato nel frattempo (es. un'altra seduta modificata), quei record
+      // restano invece di essere cancellati dal salvataggio di questa scheda.
+      let toSave = normalized;
+      try {
+        const remoteResult = await loadRemoteState({ teamId });
+        if (remoteResult?.state) {
+          const baseline = lastSyncedSnapshotRef.current;
+          const merged = { ...normalized };
+          ARRAY_ENTITY_KEYS.forEach((key) => {
+            merged[key] = mergeEntityArrayWithRemote(baseline?.[key], normalized[key], remoteResult.state[key]);
+          });
+          toSave = merged;
+        }
+      } catch {
+        // Se il refresh fallisce si procede comunque con il solo stato locale,
+        // come accadeva prima di questa modifica.
+      }
+      const result = await saveTeamTablesState(toSave, teamId);
       pendingSaveCount.current = Math.max(0, pendingSaveCount.current - 1);
       if (result.source === "supabase" && !result.error) {
         hasUnsyncedLocalChanges.current = false;
+        lastSyncedSnapshotRef.current = toSave;
         setLastSyncedAt(new Date().toISOString());
       } else {
         hasUnsyncedLocalChanges.current = true;
