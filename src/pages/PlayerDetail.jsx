@@ -260,10 +260,18 @@ function PlayerDetail({
 
   function updateField(field, value) {
     if (!canManage) return;
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setForm((prev) => {
+      if (field !== "name") return { ...prev, [field]: value };
+      // Il campo "Nome completo" è quello mostrato qui in scheda, ma il resto
+      // dell'app (Registro presenze, Match Day, liste giocatori, ecc.) mostra
+      // sempre firstName+lastName con priorità su name: se non li teniamo
+      // sincronizzati, modificare il nome completo non si vede da nessun'altra
+      // parte. Si divide sull'ultima parola come cognome.
+      const parts = value.trim().split(/\s+/).filter(Boolean);
+      const lastName = parts.length > 1 ? parts.pop() : "";
+      const firstName = parts.join(" ");
+      return { ...prev, name: value, firstName, lastName };
+    });
   }
 
   function handleImageUpload(file) {
