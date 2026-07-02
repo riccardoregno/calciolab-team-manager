@@ -1870,7 +1870,7 @@ function KpiCard({ label, value, icon, note }) {
         <div>
           <p style={{ color: "#94a3b8", margin: 0, fontWeight: 800, lineHeight: 1.25 }}>{label}</p>
 
-          <span style={{ fontSize: 32, lineHeight: 1, margin: "9px 0 8px", display: "block" }}>{value}</span>
+          <span style={{ fontSize: "clamp(20px, 7vw, 32px)", lineHeight: 1, margin: "9px 0 8px", display: "block" }}>{value}</span>
 
           <p style={{ color: "#64748b", margin: 0, lineHeight: 1.35 }}>{note}</p>
         </div>
@@ -2292,7 +2292,7 @@ function SeasonRecordStat({ label, value, tone }) {
       textAlign: "center",
     }}>
       <p style={{ color: "#94a3b8", margin: "0 0 8px", fontWeight: 700, fontSize: 12, textTransform: "uppercase", letterSpacing: 0, lineHeight: 1.2 }}>{label}</p>
-      <span style={{ margin: 0, fontSize: 42, fontWeight: 900, color: c.text, letterSpacing: 0, lineHeight: 1, display: "block" }}>{value}</span>
+      <span style={{ margin: 0, fontSize: "clamp(26px, 9vw, 42px)", fontWeight: 900, color: c.text, letterSpacing: 0, lineHeight: 1, display: "block" }}>{value}</span>
     </div>
   );
 }

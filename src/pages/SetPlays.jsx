@@ -1071,6 +1071,7 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
               </div>
             </div>
 
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
             <table style={tableStyle}>
               <thead>
                 <tr>
@@ -1121,6 +1122,7 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
                 ))}
               </tbody>
             </table>
+            </div>
 
             <div style={{ marginTop: 14 }}>
               <div style={labelSmall}>Note schema</div>
@@ -1206,6 +1208,7 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
               </div>
             </div>
 
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
             <table style={tableStyle}>
               <thead>
                 <tr>
@@ -1268,6 +1271,7 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
                 ))}
               </tbody>
             </table>
+            </div>
 
             <div style={{ marginTop: 14 }}>
               <div style={labelSmall}>Note schema</div>
@@ -1357,6 +1361,7 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
               </select>
             </div>
 
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
             <table style={tableStyle}>
               <thead>
                 <tr>
@@ -1395,6 +1400,7 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
                 ))}
               </tbody>
             </table>
+            </div>
 
             <div style={{ marginTop: 14 }}>
               <div style={labelSmall}>Note schema</div>
@@ -1456,6 +1462,7 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
 
             {renderSchemeMetaFields("freekicks", "def", "Chiamata difensiva")}
 
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
             <table style={tableStyle}>
               <thead>
                 <tr>
@@ -1518,6 +1525,7 @@ export default function SetPlays({ players = [], setPlays = {}, setSetPlays, app
                 ))}
               </tbody>
             </table>
+            </div>
 
             <div style={{ marginTop: 14 }}>
               <div style={labelSmall}>Note schema</div>

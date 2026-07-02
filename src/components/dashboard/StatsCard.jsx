@@ -57,7 +57,7 @@ function StatsCard({
           <h2
             style={{
               margin: "8px 0 0",
-              fontSize: 34,
+              fontSize: "clamp(20px, 8vw, 34px)",
               lineHeight: 1,
             }}
           >

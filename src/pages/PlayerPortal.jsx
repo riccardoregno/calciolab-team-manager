@@ -1981,14 +1981,14 @@ function CalendarioTab({ year, month, onPrev, onNext, sessions, myConvocations }
       </div>
 
       {/* Intestazione giorni */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 4 }}>
+      <div className="no-mobile-override" style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 4 }}>
         {CAL_DAYS.map((d) => (
           <div key={d} style={{ textAlign: "center", fontSize: 10, fontWeight: 800, color: "#475569", textTransform: "uppercase", padding: "4px 0" }}>{d}</div>
         ))}
       </div>
 
       {/* Griglia giorni */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
+      <div className="no-mobile-override" style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
         {cells.map((day, i) => {
           if (day === null) return <div key={`e${i}`} />;
           const dd          = String(day).padStart(2, "0");
