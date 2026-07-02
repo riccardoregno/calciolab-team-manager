@@ -330,7 +330,7 @@ export default function SeasonGoals({ matches = [], players = [] }) {
         <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>
           📊 {t("pages.seasonGoals.currentSeason")}
         </h3>
-        <div style={{
+        <div className="no-mobile-override" style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
           gap: 10,

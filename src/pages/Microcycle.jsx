@@ -361,7 +361,7 @@ function MicroDayCard({ day, postMatchSuggestion, onOpenSession, onOpenMatch, on
             </Badge>
           </div>
 
-          <div style={mc.metricsRow}>
+          <div className="no-mobile-override" style={mc.metricsRow}>
             <MiniMetric label={t("pages.microcycle.metricSessions")} value={day.sessions.length} />
             <MiniMetric label={t("pages.microcycle.metricMinutes")} value={day.totalMinutes ? `${day.totalMinutes}′` : "—"} />
             <MiniMetric label={t("pages.microcycle.metricLoad")} value={day.realLoad || "—"} />

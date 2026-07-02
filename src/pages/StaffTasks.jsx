@@ -197,7 +197,7 @@ export default function StaffTasks({
         badge={t("pages.staffTasks.badge", { count: staffTasks.length })}
       />
 
-      <MetricStrip items={boardMetricItems} min={isMobile ? 118 : 150} style={st.statsGrid} />
+      <MetricStrip items={boardMetricItems} min={isMobile ? 118 : 150} style={st.statsGrid} className="mobile-scroll-x" />
 
       <div style={{ ...st.layout, gridTemplateColumns: isMobile ? "1fr" : st.layout.gridTemplateColumns }}>
         <AppCard title={t("pages.staffTasks.cardNewTitle")} subtitle={t("pages.staffTasks.cardNewSubtitle")}>
@@ -377,7 +377,7 @@ export default function StaffTasks({
         }
         style={{ marginTop: 18 }}
       >
-        <div style={st.workloadRow}>
+        <div className="no-mobile-override" style={st.workloadRow}>
           {Object.entries(ROLE_KEY).map(([role, key]) => (
             <div key={role} style={st.workloadPill}>
               <span>{t(key)}</span>
