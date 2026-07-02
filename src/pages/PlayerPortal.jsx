@@ -622,27 +622,29 @@ function PlayerView({
         ))}
       </div>
 
-      {/* ── Tab bar ── */}
-      <div style={ps.tabBar}>
-        {TABS.map((tab) => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-            ...ps.tabBtn,
-            color: activeTab === tab.id ? "#f8fafc" : "#64748b",
-            borderBottom: `2px solid ${activeTab === tab.id ? "#2563eb" : "transparent"}`,
-          }}>
-            <span style={{ fontSize: 14 }}>{tab.icon}</span>
-            {!isMobile && <span>{tab.label}</span>}
-            {tab.badge ? (
-              <span style={{ ...ps.tabBadge, background: activeTab === tab.id ? "#2563eb" : "rgba(255,255,255,0.1)" }}>
-                {tab.badge}
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
+      {/* ── Tab bar desktop ── */}
+      {!isMobile && (
+        <div style={ps.tabBar}>
+          {TABS.map((tab) => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+              ...ps.tabBtn,
+              color: activeTab === tab.id ? "#f8fafc" : "#64748b",
+              borderBottom: `2px solid ${activeTab === tab.id ? "#2563eb" : "transparent"}`,
+            }}>
+              <span style={{ fontSize: 14 }}>{tab.icon}</span>
+              <span>{tab.label}</span>
+              {tab.badge ? (
+                <span style={{ ...ps.tabBadge, background: activeTab === tab.id ? "#2563eb" : "rgba(255,255,255,0.1)" }}>
+                  {tab.badge}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Tab content ── */}
-      <div style={{ paddingTop: 20, display: "grid", gap: 18 }}>
+      <div style={{ paddingTop: 12, paddingBottom: isMobile ? 72 : 0, display: "grid", gap: 18 }}>
 
         {/* HOME */}
         {activeTab === "home" && (
@@ -1038,6 +1040,58 @@ function PlayerView({
           />
         )}
       </div>
+
+      {/* ── Bottom nav mobile ── */}
+      {isMobile && (
+        <nav style={{
+          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
+          display: "flex",
+          background: "rgba(10,14,23,0.97)",
+          borderTop: "1px solid rgba(255,255,255,0.10)",
+          backdropFilter: "blur(16px)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}>
+          {TABS.map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  flex: 1, border: "none", background: "none",
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  gap: 2, padding: "8px 4px", cursor: "pointer",
+                  color: active ? "#38bdf8" : "#475569",
+                  position: "relative",
+                }}
+              >
+                <span style={{ fontSize: 18, lineHeight: 1 }}>{tab.icon}</span>
+                <span style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>
+                  {tab.label}
+                </span>
+                {tab.badge ? (
+                  <span style={{
+                    position: "absolute", top: 4, right: "calc(50% - 16px)",
+                    minWidth: 14, height: 14, borderRadius: 7,
+                    background: "#ef4444", color: "white",
+                    fontSize: 9, fontWeight: 900,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    padding: "0 3px",
+                  }}>
+                    {tab.badge}
+                  </span>
+                ) : null}
+                {active && (
+                  <span style={{
+                    position: "absolute", top: 0, left: "20%", right: "20%",
+                    height: 2, borderRadius: 1, background: "#38bdf8",
+                  }} />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
 
 import AppCard from "../components/ui/AppCard";
@@ -194,6 +195,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   const navigate = useNavigate();
   const { canManage } = useAreaPermission();
   const auth = useAuth();
+  const isMobile = useIsMobile();
   const teamName = auth.profile?.teamName || auth.profile?.clubName || auth.team?.name || "Squadra";
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("tutti");
@@ -402,6 +404,75 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   function renderAttendanceTable(tablePlayers, { title = "", subtitle = "" } = {}) {
     if (!tablePlayers.length) return null;
 
+    // ── Vista card mobile ──────────────────────────────────────────────────
+    if (isMobile) {
+      return (
+        <AppCard style={{ overflow: "hidden", padding: 0 }}>
+          {title && (
+            <div style={ar.tableSectionHeader}>
+              <div>
+                <h3 style={ar.tableSectionTitle}>{title}</h3>
+                {subtitle && <p style={ar.tableSectionSubtitle}>{subtitle}</p>}
+              </div>
+              <Badge tone="blue">{tablePlayers.length}</Badge>
+            </div>
+          )}
+          <div style={{ display: "grid", gap: 1 }}>
+            {tablePlayers.map((player) => {
+              const rowStats = buildPlayerStats(player, visibleSessions, playerRpeIndex);
+              return (
+                <div key={player.id} style={{
+                  padding: "10px 14px",
+                  borderBottom: "1px solid rgba(255,255,255,0.05)",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <div>
+                      <strong style={{ fontSize: 13, display: "block" }}>{getPlayerName(player)}</strong>
+                      <span style={{ fontSize: 11, color: "#64748b" }}>{player.role || "-"}{player.shirtNumber ? ` · #${player.shirtNumber}` : ""}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <Badge tone={rowStats.presencePct < 70 ? "red" : rowStats.presencePct < 85 ? "orange" : "green"}>
+                        {rowStats.presencePct}%
+                      </Badge>
+                      <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>carico {rowStats.load}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
+                    {visibleSessions.map((session) => {
+                      const status = getSessionStatus(player, session);
+                      const meta = STATUS_META[status] || STATUS_META.Presente;
+                      const isReadOnlyMatch = session.isMatch && !session.isFriendly;
+                      return (
+                        <div key={session.id} style={{ flexShrink: 0, textAlign: "center" }}>
+                          <div style={{ fontSize: 9, color: "#475569", fontWeight: 700, marginBottom: 2, whiteSpace: "nowrap" }}>
+                            {formatShortDate(session.date)}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => cycleStatus(session, player)}
+                            disabled={!canManage || isReadOnlyMatch}
+                            style={{
+                              width: 28, height: 28, borderRadius: 7, border: `1px solid ${meta.border}`,
+                              background: meta.bg, color: meta.color,
+                              fontWeight: 900, fontSize: 11, cursor: isReadOnlyMatch ? "default" : "pointer",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                            }}
+                          >
+                            {meta.code}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </AppCard>
+      );
+    }
+
+    // ── Vista tabella desktop ──────────────────────────────────────────────
     return (
       <AppCard style={{ overflow: "hidden", padding: 0 }}>
         {title && (
