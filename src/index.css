@@ -270,7 +270,12 @@ textarea:focus-visible {
 
   .metric-strip.mobile-scroll-x .metric-strip-item {
     flex: 0 0 auto;
-    min-width: 104px;
+    min-width: 60px;
+  }
+
+  .metric-strip.mobile-scroll-x .metric-strip-value {
+    font-size: 15px !important;
+    white-space: nowrap;
   }
 
   /* Collassa griglie inline a singola colonna, eccetto quelle marcate .no-mobile-override */

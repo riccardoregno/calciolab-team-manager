@@ -1278,7 +1278,7 @@ function SeasonSelector({ activeSeason, onChange }) {
       <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0, color: "#475569" }}>
         {t("pages.statistics.activeSeason")}
       </span>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", overflowX: "auto", justifyContent: "flex-end", paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
         {SEASONS.map((s) => (
           <button
             key={s}

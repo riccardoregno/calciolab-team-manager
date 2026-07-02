@@ -830,7 +830,6 @@ const wv = {
     borderRadius: 12,
     background: "rgba(255,255,255,0.04)",
     border: "1px solid rgba(255,255,255,0.08)",
-    flexWrap: "wrap",
   },
   navCenter: {
     display: "flex",
