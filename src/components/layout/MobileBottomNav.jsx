@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { isRoleAllowed } from "../../utils/helpers";
@@ -20,36 +20,48 @@ const PRIMARY = [
   { to: "/calendar",  labelKey: "navigation.mobile.calendar", icon: "📅", roles: playerCalendarRoles },
 ];
 
-// ── Voci nel drawer "Altro" ───────────────────────────────────────
+// ── Voci nel drawer "Altro" con categorie ────────────────────────
 const SECONDARY = [
-  { to: "/staff-chat",        labelKey: "navigation.items.staffChat",        icon: "💬", roles: coachRoles, badge: "chat" },
-  { to: "/exercises",         labelKey: "navigation.items.exercises",         icon: "📚", roles: technicalRoles },
-  { to: "/microcycle",        labelKey: "navigation.items.microcycle",        icon: "🗓️", roles: technicalRoles },
-  { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾", roles: technicalRoles },
-  { to: "/statistics",        labelKey: "navigation.items.statistics",        icon: "📊", roles: coachRoles },
-  { to: "/tactical-board",    labelKey: "navigation.items.tacticalBoard",     icon: "🧠", roles: technicalRoles },
-  { to: "/availability",      labelKey: "navigation.items.availability",      icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
-  { to: "/physical-tests",    labelKey: "navigation.items.physicalTests",     icon: "⏱️", roles: physicalRoles },
-  { to: "/physical-workouts", labelKey: "navigation.items.physicalWorkouts",  icon: "🏃", roles: physicalRoles },
-  { to: "/gps-load",          labelKey: "navigation.items.gpsLoad",           icon: "📡", roles: physicalRoles },
-  { to: "/match-day",         labelKey: "navigation.items.matchDay",          icon: "📋", roles: technicalRoles },
-  { to: "/post-match",        labelKey: "navigation.items.postMatch",         icon: "📝", roles: technicalRoles },
-  { to: "/set-plays",         labelKey: "navigation.items.setPlays",          icon: "📐", roles: technicalRoles },
-  { to: "/staff-tasks",       labelKey: "navigation.items.staffTasks",        icon: "✅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
-  { to: "/player-portal",     labelKey: "navigation.items.playerPortal",      icon: "🎽", roles: coachRoles },
-  { to: "/player-compare",    labelKey: "navigation.items.playerCompare",     icon: "⚡", roles: coachRoles },
-  { to: "/opponents",         labelKey: "navigation.items.opponents",         icon: "🕵️", roles: technicalRoles },
-  { to: "/season-goals",      labelKey: "navigation.items.seasonGoals",       icon: "🎯", roles: coachRoles },
-  { to: "/ai-session-builder", labelKey: "navigation.items.aiBuilder",        icon: "🤖", roles: technicalRoles },
-  { to: "/sponsors",          labelKey: "navigation.items.sponsors",          icon: "🤝", roles: ["owner", "director", "sponsor"] },
-  { to: "/exports",           labelKey: "navigation.items.exports",           icon: "🖨️", roles: managementRoles },
-  { to: "/settings",          labelKey: "navigation.items.settings",          icon: "⚙️", roles: allRoles },
-  { to: "/premium",           labelKey: "navigation.items.premium",           icon: "💎", roles: managementRoles },
+  // Squadra
+  { to: "/player-compare",    labelKey: "navigation.items.playerCompare",    icon: "⚡", roles: coachRoles,         cat: "squadra" },
+  { to: "/availability",      labelKey: "navigation.items.availability",     icon: "🩺", roles: ["owner","headCoach","assistantCoach","athleticTrainer","player"], cat: "squadra" },
+  { to: "/player-portal",     labelKey: "navigation.items.playerPortal",     icon: "🎽", roles: coachRoles,         cat: "squadra" },
+  { to: "/season-goals",      labelKey: "navigation.items.seasonGoals",      icon: "🎯", roles: coachRoles,         cat: "squadra" },
+  { to: "/staff-tasks",       labelKey: "navigation.items.staffTasks",       icon: "✅", roles: ["owner","headCoach","assistantCoach","athleticTrainer","director"], cat: "squadra" },
+  { to: "/staff-chat",        labelKey: "navigation.items.staffChat",        icon: "💬", roles: coachRoles,         cat: "squadra", badge: "chat" },
+  // Campo
+  { to: "/exercises",         labelKey: "navigation.items.exercises",        icon: "📚", roles: technicalRoles,    cat: "campo" },
+  { to: "/microcycle",        labelKey: "navigation.items.microcycle",       icon: "🗓️", roles: technicalRoles,    cat: "campo" },
+  { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾", roles: technicalRoles, cat: "campo" },
+  { to: "/match-day",         labelKey: "navigation.items.matchDay",         icon: "📋", roles: technicalRoles,    cat: "campo" },
+  { to: "/post-match",        labelKey: "navigation.items.postMatch",        icon: "📝", roles: technicalRoles,    cat: "campo" },
+  { to: "/set-plays",         labelKey: "navigation.items.setPlays",         icon: "📐", roles: technicalRoles,    cat: "campo" },
+  { to: "/ai-session-builder",labelKey: "navigation.items.aiBuilder",        icon: "🤖", roles: technicalRoles,    cat: "campo" },
+  // Fisico & Dati
+  { to: "/physical-tests",    labelKey: "navigation.items.physicalTests",    icon: "⏱️", roles: physicalRoles,     cat: "fisico" },
+  { to: "/physical-workouts", labelKey: "navigation.items.physicalWorkouts", icon: "🏃", roles: physicalRoles,     cat: "fisico" },
+  { to: "/gps-load",          labelKey: "navigation.items.gpsLoad",          icon: "📡", roles: physicalRoles,     cat: "fisico" },
+  { to: "/statistics",        labelKey: "navigation.items.statistics",       icon: "📊", roles: coachRoles,         cat: "fisico" },
+  { to: "/tactical-board",    labelKey: "navigation.items.tacticalBoard",    icon: "🧠", roles: technicalRoles,    cat: "fisico" },
+  { to: "/opponents",         labelKey: "navigation.items.opponents",        icon: "🕵️", roles: technicalRoles,    cat: "fisico" },
+  // Gestione
+  { to: "/exports",           labelKey: "navigation.items.exports",          icon: "🖨️", roles: managementRoles,   cat: "gestione" },
+  { to: "/sponsors",          labelKey: "navigation.items.sponsors",         icon: "🤝", roles: ["owner","director","sponsor"], cat: "gestione" },
+  { to: "/settings",          labelKey: "navigation.items.settings",         icon: "⚙️", roles: allRoles,           cat: "gestione" },
+  { to: "/premium",           labelKey: "navigation.items.premium",          icon: "💎", roles: managementRoles,   cat: "gestione" },
+];
+
+const CATEGORIES = [
+  { id: "squadra", label: "👥 Squadra" },
+  { id: "campo",   label: "⚽ Campo" },
+  { id: "fisico",  label: "📊 Analisi & Fisico" },
+  { id: "gestione",label: "⚙️ Gestione" },
 ];
 
 export default function MobileBottomNav({ currentRole = "headCoach", storageSource = null, chatUnread = 0 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const effectiveRole = currentRole || "headCoach";
   const primaryItems = PRIMARY.filter((item) => isRoleAllowed(effectiveRole, item.roles));
@@ -59,15 +71,77 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
   const showAltroDot = showSyncDot || chatUnread > 0;
   const altroDotColor = chatUnread > 0 ? "#3b82f6" : syncDotColor;
 
+  const q = search.trim().toLowerCase();
+  const filteredItems = useMemo(() =>
+    q
+      ? secondaryItems.filter((item) => t(item.labelKey).toLowerCase().includes(q))
+      : secondaryItems,
+  [q, secondaryItems, t]);
+
   function goTo(path) {
     navigate(path);
     setOpen(false);
+    setSearch("");
+  }
+
+  function closeDrawer() {
+    setOpen(false);
+    setSearch("");
   }
 
   async function handleLogout() {
     await supabase.auth.signOut();
     navigate("/");
-    setOpen(false);
+    closeDrawer();
+  }
+
+  function renderItem(item) {
+    return (
+      <button
+        key={item.to}
+        onClick={() => goTo(item.to)}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 6,
+          padding: "12px 8px",
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 12,
+          color: "#cbd5e1",
+          cursor: "pointer",
+          minHeight: 72,
+          justifyContent: "center",
+        }}
+      >
+        <span style={{ position: "relative", fontSize: 22, lineHeight: 1 }}>
+          {item.icon}
+          {item.badge === "chat" && chatUnread > 0 && (
+            <span style={{
+              position: "absolute", top: -4, right: -8,
+              minWidth: 16, height: 16, borderRadius: 8,
+              background: "#3b82f6", color: "white",
+              fontSize: 9, fontWeight: 900,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: "0 3px", boxShadow: "0 0 0 2px #0f172a",
+            }}>
+              {chatUnread > 9 ? "9+" : chatUnread}
+            </span>
+          )}
+          {showSyncDot && item.to === "/settings" && (
+            <span style={{
+              position: "absolute", top: -2, right: -5,
+              width: 6, height: 6, borderRadius: "50%",
+              background: syncDotColor, boxShadow: "0 0 0 2px #0f172a",
+            }} />
+          )}
+        </span>
+        <span style={{ fontSize: 11, fontWeight: 500, textAlign: "center", lineHeight: 1.2 }}>
+          {t(item.labelKey)}
+        </span>
+      </button>
+    );
   }
 
   return (
@@ -77,7 +151,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
         <>
           {/* Backdrop */}
           <div
-            onClick={() => setOpen(false)}
+            onClick={closeDrawer}
             style={{
               position: "fixed", inset: 0,
               background: "rgba(0,0,0,0.55)",
@@ -89,99 +163,86 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
           {/* Sheet */}
           <div style={{
             position: "fixed",
-            left: 0, right: 0,
-            bottom: 0,
+            left: 0, right: 0, bottom: 0,
             zIndex: 9998,
             background: "#0f172a",
             borderTop: "1px solid rgba(255,255,255,0.12)",
             borderRadius: "20px 20px 0 0",
             padding: "16px 16px calc(76px + env(safe-area-inset-bottom, 0px)) 16px",
             boxShadow: "0 -8px 40px rgba(0,0,0,0.5)",
-            maxHeight: "70vh",
+            maxHeight: "75vh",
             overflowY: "auto",
             WebkitOverflowScrolling: "touch",
           }}>
+            {/* Handle */}
             <div style={{
               width: 36, height: 4, borderRadius: 99,
               background: "rgba(255,255,255,0.2)",
-              margin: "0 auto 16px",
+              margin: "0 auto 14px",
             }} />
 
-            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.6 }}>
-              {t("navigation.mobile.moreSections")}
-            </p>
-
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 8,
-            }}>
-              {secondaryItems.map((item) => (
-                <button
-                  key={item.to}
-                  onClick={() => goTo(item.to)}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "12px 8px",
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 12,
-                    color: "#cbd5e1",
-                    cursor: "pointer",
-                    minHeight: 72,
-                    justifyContent: "center",
-                  }}
-                >
-                  <span style={{ position: "relative", fontSize: 22, lineHeight: 1 }}>
-                    {item.icon}
-                    {item.badge === "chat" && chatUnread > 0 && (
-                      <span style={{
-                        position: "absolute",
-                        top: -4,
-                        right: -8,
-                        minWidth: 16,
-                        height: 16,
-                        borderRadius: 8,
-                        background: "#3b82f6",
-                        color: "white",
-                        fontSize: 9,
-                        fontWeight: 900,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        padding: "0 3px",
-                        boxShadow: "0 0 0 2px #0f172a",
-                      }}>
-                        {chatUnread > 9 ? "9+" : chatUnread}
-                      </span>
-                    )}
-                    {showSyncDot && item.to === "/settings" && (
-                      <span style={{
-                        position: "absolute",
-                        top: -2,
-                        right: -5,
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: syncDotColor,
-                        boxShadow: "0 0 0 2px #0f172a",
-                      }} />
-                    )}
-                  </span>
-                  <span style={{ fontSize: 11, fontWeight: 500, textAlign: "center", lineHeight: 1.2 }}>{t(item.labelKey)}</span>
-                </button>
-              ))}
+            {/* Search */}
+            <div style={{ position: "relative", marginBottom: 14 }}>
+              <span style={{
+                position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
+                fontSize: 14, pointerEvents: "none", opacity: 0.4,
+              }}>🔍</span>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cerca sezione…"
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  padding: "9px 12px 9px 32px",
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 10,
+                  color: "#e2e8f0", fontSize: 14,
+                  outline: "none",
+                }}
+              />
             </div>
+
+            {q ? (
+              /* ── risultati ricerca ── */
+              filteredItems.length === 0 ? (
+                <p style={{ textAlign: "center", color: "#475569", fontSize: 13, margin: "24px 0" }}>
+                  Nessun risultato
+                </p>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                  {filteredItems.map(renderItem)}
+                </div>
+              )
+            ) : (
+              /* ── vista per categorie ── */
+              CATEGORIES.map((cat) => {
+                const items = filteredItems.filter((i) => i.cat === cat.id);
+                if (items.length === 0) return null;
+                return (
+                  <div key={cat.id} style={{ marginBottom: 16 }}>
+                    <p style={{
+                      margin: "0 0 8px",
+                      fontSize: 11, fontWeight: 700,
+                      color: "#64748b", textTransform: "uppercase", letterSpacing: 0.6,
+                    }}>
+                      {cat.label}
+                    </p>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                      {items.map(renderItem)}
+                    </div>
+                  </div>
+                );
+              })
+            )}
 
             {/* Logout — solo per giocatori */}
             {effectiveRole === "player" && (
               <button
                 onClick={handleLogout}
                 style={{
-                  marginTop: 14, width: "100%",
+                  marginTop: 6, width: "100%",
                   display: "flex", alignItems: "center", gap: 12,
                   padding: "13px 16px", borderRadius: 12,
                   background: "rgba(248,113,113,0.08)",

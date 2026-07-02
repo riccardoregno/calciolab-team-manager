@@ -65,11 +65,27 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   const modalEditId = searchParams.get("edit") || "";
   const modalKeyRef = useRef("");
   const [editingId, setEditingId] = useState(null);
+  const [resultEditId, setResultEditId] = useState(null);
+  const [resultDraft, setResultDraft] = useState({ home: "", away: "" });
   const [form, setForm] = useState(() => loadMatchDraft(`${MATCH_DRAFT_KEY}:new`, emptyMatch(clubLogo)));
   const [formErrors, setFormErrors] = useState({});
   const [importSummary, setImportSummary] = useState(null);
   const [importPreview, setImportPreview] = useState(null);
   const savingRef = useRef(false);
+
+  function openResultEdit(match) {
+    const parts = String(match.result || "").match(/(\d+)\s*[-:]\s*(\d+)/);
+    setResultDraft({ home: parts ? parts[1] : "", away: parts ? parts[2] : "" });
+    setResultEditId(match.id);
+  }
+
+  function saveResult(matchId) {
+    const h = resultDraft.home.trim();
+    const a = resultDraft.away.trim();
+    const newResult = h !== "" && a !== "" ? `${Number(h)}-${Number(a)}` : "";
+    setMatches((prev) => prev.map((m) => m.id === matchId ? { ...m, result: newResult, goalsFor: h, goalsAgainst: a } : m));
+    setResultEditId(null);
+  }
 
   useEffect(() => {
     if (!openModal) {
@@ -394,16 +410,69 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
                 />
 
                 <div style={{ textAlign: "center" }}>
-                  <div
-                    style={{
-                      fontSize: isMobile ? 24 : 32,
-                      fontWeight: 900,
-                      lineHeight: 1,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {match.result || "-"}
-                  </div>
+                  {resultEditId === match.id ? (
+                    /* ── Inline result editor ── */
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", marginBottom: 6 }}>
+                      <input
+                        type="number"
+                        min="0"
+                        value={resultDraft.home}
+                        onChange={(e) => setResultDraft((d) => ({ ...d, home: e.target.value }))}
+                        style={{
+                          width: 44, textAlign: "center",
+                          fontSize: isMobile ? 22 : 28, fontWeight: 900,
+                          background: "rgba(255,255,255,0.08)",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                          borderRadius: 8, color: "#f1f5f9",
+                          padding: "4px 2px",
+                        }}
+                      />
+                      <span style={{ fontSize: isMobile ? 20 : 26, fontWeight: 900, color: "#64748b" }}>-</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={resultDraft.away}
+                        onChange={(e) => setResultDraft((d) => ({ ...d, away: e.target.value }))}
+                        style={{
+                          width: 44, textAlign: "center",
+                          fontSize: isMobile ? 22 : 28, fontWeight: 900,
+                          background: "rgba(255,255,255,0.08)",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                          borderRadius: 8, color: "#f1f5f9",
+                          padding: "4px 2px",
+                        }}
+                      />
+                      <button
+                        onClick={() => saveResult(match.id)}
+                        style={{
+                          background: "#22c55e", border: "none", borderRadius: 8,
+                          color: "white", fontSize: 16, padding: "4px 8px", cursor: "pointer",
+                        }}
+                      >✓</button>
+                      <button
+                        onClick={() => setResultEditId(null)}
+                        style={{
+                          background: "rgba(255,255,255,0.08)", border: "none", borderRadius: 8,
+                          color: "#94a3b8", fontSize: 16, padding: "4px 8px", cursor: "pointer",
+                        }}
+                      >✕</button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={canManage ? () => openResultEdit(match) : undefined}
+                      style={{
+                        fontSize: isMobile ? 24 : 32,
+                        fontWeight: 900,
+                        lineHeight: 1,
+                        marginBottom: 6,
+                        cursor: canManage ? "pointer" : "default",
+                        userSelect: "none",
+                      }}
+                      title={canManage ? t("pages.matches.editResult") : undefined}
+                    >
+                      {match.result || (canManage ? <span style={{ fontSize: isMobile ? 18 : 22, color: "#475569" }}>＋ {t("pages.matches.addResult")}</span> : "-")}
+                    </div>
+                  )}
 
                   <p style={{ color: "#94a3b8", margin: 0 }}>
                     {formatDate(match.date)}

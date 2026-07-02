@@ -577,6 +577,8 @@ export const it = {
       matchKindCampionato: "Campionato",
       matchKindCoppa: "Coppa",
       matchKindAmichevole: "Amichevole",
+      editResult: "Clicca per inserire il risultato",
+      addResult: "Inserisci risultato",
     },
     statistics: {
       title: "Statistiche",

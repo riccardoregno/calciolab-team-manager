@@ -5,6 +5,7 @@ import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
+import MetricStrip from "../components/ui/MetricStrip";
 import PageHeader from "../components/ui/PageHeader";
 import { styles } from "../styles/index.js";
 import { formatDate, RPE_BY_MATCH_DAY } from "../utils/helpers";
@@ -233,12 +234,12 @@ export default function Microcycle({
         }
       />
 
-      <div style={mc.kpiGrid}>
-        <Kpi title={t("pages.microcycle.kpiMinutes")} value={`${weeklyMinutes}′`} hint={t("pages.microcycle.kpiMinutesHint")} tone="blue" />
-        <Kpi title={t("pages.microcycle.kpiLoad")} value={weeklyLoad || "—"} hint={t("pages.microcycle.kpiLoadHint")} tone="orange" />
-        <Kpi title={t("pages.microcycle.kpiGps")} value={gpsDistance ? `${Math.round(gpsDistance / 1000)} km` : "—"} hint={t("pages.microcycle.kpiGpsHint")} tone="green" />
-        <Kpi title={t("pages.microcycle.kpiUnavailable")} value={unavailablePlayers.length} hint={t("pages.microcycle.kpiUnavailableHint")} tone="red" />
-      </div>
+      <MetricStrip className="mobile-scroll-x" items={[
+        { key: "minutes",     label: t("pages.microcycle.kpiMinutes"),     value: `${weeklyMinutes}′`,                                        color: "#3b82f6" },
+        { key: "load",        label: t("pages.microcycle.kpiLoad"),        value: weeklyLoad || "—",                                          color: "#fb923c" },
+        { key: "gps",         label: t("pages.microcycle.kpiGps"),         value: gpsDistance ? `${Math.round(gpsDistance / 1000)} km` : "—", color: "#22c55e" },
+        { key: "unavailable", label: t("pages.microcycle.kpiUnavailable"), value: unavailablePlayers.length,                                  color: "#ef4444" },
+      ]} />
 
       <div style={{ ...mc.mainGrid, gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) minmax(280px, 360px)" }}>
         <section style={mc.timeline}>
@@ -402,18 +403,6 @@ function MicroDayCard({ day, postMatchSuggestion, onOpenSession, onOpenMatch, on
   );
 }
 
-function Kpi({ title, value, hint, tone }) {
-  return (
-    <AppCard>
-      <div style={mc.kpi}>
-        <Badge tone={tone}>{title}</Badge>
-        <strong>{value}</strong>
-        <span>{hint}</span>
-      </div>
-    </AppCard>
-  );
-}
-
 function MiniMetric({ label, value }) {
   return (
     <div style={mc.miniMetric}>
@@ -426,12 +415,6 @@ function MiniMetric({ label, value }) {
 const mc = {
   page: { display: "grid", gap: 22 },
   headerActions: { display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" },
-  kpiGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 14,
-  },
-  kpi: { display: "grid", gap: 10 },
   mainGrid: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) minmax(280px, 360px)",

@@ -577,6 +577,8 @@ export const en = {
       matchKindCampionato: "League",
       matchKindCoppa: "Cup",
       matchKindAmichevole: "Friendly",
+      editResult: "Click to enter result",
+      addResult: "Add result",
     },
     statistics: {
       title: "Statistics",
