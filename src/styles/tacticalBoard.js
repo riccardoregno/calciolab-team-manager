@@ -154,6 +154,7 @@ export const boardStyles = {
     display: "flex",
     alignItems: "center",
     gap: 8,
+    flexWrap: "wrap",
     color: "#cbd5e1",
     fontSize: 12,
     fontWeight: 900,
