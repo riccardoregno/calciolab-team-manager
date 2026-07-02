@@ -38,7 +38,7 @@ function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) 
   const barB = Math.round((numB / maxVal) * 100);
 
   return (
-    <div style={cmp.metricRow}>
+    <div style={cmp.metricRow} className="no-mobile-override">
       {/* Valore A */}
       <div style={{ ...cmp.metricVal, justifyContent: "flex-end" }}>
         <span style={{ ...cmp.metricNum, color: winA ? "#22c55e" : "#e2e8f0" }}>
@@ -48,7 +48,7 @@ function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) 
       </div>
 
       {/* Barre + label */}
-      <div style={cmp.metricCenter}>
+      <div style={cmp.metricCenter} className="no-mobile-override">
         {/* Barra A */}
         <div style={cmp.barTrack}>
           <div
@@ -200,7 +200,7 @@ export default function PlayerComparison({ players = [], sessions = [], matches 
 
       {/* Selettori */}
       <AppCard style={{ marginBottom: 20 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 16, alignItems: "center" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 16, alignItems: "center" }} className="no-mobile-override">
           <div>
             <label style={cmp.selectLabel}>{t("pages.playerComparison.playerA")}</label>
             <select

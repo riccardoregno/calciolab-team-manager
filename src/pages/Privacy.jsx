@@ -25,10 +25,14 @@ export default function Privacy() {
 
         <Section title="1. Titolare del trattamento">
           <p>
-            Il Titolare del trattamento dei dati personali è <strong>CalcioLab</strong>, contattabile
-            all'indirizzo{" "}
-            <a href="mailto:info@calciolab.org" style={s.link}>info@calciolab.org</a>.
+            Il Titolare del trattamento dei dati personali è:
           </p>
+          <ul>
+            <li><strong>Ragione sociale:</strong> [RAGIONE SOCIALE DA INSERIRE]</li>
+            <li><strong>P.IVA / C.F.:</strong> [PARTITA IVA DA INSERIRE]</li>
+            <li><strong>Sede legale:</strong> [INDIRIZZO DA INSERIRE], [CAP] [CITTÀ], Italia</li>
+            <li><strong>Email:</strong> <a href="mailto:info@calciolab.org" style={s.link}>info@calciolab.org</a></li>
+          </ul>
         </Section>
 
         <Section title="2. Dati raccolti">

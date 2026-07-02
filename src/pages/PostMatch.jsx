@@ -9,6 +9,7 @@ import { styles } from "../styles/index.js";
 import { createId, formatDate, normalizeAppSettings } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { getObjectiveStatusMeta } from "../constants/objectiveStatus";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 const clipCategories = [
   { value: "Tattica",        labelKey: "pages.postMatch.clipCatTactics" },
@@ -40,6 +41,7 @@ export default function PostMatch({
   matches = [], setMatches, players = [], sessions = [], setStaffTasks, appSettings = {} }) {
 
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { id } = useParams();
   const navigate = useNavigate();
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
@@ -306,7 +308,7 @@ export default function PostMatch({
           <span style={{ ...s.progressFill, width: `${completion}%` }} />
         </div>
 
-        <div style={s.summaryGrid}>
+        <div style={s.summaryGrid} className="no-mobile-override">
           <SummaryCard
             title={t("pages.postMatch.priorityStaff")}
             value={report.nextWeekFocus || report.notWorked || t("pages.postMatch.priorityStaffFallback")}
@@ -517,7 +519,7 @@ export default function PostMatch({
             <p style={s.muted}>{t("pages.postMatch.scorecardSubtitle")}</p>
           </div>
         </div>
-        <div style={s.scoreGrid}>
+        <div style={s.scoreGrid} className="no-mobile-override">
           <ScoreField label={t("pages.postMatch.kpiPerformance")} placeholder={t("pages.postMatch.kpiFallback")} value={report.performanceScore} onChange={(v) => updateReport("performanceScore", v)} />
           <ScoreField label={t("pages.postMatch.kpiGameModel")} placeholder={t("pages.postMatch.kpiFallback")} value={report.gameModelScore} onChange={(v) => updateReport("gameModelScore", v)} />
           <ScoreField label={t("pages.postMatch.kpiIntensity")} placeholder={t("pages.postMatch.kpiFallback")} value={report.intensityScore} onChange={(v) => updateReport("intensityScore", v)} />
@@ -526,7 +528,7 @@ export default function PostMatch({
       </AppCard>
 
       {/* Griglia analisi */}
-      <div style={s.grid}>
+      <div style={{ ...s.grid, gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(300px, 1fr))" }}>
         <TextBlock
           title={t("pages.postMatch.blockWorkedTitle")}
           placeholder={t("pages.postMatch.blockWorkedPlaceholder")}
@@ -696,7 +698,7 @@ function VideoAnalysisPanel({ clips, players, onChange, onAppendReport, reportNo
         </div>
       </div>
 
-      <div style={s.clipForm}>
+      <div style={s.clipForm} className="no-mobile-override">
         <input
           placeholder={t("pages.postMatch.clipMinutePlaceholder")}
           value={draft.minute}
@@ -742,7 +744,7 @@ function VideoAnalysisPanel({ clips, players, onChange, onAppendReport, reportNo
           {clips.map((clip) => {
             const player = players.find((item) => String(item.id) === String(clip.playerId));
             return (
-              <div key={clip.id} style={s.clipRow}>
+              <div key={clip.id} style={s.clipRow} className="no-mobile-override">
                 <input
                   value={clip.minute}
                   onChange={(event) => updateClip(clip.id, "minute", event.target.value)}

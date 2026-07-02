@@ -118,12 +118,24 @@ export default function Terms() {
         <Section title="10. Legge applicabile e foro competente">
           <p>
             I presenti Termini sono regolati dalla legge italiana. Per qualsiasi controversia è
-            competente il Foro di [Città], salvo diversa disposizione obbligatoria di legge applicabile
+            competente il Foro di [CITTÀ DA INSERIRE], salvo diversa disposizione obbligatoria di legge applicabile
             agli Utenti consumatori (D.Lgs. 206/2005).
           </p>
         </Section>
 
-        <Section title="11. Contatti">
+        <Section title="11. Gestore del servizio">
+          <p>
+            Il servizio CalcioLab è gestito da:
+          </p>
+          <ul>
+            <li><strong>Ragione sociale:</strong> [RAGIONE SOCIALE DA INSERIRE]</li>
+            <li><strong>P.IVA / C.F.:</strong> [PARTITA IVA DA INSERIRE]</li>
+            <li><strong>Sede legale:</strong> [INDIRIZZO DA INSERIRE], [CAP] [CITTÀ], Italia</li>
+            <li><strong>Email:</strong> <a href="mailto:info@calciolab.org" style={s.link}>info@calciolab.org</a></li>
+          </ul>
+        </Section>
+
+        <Section title="12. Contatti">
           <p>
             Per domande sui presenti Termini: <a href="mailto:info@calciolab.org" style={s.link}>info@calciolab.org</a><br />
             Per supporto tecnico: <a href="mailto:info@calciolab.org" style={s.link}>info@calciolab.org</a>
