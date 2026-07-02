@@ -1004,27 +1004,41 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCa
   const { appearances, trainingPct } = getPlayerQuickStats(player, sessions, matches);
   const trainingPctValue = trainingPct === null ? "-" : `${trainingPct}%`;
 
+  const statusTone =
+    player.status === "Infortunato"  ? "red"    :
+    player.status === "Squalificato" ? "purple"  :
+    player.status === "Recupero" || player.status === "Differenziato" ? "orange" :
+    "green";
+  const statusDotColor =
+    player.status === "Infortunato"  ? "#f87171" :
+    player.status === "Squalificato" ? "#a78bfa"  :
+    player.status === "Recupero" || player.status === "Differenziato" ? "#fb923c" :
+    "#22c55e";
+
+  const btnSm = { padding: "4px 11px", fontSize: 12, borderRadius: 8, fontWeight: 700 };
+
   return (
     <div
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 14,
-        padding: "10px 14px",
-        borderRadius: 12,
+        gap: 10,
+        padding: "6px 12px",
+        borderRadius: 10,
         background: "rgba(15,23,42,0.6)",
         border: "1px solid rgba(255,255,255,0.08)",
-        flexWrap: "wrap",
+        minWidth: 0,
       }}
     >
+      {/* Avatar 32×32 */}
       <div style={{ position: "relative", flexShrink: 0 }}>
         <div
           style={{
-            width: 40, height: 40, borderRadius: 10,
+            width: 32, height: 32, borderRadius: 8,
             background: "linear-gradient(135deg, rgba(56,189,248,0.28), rgba(37,99,235,0.18))",
             border: "1px solid rgba(255,255,255,0.16)",
             display: "grid", placeItems: "center",
-            fontSize: 13, fontWeight: 900, color: "white", overflow: "hidden",
+            fontSize: 11, fontWeight: 900, color: "white", overflow: "hidden",
           }}
         >
           {player.photo ? (
@@ -1035,49 +1049,41 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCa
         </div>
         <span style={{
           position: "absolute", bottom: -2, right: -2,
-          width: 11, height: 11, borderRadius: "50%",
+          width: 9, height: 9, borderRadius: "50%",
           border: "2px solid rgba(15,23,42,0.9)",
-          background:
-            player.status === "Infortunato"   ? "#f87171" :
-            player.status === "Squalificato"  ? "#a78bfa" :
-            player.status === "Recupero" || player.status === "Differenziato" ? "#fb923c" :
-            "#22c55e",
+          background: statusDotColor,
         }} />
       </div>
 
-      <div style={{ flex: "2 1 140px", minWidth: 0 }}>
-        <strong style={{ display: "block", fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      {/* Nome + ruolo */}
+      <div style={{ flex: "2 1 120px", minWidth: 0 }}>
+        <strong style={{ display: "block", fontSize: 14, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {player.name}
         </strong>
-        <span style={{ color: "#94a3b8", fontSize: 12, fontWeight: 700 }}>
+        <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>
           {player.role || t("components.playerCard.noRole")}
         </span>
       </div>
 
-      <div style={{ flex: "1 1 50px", minWidth: 0, textAlign: "center" }}>
-        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>{t("components.playerCard.age")}</div>
-        <div style={{ fontSize: 14, fontWeight: 700 }}>{age}</div>
+      {/* Statistiche inline */}
+      <div style={{ display: "flex", gap: 14, alignItems: "center", flexShrink: 0 }}>
+        <div style={{ textAlign: "center", minWidth: 32 }}>
+          <div style={{ fontSize: 9, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.age")}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{age}</div>
+        </div>
+        <div style={{ textAlign: "center", minWidth: 36 }}>
+          <div style={{ fontSize: 9, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.appearances")}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{appearances}</div>
+        </div>
+        <div style={{ textAlign: "center", minWidth: 36 }}>
+          <div style={{ fontSize: 9, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.trainingPct")}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{trainingPctValue}</div>
+        </div>
       </div>
 
-      <div style={{ flex: "1 1 60px", minWidth: 0, textAlign: "center" }}>
-        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>{t("components.playerCard.appearances")}</div>
-        <div style={{ fontSize: 14, fontWeight: 700 }}>{appearances}</div>
-      </div>
-
-      <div style={{ flex: "1 1 60px", minWidth: 0, textAlign: "center" }}>
-        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>{t("components.playerCard.trainingPct")}</div>
-        <div style={{ fontSize: 14, fontWeight: 700 }}>{trainingPctValue}</div>
-      </div>
-
-      <div style={{ flex: "1 1 70px", minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-        <Badge tone={
-          player.status === "Infortunato" ? "red" :
-          player.status === "Squalificato" ? "purple" :
-          player.status === "Recupero" || player.status === "Differenziato" ? "orange" :
-          "green"
-        }>
-          {player.status || "Disponibile"}
-        </Badge>
+      {/* Badge stato + alert */}
+      <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+        <Badge tone={statusTone}>{player.status || "Disponibile"}</Badge>
         {yellowCards >= SUSPENSION_THRESHOLD - 1 && (
           <span style={{
             fontSize: 10, fontWeight: 900, padding: "2px 6px", borderRadius: 6,
@@ -1086,7 +1092,7 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCa
             color: yellowCards >= SUSPENSION_THRESHOLD ? "#f87171" : "#fbbf24",
             whiteSpace: "nowrap",
           }}>
-            🟨 {yellowCards} {yellowCards >= SUSPENSION_THRESHOLD ? "SQUALIFICA" : "DIFFIDA"}
+            🟨 {yellowCards}
           </span>
         )}
         {avgRating !== null && (
@@ -1102,12 +1108,13 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCa
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 8, flex: "1 1 100%", flexWrap: "wrap", justifyContent: "flex-end" }}>
-        <Button variant="ghost" onClick={() => navigate(`/players/${player.id}`)}>
+      {/* Azioni inline */}
+      <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
+        <Button variant="ghost" style={btnSm} onClick={() => navigate(`/players/${player.id}`)}>
           {t("components.playerCard.profile")}
         </Button>
         {onDelete && (
-          <Button variant="danger" onClick={onDelete}>
+          <Button variant="danger" style={btnSm} onClick={onDelete}>
             {t("common.delete")}
           </Button>
         )}
