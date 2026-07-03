@@ -32,3 +32,15 @@ export async function getTeamWellnessToday({ teamId }) {
     .eq("team_id", teamId)
     .eq("date", today);
 }
+
+export async function getTeamWellnessWeek({ teamId, days = 7 }) {
+  if (!isSupabaseConfigured) return { data: [], error: null };
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  return supabase
+    .from("player_wellness")
+    .select("player_id,date,sleep,fatigue,mood")
+    .eq("team_id", teamId)
+    .gte("date", since.toISOString().slice(0, 10))
+    .order("date", { ascending: true });
+}
