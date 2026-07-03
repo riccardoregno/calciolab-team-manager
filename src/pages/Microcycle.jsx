@@ -441,7 +441,8 @@ function WellnessPanel({ teamId, players }) {
     return () => { cancelled = true; };
   }, [teamId]);
 
-  const alerts = rows.filter((r) => r.fatigue >= 4 || r.sleep <= 2 || r.mood <= 2);
+  // fatigue: 1=esausto 5=fresco → alert se <= 2 (giocatore stanco)
+  const alerts = rows.filter((r) => r.fatigue <= 2 || r.sleep <= 2 || r.mood <= 2);
 
   const enriched = rows.map((r) => ({
     ...r,
