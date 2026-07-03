@@ -138,24 +138,26 @@ textarea:focus-visible {
   .mobile-nav-item {
     display: grid;
     place-items: center;
-    gap: 2px;
+    gap: 3px;
     min-width: 0;
-    padding: 4px 2px;
+    padding: 6px 2px;
     border-radius: 11px;
     color: #94a3b8;
     text-decoration: none;
-    font-size: 13px;
+    font-size: 16px;
     line-height: 1;
+    min-height: 52px;
   }
 
   .mobile-nav-item small {
     width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 7.5px;
+    font-size: 9px;
     line-height: 1;
     text-align: center;
     white-space: nowrap;
+    font-weight: 600;
   }
 
   .mobile-nav-item.active {

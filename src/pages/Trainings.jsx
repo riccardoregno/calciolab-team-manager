@@ -1016,6 +1016,11 @@ function Trainings({
               icon="📋"
               title={t("pages.trainings.noSavedTitle")}
               text={t("pages.trainings.noSavedText")}
+              steps={canManage ? [
+                { title: "Crea una nuova seduta", text: "Usa il modulo qui sopra: scegli data, tema e giocatori." },
+                { title: "Registra le presenze", text: "Dopo l'allenamento segna chi era presente, assente o infortunato." },
+                { title: "Analizza il carico", text: "Il sistema calcola automaticamente carico e minuti per ogni giocatore." },
+              ] : undefined}
               action={
                 <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap", justifyContent: "center" }}>
                   {canManage && <button

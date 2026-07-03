@@ -164,7 +164,18 @@ function Dashboard({
   const [showPersonalize, setShowPersonalize] = useState(false);
   const [pendingRsvpMatches, setPendingRsvpMatches] = useState([]);
   const [dashTab, setDashTab] = useState("oggi");
+  const [simpleView, setSimpleView] = useState(() => {
+    try { return localStorage.getItem("dash_simple_view") === "1"; } catch { return false; }
+  });
   const isMobile = useIsMobile();
+
+  function toggleSimpleView() {
+    setSimpleView((v) => {
+      const next = !v;
+      try { localStorage.setItem("dash_simple_view", next ? "1" : "0"); } catch (_e) { /* ignore */ }
+      return next;
+    });
+  }
 
   // Memoize settings so derived useMemo hooks don't re-run on every render
   const settings = useMemo(() => normalizeAppSettings(appSettings), [appSettings]);
@@ -1344,35 +1355,57 @@ function Dashboard({
         />
       )}
 
-      {/* Tab switcher mobile */}
+      {/* Tab switcher mobile + toggle vista semplice */}
       {isMobile && (
-        <div style={{
-          display: "flex", gap: 0, marginBottom: 14,
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 12, padding: 3, overflow: "hidden",
-        }}>
-          {[
-            { id: "oggi",    label: "🗓️ Oggi" },
-            { id: "squadra", label: "👥 Squadra" },
-            { id: "carico",  label: "📈 Carico" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setDashTab(tab.id)}
-              style={{
-                flex: 1, border: "none", borderRadius: 10, padding: "8px 4px",
-                fontSize: 12, fontWeight: 800, cursor: "pointer", transition: "0.15s",
-                background: dashTab === tab.id ? "rgba(56,189,248,0.18)" : "transparent",
-                color: dashTab === tab.id ? "#38bdf8" : "#64748b",
-                outline: dashTab === tab.id ? "1px solid rgba(56,189,248,0.3)" : "none",
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <>
+          {/* Toggle vista semplice */}
+          <button
+            onClick={toggleSimpleView}
+            style={{
+              width: "100%", marginBottom: 10,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              padding: "11px 16px", borderRadius: 12, border: "none",
+              background: simpleView ? "rgba(56,189,248,0.12)" : "rgba(255,255,255,0.04)",
+              outline: simpleView ? "1px solid rgba(56,189,248,0.35)" : "1px solid rgba(255,255,255,0.08)",
+              color: simpleView ? "#38bdf8" : "#94a3b8",
+              fontSize: 14, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            <span style={{ fontSize: 18 }}>{simpleView ? "🔍" : "📋"}</span>
+            {simpleView ? "Vista semplice attiva — tocca per vedere tutto" : "Vuoi una vista più semplice?"}
+          </button>
+
+          {/* Tab switcher (nascosto in vista semplice) */}
+          {!simpleView && (
+            <div style={{
+              display: "flex", gap: 0, marginBottom: 14,
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 12, padding: 3, overflow: "hidden",
+            }}>
+              {[
+                { id: "oggi",    label: "🗓️ Oggi" },
+                { id: "squadra", label: "👥 Squadra" },
+                { id: "carico",  label: "📈 Carico" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setDashTab(tab.id)}
+                  style={{
+                    flex: 1, border: "none", borderRadius: 10, padding: "10px 4px",
+                    fontSize: 13, fontWeight: 800, cursor: "pointer", transition: "0.15s",
+                    background: dashTab === tab.id ? "rgba(56,189,248,0.18)" : "transparent",
+                    color: dashTab === tab.id ? "#38bdf8" : "#64748b",
+                    outline: dashTab === tab.id ? "1px solid rgba(56,189,248,0.3)" : "none",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Sezioni draggable (desktop) / filtrate per tab (mobile) */}
@@ -1381,6 +1414,7 @@ function Dashboard({
           {safeSectionOrder
             .filter((id) => {
               if (!isMobile) return true;
+              if (simpleView) return new Set(["nextEvent", "coachAlerts", "rosterStatus"]).has(id);
               const DASH_TAB_SECTIONS = {
                 oggi:    new Set(["nextEvent", "coachAlerts", "quickActions", "weekFocus"]),
                 squadra: new Set(["leaderboard", "rosterStatus", "wellnessToday", "recentActivities", "rewardCenter"]),

@@ -1057,10 +1057,10 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCa
 
       {/* Nome + ruolo */}
       <div style={{ flex: "2 1 120px", minWidth: 0 }}>
-        <strong style={{ display: "block", fontSize: 14, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <strong style={{ display: "block", fontSize: 16, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {player.name}
         </strong>
-        <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>
+        <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>
           {player.role || t("components.playerCard.noRole")}
         </span>
       </div>
@@ -1069,15 +1069,15 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCa
       <div style={{ display: "flex", gap: 14, alignItems: "center", flexShrink: 0 }}>
         <div style={{ textAlign: "center", minWidth: 32 }}>
           <div style={{ fontSize: 9, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.age")}</div>
-          <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{age}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{age}</div>
         </div>
         <div style={{ textAlign: "center", minWidth: 36 }}>
           <div style={{ fontSize: 9, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.appearances")}</div>
-          <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{appearances}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{appearances}</div>
         </div>
         <div style={{ textAlign: "center", minWidth: 36 }}>
           <div style={{ fontSize: 9, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.trainingPct")}</div>
-          <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{trainingPctValue}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{trainingPctValue}</div>
         </div>
       </div>
 

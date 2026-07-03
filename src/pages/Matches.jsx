@@ -415,6 +415,11 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
           icon="🏟️"
           title={t("pages.matches.noMatchesTitle")}
           text={t("pages.matches.noMatchesText")}
+          steps={canManage ? [
+            { title: "Aggiungi la prima partita", text: "Clicca il pulsante qui sotto e inserisci avversario e data." },
+            { title: "Gestisci la convocazione", text: "Seleziona i giocatori convocati — riceveranno una notifica automatica." },
+            { title: "Inserisci il risultato", text: "Dopo la gara, tocca il punteggio nella card per aggiornarlo." },
+          ] : undefined}
           action={
             canManage ? <button
               onClick={openNewMatch}
