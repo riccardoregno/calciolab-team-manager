@@ -7,6 +7,7 @@ import { respondRsvpAsPlayer } from "../services/rsvp";
 import { fetchPlayerAvailability, setPlayerAvailability } from "../services/playerAvailability";
 import { touchPlayerPortalActivity } from "../services/playerPortalActivity";
 import { fetchPlayerRpe, upsertRpe } from "../services/sessionRpe";
+import { upsertWellness, getPlayerWellness } from "../services/wellness";
 import { deleteTeamAttachment, uploadTeamAttachment } from "../services/attachments";
 
 import AppCard from "../components/ui/AppCard";
@@ -411,6 +412,9 @@ function PlayerView({
   const [availability, setAvailability] = useState(null);
   const [availSaving, setAvailSaving] = useState(false);
   const [availReason, setAvailReason] = useState("");
+  const [wellness, setWellness] = useState({ sleep: 0, fatigue: 0, mood: 0 });
+  const [wellnessSaved, setWellnessSaved] = useState(false);
+  const [wellnessSaving, setWellnessSaving] = useState(false);
   const mountedRef = useRef(true);
 
   const injuryHistory = useMemo(
@@ -458,6 +462,15 @@ function PlayerView({
         const map = {};
         (data || []).forEach((r) => { map[r.event_id] = r; });
         setRpeMap(map);
+      }).catch(() => {});
+      const today = new Date().toISOString().slice(0, 10);
+      getPlayerWellness({ teamId, playerId: myPlayerId, days: 1 }).then(({ data }) => {
+        if (!mountedRef.current) return;
+        const todayEntry = (data || []).find((r) => r.date === today);
+        if (todayEntry) {
+          setWellness({ sleep: todayEntry.sleep || 0, fatigue: todayEntry.fatigue || 0, mood: todayEntry.mood || 0 });
+          setWellnessSaved(true);
+        }
       }).catch(() => {});
     }
     return () => { mountedRef.current = false; };
@@ -519,6 +532,16 @@ function PlayerView({
     });
     if (error) setRpeMap((prev) => { const n = { ...prev }; delete n[eventId]; return n; });
     setRpeSaving(null);
+  }
+
+  async function handleWellness() {
+    if (wellnessSaving || !teamId || !myPlayerId) return;
+    if (!wellness.sleep || !wellness.fatigue || !wellness.mood) return;
+    setWellnessSaving(true);
+    const today = new Date().toISOString().slice(0, 10);
+    await upsertWellness({ teamId, playerId: myPlayerId, date: today, ...wellness });
+    setWellnessSaved(true);
+    setWellnessSaving(false);
   }
 
   // Eventi degli ultimi 14 giorni valutabili (passati)
@@ -652,6 +675,55 @@ function PlayerView({
             {portal.welcomeMessage && (
               <div style={ps.welcomeMsg}>{portal.welcomeMessage}</div>
             )}
+
+            {/* ── Wellness check-in giornaliero ── */}
+            <AppCard>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h3 style={{ ...ps.sectionTitle, margin: 0 }}>Come stai oggi?</h3>
+                {wellnessSaved && <Badge tone="green">✓ Salvato</Badge>}
+              </div>
+              {[
+                { key: "sleep",   label: "😴 Sonno",   hint: "1 = pessimo · 5 = ottimo" },
+                { key: "fatigue", label: "💪 Fatica",  hint: "1 = esausto · 5 = fresco" },
+                { key: "mood",    label: "😊 Umore",   hint: "1 = giù · 5 = al top" },
+              ].map(({ key, label, hint }) => (
+                <div key={key} style={{ marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{label}</span>
+                    <span style={{ fontSize: 11, color: "#64748b" }}>{hint}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {[1, 2, 3, 4, 5].map((v) => {
+                      const active = wellness[key] === v;
+                      const color = v <= 2 ? "#f87171" : v === 3 ? "#fb923c" : "#4ade80";
+                      return (
+                        <button
+                          key={v}
+                          onClick={() => { setWellness((p) => ({ ...p, [key]: v })); setWellnessSaved(false); }}
+                          style={{
+                            flex: 1, padding: "10px 0", borderRadius: 10, border: "none",
+                            background: active ? `${color}22` : "rgba(255,255,255,0.05)",
+                            outline: active ? `2px solid ${color}` : "none",
+                            color: active ? color : "#475569",
+                            fontSize: 16, fontWeight: 900, cursor: "pointer", transition: "0.15s",
+                          }}
+                        >
+                          {v}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <Button
+                onClick={handleWellness}
+                disabled={wellnessSaving || !wellness.sleep || !wellness.fatigue || !wellness.mood}
+                style={{ width: "100%", marginTop: 4, opacity: (!wellness.sleep || !wellness.fatigue || !wellness.mood) ? 0.5 : 1 }}
+              >
+                {wellnessSaving ? "Salvataggio…" : wellnessSaved ? "Aggiorna check-in" : "Salva check-in"}
+              </Button>
+            </AppCard>
+
             {/* Prossima convocazione */}
             {upcoming[0] && (
               <AppCard>
