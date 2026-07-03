@@ -431,8 +431,8 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                     <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
                       {canManage && cell.events.length === 1 && (
                         <>
-                          <button onClick={() => setEditingEvent(cell.events[0])} style={wv.addBtnSmall} title="Modifica evento">✏️</button>
-                          <button onClick={() => onDeleteEvent?.(cell.events[0])} style={{ ...wv.addBtnSmall, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento">🗑️</button>
+                          <button onClick={() => setEditingEvent(cell.events[0])} style={wv.addBtnSmall} title="Modifica evento" aria-label="Modifica evento">✏️</button>
+                          <button onClick={() => onDeleteEvent?.(cell.events[0])} style={{ ...wv.addBtnSmall, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento" aria-label="Elimina evento">🗑️</button>
                         </>
                       )}
                       {canManage && onQuickCreate && (
@@ -488,11 +488,13 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                               onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }}
                               style={{ ...wv.iconBtn, width: 18, height: 18, fontSize: 9, flexShrink: 0 }}
                               title="Modifica"
+                              aria-label="Modifica"
                             >✏️</button>
                             <button
                               onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }}
                               style={{ ...wv.iconBtn, width: 18, height: 18, fontSize: 9, flexShrink: 0, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}
                               title="Elimina"
+                              aria-label="Elimina"
                             >🗑️</button>
                           </>
                         )}
@@ -712,8 +714,8 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                               </div>
                               {canManage && (
                                 <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
-                                  <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica">✏️</button>
-                                  <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina">🗑️</button>
+                                  <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica" aria-label="Modifica">✏️</button>
+                                  <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina" aria-label="Elimina">🗑️</button>
                                 </div>
                               )}
                             </>
@@ -725,8 +727,8 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                                 </Badge>
                                 {canManage && (
                                   <div style={{ display: "flex", gap: 3 }}>
-                                    <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica evento">✏️</button>
-                                    <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento">🗑️</button>
+                                    <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica evento" aria-label="Modifica evento">✏️</button>
+                                    <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento" aria-label="Elimina evento">🗑️</button>
                                   </div>
                                 )}
                               </div>
@@ -1016,7 +1018,7 @@ function EventEditModal({ event, onSave, onClose }) {
           <h3 style={{ margin: 0, fontSize: 16 }}>
             {isMatch ? t("pages.calendar.editMatchTitle") : t("pages.calendar.editSessionTitle")}
           </h3>
-          <button onClick={onClose} style={em.closeBtn}>×</button>
+          <button onClick={onClose} style={em.closeBtn} aria-label="Chiudi">×</button>
         </div>
 
         <div style={{ display: "grid", gap: 10 }}>

@@ -247,6 +247,7 @@ export function FieldObject({ obj, activeTool, selected, onSelect, onEditStart, 
             type="button"
             data-board-token="true"
             title={t("pages.tacticalBoard.deleteTip")}
+            aria-label="Elimina"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation();

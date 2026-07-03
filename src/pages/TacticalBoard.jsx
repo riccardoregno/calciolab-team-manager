@@ -1242,7 +1242,7 @@ export default function TacticalBoard({
                 <button type="button" onClick={() => toggleMobilePanel("field")} style={{ ...mobileTopButton, ...(mobilePanel === "field" ? mobileTopButtonActive : {}) }}>
                   ⚙
                 </button>
-                <button type="button" onClick={() => setMobileFullscreen(false)} style={{ ...mobileTopButton, marginLeft: "auto" }}>
+                <button type="button" onClick={() => setMobileFullscreen(false)} style={{ ...mobileTopButton, marginLeft: "auto" }} aria-label="Chiudi">
                   ✕
                 </button>
               </div>
@@ -1804,10 +1804,10 @@ export default function TacticalBoard({
 
             {mobileFullscreenActive && (
               <div style={mobileDock}>
-                <button type="button" onClick={handleUndo} disabled={undoStack.length === 0} style={{ ...mobileDockButton, opacity: undoStack.length ? 1 : 0.38 }}>
+                <button type="button" onClick={handleUndo} disabled={undoStack.length === 0} style={{ ...mobileDockButton, opacity: undoStack.length ? 1 : 0.38 }} aria-label="Annulla">
                   <Undo2 size={18} />
                 </button>
-                <button type="button" onClick={handleRedo} disabled={redoStack.length === 0} style={{ ...mobileDockButton, opacity: redoStack.length ? 1 : 0.38 }}>
+                <button type="button" onClick={handleRedo} disabled={redoStack.length === 0} style={{ ...mobileDockButton, opacity: redoStack.length ? 1 : 0.38 }} aria-label="Ripeti">
                   ↷
                 </button>
                 <button type="button" onClick={() => toggleMobilePanel("players")} style={{ ...mobileDockButton, ...(mobilePanel === "players" ? mobileDockButtonActive : {}) }}>
@@ -1860,7 +1860,7 @@ export default function TacticalBoard({
                   <div style={mobileSheetHandle} />
                   <div style={mobileSheetHeader}>
                     <h3 style={mobileSheetTitle}>{t(`pages.tacticalBoard.mobilePanel${mobilePanel[0].toUpperCase()}${mobilePanel.slice(1)}`)}</h3>
-                    <button type="button" style={mobileSheetClose} onClick={() => setMobilePanel(null)}>✕</button>
+                    <button type="button" style={mobileSheetClose} onClick={() => setMobilePanel(null)} aria-label="Chiudi">✕</button>
                   </div>
 
                   {mobilePanel === "players" && (
@@ -2183,6 +2183,7 @@ export default function TacticalBoard({
                         <button
                           type="button"
                           onClick={() => deleteSchema(schema.id)}
+                          aria-label="Elimina schema"
                           style={{ ...boardStyles.schemaLoadBtn, background: "rgba(239,68,68,0.12)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}
                         >
                           ×

@@ -502,6 +502,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
                       >✓</button>
                       <button
                         onClick={() => setResultEditId(null)}
+                        aria-label="Chiudi"
                         style={{
                           background: "rgba(255,255,255,0.08)", border: "none", borderRadius: 8,
                           color: "#94a3b8", fontSize: 16, padding: "4px 8px", cursor: "pointer",
@@ -609,7 +610,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
                     <span style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 0.5 }}>
                       ⚡ Stats veloci
                     </span>
-                    <button onClick={() => setQuickStatsMatchId(null)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16 }}>✕</button>
+                    <button onClick={() => setQuickStatsMatchId(null)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16 }} aria-label="Chiudi">✕</button>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 44px 44px 56px", gap: 6, marginBottom: 6 }}>
                     <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Giocatore</span>

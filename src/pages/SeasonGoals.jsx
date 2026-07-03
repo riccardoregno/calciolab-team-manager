@@ -403,6 +403,7 @@ export default function SeasonGoals({ matches = [], players = [] }) {
                         }}
                         style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 16, padding: 2 }}
                         title={t("common.delete")}
+                        aria-label="Elimina"
                       >
                         ✕
                       </button>
@@ -516,6 +517,7 @@ export default function SeasonGoals({ matches = [], players = [] }) {
                         }}
                         style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 16, padding: 2 }}
                         title={t("common.delete")}
+                        aria-label="Elimina"
                       >
                         ✕
                       </button>

@@ -62,8 +62,8 @@ export function PlayerList({
           )}
           {!isMobile && onMove && listKey && (
             <div style={matchDayStyles.moveButtons}>
-              <button onClick={() => onMove(player.id, listKey, "up")}>↑</button>
-              <button onClick={() => onMove(player.id, listKey, "down")}>↓</button>
+              <button onClick={() => onMove(player.id, listKey, "up")} aria-label="Sposta su">↑</button>
+              <button onClick={() => onMove(player.id, listKey, "down")} aria-label="Sposta giù">↓</button>
             </div>
           )}
           {!isMobile && onCaptain && (

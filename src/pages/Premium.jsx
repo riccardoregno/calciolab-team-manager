@@ -405,7 +405,7 @@ export default function Premium({
               <p style={ps.vipSuccessText}>{t("pages.premium.rewardCode", { code: vipNotice.reward.promotionCode })}</p>
             )}
           </div>
-          <button type="button" style={ps.vipDismiss} onClick={() => setVipNotice(null)}>×</button>
+          <button type="button" style={ps.vipDismiss} onClick={() => setVipNotice(null)} aria-label="Chiudi">×</button>
         </div>
       )}
 

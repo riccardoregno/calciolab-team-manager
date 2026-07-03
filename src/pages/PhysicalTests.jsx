@@ -706,7 +706,7 @@ export default function PhysicalTests({
                 <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2 }}>{t("pages.physicalTests.chartTitle", { name: chartName })}</h3>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>{t("pages.physicalTests.chartSubtitle", { count: chartTests.length })}</p>
               </div>
-              <button onClick={() => setChartPlayerId(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 22, cursor: "pointer" }}>×</button>
+              <button onClick={() => setChartPlayerId(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 22, cursor: "pointer" }} aria-label="Chiudi">×</button>
             </div>
             <PlayerLineChart tests={chartTests} metrics={METRICS} />
           </div>
@@ -721,7 +721,7 @@ export default function PhysicalTests({
               <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2 }}>
                 {modal.mode === "edit" ? t("pages.physicalTests.modalEditTitle") : t("pages.physicalTests.modalAddTitle")}
               </h3>
-              <button onClick={() => closeModal()} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 22, cursor: "pointer" }}>×</button>
+              <button onClick={() => closeModal()} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 22, cursor: "pointer" }} aria-label="Chiudi">×</button>
             </div>
 
             <div style={{ display: "grid", gap: 14 }}>

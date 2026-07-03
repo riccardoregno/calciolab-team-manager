@@ -82,7 +82,7 @@ export default function PWAInstallBanner() {
               {t("pwa.installBtn")}
             </button>
           )}
-          <button onClick={handleDismiss} style={bannerStyles.dismissBtn}>
+          <button onClick={handleDismiss} style={bannerStyles.dismissBtn} aria-label="Chiudi">
             ✕
           </button>
         </div>

@@ -169,13 +169,13 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
           <div style={s.scoreCenter}>
             <div style={s.scoreRow}>
               {canManage && (
-                <button style={s.scoreBtn} onClick={() => adjustScore("home", -1)}>−</button>
+                <button style={s.scoreBtn} onClick={() => adjustScore("home", -1)} aria-label="Diminuisci gol squadra di casa">−</button>
               )}
               <span style={s.scoreNum}>{homeScore}</span>
               <span style={s.scoreDash}>–</span>
               <span style={s.scoreNum}>{awayScore}</span>
               {canManage && (
-                <button style={s.scoreBtn} onClick={() => adjustScore("away", -1)}>−</button>
+                <button style={s.scoreBtn} onClick={() => adjustScore("away", -1)} aria-label="Diminuisci gol squadra ospite">−</button>
               )}
             </div>
             <div style={s.scoreBtnsRow}>
@@ -314,7 +314,7 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
                     {ev.note && <span style={s.eventNote}>{ev.note}</span>}
                   </div>
                   {canManage && (
-                    <button style={s.removeBtn} onClick={() => removeEvent(ev.id)}>✕</button>
+                    <button style={s.removeBtn} onClick={() => removeEvent(ev.id)} aria-label="Elimina evento">✕</button>
                   )}
                 </div>
               );

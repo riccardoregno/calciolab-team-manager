@@ -239,6 +239,7 @@ function SortableTimelineItem({ id, item, index, start, end, duration, total }) 
                 fontWeight: 900,
               }}
               title="Trascina"
+              aria-label="Trascina esercizio"
             >
               ⋮⋮
             </button>

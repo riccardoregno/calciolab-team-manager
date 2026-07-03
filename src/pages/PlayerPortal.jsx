@@ -1276,6 +1276,7 @@ function CommPanel({ comms, onAdd, onDelete, teamId }) {
               <button
                 type="button"
                 onClick={removeAttachment}
+                aria-label="Rimuovi allegato"
                 style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 13, padding: 0 }}
               >
                 ×
@@ -1339,6 +1340,7 @@ function CommPanel({ comms, onAdd, onDelete, teamId }) {
                 </div>
                 <button
                   onClick={() => onDelete(c.id)}
+                  aria-label="Elimina"
                   style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 16, padding: "2px 4px" }}
                   title="Elimina"
                 >
@@ -2025,7 +2027,7 @@ function PrehabSection({ injuryHistory = [], selectedPlayer }) {
                   <h3 style={{ margin: "2px 0 0", fontSize: 18, fontWeight: 900, color: "#f8fafc", lineHeight: 1.15 }}>{modalItem.title}</h3>
                 </div>
               </div>
-              <button onClick={() => setModalItem(null)} style={{ background: "rgba(255,255,255,0.07)", border: "none", color: "#94a3b8", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 20, display: "grid", placeItems: "center" }}>×</button>
+              <button onClick={() => setModalItem(null)} style={{ background: "rgba(255,255,255,0.07)", border: "none", color: "#94a3b8", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 20, display: "grid", placeItems: "center" }} aria-label="Chiudi">×</button>
             </div>
             <p style={{ color: "#cbd5e1", fontSize: 14, lineHeight: 1.65, margin: "0 0 16px" }}>{modalItem.detail.desc}</p>
             <div style={{ display: "grid", gap: 10 }}>
@@ -2130,9 +2132,9 @@ function CalendarioTab({ year, month, onPrev, onNext, sessions, myConvocations }
     <AppCard>
       {/* Navigazione mese */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <button onClick={onPrev} style={navBtn}>‹</button>
+        <button onClick={onPrev} style={navBtn} aria-label="Settimana precedente">‹</button>
         <span style={{ fontWeight: 800, fontSize: 16, color: "#f8fafc" }}>{CAL_MONTHS[month]} {year}</span>
-        <button onClick={onNext} style={navBtn}>›</button>
+        <button onClick={onNext} style={navBtn} aria-label="Settimana successiva">›</button>
       </div>
 
       {/* Intestazione giorni */}

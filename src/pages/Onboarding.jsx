@@ -802,6 +802,7 @@ function Step4({ form, appSettings, setAppSettings, team: _team, inviteToken, on
                 )}
                 <button
                   onClick={() => setEmails(emails.filter((e) => e.email !== inv.email))}
+                  aria-label="Rimuovi invito"
                   style={{
                     background: "none", border: "none", color: "#475569",
                     cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0,

@@ -217,7 +217,7 @@ export default function ImportPlayersModal({ onClose, onImport }) {
               {step === 3 && t("pages.players.importStep3", { count: previewPlayers.length })}
             </p>
           </div>
-          <button onClick={onClose} style={im.closeBtn}>×</button>
+          <button onClick={onClose} style={im.closeBtn} aria-label="Chiudi">×</button>
         </div>
 
         {/* Step indicator */}

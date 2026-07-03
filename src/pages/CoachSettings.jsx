@@ -180,6 +180,7 @@ export default function CoachSettings({
                 {m.custom && (
                   <button
                     onClick={() => deleteCustomMetric(m.key)}
+                    aria-label="Elimina"
                     style={{ borderRadius: 8, padding: "4px 8px", fontSize: 11, cursor: "pointer", border: "none", background: "rgba(239,68,68,0.12)", color: "#f87171" }}
                   >
                     🗑️

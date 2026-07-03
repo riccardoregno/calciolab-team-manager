@@ -621,6 +621,7 @@ function Trainings({
                   type="button"
                   onClick={() => setLibraryCollapsed((v) => !v)}
                   title={libraryCollapsed ? t("pages.trainings.libraryExpand") : t("pages.trainings.libraryCollapse")}
+                  aria-label={libraryCollapsed ? "Espandi libreria" : "Comprimi libreria"}
                   style={{
                     width: 28,
                     height: 28,
@@ -1436,14 +1437,14 @@ function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, on
     <div>
       {/* Nav */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-        <button onClick={onPrevWeek} style={navBtn}>‹</button>
+        <button onClick={onPrevWeek} style={navBtn} aria-label="Settimana precedente">‹</button>
         <span style={{ flex: 1, fontWeight: 700, fontSize: 14, color: "#e2e8f0" }}>{weekLabel}</span>
         {weekOffset !== 0 && (
           <button onClick={onThisWeek} style={{ ...navBtn, fontSize: 12, padding: "5px 10px", color: "#38bdf8", borderColor: "rgba(56,189,248,0.3)" }}>
             Oggi
           </button>
         )}
-        <button onClick={onNextWeek} style={navBtn}>›</button>
+        <button onClick={onNextWeek} style={navBtn} aria-label="Settimana successiva">›</button>
       </div>
 
       {/* Grid */}
@@ -1807,9 +1808,9 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel }) {
 
                     {/* Controlli ordine + rimozione */}
                     <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
-                      <button onClick={() => moveBlock(idx, -1)} disabled={idx === 0} style={sbtnStyle}>↑</button>
-                      <button onClick={() => moveBlock(idx, 1)} disabled={idx === blocks.length - 1} style={sbtnStyle}>↓</button>
-                      <button onClick={() => removeBlock(block.id)} style={{ ...sbtnStyle, color: "#f87171" }}>✕</button>
+                      <button onClick={() => moveBlock(idx, -1)} disabled={idx === 0} style={sbtnStyle} aria-label="Sposta su">↑</button>
+                      <button onClick={() => moveBlock(idx, 1)} disabled={idx === blocks.length - 1} style={sbtnStyle} aria-label="Sposta giù">↓</button>
+                      <button onClick={() => removeBlock(block.id)} style={{ ...sbtnStyle, color: "#f87171" }} aria-label="Elimina blocco">✕</button>
                     </div>
                   </div>
 
