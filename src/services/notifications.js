@@ -2,6 +2,8 @@ import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 
 const NOTIFY_URL = `${import.meta.env.VITE_SUPABASE_URL || ""}/functions/v1/notify-team`;
 
+/** @param {{ teamId: string, type: string, payload?: object }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function sendTeamNotification({ teamId, type, payload = {} }) {
   if (!isSupabaseConfigured || !teamId) return;
 

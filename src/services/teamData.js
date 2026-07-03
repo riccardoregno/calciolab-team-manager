@@ -28,6 +28,7 @@ const SAFE_ID_REGEX = /^[a-zA-Z0-9_\-.:]+$/;
 const UUID_ID_TABLES = new Set(["players", "exercises"]);
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/** @returns {object} */
 export function getInitialState() {
   return normalizeAppState({
     players:       initialPlayers,
@@ -41,6 +42,7 @@ export function getInitialState() {
   });
 }
 
+/** @returns {object} */
 export function loadLocalState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -61,6 +63,8 @@ export function loadLocalState() {
 // Last serialized state — flushed synchronously on pagehide
 let _lastSerialized = null;
 
+/** @param {object} state
+ * @returns {void} */
 export function saveLocalState(state) {
   const normalized = normalizeAppState(state);
   const serialized  = JSON.stringify(normalized);
@@ -114,6 +118,8 @@ if (typeof window !== "undefined") {
   });
 }
 
+/** @param {{ teamId?: string }} [params]
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function loadRemoteState({ teamId } = {}) {
   if (!isSupabaseConfigured || !teamId) {
     return { state: loadLocalState(), source: "local" };
@@ -123,6 +129,9 @@ export async function loadRemoteState({ teamId } = {}) {
 
 // FIX #6: questa funzione è ora esportata e chiamata direttamente da useTeamData
 // per il sync Supabase (debounced), separato dal saveLocalState (immediato).
+/** @param {object} state
+ * @param {string} teamId
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function saveTeamTablesState(state, teamId) {
   try {
     const normalized = normalizeAppState(state);
@@ -161,6 +170,9 @@ export async function saveTeamTablesState(state, teamId) {
 }
 
 // Kept for backward compatibility (chiamato da useTeamData v.precedente)
+/** @param {object} state
+ * @param {{ teamId?: string }} [params]
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function saveRemoteState(state, { teamId } = {}) {
   const normalizedState = normalizeAppState(state);
   saveLocalState(normalizedState);

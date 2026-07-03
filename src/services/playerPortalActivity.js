@@ -1,5 +1,7 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
+/** @param {{ teamId: string, playerId: string, increment?: boolean }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function touchPlayerPortalActivity({ teamId, playerId, increment = false }) {
   if (!isSupabaseConfigured || !teamId || !playerId) return { data: null, error: null };
 
@@ -12,6 +14,8 @@ export async function touchPlayerPortalActivity({ teamId, playerId, increment = 
   return { data, error };
 }
 
+/** @param {{ teamId: string, playerId: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function fetchPlayerPortalActivity({ teamId, playerId }) {
   if (!isSupabaseConfigured || !teamId || !playerId) return { data: null, error: null };
 
@@ -25,6 +29,9 @@ export async function fetchPlayerPortalActivity({ teamId, playerId }) {
   return { data, error };
 }
 
+/** @param {any} activity
+ * @param {number} [now]
+ * @returns {boolean} */
 export function isPlayerPortalOnline(activity, now = Date.now()) {
   if (!activity?.online_until) return false;
   const until = new Date(activity.online_until).getTime();

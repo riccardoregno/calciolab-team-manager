@@ -2,6 +2,8 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 export const ATTACHMENTS_BUCKET = "team-attachments";
 
+/** @param {{ teamId: string, folder: string, file: File }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function uploadTeamAttachment({ teamId, folder, file }) {
   if (!isSupabaseConfigured || !supabase) {
     throw new Error("Supabase non configurato");
@@ -41,6 +43,8 @@ export async function uploadTeamAttachment({ teamId, folder, file }) {
   };
 }
 
+/** @param {any} attachment
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function deleteTeamAttachment(attachment) {
   if (!isSupabaseConfigured || !supabase || !attachment?.path) return;
 

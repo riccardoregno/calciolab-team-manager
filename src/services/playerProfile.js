@@ -43,6 +43,9 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 // Una volta creata la funzione, savePlayerMatchStats userà automaticamente supabase.rpc()
 // invece del pattern read-modify-write. L'upsert atomico è serializzato dal database.
 
+/** @param {string} teamId
+ * @param {string} playerId
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function loadPlayerById(teamId, playerId) {
   if (!isSupabaseConfigured || !teamId || !playerId) return { data: null, error: null };
 
@@ -59,6 +62,9 @@ export async function loadPlayerById(teamId, playerId) {
   return { data: { id: data.id, ...(data.data || {}) }, error };
 }
 
+/** @param {string} teamId
+ * @param {string} season
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function loadAllPlayerStats(teamId, season) {
   if (!isSupabaseConfigured || !teamId) return { data: {}, error: null };
 
@@ -80,6 +86,9 @@ export async function loadAllPlayerStats(teamId, season) {
   return { data: map, error: null };
 }
 
+/** @param {string} teamId
+ * @param {number} [lastN]
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function loadTeamRecentRatings(teamId, lastN = 5) {
   if (!isSupabaseConfigured || !teamId) return { data: {}, error: null };
 
@@ -114,6 +123,8 @@ export async function loadTeamRecentRatings(teamId, lastN = 5) {
   return { data: map, error: null };
 }
 
+/** @param {string} teamId
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function loadAllPlayerAvgRatings(teamId) {
   if (!isSupabaseConfigured || !teamId) return { data: {}, error: null };
 
@@ -146,6 +157,9 @@ export async function loadAllPlayerAvgRatings(teamId) {
   return { data: map, error: null };
 }
 
+/** @param {string} teamId
+ * @param {string} playerId
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function loadPlayerStats(teamId, playerId) {
   if (!isSupabaseConfigured || !teamId || !playerId) return { data: null, error: null };
 
@@ -160,6 +174,9 @@ export async function loadPlayerStats(teamId, playerId) {
   return { data, error };
 }
 
+/** @param {string} teamId
+ * @param {string[]} matchIds
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function loadPlayerMatchesForPeriod(teamId, matchIds) {
   if (!isSupabaseConfigured || !teamId || !matchIds?.length) return { data: [], error: null };
 
@@ -173,6 +190,9 @@ export async function loadPlayerMatchesForPeriod(teamId, matchIds) {
   return { data: data || [], error };
 }
 
+/** @param {string} teamId
+ * @param {string} playerId
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function loadPlayerMatches(teamId, playerId) {
   if (!isSupabaseConfigured || !teamId || !playerId) return { data: [], error: null };
 
@@ -186,6 +206,9 @@ export async function loadPlayerMatches(teamId, playerId) {
   return { data: data || [], error };
 }
 
+/** @param {string} teamId
+ * @param {string} matchId
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function loadMatchStats(teamId, matchId) {
   if (!isSupabaseConfigured || !teamId || !matchId) return { data: [], error: null };
 
@@ -201,6 +224,13 @@ export async function loadMatchStats(teamId, matchId) {
 
 // FIX #4: savePlayerMatchStats ora usa la DB function increment_player_stats se disponibile,
 // con fallback al read-modify-write originale (per ambienti senza la funzione SQL creata).
+/** @param {string} teamId
+ * @param {string} playerId
+ * @param {string} matchId
+ * @param {object} newStats
+ * @param {object} oldStats
+ * @param {string} [season]
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function savePlayerMatchStats(teamId, playerId, matchId, newStats, oldStats, season = "2025/2026") {
   if (!isSupabaseConfigured || !teamId || !playerId || !matchId) return { error: null };
 
@@ -257,6 +287,11 @@ export async function savePlayerMatchStats(teamId, playerId, matchId, newStats, 
   return { error: null };
 }
 
+/** @param {string} teamId
+ * @param {string} playerId
+ * @param {string} matchId
+ * @param {object} fields
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function upsertPlayerMatch(teamId, playerId, matchId, fields) {
   if (!isSupabaseConfigured || !teamId || !playerId || !matchId) return { error: null };
 

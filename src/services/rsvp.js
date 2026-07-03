@@ -35,6 +35,8 @@ async function callRsvpFunction(payload, { auth = false } = {}) {
   return { data, error: null };
 }
 
+/** @param {{ teamId: string, matchId: string, playerId: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function createRsvpLink({ teamId, matchId, playerId }) {
   const { data, error } = await callRsvpFunction({
     action: "create",
@@ -57,16 +59,22 @@ export async function createRsvpLink({ teamId, matchId, playerId }) {
   };
 }
 
+/** @param {string} token
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function getRsvpPayload(token) {
   return callRsvpFunction({ action: "get", token });
 }
 
+/** @param {{ token: string, response: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function submitRsvpResponse({ token, response }) {
   return callRsvpFunction({ action: "respond", token, response });
 }
 
 // Authenticated player responds to their own RSVP directly via RLS
 // (no token / no TTL — requires player_accounts row for auth.uid()).
+/** @param {{ teamId: string, matchId: string, playerId: string, response: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function respondRsvpAsPlayer({ teamId, matchId, playerId, response }) {
   if (!isSupabaseConfigured) {
     return { error: new Error("Supabase non configurato") };
@@ -85,6 +93,8 @@ export async function respondRsvpAsPlayer({ teamId, matchId, playerId, response 
   return { error: error || null };
 }
 
+/** @param {{ teamId: string, to: string, playerName: string, teamName: string, opponent: string, matchDate: string, matchTime: string, matchVenue: string, rsvpUrl: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function sendMatchConvocationEmail({
   teamId, to, playerName, teamName, opponent, matchDate, matchTime, matchVenue, rsvpUrl,
 }) {
@@ -126,6 +136,8 @@ export async function sendMatchConvocationEmail({
   return { error: null };
 }
 
+/** @param {{ teamId: string, matchId: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function fetchMatchRsvps({ teamId, matchId }) {
   if (!isSupabaseConfigured || !teamId || !matchId) {
     return { rsvps: [], error: null };

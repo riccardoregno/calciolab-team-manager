@@ -1,10 +1,13 @@
 import { generateGuidedSession } from "../utils/helpers";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
+/** @returns {boolean} */
 export function isOpenAiConfigured() {
   return Boolean(isSupabaseConfigured && supabase);
 }
 
+/** @param {{ teamProfile: any, sessionContext: any, availableExercises: any[] }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function generateAiTrainingSession({
   prompt,
   exercises = [],

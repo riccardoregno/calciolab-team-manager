@@ -1,6 +1,8 @@
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 
 // Fetch all availability records for a team (staff view) or for a single player
+/** @param {{ teamId: string, playerId?: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function fetchPlayerAvailability({ teamId, playerId = null }) {
   if (!isSupabaseConfigured || !teamId) return { data: [], error: null };
 
@@ -18,6 +20,8 @@ export async function fetchPlayerAvailability({ teamId, playerId = null }) {
 
 // Upsert: replaces the active record for player+team covering today.
 // Simple model: one "current" availability entry per player (date_from = today, date_to = null).
+/** @param {{ teamId: string, playerId: string, status: string, reason?: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function setPlayerAvailability({ teamId, playerId, status, reason = "" }) {
   if (!isSupabaseConfigured || !teamId || !playerId) {
     return { error: new Error("Parametri mancanti") };
@@ -60,6 +64,8 @@ export async function setPlayerAvailability({ teamId, playerId, status, reason =
   return { error };
 }
 
+/** @param {{ id: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function deletePlayerAvailability({ id }) {
   if (!isSupabaseConfigured || !id) return { error: new Error("ID mancante") };
   const { error } = await supabase.from("player_availability").delete().eq("id", id);

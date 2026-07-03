@@ -16,6 +16,9 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 //
 // Gli aggiornamenti subscription devono passare solo da Edge Function autenticata via webhook Stripe.
 
+/** @param {string} teamId
+ * @param {object} fields
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function updateTeamSubscription(teamId, fields) {
   // Supabase non configurato: restituiamo un errore esplicito per non aggiornare
   // lo stato locale con un billing che non esiste su nessun DB.

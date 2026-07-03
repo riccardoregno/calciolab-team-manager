@@ -1,5 +1,7 @@
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 
+/** @param {{ teamId: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function fetchTeamRpe({ teamId }) {
   if (!isSupabaseConfigured || !teamId) return { data: [] };
   const { data, error } = await supabase
@@ -10,6 +12,8 @@ export async function fetchTeamRpe({ teamId }) {
   return { data: data || [], error };
 }
 
+/** @param {{ teamId: string, playerId: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function fetchPlayerRpe({ teamId, playerId }) {
   if (!isSupabaseConfigured || !teamId || !playerId) return { data: [] };
   const { data, error } = await supabase
@@ -21,6 +25,8 @@ export async function fetchPlayerRpe({ teamId, playerId }) {
   return { data: data || [], error };
 }
 
+/** @param {{ teamId: string, playerId: string, eventId: string, eventType: string, rpeValue: number, notes?: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function upsertRpe({ teamId, playerId, eventId, eventType, rpeValue, notes = "" }) {
   if (!isSupabaseConfigured || !teamId || !playerId || !eventId) return { error: new Error("missing params") };
   const { data, error } = await supabase

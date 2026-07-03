@@ -1,5 +1,7 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
+/** @param {{ teamId: string, playerId: string, date: string, sleep: number, fatigue: number, mood: number }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function upsertWellness({ teamId, playerId, date, sleep, fatigue, mood }) {
   if (!isSupabaseConfigured) return { error: "not configured" };
   return supabase
@@ -10,6 +12,8 @@ export async function upsertWellness({ teamId, playerId, date, sleep, fatigue, m
     );
 }
 
+/** @param {{ teamId: string, playerId: string, days?: number }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function getPlayerWellness({ teamId, playerId, days = 14 }) {
   if (!isSupabaseConfigured) return { data: [], error: null };
   const since = new Date();
@@ -23,6 +27,8 @@ export async function getPlayerWellness({ teamId, playerId, days = 14 }) {
     .order("date", { ascending: false });
 }
 
+/** @param {{ teamId: string }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function getTeamWellnessToday({ teamId }) {
   if (!isSupabaseConfigured) return { data: [], error: null };
   const today = new Date().toISOString().slice(0, 10);
@@ -33,6 +39,8 @@ export async function getTeamWellnessToday({ teamId }) {
     .eq("date", today);
 }
 
+/** @param {{ teamId: string, days?: number }} params
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function getTeamWellnessWeek({ teamId, days = 7 }) {
   if (!isSupabaseConfigured) return { data: [], error: null };
   const since = new Date();

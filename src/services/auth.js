@@ -33,6 +33,7 @@ function markInviteTokenFailed(token) {
   localStorage.setItem(FAILED_INVITE_TOKEN_KEY, token);
 }
 
+/** @returns {Promise<{data: any[], error: any}>} */
 export async function getAuthSession() {
   if (!isSupabaseConfigured) {
     return { session: null, user: null };
@@ -47,6 +48,8 @@ export async function getAuthSession() {
   return { session: data.session, user: data.session?.user || null };
 }
 
+/** @param {Function} callback
+ * @returns {any} */
 export function onAuthChange(callback) {
   if (!isSupabaseConfigured) {
     return () => {};
@@ -59,6 +62,9 @@ export function onAuthChange(callback) {
   return () => data.subscription.unsubscribe();
 }
 
+/** @param {string} email
+ * @param {string} password
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function signInWithPassword(email, password) {
   if (!isSupabaseConfigured) {
     return { error: new Error("Supabase non configurato") };
@@ -67,6 +73,9 @@ export async function signInWithPassword(email, password) {
   return supabase.auth.signInWithPassword({ email, password });
 }
 
+/** @param {string} email
+ * @param {string} password
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function signUpWithPassword(email, password) {
   if (!isSupabaseConfigured) {
     return { error: new Error("Supabase non configurato") };
@@ -75,12 +84,15 @@ export async function signUpWithPassword(email, password) {
   return supabase.auth.signUp({ email, password });
 }
 
+/** @returns {Promise<{data: any[], error: any}>} */
 export async function signOut() {
   if (!isSupabaseConfigured) return { error: null };
 
   return supabase.auth.signOut();
 }
 
+/** @param {string} token
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function acceptTeamInvite(token) {
   if (!isSupabaseConfigured || !token) {
     return { team: null, error: null, status: null };
@@ -125,6 +137,8 @@ export async function acceptTeamInvite(token) {
   return { team: payload.team || null, error: null, status: response.status };
 }
 
+/** @param {any} user
+ * @returns {Promise<{data: any[], error: any}>} */
 export async function ensureDefaultTeam(user) {
   if (!isSupabaseConfigured || !user) {
     return { team: null };
