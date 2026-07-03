@@ -415,6 +415,7 @@ function PlayerView({
   const [wellness, setWellness] = useState({ sleep: 0, fatigue: 0, mood: 0 });
   const [wellnessSaved, setWellnessSaved] = useState(false);
   const [wellnessSaving, setWellnessSaving] = useState(false);
+  const [wellnessHistory, setWellnessHistory] = useState([]);
   const mountedRef = useRef(true);
 
   const injuryHistory = useMemo(
@@ -464,9 +465,11 @@ function PlayerView({
         setRpeMap(map);
       }).catch(() => {});
       const today = new Date().toISOString().slice(0, 10);
-      getPlayerWellness({ teamId, playerId: myPlayerId, days: 1 }).then(({ data }) => {
+      getPlayerWellness({ teamId, playerId: myPlayerId, days: 7 }).then(({ data }) => {
         if (!mountedRef.current) return;
-        const todayEntry = (data || []).find((r) => r.date === today);
+        const rows = data || [];
+        setWellnessHistory(rows);
+        const todayEntry = rows.find((r) => r.date === today);
         if (todayEntry) {
           setWellness({ sleep: todayEntry.sleep || 0, fatigue: todayEntry.fatigue || 0, mood: todayEntry.mood || 0 });
           setWellnessSaved(true);
@@ -542,6 +545,10 @@ function PlayerView({
     await upsertWellness({ teamId, playerId: myPlayerId, date: today, ...wellness });
     setWellnessSaved(true);
     setWellnessSaving(false);
+    setWellnessHistory((prev) => {
+      const without = prev.filter((r) => r.date !== today);
+      return [{ date: today, ...wellness }, ...without];
+    });
   }
 
   // Eventi degli ultimi 14 giorni valutabili (passati)
@@ -722,6 +729,28 @@ function PlayerView({
               >
                 {wellnessSaving ? "Salvataggio…" : wellnessSaved ? "Aggiorna check-in" : "Salva check-in"}
               </Button>
+
+              {wellnessHistory.length >= 2 && (
+                <div style={{ marginTop: 16 }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase" }}>
+                    Ultimi 7 giorni
+                  </p>
+                  <div style={{ display: "flex", gap: 4, overflowX: "auto" }}>
+                    {[...wellnessHistory].reverse().map((row) => {
+                      const avg = Math.round((row.sleep + row.fatigue + row.mood) / 3);
+                      const col = avg <= 2 ? "#f87171" : avg === 3 ? "#fb923c" : "#4ade80";
+                      const d = new Date(row.date + "T00:00:00");
+                      const label = d.toLocaleDateString("it-IT", { weekday: "short" }).slice(0, 3);
+                      return (
+                        <div key={row.date} style={{ flex: "0 0 auto", textAlign: "center", minWidth: 36 }}>
+                          <div style={{ width: 36, height: Math.max(8, avg * 8), background: col, borderRadius: "4px 4px 0 0", margin: "0 auto", opacity: 0.85 }} />
+                          <div style={{ fontSize: 10, color: "#64748b", marginTop: 4, fontWeight: 700 }}>{label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </AppCard>
 
             {/* Prossima convocazione */}

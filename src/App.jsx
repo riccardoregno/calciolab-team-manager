@@ -1060,6 +1060,7 @@ function App() {
                     matches={matches}
                     players={players}
                     gpsSessions={gpsSessions}
+                    teamId={auth.team?.id || null}
                   />, "sessions")
                 }
               />

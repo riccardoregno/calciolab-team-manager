@@ -1085,6 +1085,23 @@ export function PlayerVideoTab({ clips }) {
   );
 }
 
+function WellnessSparkline({ values = [], color = "#38bdf8" }) {
+  const pts = values.filter((v) => v > 0);
+  if (pts.length < 2) return null;
+  const W = 90, H = 28, pad = 3;
+  const xStep = (W - pad * 2) / (pts.length - 1);
+  const yScale = (v) => H - pad - ((v - 1) / 4) * (H - pad * 2);
+  const d = pts.map((v, i) => `${i === 0 ? "M" : "L"}${pad + i * xStep},${yScale(v)}`).join(" ");
+  return (
+    <svg width={W} height={H} style={{ display: "block", margin: "0 auto", overflow: "visible" }}>
+      <polyline points={pts.map((v, i) => `${pad + i * xStep},${yScale(v)}`).join(" ")}
+        fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+      <circle cx={pad + (pts.length - 1) * xStep} cy={yScale(pts[pts.length - 1])} r="3" fill={color} />
+      <title>{d}</title>
+    </svg>
+  );
+}
+
 const WELLNESS_META = [
   { key: "sleep",   label: "Sonno",     emojis: ["😴","😪","😐","😊","🌟"], color: "#38bdf8" },
   { key: "fatigue", label: "Stanchezza", emojis: ["🏃","😤","😐","😓","🥱"], color: "#fb923c" },
@@ -1126,6 +1143,7 @@ export function PlayerWellnessTab({ wellnessHistory = [], loading = false }) {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 12, marginBottom: 20 }}>
               {WELLNESS_META.map(({ key, label, color }) => {
                 const a = avg(key);
+                const sparkVals = [...wellnessHistory].reverse().map((r) => r[key] || 0);
                 return (
                   <div key={key} style={{
                     padding: "14px 12px", borderRadius: 14,
@@ -1137,7 +1155,8 @@ export function PlayerWellnessTab({ wellnessHistory = [], loading = false }) {
                     <div style={{ fontSize: 28, fontWeight: 900, color: a !== null ? color : "#475569" }}>
                       {a !== null ? a : "—"}
                     </div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>/ 5</div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>/ 5</div>
+                    <WellnessSparkline values={sparkVals} color={color} />
                   </div>
                 );
               })}

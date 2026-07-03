@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import AppCard from "../components/ui/AppCard";
@@ -11,6 +11,7 @@ import { styles } from "../styles/index.js";
 import { formatDate, RPE_BY_MATCH_DAY } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { getTeamWellnessToday } from "../services/wellness";
 
 const MICRO_DAYS = [
   { key: "MD+1", offset: -6, focusKey: "pages.microcycle.focusMDp1" },
@@ -136,7 +137,7 @@ function buildTrainingDraft(day, focus, match, t) {
 }
 
 export default function Microcycle({
-  sessions = [], matches = [], players = [], gpsSessions = [] }) {
+  sessions = [], matches = [], players = [], gpsSessions = [], teamId = null }) {
 
   const { t } = useTranslation();
   const isMobile = useIsMobile(760);
@@ -334,6 +335,8 @@ export default function Microcycle({
               <Button variant="ghost" onClick={() => navigate("/set-plays")}>{t("pages.microcycle.btnSetPieces")}</Button>
             </div>
           </AppCard>
+
+          <WellnessPanel teamId={teamId} players={players} />
         </aside>
       </div>
     </div>
@@ -409,6 +412,92 @@ function MiniMetric({ label, value }) {
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function wellnessColor(v) {
+  if (!v) return "#475569";
+  if (v <= 2) return "#f87171";
+  if (v === 3) return "#fb923c";
+  return "#4ade80";
+}
+
+function WellnessPanel({ teamId, players }) {
+  const [rows, setRows]       = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!teamId) return;
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      try {
+        const { data } = await getTeamWellnessToday({ teamId });
+        if (!cancelled) setRows(data || []);
+      } catch (_e) { /* ignore */ }
+      if (!cancelled) setLoading(false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [teamId]);
+
+  const alerts = rows.filter((r) => r.fatigue >= 4 || r.sleep <= 2 || r.mood <= 2);
+
+  const enriched = rows.map((r) => ({
+    ...r,
+    name: players.find((p) => String(p.id) === String(r.player_id))?.name || "—",
+  })).sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <AppCard>
+      <div style={mc.cardHead}>
+        <div>
+          <p style={mc.eyebrow}>Squadra · Oggi</p>
+          <h3 style={mc.sideTitle}>Wellness check-in</h3>
+        </div>
+        <Badge tone={alerts.length ? "red" : rows.length ? "green" : "orange"}>
+          {loading ? "…" : rows.length ? `${rows.length} su ${players.length}` : "Nessuno"}
+        </Badge>
+      </div>
+
+      {!teamId && (
+        <p style={mc.muted}>Configura Supabase per abilitare il wellness.</p>
+      )}
+
+      {teamId && !loading && rows.length === 0 && (
+        <p style={mc.muted}>Nessun giocatore ha ancora compilato il check-in oggi.</p>
+      )}
+
+      {loading && (
+        <p style={mc.muted}>Caricamento…</p>
+      )}
+
+      {!loading && enriched.length > 0 && (
+        <>
+          {alerts.length > 0 && (
+            <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 10, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.28)", color: "#fca5a5", fontSize: 13, fontWeight: 700 }}>
+              ⚠️ {alerts.length} giocator{alerts.length === 1 ? "e" : "i"} con valori critici
+            </div>
+          )}
+          <div style={{ display: "grid", gap: 1 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 28px 28px 28px", gap: 8, padding: "4px 8px", marginBottom: 4 }} className="no-mobile-override">
+              <span style={{ fontSize: 10, color: "#475569", fontWeight: 800, textTransform: "uppercase" }}>Giocatore</span>
+              <span style={{ fontSize: 10, color: "#38bdf8", fontWeight: 800, textAlign: "center" }}>😴</span>
+              <span style={{ fontSize: 10, color: "#fb923c", fontWeight: 800, textAlign: "center" }}>💪</span>
+              <span style={{ fontSize: 10, color: "#a78bfa", fontWeight: 800, textAlign: "center" }}>😊</span>
+            </div>
+            {enriched.map((r) => (
+              <div key={r.player_id} style={{ display: "grid", gridTemplateColumns: "1fr 28px 28px 28px", gap: 8, padding: "6px 8px", borderRadius: 8, background: "rgba(15,23,42,0.4)" }} className="no-mobile-override">
+                <span style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                <span style={{ fontSize: 14, fontWeight: 900, color: wellnessColor(r.sleep), textAlign: "center" }}>{r.sleep || "—"}</span>
+                <span style={{ fontSize: 14, fontWeight: 900, color: wellnessColor(r.fatigue), textAlign: "center" }}>{r.fatigue || "—"}</span>
+                <span style={{ fontSize: 14, fontWeight: 900, color: wellnessColor(r.mood), textAlign: "center" }}>{r.mood || "—"}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </AppCard>
   );
 }
 
