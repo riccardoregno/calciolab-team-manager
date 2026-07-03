@@ -35,7 +35,7 @@ import {
 
 // TONE_LABEL is now built inside each component that uses it via t()
 
-const DASHBOARD_SECTION_KEYS = ["nextEvent", "kpis", "rosterStatus", "weeklyLoad", "wellnessToday", "weekFocus", "coachAlerts", "recentActivities", "quickActions", "rewardCenter"];
+const DASHBOARD_SECTION_KEYS = ["nextEvent", "kpis", "leaderboard", "rosterStatus", "weeklyLoad", "wellnessToday", "weekFocus", "coachAlerts", "recentActivities", "quickActions", "rewardCenter"];
 const DEFAULT_SECTION_ORDER = DASHBOARD_SECTION_KEYS;
 const PLAYER_STATUS_LABEL_KEYS = {
   Disponibile: "pages.players.statusAvailable",
@@ -649,6 +649,36 @@ function Dashboard({
             </AppCard>
           </div>
         );
+
+      case "leaderboard": {
+        const top3Scorers   = [...playerStats].sort((a, b) => b.goals - a.goals).filter((p) => p.goals > 0).slice(0, 3);
+        const top3Assists   = [...playerStats].sort((a, b) => b.assists - a.assists).filter((p) => p.assists > 0).slice(0, 3);
+        const top3Minutes   = [...playerStats].sort((a, b) => b.minutes - a.minutes).filter((p) => p.minutes > 0).slice(0, 3);
+        if (!top3Scorers.length && !top3Assists.length && !top3Minutes.length) return null;
+        const LeaderCol = ({ title, icon, rows, valueKey, unit = "" }) => (
+          <div>
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{icon} {title}</p>
+            {rows.map((p, i) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: i < rows.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                <span style={{ fontSize: 11, fontWeight: 900, color: i === 0 ? "#fbbf24" : "#475569", minWidth: 16 }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</span>
+                <span style={{ flex: 1, fontSize: 13, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                <strong style={{ fontSize: 14, color: "#f1f5f9" }}>{p[valueKey]}{unit}</strong>
+              </div>
+            ))}
+          </div>
+        );
+        return (
+          <div key="leaderboard">
+            <AppCard title={t("pages.dashboard.leaderboardTitle") || "Classifica stagionale"}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18 }} className="no-mobile-override">
+                <LeaderCol title={t("pages.dashboard.leaderboardGoals") || "Gol"} icon="⚽" rows={top3Scorers} valueKey="goals" />
+                <LeaderCol title={t("pages.dashboard.leaderboardAssists") || "Assist"} icon="🎯" rows={top3Assists} valueKey="assists" />
+                <LeaderCol title={t("pages.dashboard.leaderboardMinutes") || "Minuti"} icon="⏱️" rows={top3Minutes} valueKey="minutes" unit="'" />
+              </div>
+            </AppCard>
+          </div>
+        );
+      }
 
       case "rosterStatus":
         if (!widgets.rosterStatus) return null;
@@ -1353,7 +1383,7 @@ function Dashboard({
               if (!isMobile) return true;
               const DASH_TAB_SECTIONS = {
                 oggi:    new Set(["nextEvent", "coachAlerts", "quickActions", "weekFocus"]),
-                squadra: new Set(["rosterStatus", "wellnessToday", "recentActivities", "rewardCenter"]),
+                squadra: new Set(["leaderboard", "rosterStatus", "wellnessToday", "recentActivities", "rewardCenter"]),
                 carico:  new Set(["kpis", "weeklyLoad"]),
               };
               return DASH_TAB_SECTIONS[dashTab]?.has(id) ?? true;

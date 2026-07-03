@@ -726,7 +726,7 @@ export default function PhysicalTests({
 
             <div style={{ display: "grid", gap: 14 }}>
               {/* Giocatore + data */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }} className="no-mobile-override">
                 <div style={{ display: "grid", gap: 6 }}>
                   <label style={pt.fieldLabel}>{t("pages.physicalTests.fieldPlayer")}</label>
                   <select
@@ -756,7 +756,7 @@ export default function PhysicalTests({
               </div>
 
               {/* Metriche in griglia 2 colonne */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }} className="no-mobile-override">
                 {METRICS.map((m) => (
                   <div key={m.key} style={{ display: "grid", gap: 5 }}>
                     <label style={pt.fieldLabel}>{m.icon} {m.label}{m.unit ? ` (${m.unit})` : ""}</label>

@@ -834,7 +834,7 @@ function SeasonReportPanel({ players, sessions, matches, physicalTests, appSetti
       title={t(`${T}.title`)}
       subtitle={t(`${T}.subtitle`, { teamName })}
     >
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }} className="no-mobile-override">
         {kpis.map((k) => (
           <div key={k.label} style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 12, padding: "12px 14px", textAlign: "center" }}>
             <div style={{ fontSize: 22, fontWeight: 900, color: "#60a5fa" }}>{k.value}</div>
