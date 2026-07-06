@@ -11,7 +11,7 @@ import { styles } from "../styles/index.js";
 import { formatDate, RPE_BY_MATCH_DAY } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
-import { getTeamWellnessToday } from "../services/wellness";
+import { getTeamWellnessToday, getTeamWellnessWeek } from "../services/wellness";
 
 const MICRO_DAYS = [
   { key: "MD+1", offset: -6, focusKey: "pages.microcycle.focusMDp1" },
@@ -422,9 +422,40 @@ function wellnessColor(v) {
   return "#4ade80";
 }
 
+function WellnessWeekChart({ data }) {
+  const BAR_W = 26, GAP = 5, H = 44, PAD = 4;
+  const W = data.length * (BAR_W + GAP) - GAP;
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <svg width={W} height={H + 18} viewBox={`0 0 ${W} ${H + 18}`} style={{ display: "block" }}>
+        {data.map(({ date, sleep, fatigue, mood }, i) => {
+          const vals = [sleep, fatigue, mood].filter(Boolean);
+          const mean = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+          const x = i * (BAR_W + GAP);
+          const barH = mean ? Math.max(4, Math.round(((mean - 1) / 4) * (H - PAD * 2))) : 4;
+          const col = mean ? wellnessColor(Math.round(mean)) : "#334155";
+          const label = date.slice(5).replace("-", "/");
+          return (
+            <g key={date}>
+              <rect x={x} y={H - PAD - barH} width={BAR_W} height={barH} rx={4} fill={col} fillOpacity={0.75} />
+              <text x={x + BAR_W / 2} y={H + 13} textAnchor="middle" fontSize={9} fill="#475569">{label}</text>
+              {mean > 0 && (
+                <text x={x + BAR_W / 2} y={H - PAD - barH - 3} textAnchor="middle" fontSize={9} fill={col} fontWeight="700">
+                  {mean.toFixed(1)}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 function WellnessPanel({ teamId, players }) {
-  const [rows, setRows]       = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [rows, setRows]         = useState([]);
+  const [weekData, setWeekData] = useState([]);
+  const [loading, setLoading]   = useState(false);
 
   useEffect(() => {
     if (!teamId) return;
@@ -432,8 +463,26 @@ function WellnessPanel({ teamId, players }) {
     async function load() {
       setLoading(true);
       try {
-        const { data } = await getTeamWellnessToday({ teamId });
-        if (!cancelled) setRows(data || []);
+        const [{ data: today }, { data: week }] = await Promise.all([
+          getTeamWellnessToday({ teamId }),
+          getTeamWellnessWeek({ teamId, days: 7 }),
+        ]);
+        if (!cancelled) {
+          setRows(today || []);
+          const byDate = {};
+          for (const r of (week || [])) {
+            if (!byDate[r.date]) byDate[r.date] = { sleep: [], fatigue: [], mood: [] };
+            if (r.sleep)   byDate[r.date].sleep.push(r.sleep);
+            if (r.fatigue) byDate[r.date].fatigue.push(r.fatigue);
+            if (r.mood)    byDate[r.date].mood.push(r.mood);
+          }
+          const avg = (arr) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+          setWeekData(
+            Object.entries(byDate)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([date, v]) => ({ date, sleep: avg(v.sleep), fatigue: avg(v.fatigue), mood: avg(v.mood) }))
+          );
+        }
       } catch (_e) { /* ignore */ }
       if (!cancelled) setLoading(false);
     }
@@ -497,6 +546,13 @@ function WellnessPanel({ teamId, players }) {
             ))}
           </div>
         </>
+      )}
+
+      {!loading && weekData.length >= 2 && (
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <p style={{ ...mc.eyebrow, marginBottom: 8 }}>Andamento 7 giorni · media squadra</p>
+          <WellnessWeekChart data={weekData} />
+        </div>
       )}
     </AppCard>
   );
