@@ -126,6 +126,7 @@ export const it = {
       attendanceRegister: "Registro presenze",
       microcycle: "Microciclo",
       aiBuilder: "Genera con AI",
+      teamGenerator: "Generatore squadre",
       tacticalBoard: "Lavagna",
       matches: "Partite",
       matchDay: "Match Day",

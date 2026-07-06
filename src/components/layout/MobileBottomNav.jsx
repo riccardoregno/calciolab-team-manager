@@ -37,6 +37,7 @@ const SECONDARY = [
   { to: "/post-match",        labelKey: "navigation.items.postMatch",        icon: "📝", roles: technicalRoles,    cat: "campo" },
   { to: "/set-plays",         labelKey: "navigation.items.setPlays",         icon: "📐", roles: technicalRoles,    cat: "campo" },
   { to: "/ai-session-builder",labelKey: "navigation.items.aiBuilder",        icon: "🤖", roles: technicalRoles,    cat: "campo" },
+  { to: "/team-generator",   labelKey: "navigation.items.teamGenerator",    icon: "⚖️", roles: technicalRoles,    cat: "campo" },
   // Fisico & Dati
   { to: "/physical-tests",    labelKey: "navigation.items.physicalTests",    icon: "⏱️", roles: physicalRoles,     cat: "fisico" },
   { to: "/physical-workouts", labelKey: "navigation.items.physicalWorkouts", icon: "🏃", roles: physicalRoles,     cat: "fisico" },

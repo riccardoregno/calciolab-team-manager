@@ -66,6 +66,7 @@ const PlayerPortal = lazy(() => import("./pages/PlayerPortal"));
 const Sponsors = lazy(() => import("./pages/Sponsors"));
 // const ExerciseLibrary = lazy(() => import("./pages/ExerciseLibrary")); // temporaneamente disabilitato
 const AiSessionBuilder = lazy(() => import("./pages/AiSessionBuilder"));
+const TeamGenerator    = lazy(() => import("./pages/TeamGenerator"));
 const Onboarding  = lazy(() => import("./pages/Onboarding"));
 const StaffChat        = lazy(() => import("./pages/StaffChat"));
 const PlayerComparison = lazy(() => import("./pages/PlayerComparison"));
@@ -802,6 +803,13 @@ function App() {
                       players={players}
                     />
                   </FeatureGate>, "sessions")
+                }
+              />
+
+              <Route
+                path="/team-generator"
+                element={
+                  gate(technicalRoles, <TeamGenerator players={players} />, "players")
                 }
               />
 
