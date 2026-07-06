@@ -1,3 +1,36 @@
+// ── Ruoli canonici del giocatore ──────────────────────────────────────────────
+export const PLAYER_ROLES = [
+  { value: "Portiere",              group: "Portieri" },
+  { value: "Difensore Centrale",    group: "Difensori" },
+  { value: "Terzino Destro",        group: "Difensori" },
+  { value: "Terzino Sinistro",      group: "Difensori" },
+  { value: "Terzino",               group: "Difensori" },
+  { value: "Mediano",               group: "Centrocampisti" },
+  { value: "Centrocampista",        group: "Centrocampisti" },
+  { value: "Mezzala",               group: "Centrocampisti" },
+  { value: "Trequartista",          group: "Centrocampisti" },
+  { value: "Ala Destra",            group: "Attaccanti" },
+  { value: "Ala Sinistra",          group: "Attaccanti" },
+  { value: "Ala",                   group: "Attaccanti" },
+  { value: "Seconda Punta",         group: "Attaccanti" },
+  { value: "Centravanti",           group: "Attaccanti" },
+];
+
+export const ROLE_GROUPS = ["Portieri", "Difensori", "Centrocampisti", "Attaccanti"];
+
+export function normalizeRoleToGroup(role = "") {
+  if (!role) return "Altro";
+  const found = PLAYER_ROLES.find((r) => r.value.toLowerCase() === role.toLowerCase());
+  if (found) return found.group;
+  const r = role.toLowerCase();
+  if (r.includes("port")) return "Portieri";
+  if (r.includes("dif") || r.includes("terzin") || r.includes("liber") || r.includes("stopper")) return "Difensori";
+  if (r.includes("med") || r.includes("cen") || r.includes("mez") || r.includes("inter") || r.includes("trequart") || r.includes("pivot")) return "Centrocampisti";
+  if (r.includes("att") || r.includes("punta") || r.includes("ala") || r.includes("second")) return "Attaccanti";
+  return "Altro";
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 function getAppLocale() {
   try {
     const lang = typeof window !== "undefined"

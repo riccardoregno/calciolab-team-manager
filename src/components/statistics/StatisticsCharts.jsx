@@ -16,6 +16,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { normalizeRoleToGroup } from "../../utils/helpers";
 
 /* ─── Tooltip style ─────────────────────────────────────────── */
 const TT = {
@@ -48,12 +49,7 @@ const cardTitle = {
 
 /** Normalizza il ruolo di un giocatore in 5 categorie */
 function normalizeRole(role = "") {
-  const r = role.toLowerCase();
-  if (r.includes("port") || r === "p") return "Portieri";
-  if (r.includes("dif") || r.includes("terzin") || r.includes("liber") || r.includes("stopper")) return "Difensori";
-  if (r.includes("med") || r.includes("cen") || r.includes("mez") || r.includes("inter") || r.includes("trequart") || r.includes("pivot")) return "Centrocampisti";
-  if (r.includes("att") || r.includes("punta") || r.includes("ala") || r.includes("second")) return "Attaccanti";
-  return "Altro";
+  return normalizeRoleToGroup(role) || "Altro";
 }
 
 /**

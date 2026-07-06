@@ -1060,9 +1060,16 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCa
         <strong style={{ display: "block", fontSize: 16, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {player.name}
         </strong>
-        <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>
-          {player.role || t("components.playerCard.noRole")}
-        </span>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 2, alignItems: "center" }}>
+          <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>
+            {player.role || t("components.playerCard.noRole")}
+          </span>
+          {(player.altRoles || []).map((r) => (
+            <span key={r} style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 999, background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.22)", color: "#7dd3fc" }}>
+              {r}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* Statistiche inline */}

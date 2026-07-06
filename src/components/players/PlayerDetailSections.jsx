@@ -15,7 +15,7 @@ import Button from "../ui/Button";
 
 import { useTranslation } from "../../i18n";
 import { styles } from "../../styles/index.js";
-import { formatShortDate, getPhysicalReference, parsePlayerBirthDate } from "../../utils/helpers";
+import { formatShortDate, getPhysicalReference, parsePlayerBirthDate, PLAYER_ROLES, ROLE_GROUPS } from "../../utils/helpers";
 
 const TT = {
   contentStyle: {
@@ -335,7 +335,12 @@ export function PlayerProfileTab({
 
       <div style={sectionStyles.formGrid}>
         <Field label={t("pages.playerDetail.profile.fieldName")}        value={form.name}        editing={editing} onChange={(v) => onFieldChange?.("name", v)} />
-        <Field label={t("pages.playerDetail.profile.fieldRole")}        value={form.role}        editing={editing} onChange={(v) => onFieldChange?.("role", v)} />
+        <RoleSelectField
+          label={t("pages.playerDetail.profile.fieldRole")}
+          value={form.role}
+          editing={editing}
+          onChange={(v) => onFieldChange?.("role", v)}
+        />
         <div style={{ minWidth: 0 }}>
           <FieldLabel>{t("pages.playerDetail.profile.fieldGroup")}</FieldLabel>
           {editing ? (
@@ -364,6 +369,17 @@ export function PlayerProfileTab({
           displayValue={formatBirthDateDisplay(form.birthDate)}
           editing={editing}
           onChange={(v) => onFieldChange?.("birthDate", v)}
+        />
+      </div>
+
+      {/* Ruoli secondari — occupa tutta la larghezza */}
+      <div style={{ marginTop: 14 }}>
+        <AltRolesField
+          label="Ruoli secondari"
+          primaryRole={form.role}
+          value={form.altRoles || []}
+          editing={editing}
+          onChange={(v) => onFieldChange?.("altRoles", v)}
         />
       </div>
 
@@ -1293,6 +1309,86 @@ function Field({ label, value, editing, onChange, type = "text", displayValue })
         />
       ) : (
         <ReadOnlyBox>{displayValue !== undefined ? displayValue : (value || "-")}</ReadOnlyBox>
+      )}
+    </div>
+  );
+}
+
+function RoleSelectField({ label, value, editing, onChange }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <FieldLabel>{label}</FieldLabel>
+      {editing ? (
+        <select
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          style={{ ...styles.input, width: "100%", minWidth: 0, boxSizing: "border-box" }}
+        >
+          <option value="">— Seleziona ruolo —</option>
+          {ROLE_GROUPS.map((group) => (
+            <optgroup key={group} label={group}>
+              {PLAYER_ROLES.filter((r) => r.group === group).map((r) => (
+                <option key={r.value} value={r.value}>{r.value}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      ) : (
+        <ReadOnlyBox>{value || "-"}</ReadOnlyBox>
+      )}
+    </div>
+  );
+}
+
+function AltRolesField({ label, primaryRole, value = [], editing, onChange }) {
+  const available = PLAYER_ROLES.filter((r) => r.value !== primaryRole);
+  const toggle = (role) => {
+    const next = value.includes(role) ? value.filter((r) => r !== role) : [...value, role];
+    onChange(next);
+  };
+  if (!editing && value.length === 0) return null;
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      {editing ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+          {ROLE_GROUPS.map((group) => {
+            const groupRoles = available.filter((r) => r.group === group);
+            if (!groupRoles.length) return null;
+            return (
+              <React.Fragment key={group}>
+                <div style={{ width: "100%", fontSize: 10, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 6 }}>{group}</div>
+                {groupRoles.map((r) => {
+                  const active = value.includes(r.value);
+                  return (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => toggle(r.value)}
+                      style={{
+                        padding: "5px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        background: active ? "rgba(56,189,248,0.18)" : "rgba(255,255,255,0.05)",
+                        border: `1px solid ${active ? "rgba(56,189,248,0.5)" : "rgba(255,255,255,0.12)"}`,
+                        color: active ? "#38bdf8" : "#94a3b8",
+                        transition: "0.12s",
+                      }}
+                    >
+                      {r.value}
+                    </button>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+          {value.map((r) => (
+            <span key={r} style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.25)", color: "#7dd3fc" }}>
+              {r}
+            </span>
+          ))}
+        </div>
       )}
     </div>
   );
