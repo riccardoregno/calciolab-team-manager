@@ -483,7 +483,7 @@ function PlayerView({
     if (activeTab !== "statistiche" || !teamId || !myPlayerId || !isSupabaseConfigured) return;
     let cancelled = false;
     supabase
-      .from("match_stats")
+      .from("player_matches")
       .select("match_id, minutes_played, goals, assists, yellow_cards, red_cards, rating")
       .eq("team_id", teamId)
       .eq("player_id", String(myPlayerId))

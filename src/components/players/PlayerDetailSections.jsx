@@ -1325,6 +1325,9 @@ function RoleSelectField({ label, value, editing, onChange }) {
           style={{ ...styles.input, width: "100%", minWidth: 0, boxSizing: "border-box" }}
         >
           <option value="">— Seleziona ruolo —</option>
+          {value && !PLAYER_ROLES.find((r) => r.value === value) && (
+            <option value={value}>{value}</option>
+          )}
           {ROLE_GROUPS.map((group) => (
             <optgroup key={group} label={group}>
               {PLAYER_ROLES.filter((r) => r.group === group).map((r) => (

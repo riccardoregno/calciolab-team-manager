@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -65,6 +65,13 @@ export default function TeamGenerator({ players = [] }) {
   const [selected, setSelected] = useState(() => new Set(availablePlayers.map((p) => String(p.id))));
   const [numTeams, setNumTeams] = useState(2);
   const [teams, setTeams]       = useState(null);
+  const initializedRef = useRef(availablePlayers.length > 0);
+  useEffect(() => {
+    if (!initializedRef.current && availablePlayers.length > 0) {
+      initializedRef.current = true;
+      setSelected(new Set(availablePlayers.map((p) => String(p.id))));
+    }
+  }, [availablePlayers]);
 
   function togglePlayer(id) {
     setSelected((prev) => {
@@ -182,7 +189,7 @@ export default function TeamGenerator({ players = [] }) {
                         <span style={{ flex: 1, fontSize: 14, fontWeight: isSelected ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {p.name}
                         </span>
-                        {p.shirtNumber && (
+                        {p.shirtNumber != null && (
                           <span style={{ fontSize: 11, color: "#475569", fontWeight: 700 }}>#{p.shirtNumber}</span>
                         )}
                       </button>
@@ -278,7 +285,7 @@ export default function TeamGenerator({ players = [] }) {
                           </p>
                           {gPlayers.map((p) => (
                             <div key={p.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                              {p.shirtNumber && (
+                              {p.shirtNumber != null && (
                                 <span style={{ fontSize: 10, color: "#475569", fontWeight: 800, minWidth: 18, textAlign: "right" }}>#{p.shirtNumber}</span>
                               )}
                               <span style={{ fontSize: 14, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

@@ -1,5 +1,9 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
+function localDateString(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 /** @param {{ teamId: string, playerId: string, date: string, sleep: number, fatigue: number, mood: number }} params
  * @returns {Promise<{data: any[], error: any}>} */
 export async function upsertWellness({ teamId, playerId, date, sleep, fatigue, mood }) {
@@ -23,7 +27,7 @@ export async function getPlayerWellness({ teamId, playerId, days = 14 }) {
     .select("date,sleep,fatigue,mood")
     .eq("team_id", teamId)
     .eq("player_id", String(playerId))
-    .gte("date", since.toISOString().slice(0, 10))
+    .gte("date", localDateString(since))
     .order("date", { ascending: false });
 }
 
@@ -31,7 +35,7 @@ export async function getPlayerWellness({ teamId, playerId, days = 14 }) {
  * @returns {Promise<{data: any[], error: any}>} */
 export async function getTeamWellnessToday({ teamId }) {
   if (!isSupabaseConfigured) return { data: [], error: null };
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString();
   return supabase
     .from("player_wellness")
     .select("player_id,sleep,fatigue,mood")
@@ -49,6 +53,6 @@ export async function getTeamWellnessWeek({ teamId, days = 7 }) {
     .from("player_wellness")
     .select("player_id,date,sleep,fatigue,mood")
     .eq("team_id", teamId)
-    .gte("date", since.toISOString().slice(0, 10))
+    .gte("date", localDateString(since))
     .order("date", { ascending: true });
 }

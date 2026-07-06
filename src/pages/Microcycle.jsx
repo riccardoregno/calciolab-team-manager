@@ -280,7 +280,7 @@ export default function Microcycle({
                 <Button variant="ghost" onClick={() => navigate(`/post-match/${postMatchFocus.match.id}`)}>
                   {t("pages.microcycle.btnOpenPostMatch")}
                 </Button>
-                <Button onClick={() => createTrainingFromDay(microDays[1] || microDays[0])}>
+                <Button onClick={() => { const d = microDays[1] || microDays[0]; if (d) createTrainingFromDay(d); }}>
                   {t("pages.microcycle.btnCreateSession")}
                 </Button>
               </div>

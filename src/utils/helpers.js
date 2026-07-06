@@ -24,7 +24,7 @@ export function normalizeRoleToGroup(role = "") {
   if (found) return found.group;
   const r = role.toLowerCase();
   if (r.includes("port")) return "Portieri";
-  if (r.includes("dif") || r.includes("terzin") || r.includes("liber") || r.includes("stopper")) return "Difensori";
+  if (r.includes("dif") || r.includes("terzin") || r.includes("liber") || r.includes("stopper") || r.includes("later")) return "Difensori";
   if (r.includes("med") || r.includes("cen") || r.includes("mez") || r.includes("inter") || r.includes("trequart") || r.includes("pivot")) return "Centrocampisti";
   if (r.includes("att") || r.includes("punta") || r.includes("ala") || r.includes("second")) return "Attaccanti";
   return "Altro";
