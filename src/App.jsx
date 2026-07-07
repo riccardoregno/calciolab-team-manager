@@ -809,7 +809,7 @@ function App() {
               <Route
                 path="/team-generator"
                 element={
-                  gate(technicalRoles, <TeamGenerator players={players} />, "players")
+                  gate(technicalRoles, <TeamGenerator players={players} teamId={auth.team?.id || null} />, "players")
                 }
               />
 
