@@ -488,6 +488,7 @@ function PlayerView({
       .eq("team_id", teamId)
       .eq("player_id", String(myPlayerId))
       .order("match_id", { ascending: false })
+      // match_id non è cronologico — il sort per data avviene lato client dopo join con matches
       .then(({ data }) => {
         if (!cancelled) setMyMatchStats(data || []);
       });
@@ -1037,63 +1038,81 @@ function PlayerView({
         )}
 
         {/* STATISTICHE */}
-        {activeTab === "statistiche" && (
-          <div style={{ display: "grid", gap: 16 }}>
-            {/* KPI stagionali */}
-            <AppCard>
-              <h3 style={{ ...ps.sectionTitle, marginBottom: 14 }}>La mia stagione</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(100px,1fr))", gap: 10 }}>
-                {[
-                  { label: "Presenze",  value: summary.stats.presences, color: "#38bdf8" },
-                  { label: "Minuti",    value: summary.stats.minutes,   color: "#38bdf8" },
-                  { label: "Gol",       value: summary.stats.goals,     color: "#4ade80" },
-                  { label: "Assist",    value: summary.stats.assists,   color: "#a78bfa" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} style={{ textAlign: "center", padding: "14px 8px", borderRadius: 12, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <div style={{ fontSize: 10, color: "#64748b", fontWeight: 900, textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
-                    <div style={{ fontSize: 26, fontWeight: 900, color }}>{value || 0}</div>
-                  </div>
-                ))}
-              </div>
-            </AppCard>
+        {activeTab === "statistiche" && (() => {
+          // KPI calcolati da player_matches (più precisi per partite) con fallback a summary
+          const hasMatchData = myMatchStats !== null && myMatchStats.length > 0;
+          const matchGoals   = hasMatchData ? myMatchStats.reduce((s, r) => s + Number(r.goals || 0), 0) : summary.stats.goals;
+          const matchAssists = hasMatchData ? myMatchStats.reduce((s, r) => s + Number(r.assists || 0), 0) : summary.stats.assists;
+          const matchMinutes = hasMatchData ? myMatchStats.reduce((s, r) => s + Number(r.minutes_played || 0), 0) : summary.stats.minutes;
+          const ratings      = (myMatchStats || []).map((r) => Number(r.rating)).filter((v) => v > 0);
+          const avgRating    = ratings.length ? (ratings.reduce((s, v) => s + v, 0) / ratings.length).toFixed(1) : null;
 
-            {/* Storico partite */}
-            <AppCard>
-              <h3 style={{ ...ps.sectionTitle, marginBottom: 14 }}>Storico partite</h3>
-              {myMatchStats === null && <p style={ps.muted}>Caricamento…</p>}
-              {myMatchStats !== null && myMatchStats.length === 0 && (
-                <p style={ps.muted}>Nessuna statistica registrata per te ancora.</p>
-              )}
-              {myMatchStats !== null && myMatchStats.length > 0 && (
-                <div style={{ display: "grid", gap: 8 }}>
-                  {myMatchStats.map((row) => {
-                    const match = matches.find((m) => String(m.id) === String(row.match_id));
-                    return (
-                      <div key={row.match_id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "10px 14px", borderRadius: 12, background: "rgba(15,23,42,0.55)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                        <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {match ? (match.opponent ? `vs ${match.opponent}` : match.title || "Partita") : "Partita"}
-                          </div>
-                          {match && <div style={{ fontSize: 11, color: "#64748b" }}>{match.date}</div>}
-                        </div>
-                        <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
-                          {row.minutes_played > 0 && <StatPill label="min" value={row.minutes_played} />}
-                          {row.goals > 0 && <StatPill label="⚽" value={row.goals} color="#4ade80" />}
-                          {row.assists > 0 && <StatPill label="🅰️" value={row.assists} color="#a78bfa" />}
-                          {row.yellow_cards > 0 && <StatPill label="🟨" value={row.yellow_cards} color="#fbbf24" />}
-                          {row.red_cards > 0 && <StatPill label="🟥" value={row.red_cards} color="#f87171" />}
-                          {row.rating != null && (
-                            <StatPill label="voto" value={Number(row.rating).toFixed(1)} color="#38bdf8" />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+          // Storico ordinato per data partita (decrescente)
+          const sortedStats = [...(myMatchStats || [])].sort((a, b) => {
+            const ma = matches.find((m) => String(m.id) === String(a.match_id));
+            const mb = matches.find((m) => String(m.id) === String(b.match_id));
+            return (mb?.date || "").localeCompare(ma?.date || "");
+          });
+
+          return (
+            <div style={{ display: "grid", gap: 16 }}>
+              {/* KPI stagionali */}
+              <AppCard>
+                <h3 style={{ ...ps.sectionTitle, marginBottom: 14 }}>La mia stagione</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(90px,1fr))", gap: 10 }}>
+                  {[
+                    { label: "Presenze",  value: summary.stats.presences, color: "#38bdf8" },
+                    { label: "Minuti",    value: matchMinutes,             color: "#38bdf8" },
+                    { label: "Gol",       value: matchGoals,               color: "#4ade80" },
+                    { label: "Assist",    value: matchAssists,             color: "#a78bfa" },
+                    ...(avgRating ? [{ label: "Voto medio", value: avgRating, color: "#fbbf24" }] : []),
+                  ].map(({ label, value, color }) => (
+                    <div key={label} style={{ textAlign: "center", padding: "14px 8px", borderRadius: 12, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                      <div style={{ fontSize: 10, color: "#64748b", fontWeight: 900, textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
+                      <div style={{ fontSize: 26, fontWeight: 900, color }}>{value ?? 0}</div>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </AppCard>
-          </div>
-        )}
+              </AppCard>
+
+              {/* Storico partite */}
+              <AppCard>
+                <h3 style={{ ...ps.sectionTitle, marginBottom: 14 }}>Storico partite</h3>
+                {myMatchStats === null && <p style={ps.muted}>Caricamento…</p>}
+                {myMatchStats !== null && myMatchStats.length === 0 && (
+                  <p style={ps.muted}>Nessuna statistica di partita registrata per te ancora.</p>
+                )}
+                {myMatchStats !== null && myMatchStats.length > 0 && (
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {sortedStats.map((row) => {
+                      const match = matches.find((m) => String(m.id) === String(row.match_id));
+                      return (
+                        <div key={row.match_id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "10px 14px", borderRadius: 12, background: "rgba(15,23,42,0.55)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                          <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {match ? (match.opponent ? `vs ${match.opponent}` : match.title || "Partita") : "Partita"}
+                            </div>
+                            {match?.date && <div style={{ fontSize: 11, color: "#64748b" }}>{match.date}</div>}
+                          </div>
+                          <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
+                            {row.minutes_played > 0 && <StatPill label="min" value={row.minutes_played} />}
+                            {row.goals > 0 && <StatPill label="⚽" value={row.goals} color="#4ade80" />}
+                            {row.assists > 0 && <StatPill label="🅰️" value={row.assists} color="#a78bfa" />}
+                            {row.yellow_cards > 0 && <StatPill label="🟨" value={row.yellow_cards} color="#fbbf24" />}
+                            {row.red_cards > 0 && <StatPill label="🟥" value={row.red_cards} color="#f87171" />}
+                            {row.rating != null && (
+                              <StatPill label="voto" value={Number(row.rating).toFixed(1)} color="#38bdf8" />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </AppCard>
+            </div>
+          );
+        })()}
 
         {/* COMUNICAZIONI */}
         {activeTab === "comunicazioni" && (
