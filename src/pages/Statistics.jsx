@@ -8,7 +8,7 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 
-import { formatDate, normalizeAppSettings } from "../utils/helpers";
+import { formatDate, localDateString, normalizeAppSettings } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { loadAllPlayerStats, loadPlayerMatches, loadPlayerMatchesForPeriod } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
@@ -130,14 +130,14 @@ function Statistics({
   const [caricoMatchCount, setCaricoMatchCount] = useState(0);
 
   function getCaricoRange() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateString();
     if (caricoPreset === "custom") {
       if (!caricoFrom) return { from: null, to: null, invalid: true };
       return { from: caricoFrom, to: caricoTo || today };
     }
     const d = new Date();
     d.setDate(d.getDate() - parseInt(caricoPreset, 10));
-    return { from: d.toISOString().slice(0, 10), to: today };
+    return { from: localDateString(d), to: today };
   }
 
   useEffect(() => {

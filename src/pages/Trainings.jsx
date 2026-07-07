@@ -16,7 +16,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useAreaPermission } from "../components/auth/permissionContext";
 
 import { styles } from "../styles/index.js";
-import { createId, formatDate, getPlayerUnavailabilityOnDate, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
+import { createId, formatDate, getPlayerUnavailabilityOnDate, localDateString, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { sendTeamNotification } from "../services/notifications";
 import RpeMatrix from "../components/statistics/RpeMatrix";
@@ -284,7 +284,7 @@ function Trainings({
 
     setForm({
       title: session.title || "",
-      date: session.date || new Date().toISOString().slice(0, 10),
+      date: session.date || localDateString(),
       type: session.type || "Allenamento",
       theme: session.theme || "Costruzione",
       matchDayDistance: session.matchDayDistance || "MD-3",
@@ -1155,7 +1155,7 @@ function Trainings({
 function emptyTraining() {
   return {
     title: "",
-    date: new Date().toISOString().slice(0, 10),
+    date: localDateString(),
     type: "Allenamento",
     theme: "Costruzione",
     matchDayDistance: "MD-3",
@@ -1419,11 +1419,11 @@ function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, on
     return d;
   });
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localDateString();
   const weekLabel = `${days[0].toLocaleDateString("it-IT", { day: "2-digit", month: "short" })} – ${days[6].toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })}`;
 
   const sessionsByDay = {};
-  days.forEach((d) => { sessionsByDay[d.toISOString().slice(0, 10)] = []; });
+  days.forEach((d) => { sessionsByDay[localDateString(d)] = []; });
   sessions.forEach((s) => {
     if (s.date && sessionsByDay[s.date]) sessionsByDay[s.date].push(s);
   });
@@ -1450,7 +1450,7 @@ function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, on
       {/* Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
         {days.map((d, i) => {
-          const dateStr = d.toISOString().slice(0, 10);
+          const dateStr = localDateString(d);
           const isToday = dateStr === todayStr;
           const daySessions = sessionsByDay[dateStr] || [];
           return (

@@ -9,6 +9,7 @@ import { touchPlayerPortalActivity } from "../services/playerPortalActivity";
 import { fetchPlayerRpe, upsertRpe } from "../services/sessionRpe";
 import { upsertWellness, getPlayerWellness } from "../services/wellness";
 import { deleteTeamAttachment, uploadTeamAttachment } from "../services/attachments";
+import { localDateString } from "../utils/helpers";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -445,7 +446,7 @@ function PlayerView({
 
   const fetchAvailability = useCallback(async () => {
     if (!teamId || !myPlayerId) return;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateString();
     const { data } = await fetchPlayerAvailability({ teamId, playerId: myPlayerId });
     if (!mountedRef.current) return;
     const current = (data || []).find((r) => r.date_from === today && !r.date_to) || null;
@@ -464,7 +465,7 @@ function PlayerView({
         (data || []).forEach((r) => { map[r.event_id] = r; });
         setRpeMap(map);
       }).catch(() => {});
-      const today = new Date().toISOString().slice(0, 10);
+      const today = localDateString();
       getPlayerWellness({ teamId, playerId: myPlayerId, days: 7 }).then(({ data }) => {
         if (!mountedRef.current) return;
         const rows = data || [];
@@ -542,7 +543,7 @@ function PlayerView({
     if (wellnessSaving || !teamId || !myPlayerId) return;
     if (!wellness.sleep || !wellness.fatigue || !wellness.mood) return;
     setWellnessSaving(true);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateString();
     await upsertWellness({ teamId, playerId: myPlayerId, date: today, ...wellness });
     setWellnessSaved(true);
     setWellnessSaving(false);
@@ -1255,7 +1256,7 @@ function CommPanel({ comms, onAdd, onDelete, teamId }) {
 
   function handleAdd() {
     if (!title.trim()) return;
-    onAdd({ title: title.trim(), body: body.trim(), priority, attachment, date: new Date().toISOString().slice(0, 10) });
+    onAdd({ title: title.trim(), body: body.trim(), priority, attachment, date: localDateString() });
     setTitle("");
     setBody("");
     setPriority("info");
@@ -2120,7 +2121,7 @@ function CalendarioTab({ year, month, onPrev, onNext, sessions, myConvocations }
   const monthStr    = `${year}-${String(month + 1).padStart(2, "0")}`;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const startDow    = (new Date(year, month, 1).getDay() + 6) % 7; // 0=Mon
-  const todayStr    = new Date().toISOString().slice(0, 10);
+  const todayStr    = localDateString();
 
   // eventMap: "dd" → [{...event, _type}]
   const eventMap = {};
