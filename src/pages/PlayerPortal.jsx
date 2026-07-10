@@ -437,7 +437,9 @@ function PlayerView({
       .from("rsvp_tokens")
       .select("match_id, response, responded_at")
       .eq("team_id", teamId)
-      .eq("player_id", String(myPlayerId));
+      .eq("player_id", String(myPlayerId))
+      .order("responded_at", { ascending: false })
+      .limit(100);
     if (!mountedRef.current || !data) return;
     const map = {};
     data.forEach((r) => { map[String(r.match_id)] = r; });

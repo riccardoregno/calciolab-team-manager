@@ -6,9 +6,10 @@ export async function fetchTeamRpe({ teamId }) {
   if (!isSupabaseConfigured || !teamId) return { data: [] };
   const { data, error } = await supabase
     .from("session_rpe")
-    .select("*")
+    .select("player_id, event_id, event_type, rpe_value, notes, created_at")
     .eq("team_id", teamId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(300);
   return { data: data || [], error };
 }
 
@@ -18,10 +19,11 @@ export async function fetchPlayerRpe({ teamId, playerId }) {
   if (!isSupabaseConfigured || !teamId || !playerId) return { data: [] };
   const { data, error } = await supabase
     .from("session_rpe")
-    .select("*")
+    .select("player_id, event_id, event_type, rpe_value, notes, created_at")
     .eq("team_id", teamId)
     .eq("player_id", String(playerId))
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(100);
   return { data: data || [], error };
 }
 

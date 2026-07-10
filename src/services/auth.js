@@ -306,7 +306,8 @@ async function getTeamPlayerCounts(teamIds) {
   const { data, error } = await supabase
     .from("players")
     .select("team_id")
-    .in("team_id", teamIds);
+    .in("team_id", teamIds)
+    .limit(500);
 
   if (error) {
     if (import.meta.env.DEV) {

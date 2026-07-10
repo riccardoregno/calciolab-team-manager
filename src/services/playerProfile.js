@@ -68,7 +68,10 @@ export async function loadPlayerById(teamId, playerId) {
 export async function loadAllPlayerStats(teamId, season) {
   if (!isSupabaseConfigured || !teamId) return { data: {}, error: null };
 
-  let query = supabase.from("player_stats").select("*").eq("team_id", teamId);
+  let query = supabase
+    .from("player_stats")
+    .select("player_id, season, goals, assists, minutes_played, yellow_cards, red_cards, appearances, updated_at")
+    .eq("team_id", teamId);
   if (season) query = query.eq("season", season);
 
   const { data, error } = await query;
@@ -96,7 +99,8 @@ export async function loadTeamRecentRatings(teamId, lastN = 5) {
     .from("player_matches")
     .select("player_id, rating, matches(date)")
     .eq("team_id", teamId)
-    .not("rating", "is", null);
+    .not("rating", "is", null)
+    .limit(500);
 
   if (error) {
     if (import.meta.env.DEV) console.error("[playerProfile] loadTeamRecentRatings:", error.message);
@@ -132,7 +136,8 @@ export async function loadAllPlayerAvgRatings(teamId) {
     .from("player_matches")
     .select("player_id, rating")
     .eq("team_id", teamId)
-    .not("rating", "is", null);
+    .not("rating", "is", null)
+    .limit(500);
 
   if (error) {
     if (import.meta.env.DEV) console.error("[playerProfile] loadAllPlayerAvgRatings:", error.message);
@@ -165,7 +170,7 @@ export async function loadPlayerStats(teamId, playerId) {
 
   const { data, error } = await supabase
     .from("player_stats")
-    .select("*")
+    .select("player_id, season, goals, assists, minutes_played, yellow_cards, red_cards, appearances, updated_at")
     .eq("team_id", teamId)
     .eq("player_id", playerId)
     .maybeSingle();
@@ -198,9 +203,10 @@ export async function loadPlayerMatches(teamId, playerId) {
 
   const { data, error } = await supabase
     .from("player_matches")
-    .select("*")
+    .select("player_id, match_id, goals, assists, minutes_played, yellow_cards, red_cards, rating")
     .eq("team_id", teamId)
-    .eq("player_id", playerId);
+    .eq("player_id", playerId)
+    .limit(200);
 
   if (error && import.meta.env.DEV) console.error("[playerProfile] loadPlayerMatches:", error.message);
   return { data: data || [], error };
@@ -214,7 +220,7 @@ export async function loadMatchStats(teamId, matchId) {
 
   const { data, error } = await supabase
     .from("player_matches")
-    .select("*")
+    .select("player_id, match_id, goals, assists, minutes_played, yellow_cards, red_cards, rating")
     .eq("team_id", teamId)
     .eq("match_id", String(matchId));
 

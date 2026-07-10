@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { localDateString } from "../utils/helpers";
 
 // Fetch all availability records for a team (staff view) or for a single player
 /** @param {{ teamId: string, playerId?: string }} params
@@ -8,9 +9,10 @@ export async function fetchPlayerAvailability({ teamId, playerId = null }) {
 
   let query = supabase
     .from("player_availability")
-    .select("*")
+    .select("id, player_id, status, reason, date_from, date_to, created_at")
     .eq("team_id", teamId)
-    .order("date_from", { ascending: false });
+    .order("date_from", { ascending: false })
+    .limit(200);
 
   if (playerId) query = query.eq("player_id", String(playerId));
 
@@ -30,7 +32,7 @@ export async function setPlayerAvailability({ teamId, playerId, status, reason =
     return { error: new Error("Status non valido") };
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString();
 
   const { data: existing } = await supabase
     .from("player_availability")
