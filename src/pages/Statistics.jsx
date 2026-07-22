@@ -26,6 +26,7 @@ function Statistics({
   const settings = normalizeAppSettings(appSettings);
   const activeSeason = settings.workspaceProfile.currentSeason;
 
+  const [squadraFilter, setSquadraFilter] = useState("prima");
   const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || "");
   const [eventType, setEventType] = useState("Tutti");
   const [fromDate, setFromDate] = useState("");
@@ -224,7 +225,10 @@ function Statistics({
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const stats = useMemo(() => {
-    const baseStats = getStatsSummary(filteredEvents, players, playerStatsMap);
+    const filteredPlayers = squadraFilter === "prima"
+    ? players.filter((p) => p.squadra !== "juniores")
+    : players;
+  const baseStats = getStatsSummary(filteredEvents, filteredPlayers, playerStatsMap);
 
     return [...baseStats]
       .filter((player) =>
@@ -296,6 +300,7 @@ function Statistics({
     minGoals,
     minPresences,
     minAvgMinutes,
+    squadraFilter,
   ]);
 
   const selectedPlayer = players.find(
@@ -719,6 +724,22 @@ function Statistics({
                 {t("pages.statistics.exportCsv")}
               </button>
             </div>
+          </div>
+
+          {/* Toggle Prima squadra / Tutti */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+            {[{ v: "prima", label: "Prima squadra" }, { v: "tutti", label: "Tutti" }].map(({ v, label }) => (
+              <button
+                key={v}
+                onClick={() => setSquadraFilter(v)}
+                style={{
+                  padding: "5px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: squadraFilter === v ? "rgba(56,189,248,0.18)" : "rgba(255,255,255,0.05)",
+                  color: squadraFilter === v ? "#38bdf8" : "#94a3b8",
+                }}
+              >{label}</button>
+            ))}
           </div>
 
           {/* Barra ricerca + filtri secondari */}
