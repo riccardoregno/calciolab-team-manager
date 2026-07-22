@@ -15,6 +15,7 @@ import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useAreaPermission } from "../components/auth/permissionContext";
 
+import { uploadTeamAttachment } from "../services/attachments";
 import { styles } from "../styles/index.js";
 import { createId, formatDate, getPlayerUnavailabilityOnDate, localDateString, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 import { useTranslation } from "../i18n";
@@ -161,10 +162,9 @@ function Trainings({
     });
   }, [form.exercises, allExercises, t]);
 
-  const totalMinutes = selectedExercises.reduce(
-    (sum, item) => sum + Number(item.customDuration || item.duration || 0),
-    0
-  );
+  const totalMinutes =
+    selectedExercises.reduce((sum, item) => sum + Number(item.customDuration || item.duration || 0), 0) +
+    (form.sessionBlocks || []).reduce((sum, b) => sum + (Number(b.duration) || 0), 0);
   const sessionAvailability = useMemo(
     () => getSessionAvailability(players, form.date),
     [players, form.date]
@@ -600,9 +600,11 @@ function Trainings({
   {/* ── Session Builder: blocchi strutturati ── */}
   <SessionBlockBuilder
     blocks={form.sessionBlocks || []}
-    onChange={(blocks) => setForm({ ...form, sessionBlocks: blocks })}
+    onChange={(blocks) => setForm((prev) => ({ ...prev, sessionBlocks: blocks }))}
     onSave={canManage ? saveTraining : null}
     saveLabel={editingId ? t("pages.trainings.updateSession") : t("pages.trainings.saveSession")}
+    teamId={teamId}
+    canManage={canManage}
   />
 
           <AppCard>
@@ -1693,25 +1695,44 @@ const trainingStyles = {
 /* ── Session Builder ──────────────────────────────────────────── */
 
 function emptyBlock() {
-  return { id: Math.random().toString(36).slice(2), phase: "Parte principale", name: "", duration: 15, intensity: 5, notes: "" };
+  return {
+    id: Math.random().toString(36).slice(2),
+    phase: "Parte principale",
+    name: "",
+    duration: 15,
+    intensity: 5,
+    notes: "",
+    description: "",
+    image: null,
+  };
 }
 
-function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel }) {
-  const [open, setOpen] = useState(false);
+function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canManage }) {
+  const [uploading, setUploading] = useState({});
 
-  function addBlock() {
-    onChange([...blocks, emptyBlock()]);
-    setOpen(true);
+  async function handleImageUpload(blockId, file) {
+    if (!file) return;
+    const localUrl = URL.createObjectURL(file);
+    onChange(blocks.map((b) => b.id === blockId ? { ...b, image: { url: localUrl, uploading: true } } : b));
+
+    if (teamId) {
+      setUploading((u) => ({ ...u, [blockId]: true }));
+      try {
+        const att = await uploadTeamAttachment({ teamId, folder: "session-blocks", file });
+        onChange(blocks.map((b) => b.id === blockId ? { ...b, image: { url: att.url, path: att.path } } : b));
+      } catch {
+        onChange(blocks.map((b) => b.id === blockId ? { ...b, image: { url: localUrl } } : b));
+      } finally {
+        setUploading((u) => ({ ...u, [blockId]: false }));
+      }
+    }
   }
 
-  function removeBlock(id) {
-    onChange(blocks.filter((b) => b.id !== id));
-  }
-
+  function addBlock() { onChange([...blocks, emptyBlock()]); }
+  function removeBlock(id) { onChange(blocks.filter((b) => b.id !== id)); }
   function updateBlock(id, field, value) {
     onChange(blocks.map((b) => b.id === id ? { ...b, [field]: value } : b));
   }
-
   function moveBlock(idx, dir) {
     const next = [...blocks];
     const swap = idx + dir;
@@ -1724,120 +1745,152 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel }) {
 
   return (
     <AppCard>
-      <div
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", marginBottom: open ? 16 : 0 }}
-        onClick={() => setOpen((v) => !v)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && setOpen((v) => !v)}
-      >
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 18 }}>🧱</span>
-            <strong style={{ fontSize: 16 }}>Struttura seduta</strong>
-            {blocks.length > 0 && <Badge tone="blue">{blocks.length} blocchi · {totalMin} min</Badge>}
+          <div style={trainingStyles.stepHeader}>
+            <span style={trainingStyles.stepBadge}>2</span>
+            <span>Piano della seduta</span>
           </div>
-          <p style={{ color: "#64748b", margin: "4px 0 0", fontSize: 13 }}>
-            Definisci riscaldamento, esercitazioni e defaticamento con durata e intensità
+          <h3 style={{ margin: "4px 0 0", lineHeight: 1.2 }}>Blocchi e esercitazioni</h3>
+          <p style={{ color: "#64748b", margin: "6px 0 0", fontSize: 13, lineHeight: 1.45 }}>
+            Costruisci la seduta blocco per blocco: tipo, durata, descrizione e foto opzionale.
           </p>
         </div>
-        <span style={{ fontSize: 20, color: "#475569", flexShrink: 0 }}>{open ? "▲" : "▼"}</span>
+        {blocks.length > 0 && <Badge tone="blue">{blocks.length} blocchi · {totalMin} min</Badge>}
       </div>
 
-      {open && (
-        <div>
-          {blocks.length === 0 && (
-            <p style={{ color: "#475569", fontSize: 13, textAlign: "center", padding: "20px 0" }}>
-              Nessun blocco ancora. Aggiungine uno per strutturare la seduta.
-            </p>
-          )}
-
-          <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
-            {blocks.map((block, idx) => {
-              const phaseColor = PHASE_OPTIONS.find((p) => p.id === block.phase)?.color || "#94a3b8";
-              return (
-                <div
-                  key={block.id}
-                  style={{
-                    padding: "12px 14px", borderRadius: 14,
-                    background: "rgba(15,23,42,0.55)",
-                    border: `1px solid ${phaseColor}44`,
-                    display: "grid", gap: 10,
-                  }}
-                >
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    {/* Fase */}
-                    <select
-                      value={block.phase}
-                      onChange={(e) => updateBlock(block.id, "phase", e.target.value)}
-                      style={{ ...styles.input, flex: "0 0 auto", width: "auto", fontSize: 12, padding: "4px 8px", color: phaseColor, fontWeight: 800 }}
-                    >
-                      {PHASE_OPTIONS.map((p) => <option key={p.id} value={p.id}>{p.id}</option>)}
-                    </select>
-
-                    {/* Nome esercizio */}
-                    <input
-                      placeholder="Nome esercizio / esercitazione…"
-                      value={block.name}
-                      onChange={(e) => updateBlock(block.id, "name", e.target.value)}
-                      style={{ ...styles.input, flex: "1 1 160px", fontSize: 13, padding: "4px 10px" }}
-                    />
-
-                    {/* Durata */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                      <input
-                        type="number" min={1} max={120}
-                        value={block.duration}
-                        onChange={(e) => updateBlock(block.id, "duration", Number(e.target.value))}
-                        style={{ ...styles.input, width: 52, fontSize: 13, padding: "4px 6px", textAlign: "center" }}
-                      />
-                      <span style={{ color: "#64748b", fontSize: 12 }}>min</span>
-                    </div>
-
-                    {/* Intensità */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                      <span style={{ color: "#64748b", fontSize: 11 }}>Int.</span>
-                      <input
-                        type="number" min={1} max={10}
-                        value={block.intensity}
-                        onChange={(e) => updateBlock(block.id, "intensity", Number(e.target.value))}
-                        style={{ ...styles.input, width: 44, fontSize: 13, padding: "4px 6px", textAlign: "center" }}
-                      />
-                      <span style={{ color: "#64748b", fontSize: 12 }}>/10</span>
-                    </div>
-
-                    {/* Controlli ordine + rimozione */}
-                    <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
-                      <button onClick={() => moveBlock(idx, -1)} disabled={idx === 0} style={sbtnStyle} aria-label="Sposta su">↑</button>
-                      <button onClick={() => moveBlock(idx, 1)} disabled={idx === blocks.length - 1} style={sbtnStyle} aria-label="Sposta giù">↓</button>
-                      <button onClick={() => removeBlock(block.id)} style={{ ...sbtnStyle, color: "#f87171" }} aria-label="Elimina blocco">✕</button>
-                    </div>
-                  </div>
-
-                  {/* Note opzionali */}
-                  <input
-                    placeholder="Note (opzionali)…"
-                    value={block.notes}
-                    onChange={(e) => updateBlock(block.id, "notes", e.target.value)}
-                    style={{ ...styles.input, fontSize: 12, padding: "4px 10px", color: "#94a3b8" }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <Button variant="ghost" onClick={addBlock} style={{ flex: 1 }}>
-              + Aggiungi blocco
-            </Button>
-            {onSave && (
-              <Button onClick={(e) => { e.stopPropagation(); onSave(); }} style={{ flex: 1 }}>
-                💾 {saveLabel}
-              </Button>
-            )}
-          </div>
+      {/* Blocchi */}
+      {blocks.length === 0 && (
+        <div style={{ textAlign: "center", padding: "28px 0", color: "#475569", fontSize: 13 }}>
+          Nessun blocco ancora — clicca <strong style={{ color: "#94a3b8" }}>+ Aggiungi blocco</strong> per iniziare.
         </div>
       )}
+
+      <div style={{ display: "grid", gap: 14, marginBottom: blocks.length ? 16 : 0 }}>
+        {blocks.map((block, idx) => {
+          const phase = PHASE_OPTIONS.find((p) => p.id === block.phase) || PHASE_OPTIONS[2];
+          return (
+            <div
+              key={block.id}
+              style={{
+                borderRadius: 14,
+                background: "rgba(15,23,42,0.6)",
+                border: `1px solid rgba(255,255,255,0.07)`,
+                borderLeft: `4px solid ${phase.color}`,
+                overflow: "hidden",
+              }}
+            >
+              {/* Fase + controlli */}
+              <div style={{
+                display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap",
+                padding: "10px 12px",
+                borderBottom: "1px solid rgba(255,255,255,0.05)",
+                background: "rgba(0,0,0,0.15)",
+              }}>
+                {PHASE_OPTIONS.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => updateBlock(block.id, "phase", p.id)}
+                    style={{
+                      padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+                      cursor: "pointer",
+                      border: `1px solid ${p.color}55`,
+                      background: block.phase === p.id ? `${p.color}22` : "transparent",
+                      color: block.phase === p.id ? p.color : "#475569",
+                      transition: "all .15s",
+                    }}
+                  >{p.id}</button>
+                ))}
+                <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+                  <button onClick={() => moveBlock(idx, -1)} disabled={idx === 0} style={sbtnStyle} aria-label="Sposta su">↑</button>
+                  <button onClick={() => moveBlock(idx, 1)} disabled={idx === blocks.length - 1} style={sbtnStyle} aria-label="Sposta giù">↓</button>
+                  <button onClick={() => removeBlock(block.id)} style={{ ...sbtnStyle, color: "#f87171" }} aria-label="Elimina">✕</button>
+                </div>
+              </div>
+
+              {/* Corpo blocco */}
+              <div style={{ padding: "12px 14px", display: "grid", gap: 10 }}>
+                {/* Nome + durata */}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    placeholder="Nome esercitazione…"
+                    value={block.name}
+                    onChange={(e) => updateBlock(block.id, "name", e.target.value)}
+                    style={{ ...styles.input, flex: 1, fontSize: 14, fontWeight: 600 }}
+                  />
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                    <input
+                      type="number" min={1} max={120}
+                      value={block.duration}
+                      onChange={(e) => updateBlock(block.id, "duration", Number(e.target.value))}
+                      style={{ ...styles.input, width: 58, textAlign: "center", fontSize: 14, fontWeight: 700 }}
+                    />
+                    <span style={{ color: "#64748b", fontSize: 12 }}>min</span>
+                  </div>
+                </div>
+
+                {/* Descrizione */}
+                <textarea
+                  placeholder="Descrizione, varianti, note tattiche…"
+                  value={block.description || block.notes || ""}
+                  onChange={(e) => updateBlock(block.id, "description", e.target.value)}
+                  rows={3}
+                  style={{ ...styles.input, resize: "vertical", fontSize: 13, lineHeight: 1.55, color: "#cbd5e1" }}
+                />
+
+                {/* Foto */}
+                {block.image?.url ? (
+                  <div style={{ position: "relative", display: "inline-block", maxWidth: "100%" }}>
+                    <img
+                      src={block.image.url}
+                      alt="Esercizio"
+                      style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", display: "block" }}
+                    />
+                    <button
+                      onClick={() => updateBlock(block.id, "image", null)}
+                      style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.65)", border: "none", borderRadius: 999, color: "#f87171", cursor: "pointer", width: 26, height: 26, fontSize: 13, lineHeight: "26px", textAlign: "center" }}
+                      aria-label="Rimuovi immagine"
+                    >✕</button>
+                    {uploading[block.id] && (
+                      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 12 }}>
+                        Caricamento…
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <label style={{
+                    display: "inline-flex", alignItems: "center", gap: 7, cursor: "pointer",
+                    padding: "7px 14px", borderRadius: 9,
+                    border: "1px dashed rgba(255,255,255,0.13)",
+                    color: "#64748b", fontSize: 12,
+                    background: "rgba(255,255,255,0.025)",
+                    width: "fit-content",
+                  }}>
+                    📷 Aggiungi foto / disegno
+                    <input
+                      type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={(e) => handleImageUpload(block.id, e.target.files?.[0])}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Azioni */}
+      <div style={{ display: "flex", gap: 10 }}>
+        <Button variant="ghost" onClick={addBlock} style={{ flex: 1 }}>
+          + Aggiungi blocco
+        </Button>
+        {onSave && canManage && (
+          <Button onClick={onSave} style={{ flex: 1 }}>
+            💾 {saveLabel}
+          </Button>
+        )}
+      </div>
     </AppCard>
   );
 }
