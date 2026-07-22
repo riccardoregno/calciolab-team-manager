@@ -121,10 +121,25 @@ function Trainings({
 
   useEffect(() => {
     const draftTraining = location.state?.draftTraining;
-    if (!draftTraining) return;
+    const newSession = location.state?.newSession;
 
-    showToast(t("pages.trainings.draftLoaded"), "info");
-    navigate(location.pathname, { replace: true, state: null });
+    if (draftTraining) {
+      showToast(t("pages.trainings.draftLoaded"), "info");
+    }
+
+    if (newSession || draftTraining) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+
+    if (newSession) {
+      async function resetForm() {
+        setEditingId(null);
+        setForm(emptyTraining());
+        setFormErrors({});
+        requestAnimationFrame(scrollToTrainingForm);
+      }
+      resetForm();
+    }
   }, [location.pathname, location.state, navigate, showToast, t]);
 
   // RPE calcolato dalla distanza dalla gara
@@ -1003,9 +1018,14 @@ function Trainings({
               onNextWeek={() => setWeekOffset((o) => o + 1)}
               onThisWeek={() => setWeekOffset(0)}
               onEditSession={(session) => {
-                setEditingId(session.id);
-                requestAnimationFrame(scrollToTrainingForm);
+                editTraining(session);
               }}
+              onCreateSession={canManage ? (dateStr) => {
+                setEditingId(null);
+                setForm({ ...emptyTraining(), date: dateStr });
+                setFormErrors({});
+                requestAnimationFrame(scrollToTrainingForm);
+              } : null}
               onNavigateAttendance={(id) => navigate(`/session-attendance/${id}`)}
               canManage={canManage}
             />
@@ -1413,7 +1433,7 @@ function getWeekStart(offset) {
   return d;
 }
 
-function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, onEditSession, onNavigateAttendance }) {
+function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, onEditSession, onCreateSession, onNavigateAttendance }) {
   const weekStart = getWeekStart(weekOffset);
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
@@ -1456,11 +1476,19 @@ function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, on
           const isToday = dateStr === todayStr;
           const daySessions = sessionsByDay[dateStr] || [];
           return (
-            <div key={dateStr} style={{
-              borderRadius: 10, minHeight: 90, padding: "8px 6px",
-              background: isToday ? "rgba(56,189,248,0.07)" : "rgba(255,255,255,0.025)",
-              border: `1px solid ${isToday ? "rgba(56,189,248,0.3)" : "rgba(255,255,255,0.06)"}`,
-            }}>
+            <div
+              key={dateStr}
+              style={{
+                borderRadius: 10, minHeight: 90, padding: "8px 6px",
+                background: isToday ? "rgba(56,189,248,0.07)" : "rgba(255,255,255,0.025)",
+                border: `1px solid ${isToday ? "rgba(56,189,248,0.3)" : "rgba(255,255,255,0.06)"}`,
+                cursor: daySessions.length === 0 && onCreateSession ? "pointer" : "default",
+              }}
+              onClick={() => {
+                if (daySessions.length === 0 && onCreateSession) onCreateSession(dateStr);
+              }}
+              title={daySessions.length === 0 && onCreateSession ? "Crea seduta" : undefined}
+            >
               <div style={{ marginBottom: 6, textAlign: "center" }}>
                 <div style={{ fontSize: 10, fontWeight: 800, color: "#475569", textTransform: "uppercase" }}>{DAYS_IT_SHORT[i]}</div>
                 <div style={{ fontSize: 14, fontWeight: isToday ? 900 : 600, color: isToday ? "#38bdf8" : "#cbd5e1" }}>
@@ -1468,6 +1496,9 @@ function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, on
                 </div>
               </div>
               <div style={{ display: "grid", gap: 4 }}>
+                {daySessions.length === 0 && onCreateSession && (
+                  <div style={{ textAlign: "center", paddingTop: 10, color: "#334155", fontSize: 18, lineHeight: 1 }}>+</div>
+                )}
                 {daySessions.map((s) => (
                   <div key={s.id} style={{
                     borderRadius: 6, padding: "5px 7px",
