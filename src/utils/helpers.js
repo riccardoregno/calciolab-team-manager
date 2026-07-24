@@ -1,3 +1,9 @@
+/** Restituisce la data odierna come stringa YYYY-MM-DD nel fuso orario locale.
+ *  toISOString() usa UTC: in Italia (UTC+2) dopo le 22:00 restituisce domani. */
+export function localDateString(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 // ── Ruoli canonici del giocatore ──────────────────────────────────────────────
 export const PLAYER_ROLES = [
   { value: "Portiere",              group: "Portieri" },
@@ -1604,7 +1610,7 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
   // le presenze per l'intero mese in anticipo, ma le statistiche del giocatore
   // devono riflettere solo ciò che è realmente accaduto finora, non gli
   // allenamenti futuri già marcati di default.
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localDateString();
   const events = [...sessions, ...matches].filter((event) => event.date && event.date <= todayStr);
   const playerEvents = events
     .map((event) => {
