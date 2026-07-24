@@ -1253,8 +1253,10 @@ function isJunioresAvailableOnDate(playerId, date, availabilityRecords) {
   return availabilityRecords.some((r) => {
     if (String(r.player_id) !== String(playerId)) return false;
     if (r.status !== "available") return false;
-    if (r.date_from && date < r.date_from) return false;
-    if (r.date_to && date > r.date_to) return false;
+    if (!r.date_from || date < r.date_from) return false;
+    // date_to null = valido solo per il giorno date_from (un'unica giornata)
+    const dateTo = r.date_to ?? r.date_from;
+    if (date > dateTo) return false;
     return true;
   });
 }
