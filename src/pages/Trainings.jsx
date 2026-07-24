@@ -80,6 +80,18 @@ function Trainings({
     formCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  // Disponibilità giocatori dalla tabella player_availability (per includere juniores disponibili)
+  const [availabilityRecords, setAvailabilityRecords] = useState([]);
+  useEffect(() => {
+    if (!teamId) return;
+    async function load() {
+      const { fetchPlayerAvailability } = await import("../services/playerAvailability");
+      const { data } = await fetchPlayerAvailability({ teamId });
+      if (data) setAvailabilityRecords(data);
+    }
+    load();
+  }, [teamId]);
+
   // Carica catalogo FP5 in background
   const [fp5Catalog, setFp5Catalog] = useState([]);
   useEffect(() => {
@@ -181,8 +193,8 @@ function Trainings({
     selectedExercises.reduce((sum, item) => sum + Number(item.customDuration || item.duration || 0), 0) +
     (form.sessionBlocks || []).reduce((sum, b) => sum + (Number(b.duration) || 0), 0);
   const sessionAvailability = useMemo(
-    () => getSessionAvailability(players, form.date),
-    [players, form.date]
+    () => getSessionAvailability(players, form.date, availabilityRecords),
+    [players, form.date, availabilityRecords]
   );
   const objectiveStatusMeta = getObjectiveStatusMeta(form.objectiveStatus);
   const trainingMetricItems = [
@@ -607,7 +619,7 @@ function Trainings({
 
     {/* Giocatori disponibili per questa seduta */}
     {players.length > 0 && (
-      <AvailablePlayers players={players} date={form.date} />
+      <AvailablePlayers players={players} date={form.date} availabilityRecords={availabilityRecords} />
     )}
   </AppCard>
   </div>
@@ -1236,32 +1248,39 @@ function PrintBox({ title, value }) {
 // ─────────────────────────────────────────────
 // Box giocatori disponibili nel form seduta
 // ─────────────────────────────────────────────
-const UNAVAILABLE_STATUSES = ["Infortunato", "Squalificato"];
-
-function getPlayerAvailabilityOnDate(player, date) {
-  if ((player.gruppo || "prima") === "juniores") {
-    return { available: false, reason: "Juniores" };
-  }
-  if (UNAVAILABLE_STATUSES.includes(player.status || "Disponibile")) {
-    return { available: false, reason: player.status };
-  }
-  const unavailability = getPlayerUnavailabilityOnDate(player, date);
-  if (unavailability) {
-    return { available: false, reason: unavailability.label || unavailability.type || "Non disponibile" };
-  }
-  return { available: true, reason: "" };
+function isJunioresAvailableOnDate(playerId, date, availabilityRecords) {
+  if (!date || !availabilityRecords?.length) return false;
+  return availabilityRecords.some((r) => {
+    if (String(r.player_id) !== String(playerId)) return false;
+    if (r.status !== "available") return false;
+    if (r.date_from && date < r.date_from) return false;
+    if (r.date_to && date > r.date_to) return false;
+    return true;
+  });
 }
 
-function getSessionAvailability(players, date) {
-  const primaryPlayers = players.filter((player) => (player.gruppo || "prima") !== "juniores");
+function getSessionAvailability(players, date, availabilityRecords = []) {
   const available = [];
   const unavailable = [];
-  primaryPlayers.forEach((player) => {
-    const availability = getPlayerAvailabilityOnDate(player, date);
-    if (availability.available) available.push(player);
-    else unavailable.push({ player, reason: availability.reason });
+
+  players.forEach((player) => {
+    const isJun = player.squadra === "juniores";
+    if (isJun) {
+      if (isJunioresAvailableOnDate(player.id, date, availabilityRecords)) {
+        available.push({ ...player, _juniores: true });
+      }
+      return;
+    }
+    const unav = getPlayerUnavailabilityOnDate(player, date);
+    if (!unav && player.status !== "Infortunato" && player.status !== "Squalificato") {
+      available.push(player);
+    } else {
+      unavailable.push({ player, reason: unav?.label || player.status || "" });
+    }
   });
-  return { available, unavailable, total: primaryPlayers.length };
+
+  const primaryTotal = players.filter((p) => p.squadra !== "juniores").length;
+  return { available, unavailable, total: primaryTotal };
 }
 
 const PHASE_OPTIONS = [
@@ -1272,9 +1291,9 @@ const PHASE_OPTIONS = [
   { id: "Defaticamento",    color: "#94a3b8" },
 ];
 
-function AvailablePlayers({ players, date }) {
+function AvailablePlayers({ players, date, availabilityRecords = [] }) {
   const { t } = useTranslation();
-  const { available, unavailable, total } = getSessionAvailability(players, date);
+  const { available, unavailable, total } = getSessionAvailability(players, date, availabilityRecords);
 
   return (
     <div style={{
@@ -1310,8 +1329,10 @@ function AvailablePlayers({ players, date }) {
             <span key={p.id} style={{
               fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999,
               background: "rgba(34,197,94,0.09)", border: "1px solid rgba(34,197,94,0.2)", color: "#86efac",
+              display: "inline-flex", alignItems: "center", gap: 5,
             }}>
               {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{name}
+              {p._juniores && <span style={{ fontSize: 10, fontWeight: 900, color: "#fb923c", letterSpacing: 0.5 }}>JUN</span>}
             </span>
           );
         })}
