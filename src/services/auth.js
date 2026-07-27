@@ -291,6 +291,10 @@ async function pickBestMembership(memberships) {
     const playersDiff = (playerCounts.get(b.team_id) || 0) - (playerCounts.get(a.team_id) || 0);
     if (playersDiff !== 0) return playersDiff;
 
+    // Preferisce team con onboarding completato (team attivi vs team vuoti appena creati)
+    const onbDiff = (b.teams?.onboarding_completed ? 1 : 0) - (a.teams?.onboarding_completed ? 1 : 0);
+    if (onbDiff !== 0) return onbDiff;
+
     const roleDiff = (roleRank[b.role] || 0) - (roleRank[a.role] || 0);
     if (roleDiff !== 0) return roleDiff;
 
