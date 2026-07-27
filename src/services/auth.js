@@ -1,7 +1,8 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
-const acceptTeamInviteUrl = import.meta.env.VITE_ACCEPT_TEAM_INVITE_URL ||
-  "https://sglevvqhlzpllrjrgbod.functions.supabase.co/accept-team-invite";
+const _supabaseBase = (import.meta.env.VITE_SUPABASE_URL || "https://sglevvqhlzpllrjrgbod.supabase.co")
+  .replace(/\/$/, "");
+const acceptTeamInviteUrl = `${_supabaseBase}/functions/v1/accept-team-invite`;
 const INVITE_TOKEN_KEY = "calciolab_invite_token";
 const FAILED_INVITE_TOKEN_KEY = "calciolab_failed_invite_token";
 
