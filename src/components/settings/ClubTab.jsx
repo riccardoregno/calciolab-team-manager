@@ -261,6 +261,37 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
     });
   }
 
+  const [forcingInviteId, setForcingInviteId] = useState(null);
+  async function forceAddMember(inv) {
+    if (!inv.email || !team?.id) return;
+    setForcingInviteId(inv.id);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      const base = (import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
+      const res = await fetch(`${base}/functions/v1/force-add-member`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY || "",
+        },
+        body: JSON.stringify({ email: inv.email, teamId: team.id, role: inv.role || "assistantCoach" }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || payload.error) {
+        showToast?.(payload.error || "Errore aggiunta membro", "error");
+      } else {
+        showToast?.(`${payload.name || inv.email} aggiunto alla squadra`, "success");
+        cancelInvite(inv.id);
+      }
+    } catch (err) {
+      showToast?.(err.message || "Errore di rete", "error");
+    } finally {
+      setForcingInviteId(null);
+    }
+  }
+
   // Filter out pending invites whose email already appears in active members
   const memberEmails = new Set((settings.members || []).map((m) => m.email?.toLowerCase().trim()).filter(Boolean));
   const visiblePendingInvites = (settings.pendingInvites || []).filter(
@@ -620,6 +651,14 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
                         style={inviteStyles.copySmallBtn}
                       >
                         {copiedInviteId === inv.id ? "Copiato" : "Copia link"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => forceAddMember(inv)}
+                        disabled={forcingInviteId === inv.id}
+                        style={{ ...inviteStyles.copySmallBtn, background: "rgba(34,197,94,0.15)", borderColor: "rgba(34,197,94,0.3)", color: "#4ade80", opacity: forcingInviteId === inv.id ? 0.6 : 1 }}
+                      >
+                        {forcingInviteId === inv.id ? "..." : "Aggiungi direttamente"}
                       </button>
                       <button
                         type="button"
