@@ -1134,7 +1134,7 @@ function matchToForm(match) {
   const parsed = parseMatchResult(match.result);
   return {
     opponent: match.opponent || "",
-    date: match.date || new Date().toISOString().slice(0, 10),
+    date: match.date || localDateString(),
     time: match.time || "",
     location: match.location || "Casa",
     result: match.result || "",
@@ -1159,7 +1159,7 @@ function matchToForm(match) {
 function emptyMatch(homeLogo = "") {
   return {
     opponent: "",
-    date: new Date().toISOString().slice(0, 10),
+    date: localDateString(),
     time: "",
     location: "Casa",
     result: "",

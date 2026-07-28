@@ -16,23 +16,24 @@ ALTER TABLE player_wellness ENABLE ROW LEVEL SECURITY;
 -- Coach/staff può leggere tutto il wellness del proprio team
 CREATE POLICY "team_members_read_wellness"
   ON player_wellness FOR SELECT
-  USING (can_access_team(team_id));
+  USING (team_id = ANY(public.get_my_team_ids()));
 
--- Il giocatore può inserire/aggiornare il proprio wellness
-CREATE POLICY "player_upsert_own_wellness"
+-- Il giocatore può inserire il proprio wellness
+CREATE POLICY "player_insert_own_wellness"
   ON player_wellness FOR INSERT
   WITH CHECK (
-    player_id IN (
-      SELECT id FROM players WHERE team_id = player_wellness.team_id
-        AND id IN (SELECT player_id FROM player_accounts WHERE auth_user_id = auth.uid())
+    team_id = ANY(public.get_my_team_ids())
+    AND player_id::text IN (
+      SELECT player_id FROM public.player_accounts WHERE auth_user_id = auth.uid()
     )
   );
 
+-- Il giocatore può aggiornare il proprio wellness
 CREATE POLICY "player_update_own_wellness"
   ON player_wellness FOR UPDATE
   USING (
-    player_id IN (
-      SELECT id FROM players WHERE team_id = player_wellness.team_id
-        AND id IN (SELECT player_id FROM player_accounts WHERE auth_user_id = auth.uid())
+    team_id = ANY(public.get_my_team_ids())
+    AND player_id::text IN (
+      SELECT player_id FROM public.player_accounts WHERE auth_user_id = auth.uid()
     )
   );

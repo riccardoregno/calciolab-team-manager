@@ -480,7 +480,7 @@ function sortTasksForAgenda(a, b) {
 }
 
 function getTodayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateString();
 }
 
 function getWeekDays(anchorKey) {

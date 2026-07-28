@@ -546,9 +546,13 @@ function PlayerView({
     if (!wellness.sleep || !wellness.fatigue || !wellness.mood) return;
     setWellnessSaving(true);
     const today = localDateString();
-    await upsertWellness({ teamId, playerId: myPlayerId, date: today, ...wellness });
-    setWellnessSaved(true);
+    const { error: wellnessErr } = await upsertWellness({ teamId, playerId: myPlayerId, date: today, ...wellness });
     setWellnessSaving(false);
+    if (wellnessErr) {
+      alert("Errore nel salvataggio del check-in. Riprova.");
+      return;
+    }
+    setWellnessSaved(true);
     setWellnessHistory((prev) => {
       const without = prev.filter((r) => r.date !== today);
       return [{ date: today, ...wellness }, ...without];

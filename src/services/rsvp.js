@@ -83,12 +83,20 @@ export async function respondRsvpAsPlayer({ teamId, matchId, playerId, response 
     return { error: new Error("Risposta non valida") };
   }
 
+  // upsert: crea la riga se il coach non ha ancora generato il token,
+  // aggiorna se esiste già (idempotente al doppio click)
   const { error } = await supabase
     .from("rsvp_tokens")
-    .update({ response, responded_at: new Date().toISOString() })
-    .eq("team_id", teamId)
-    .eq("match_id", String(matchId))
-    .eq("player_id", String(playerId));
+    .upsert(
+      {
+        team_id: teamId,
+        match_id: String(matchId),
+        player_id: String(playerId),
+        response,
+        responded_at: new Date().toISOString(),
+      },
+      { onConflict: "team_id,match_id,player_id", ignoreDuplicates: false }
+    );
 
   return { error: error || null };
 }

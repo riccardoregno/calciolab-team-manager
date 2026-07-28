@@ -39,7 +39,7 @@ export default function GpsLoad({
   const [pendingRows, setPendingRows] = useState([]);
   const [sessionForm, setSessionForm] = useState({
     title: "",
-    date: new Date().toISOString().slice(0, 10),
+    date: localDateString(),
     type: "training",
     notes: "",
   });
@@ -83,7 +83,7 @@ export default function GpsLoad({
     setGpsSessions((prevSessions) => [...prevSessions, newSession]);
     setPendingRows([]);
     setShowForm(false);
-    setSessionForm({ title: "", date: new Date().toISOString().slice(0, 10), type: "training", notes: "" });
+    setSessionForm({ title: "", date: localDateString(), type: "training", notes: "" });
     showToast(t("pages.gpsLoad.toastSessionSaved"), "ok");
   }
 

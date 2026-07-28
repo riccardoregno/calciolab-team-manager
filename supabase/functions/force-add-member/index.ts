@@ -29,10 +29,12 @@ Deno.serve(async (req) => {
       return json({ error: "Non autenticato" }, 401);
     }
 
-    const { email, teamId, role = "assistantCoach" } = await req.json();
+    const { email, teamId, role: rawRole = "assistantCoach" } = await req.json();
     if (!email || !teamId) {
       return json({ error: "email e teamId obbligatori" }, 400);
     }
+    const ALLOWED_ROLES = ["headCoach", "assistantCoach", "athleticTrainer", "director", "player"];
+    const role = ALLOWED_ROLES.includes(rawRole) ? rawRole : "assistantCoach";
 
     const serviceClient = createClient(supabaseUrl, serviceKey);
 
@@ -48,13 +50,19 @@ Deno.serve(async (req) => {
       return json({ error: "Permesso negato" }, 403);
     }
 
-    // Cerca l'utente per email
-    const { data: users, error: listError } = await serviceClient.auth.admin.listUsers();
-    if (listError) return json({ error: listError.message }, 500);
-
-    const targetUser = users?.users?.find(
-      (u) => u.email?.toLowerCase().trim() === email.toLowerCase().trim()
-    );
+    // Cerca l'utente per email con paginazione
+    const emailLower = email.toLowerCase().trim();
+    let targetUser = null;
+    let page = 1;
+    while (!targetUser) {
+      const { data: page_data, error: listError } = await serviceClient.auth.admin.listUsers({ page, perPage: 200 });
+      if (listError) return json({ error: listError.message }, 500);
+      targetUser = (page_data?.users || []).find(
+        (u: any) => u.email?.toLowerCase().trim() === emailLower
+      ) || null;
+      if (!page_data?.users?.length || page_data.users.length < 200) break;
+      page++;
+    }
     if (!targetUser) {
       return json({ error: `Nessun account trovato per ${email}. L'utente deve prima registrarsi.` }, 404);
     }

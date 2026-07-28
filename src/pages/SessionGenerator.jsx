@@ -44,7 +44,7 @@ export default function SessionGenerator({
       id: createId("session"),
       type: "Allenamento",
       title: t("pages.sessionGenerator.generatedTitle", { goal }),
-      date: new Date().toISOString().slice(0, 10),
+      date: localDateString(),
       theme: goal,
       objective: t("pages.sessionGenerator.generatedObjective", { goal: goal.toLowerCase(), intensity: intensity.toLowerCase() }),
       duration,

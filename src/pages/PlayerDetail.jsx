@@ -37,8 +37,8 @@ const ABSENCE_TYPES = ["ferie", "permesso", "studio", "lavoro", "altro"];
 function emptyAbsenceForm() {
   return {
     type: ABSENCE_TYPES[0],
-    dateStart: new Date().toISOString().slice(0, 10),
-    dateEnd: new Date().toISOString().slice(0, 10),
+    dateStart: localDateString(),
+    dateEnd: localDateString(),
     notes: "",
   };
 }
@@ -104,10 +104,10 @@ function PlayerDetail({
   const [medicalForm, setMedicalForm] = useState({
     differentiatedType: DIFFERENTIATED_TYPES[1],
     injuryType: INJURY_TYPES[0],
-    startDate: new Date().toISOString().slice(0, 10),
+    startDate: localDateString(),
     expectedReturn: "",
     note: "",
-    returnDate: new Date().toISOString().slice(0, 10),
+    returnDate: localDateString(),
   });
   const isMobile = useIsMobile();
   const [invitingPortal, setInvitingPortal] = useState(false);
@@ -337,10 +337,10 @@ function PlayerDetail({
     setMedicalForm({
       differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
       injuryType: player.injuryType || INJURY_TYPES[0],
-      startDate: new Date().toISOString().slice(0, 10),
+      startDate: localDateString(),
       expectedReturn: player.expectedReturn || "",
       note: player.injuryNotes || "",
-      returnDate: new Date().toISOString().slice(0, 10),
+      returnDate: localDateString(),
     });
     setMedicalModal("differenziato");
   }
@@ -350,10 +350,10 @@ function PlayerDetail({
     setMedicalForm({
       differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
       injuryType: player.injuryType || INJURY_TYPES[0],
-      startDate: new Date().toISOString().slice(0, 10),
+      startDate: localDateString(),
       expectedReturn: player.expectedReturn || "",
       note: "",
-      returnDate: new Date().toISOString().slice(0, 10),
+      returnDate: localDateString(),
     });
     setMedicalModal("infortunio");
   }
@@ -361,7 +361,7 @@ function PlayerDetail({
   function saveInjuryRecord() {
     if (!canManage) return;
     const injuryType = medicalForm.injuryType || INJURY_TYPES[0];
-    const startDate = medicalForm.startDate || new Date().toISOString().slice(0, 10);
+    const startDate = medicalForm.startDate || localDateString();
     const expectedReturn = medicalForm.expectedReturn || "";
     const note = medicalForm.note.trim();
 
@@ -407,7 +407,7 @@ function PlayerDetail({
           injuryType: differentiatedType,
           differentiatedType,
           status: "Differenziato",
-          startDate: new Date().toISOString().slice(0, 10),
+          startDate: localDateString(),
           endDate: null,
           expectedReturn: current.expectedReturn || "",
           notes: note,
@@ -425,10 +425,10 @@ function PlayerDetail({
     setMedicalForm({
       differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
       injuryType: player.injuryType || INJURY_TYPES[0],
-      startDate: new Date().toISOString().slice(0, 10),
+      startDate: localDateString(),
       expectedReturn: player.expectedReturn || "",
       note: "",
-      returnDate: new Date().toISOString().slice(0, 10),
+      returnDate: localDateString(),
     });
     setMedicalModal("rientro");
   }
@@ -436,7 +436,7 @@ function PlayerDetail({
   function saveRecovered() {
     if (!canManage) return;
     if (!activeInjuries.length) return;
-    const returnDate = medicalForm.returnDate || new Date().toISOString().slice(0, 10);
+    const returnDate = medicalForm.returnDate || localDateString();
     updateMedicalRecord((current) => {
       const injuries = current.injuries || [];
       if (!injuries.some((injury) => !injury.endDate)) return current;
@@ -469,10 +469,10 @@ function PlayerDetail({
     setMedicalForm({
       differentiatedType: player.differentiatedType || DIFFERENTIATED_TYPES[1],
       injuryType: player.injuryType || INJURY_TYPES[0],
-      startDate: new Date().toISOString().slice(0, 10),
+      startDate: localDateString(),
       expectedReturn: player.expectedReturn || "",
       note: "",
-      returnDate: new Date().toISOString().slice(0, 10),
+      returnDate: localDateString(),
     });
     setMedicalModal("nota");
   }
@@ -517,8 +517,8 @@ function PlayerDetail({
     setEditingAbsenceId(absence.id || null);
     setAbsenceForm({
       type: absence.type || ABSENCE_TYPES[0],
-      dateStart: absence.dateStart || new Date().toISOString().slice(0, 10),
-      dateEnd: absence.dateEnd || absence.dateStart || new Date().toISOString().slice(0, 10),
+      dateStart: absence.dateStart || localDateString(),
+      dateEnd: absence.dateEnd || absence.dateStart || localDateString(),
       notes: absence.notes || "",
     });
     setAbsenceModal(true);

@@ -893,7 +893,7 @@ const ABSENCE_TYPE_LABEL_KEYS = {
 };
 
 function getAbsenceStatus(absence) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString();
   if (absence.dateEnd && absence.dateEnd < today) return "past";
   if (absence.dateStart && absence.dateStart > today) return "upcoming";
   return "ongoing";

@@ -24,7 +24,7 @@ const PHYSICAL_TEST_DRAFT_KEY = "calciolab_physical_test_draft_v1";
 function emptyForm(playerId = "") {
   return {
     playerId,
-    date:       new Date().toISOString().slice(0, 10),
+    date:       localDateString(),
     gaconLevel: "", yoYo: "", sprint10m: "", sprint30m: "",
     jumpCm: "", weight: "", bodyFat: "", agility: "", restingHR: "", height: "", notes: "",
   };

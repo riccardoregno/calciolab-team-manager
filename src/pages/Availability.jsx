@@ -207,7 +207,7 @@ function emptyForm(players) {
     status:          "Infortunato",
     injuryType:      "",
     differentiatedType: "",
-    injuryStartDate: new Date().toISOString().slice(0, 10),
+    injuryStartDate: localDateString(),
     expectedReturn:  "",
     notes:           "",
   };
@@ -317,7 +317,7 @@ export default function Availability({
   const [editingPlayerId, setEditingPlayerId] = useState(null);
   const [form, setForm]                 = useState(() => loadAvailabilityDraft(`${AVAILABILITY_DRAFT_KEY}:new`, emptyForm(players)));
   const [historyPlayerId, setHistoryPlayerId] = useState(null);
-  const [recoveryDate, setRecoveryDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [recoveryDate, setRecoveryDate] = useState(() => localDateString());
   const [prepRange, setPrepRange] = useState(() => getDefaultPrepRange());
   const [expandedPrepDay, setExpandedPrepDay] = useState(null);
 
@@ -415,7 +415,7 @@ export default function Availability({
         differentiatedType: player.status === "Differenziato"
           ? active?.differentiatedType || player.differentiatedType || DIFFERENTIATED_WORK_TYPES[0]
           : "",
-        injuryStartDate: active?.startDate || player.injuryStartDate || new Date().toISOString().slice(0, 10),
+        injuryStartDate: active?.startDate || player.injuryStartDate || localDateString(),
         expectedReturn: player.expectedReturn || "",
         notes: active?.notes || player.injuryNotes || "",
       }));
@@ -544,7 +544,7 @@ export default function Availability({
     params.set("modal", RECOVERY_MODAL);
     params.set("playerId", String(player.id));
     navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: false });
-    setRecoveryDate(new Date().toISOString().slice(0, 10));
+    setRecoveryDate(localDateString());
   }
 
   function closeRecovery() {
@@ -556,7 +556,7 @@ export default function Availability({
   }
 
   // ── Segna rientro: chiude l'infortunio attivo e aggiorna lo storico
-  function markRecovered(playerId, recoveredAt = new Date().toISOString().slice(0, 10)) {
+  function markRecovered(playerId, recoveredAt = localDateString()) {
     if (!canManage) return;
     const today = recoveredAt;
 
