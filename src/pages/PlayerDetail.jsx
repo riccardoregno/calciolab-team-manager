@@ -24,7 +24,7 @@ import {
 } from "../components/players/PlayerDetailSections";
 import { getPreventionRecommendations } from "../components/players/playerDetailLogic";
 import { styles } from "../styles/index.js";
-import { createId, getPhysicalReference, getPlayerSeasonSeries, getPlayerSummary, normalizeAppSettings } from "../utils/helpers";
+import { createId, getPhysicalReference, getPlayerSeasonSeries, getPlayerSummary, localDateString, normalizeAppSettings } from "../utils/helpers";
 import { getInviteExpiryDate } from "../utils/settingsHelpers";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { useIsMobile } from "../hooks/useIsMobile";

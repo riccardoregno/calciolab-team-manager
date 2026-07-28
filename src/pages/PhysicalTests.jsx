@@ -12,7 +12,7 @@ import { useToast } from "../components/ui/Toast";
 import { useAreaPermission } from "../components/auth/permissionContext";
 
 import { styles } from "../styles/index.js";
-import { comparePlayersByName, createId, formatShortDate, getPhysicalReference } from "../utils/helpers";
+import { comparePlayersByName, createId, formatShortDate, getPhysicalReference, localDateString } from "../utils/helpers";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";

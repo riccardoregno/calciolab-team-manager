@@ -10,7 +10,7 @@ import MetricStrip from "../components/ui/MetricStrip";
 import { useToast } from "../components/ui/Toast";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { styles } from "../styles/index.js";
-import { createId, getPlayerUnavailabilityOnDate } from "../utils/helpers";
+import { createId, getPlayerUnavailabilityOnDate, localDateString } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { fetchPlayerAvailability } from "../services/playerAvailability";

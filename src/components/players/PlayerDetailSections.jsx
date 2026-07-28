@@ -15,7 +15,7 @@ import Button from "../ui/Button";
 
 import { useTranslation } from "../../i18n";
 import { styles } from "../../styles/index.js";
-import { formatShortDate, getPhysicalReference, parsePlayerBirthDate, PLAYER_ROLES, ROLE_GROUPS } from "../../utils/helpers";
+import { formatShortDate, getPhysicalReference, localDateString, parsePlayerBirthDate, PLAYER_ROLES, ROLE_GROUPS } from "../../utils/helpers";
 
 const TT = {
   contentStyle: {

@@ -16,7 +16,7 @@ import { useAreaPermission } from "../components/auth/permissionContext";
 import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
-import { createId, formatDate, normalizeAppSettings, parseMatchResult } from "../utils/helpers";
+import { createId, formatDate, localDateString, normalizeAppSettings, parseMatchResult } from "../utils/helpers";
 import { sendTeamNotification } from "../services/notifications";
 import { upsertPlayerMatch } from "../services/playerProfile";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";

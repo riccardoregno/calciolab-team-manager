@@ -7,7 +7,7 @@ import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { useToast } from "../components/ui/Toast";
 import { styles } from "../styles/index.js";
-import { createId } from "../utils/helpers";
+import { createId, localDateString } from "../utils/helpers";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
 

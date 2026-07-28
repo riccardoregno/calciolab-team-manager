@@ -7,7 +7,7 @@ import MetricStrip from "../components/ui/MetricStrip";
 import PageHeader from "../components/ui/PageHeader";
 import { useToast } from "../components/ui/Toast";
 import { useIsMobile } from "../hooks/useIsMobile";
-import { createId, formatDate } from "../utils/helpers";
+import { createId, formatDate, localDateString } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { useTranslation } from "../i18n";
 
