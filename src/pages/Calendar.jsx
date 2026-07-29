@@ -248,12 +248,12 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
   const [activeEvent, setActiveEvent] = useState(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor,   { activationConstraint: { delay: 400, tolerance: 10 } }),
   );
 
   function handleDragStart({ active }) {
-    if (!canManage) return;
+    if (!canManage || isMobile) return;
     const ev = events.find((e) => String(e.id) === String(active.id));
     setActiveEvent(ev || null);
   }
@@ -455,7 +455,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
 
                 <div style={{ display: "grid", gap: 5, marginTop: 6 }}>
                   {cell.events.map((event) => (
-                    <DraggableEvent key={`${event.type}-${event.id}`} event={event} disabled={!canManage}>
+                    <DraggableEvent key={`${event.type}-${event.id}`} event={event} disabled={!canManage || isMobile}>
                       <div
                         style={{
                           borderRadius: 8,
@@ -537,12 +537,12 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
   const [activeEvent, setActiveEvent] = useState(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor,   { activationConstraint: { delay: 400, tolerance: 10 } }),
   );
 
   function handleDragStart({ active }) {
-    if (!canManage) return;
+    if (!canManage || isMobile) return;
     const ev = events.find((e) => String(e.id) === String(active.id));
     setActiveEvent(ev || null);
   }
@@ -690,7 +690,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                 <div style={isMobile ? wv.eventListMobile : wv.eventList}>
                   {dayEvents.length ? (
                     dayEvents.map((event) => (
-                      <DraggableEvent key={`${event.type}-${event.id}`} event={event} disabled={!canManage}>
+                      <DraggableEvent key={`${event.type}-${event.id}`} event={event} disabled={!canManage || isMobile}>
                         <div
                           style={{
                             ...wv.event,
