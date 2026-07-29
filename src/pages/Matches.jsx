@@ -632,7 +632,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
                             min="0"
                             value={d[field] ?? ""}
                             onChange={(e) => setQuickStatsDraft((prev) => ({ ...prev, [String(pid)]: { ...prev[String(pid)], [field]: e.target.value } }))}
-                            style={{ width: "100%", textAlign: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 6, color: "#f1f5f9", fontSize: 13, padding: "4px 2px" }}
+                            style={{ width: "100%", textAlign: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 6, color: "#f1f5f9", fontSize: 16, padding: "4px 2px" }}
                           />
                         ))}
                       </div>

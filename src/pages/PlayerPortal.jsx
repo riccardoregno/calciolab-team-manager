@@ -634,7 +634,7 @@ function PlayerView({
           </div>
           {availability?.status && (
             <input
-              style={{ ...styles.input, fontSize: 11, marginTop: 6, padding: "4px 8px" }}
+              style={{ ...styles.input, fontSize: 16, marginTop: 6, padding: "4px 8px" }}
               placeholder="Motivazione..."
               value={availReason}
               onChange={(e) => setAvailReason(e.target.value)}
@@ -868,8 +868,8 @@ function PlayerView({
                               disabled={rpeSaving === String(e.id)}
                               title={BORG_LABELS[v]}
                               style={{
-                                width: 34, height: 34, borderRadius: 8, border: "1px solid",
-                                fontSize: 13, fontWeight: 700, cursor: "pointer",
+                                width: 40, height: 40, borderRadius: 8, border: "1px solid",
+                                fontSize: 14, fontWeight: 700, cursor: "pointer",
                                 background: saved === v ? rpeBgColor(v) : "rgba(255,255,255,0.04)",
                                 borderColor: saved === v ? rpeTextColor(v) : "rgba(255,255,255,0.1)",
                                 color: saved === v ? rpeTextColor(v) : "#64748b",
@@ -883,7 +883,7 @@ function PlayerView({
                         </div>
                         {saved && (
                           <input
-                            style={{ ...styles.input, fontSize: 12, marginTop: 8, padding: "6px 10px" }}
+                            style={{ ...styles.input, fontSize: 16, marginTop: 8, padding: "6px 10px" }}
                             placeholder="Note opzionali (dolori, sensazioni, …)"
                             value={rpeNotes[String(e.id)] ?? (rec?.notes || "")}
                             onChange={(ev) => setRpeNotes((p) => ({ ...p, [String(e.id)]: ev.target.value }))}
@@ -1193,7 +1193,7 @@ function PlayerView({
                 }}
               >
                 <span style={{ fontSize: 18, lineHeight: 1 }}>{tab.icon}</span>
-                <span style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>
                   {tab.label}
                 </span>
                 {tab.badge ? (

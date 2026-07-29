@@ -146,7 +146,7 @@ exerciseLibraryItem: {
     background: "rgba(255,255,255,0.06)",
     color: "white",
     outline: "none",
-    fontSize: 14,
+    fontSize: 16,
     marginTop: 6,
   },
 

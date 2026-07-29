@@ -1075,15 +1075,15 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCa
       {/* Statistiche inline */}
       <div style={{ display: "flex", gap: 14, alignItems: "center", flexShrink: 0 }}>
         <div style={{ textAlign: "center", minWidth: 32 }}>
-          <div style={{ fontSize: 9, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.age")}</div>
+          <div style={{ fontSize: 10, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.age")}</div>
           <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{age}</div>
         </div>
         <div style={{ textAlign: "center", minWidth: 36 }}>
-          <div style={{ fontSize: 9, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.appearances")}</div>
+          <div style={{ fontSize: 10, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.appearances")}</div>
           <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{appearances}</div>
         </div>
         <div style={{ textAlign: "center", minWidth: 36 }}>
-          <div style={{ fontSize: 9, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.trainingPct")}</div>
+          <div style={{ fontSize: 10, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.trainingPct")}</div>
           <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{trainingPctValue}</div>
         </div>
       </div>

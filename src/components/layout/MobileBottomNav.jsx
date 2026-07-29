@@ -199,7 +199,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
                   background: "rgba(255,255,255,0.06)",
                   border: "1px solid rgba(255,255,255,0.1)",
                   borderRadius: 10,
-                  color: "#e2e8f0", fontSize: 14,
+                  color: "#e2e8f0", fontSize: 16,
                   outline: "none",
                 }}
               />

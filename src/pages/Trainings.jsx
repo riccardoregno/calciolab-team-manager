@@ -1541,7 +1541,7 @@ function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, on
                     )}
                     <button
                       onClick={(e) => { e.stopPropagation(); onNavigateAttendance(s.id); }}
-                      style={{ marginTop: 4, width: "100%", fontSize: 9, fontWeight: 700, padding: "2px 0", borderRadius: 4, border: "1px solid rgba(56,189,248,0.3)", background: "rgba(56,189,248,0.08)", color: "#38bdf8", cursor: "pointer" }}
+                      style={{ marginTop: 4, width: "100%", fontSize: 11, fontWeight: 700, padding: "6px 0", borderRadius: 4, border: "1px solid rgba(56,189,248,0.3)", background: "rgba(56,189,248,0.08)", color: "#38bdf8", cursor: "pointer" }}
                     >
                       Presenze
                     </button>
