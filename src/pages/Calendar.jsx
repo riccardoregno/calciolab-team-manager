@@ -343,14 +343,14 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
           gap: isMobile ? 2 : 8,
           marginBottom: isMobile ? 4 : 8,
           color: "#94a3b8",
-          fontSize: isMobile ? 9 : 12,
+          fontSize: isMobile ? 10 : 12,
           fontWeight: 900,
           textTransform: "uppercase",
           textAlign: isMobile ? "center" : undefined,
         }}
       >
         {weekDayKeys.map((key) => (
-          <span key={key}>{isMobile ? t(key).slice(0, 1) : t(key)}</span>
+          <span key={key}>{isMobile ? t(key).slice(0, 2) : t(key)}</span>
         ))}
       </div>
 
