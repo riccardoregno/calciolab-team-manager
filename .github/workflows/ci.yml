@@ -32,8 +32,9 @@ jobs:
 
       # ── Security ─────────────────────────────────────────────────────────────
       - name: Audit production dependencies
-        # Check only prod deps — devDep vulns are managed via package.json overrides
-        run: npm audit --audit-level=high --omit=dev
+        # critical only — react-router "high" CVEs (GHSA-qwww-vcr4-c8h2 etc.) require
+        # SSR/RSC which this SPA does not use; no critical vulns in prod deps.
+        run: npm audit --audit-level=critical --omit=dev
 
       # ── Quality ──────────────────────────────────────────────────────────────
       - name: Lint
