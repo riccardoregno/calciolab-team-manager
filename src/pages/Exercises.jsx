@@ -29,6 +29,7 @@ function Exercises({
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [confirmState, setConfirmState] = useState(null);
+  const [lightbox, setLightbox] = useState(null);
 
   const [form, setForm] = useState({
     ...emptyExercise(),
@@ -135,6 +136,42 @@ function Exercises({
     <div style={styles.page}>
       <ToastContainer />
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.88)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20, cursor: "zoom-out",
+          }}
+        >
+          <img
+            src={lightbox}
+            alt="Anteprima esercizio"
+            style={{
+              maxWidth: "min(90vw, 900px)",
+              maxHeight: "85vh",
+              objectFit: "contain",
+              borderRadius: 16,
+              boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightbox(null)}
+            style={{
+              position: "fixed", top: 20, right: 20,
+              width: 40, height: 40, borderRadius: 20,
+              background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)",
+              color: "#fff", fontSize: 20, cursor: "pointer",
+              display: "grid", placeItems: "center",
+            }}
+          >×</button>
+        </div>
+      )}
       <PageHeader
         title={t("pages.exercises.title")}
         subtitle={t("pages.exercises.subtitle")}
@@ -204,11 +241,13 @@ function Exercises({
               {/* Immagine caricata (se non c'è la lavagna) */}
               {!exercise.tacticalBoard && exercise.image && (
                 <div
+                  onClick={() => setLightbox(exercise.image)}
                   style={{
                     marginBottom: 18,
                     borderRadius: 18,
                     overflow: "hidden",
                     height: 180,
+                    cursor: "zoom-in",
                   }}
                 >
                   <img
