@@ -1031,7 +1031,11 @@ function Trainings({
             )}
           </AppCard>
 
-          <TeamGenerator availablePlayers={sessionAvailability.available} />
+          <TeamGenerator availablePlayers={sessionAvailability.available.filter((p) => {
+            const status = form.attendance[String(p.id)]?.status;
+            if (p._defaultAbsent) return status === "Presente";
+            return status !== "Assente";
+          })} />
         </div>
       </div>}
 
