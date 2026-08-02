@@ -1115,10 +1115,9 @@ function Trainings({
           ) : (
             <div style={{ display: "grid", gap: 14 }}>
               {sortedSessions.map((session) => {
-                const sessionTotal = (session.exercises || []).reduce(
-                  (sum, item) => sum + Number(item.customDuration || 0),
-                  0
-                );
+                const sessionTotal =
+                  (session.exercises || []).reduce((sum, item) => sum + Number(item.customDuration || 0), 0) +
+                  (session.sessionBlocks || []).reduce((sum, b) => sum + (Number(b.duration) || 0), 0);
 
                 return (
                   <div
