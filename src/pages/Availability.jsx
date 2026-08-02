@@ -25,11 +25,10 @@ const PREP_CRITICAL_RATIO = 0.7;
 
 function getDefaultPrepRange() {
   const now = new Date();
-  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const nextMonthEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   return {
-    start: nextMonthStart.toISOString().slice(0, 10),
-    end: nextMonthEnd.toISOString().slice(0, 10),
+    start: now.toISOString().slice(0, 10),
+    end: monthEnd.toISOString().slice(0, 10),
   };
 }
 

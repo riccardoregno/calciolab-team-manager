@@ -205,12 +205,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   const [includeJuniorsInStats, setIncludeJuniorsInStats] = useState(false);
   const [finesRange, setFinesRange] = useState({ start: "", end: "" });
   const [exportingFines, setExportingFines] = useState(false);
-  const [month, setMonth] = useState(() => {
-    const latest = [...sessions]
-      .filter((session) => session.date)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-    return latest?.date ? latest.date.slice(0, 7) : new Date().toISOString().slice(0, 7);
-  });
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
   // RPE autodichiarato dai giocatori dal portale (tabella session_rpe) — usato come
   // pre-compilazione quando il mister non ha ancora inserito/corretto un valore.
