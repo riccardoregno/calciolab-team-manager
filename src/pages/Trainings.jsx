@@ -628,7 +628,11 @@ function Trainings({
         attendance={form.attendance}
         onToggle={(playerId) => setForm((f) => {
           const current = f.attendance[String(playerId)]?.status;
-          const next = current === "Assente" ? "Presente" : "Assente";
+          const isJun = (players.find((p) => String(p.id) === String(playerId))?.gruppo || "prima") === "juniores";
+          // Juniores: default assente → primo click = Presente; prima: default presente → primo click = Assente
+          const next = isJun
+            ? (current === "Presente" ? "Assente" : "Presente")
+            : (current === "Assente" ? "Presente" : "Assente");
           return { ...f, attendance: { ...f.attendance, [String(playerId)]: { status: next } } };
         })}
       />
@@ -1284,8 +1288,9 @@ function getSessionAvailability(players, date, availabilityRecords = []) {
   players.forEach((player) => {
     const isJun = (player.gruppo || "prima") === "juniores";
     if (isJun) {
-      if (isJunioresAvailableOnDate(player.id, date, availabilityRecords)) {
-        available.push({ ...player, _juniores: true });
+      // Juniores compaiono sempre nella lista; di default sono Assenti finché il coach non li abilita
+      if (!getPlayerUnavailabilityOnDate(player, date) && !UNAVAILABLE_STATUSES.includes(player.status)) {
+        available.push({ ...player, _juniores: true, _defaultAbsent: true });
       }
       return;
     }
@@ -1314,9 +1319,12 @@ function AvailablePlayers({ players, date, availabilityRecords = [], attendance 
   const { t } = useTranslation();
   const { available, unavailable, total } = getSessionAvailability(players, date, availabilityRecords);
 
-  // Conta quanti disponibili sono effettivamente presenti (non segnati Assente)
+  // Conta quanti disponibili sono effettivamente presenti
+  // Prima squadra: presente per default (assente se esplicitamente segnato)
+  // Juniores: assenti per default (presente solo se esplicitamente segnato)
   const presentCount = available.filter((p) => {
     const saved = attendance[String(p.id)]?.status;
+    if (p._defaultAbsent) return saved === "Presente";
     return !saved || saved === "Presente";
   }).length;
 
@@ -1356,7 +1364,7 @@ function AvailablePlayers({ players, date, availabilityRecords = [], attendance 
         {available.map((p) => {
           const name = [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
           const savedStatus = attendance[String(p.id)]?.status;
-          const isAbsent = savedStatus === "Assente";
+          const isAbsent = p._defaultAbsent ? savedStatus !== "Presente" : savedStatus === "Assente";
           return (
             <button
               key={p.id}
