@@ -420,7 +420,7 @@ function Trainings({
         </AppCard>
       )}
 
-      <div
+      {(editingId || !nextSession) && <div
         className="calciolab-two-column"
         style={{
           display: "grid",
@@ -1029,7 +1029,7 @@ function Trainings({
             )}
           </AppCard>
         </div>
-      </div>
+      </div>}
 
       <div className="no-print" style={{ marginTop: 28 }}>
         <AppCard>
