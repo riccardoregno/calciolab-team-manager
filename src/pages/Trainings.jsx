@@ -619,7 +619,17 @@ function Trainings({
 
     {/* Giocatori disponibili per questa seduta */}
     {players.length > 0 && (
-      <AvailablePlayers players={players} date={form.date} availabilityRecords={availabilityRecords} />
+      <AvailablePlayers
+        players={players}
+        date={form.date}
+        availabilityRecords={availabilityRecords}
+        attendance={form.attendance}
+        onToggle={(playerId) => setForm((f) => {
+          const current = f.attendance[String(playerId)]?.status;
+          const next = current === "Assente" ? "Presente" : "Assente";
+          return { ...f, attendance: { ...f.attendance, [String(playerId)]: { status: next } } };
+        })}
+      />
     )}
   </AppCard>
   </div>
@@ -1294,9 +1304,15 @@ const PHASE_OPTIONS = [
   { id: "Partita",          color: "#fb923c" },
 ];
 
-function AvailablePlayers({ players, date, availabilityRecords = [] }) {
+function AvailablePlayers({ players, date, availabilityRecords = [], attendance = {}, onToggle }) {
   const { t } = useTranslation();
   const { available, unavailable, total } = getSessionAvailability(players, date, availabilityRecords);
+
+  // Conta quanti disponibili sono effettivamente presenti (non segnati Assente)
+  const presentCount = available.filter((p) => {
+    const saved = attendance[String(p.id)]?.status;
+    return !saved || saved === "Presente";
+  }).length;
 
   return (
     <div style={{
@@ -1304,7 +1320,7 @@ function AvailablePlayers({ players, date, availabilityRecords = [] }) {
       paddingTop: 16,
       borderTop: "1px solid rgba(255,255,255,0.07)",
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
         <h4 style={{ margin: 0, fontSize: 13, color: "#94a3b8", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4 }}>
           {t("pages.trainings.availablePlayers")}
         </h4>
@@ -1312,7 +1328,7 @@ function AvailablePlayers({ players, date, availabilityRecords = [] }) {
           fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999,
           background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#22c55e",
         }}>
-          {available.length} / {total}
+          {presentCount} / {total}
         </span>
         {unavailable.length > 0 && (
           <span style={{
@@ -1322,26 +1338,46 @@ function AvailablePlayers({ players, date, availabilityRecords = [] }) {
             {t("pages.trainings.unavailablePlayers", { count: unavailable.length })}
           </span>
         )}
+        {onToggle && (
+          <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>
+            Tocca per segnare assente/presente
+          </span>
+        )}
       </div>
 
-      {/* Chip disponibili */}
+      {/* Chip disponibili — cliccabili per toggle presenza */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {available.map((p) => {
           const name = [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
+          const savedStatus = attendance[String(p.id)]?.status;
+          const isAbsent = savedStatus === "Assente";
           return (
-            <span key={p.id} style={{
-              fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999,
-              background: "rgba(34,197,94,0.09)", border: "1px solid rgba(34,197,94,0.2)", color: "#86efac",
-              display: "inline-flex", alignItems: "center", gap: 5,
-            }}>
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onToggle?.(p.id)}
+              title={isAbsent ? "Assente — clicca per segnare presente" : "Presente — clicca per segnare assente"}
+              style={{
+                fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: 999,
+                cursor: onToggle ? "pointer" : "default",
+                display: "inline-flex", alignItems: "center", gap: 5,
+                border: "1px solid",
+                background: isAbsent ? "rgba(248,113,113,0.08)" : "rgba(34,197,94,0.09)",
+                borderColor: isAbsent ? "rgba(248,113,113,0.3)" : "rgba(34,197,94,0.2)",
+                color: isAbsent ? "#fca5a5" : "#86efac",
+                textDecoration: isAbsent ? "line-through" : "none",
+                opacity: isAbsent ? 0.7 : 1,
+                transition: "all 0.15s",
+              }}
+            >
               {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{name}
-              {p._juniores && <span style={{ fontSize: 10, fontWeight: 900, color: "#fb923c", letterSpacing: 0.5 }}>JUN</span>}
-            </span>
+              {p._juniores && <span style={{ fontSize: 10, fontWeight: 900, color: isAbsent ? "#fca5a5" : "#fb923c", letterSpacing: 0.5 }}>JUN</span>}
+            </button>
           );
         })}
       </div>
 
-      {/* Chip non disponibili */}
+      {/* Chip non disponibili (non cliccabili — stati fissi da infortuni/squalifiche) */}
       {unavailable.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
           {unavailable.map(({ player: p, reason }) => {
