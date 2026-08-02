@@ -158,6 +158,12 @@ function Trainings({
     [sessions]
   );
 
+  // Prossima seduta disponibile (da oggi in poi, quella con data più vicina)
+  const nextSession = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return sortedSessions.filter((s) => s.date >= today)[0] || null;
+  }, [sortedSessions]);
+
   const filteredExercises = allExercises.filter((exercise) => {
     const matchSearch = `${exercise.title} ${exercise.category} ${exercise.objective}`
       .toLowerCase()
@@ -385,6 +391,34 @@ function Trainings({
       >
         <MetricStrip items={trainingMetricItems} min={isMobile ? 118 : 132} style={{ marginTop: isMobile ? 8 : 14 }} className="mobile-scroll-x" />
       </ActionBar>
+
+      {/* Anteprima prossima seduta */}
+      {nextSession && !editingId && (
+        <AppCard style={{ marginBottom: 4 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 800, color: "#22c55e", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                Prossima seduta
+              </p>
+              <h3 style={{ margin: "0 0 6px", fontSize: 20 }}>{nextSession.title || "Allenamento"}</h3>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 13, color: "#94a3b8" }}>{formatDate(nextSession.date)}</span>
+                {nextSession.theme && <span style={{ fontSize: 13, color: "#94a3b8" }}>· {nextSession.theme}</span>}
+                {nextSession.matchDayDistance && <span style={{ fontSize: 13, color: "#94a3b8" }}>· {nextSession.matchDayDistance}</span>}
+                {(nextSession.sessionBlocks?.length > 0) && (
+                  <span style={{ fontSize: 13, color: "#94a3b8" }}>· {nextSession.sessionBlocks.length} blocchi · {nextSession.sessionBlocks.reduce((s, b) => s + (Number(b.duration) || 0), 0)} min</span>
+                )}
+              </div>
+              {nextSession.objective && <p style={{ margin: "8px 0 0", fontSize: 13, color: "#64748b" }}>{nextSession.objective}</p>}
+            </div>
+            {canManage && (
+              <Button onClick={() => editTraining(nextSession)} style={{ flexShrink: 0 }}>
+                Modifica
+              </Button>
+            )}
+          </div>
+        </AppCard>
+      )}
 
       <div
         className="calciolab-two-column"
