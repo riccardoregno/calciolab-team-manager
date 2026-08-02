@@ -327,6 +327,7 @@ function Trainings({
       sourceSummary: session.sourceSummary || "",
       objectiveStatus: session.objectiveStatus || "todo",
       objectiveReview: session.objectiveReview || "",
+      sessionBlocks: session.sessionBlocks || [],
     });
 
     requestAnimationFrame(scrollToTrainingForm);
