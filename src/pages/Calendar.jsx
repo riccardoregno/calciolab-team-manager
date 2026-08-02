@@ -89,7 +89,10 @@ function Calendar({
     if (nextView === "week") {
       setWeekOffset(weekOffsetForDate(monthDate));
     } else if (nextView === "month") {
-      setMonthDate(monthDateForWeekOffset(weekOffset));
+      // Usa la domenica (ultimo giorno) della settimana per scegliere il mese:
+      // evita che una settimana che inizia il 28 luglio mostri "luglio"
+      // invece di "agosto" quando la maggior parte dei giorni è in agosto.
+      setMonthDate(buildWeek(weekOffset)[6].date);
     }
     setView(nextView);
   }
