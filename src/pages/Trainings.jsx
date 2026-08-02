@@ -332,6 +332,8 @@ function Trainings({
       objectiveStatus: session.objectiveStatus || "todo",
       objectiveReview: session.objectiveReview || "",
       sessionBlocks: session.sessionBlocks || [],
+      numTeams: session.numTeams || 2,
+      teamAssignments: session.teamAssignments || {},
     });
 
     requestAnimationFrame(scrollToTrainingForm);
@@ -1037,11 +1039,18 @@ function Trainings({
             )}
           </AppCard>
 
-          <TeamGenerator availablePlayers={sessionAvailability.available.filter((p) => {
-            const status = form.attendance[String(p.id)]?.status;
-            if (p._defaultAbsent) return status === "Presente";
-            return status !== "Assente";
-          })} />
+          <TeamGenerator
+            availablePlayers={sessionAvailability.available.filter((p) => {
+              const status = form.attendance[String(p.id)]?.status;
+              if (p._defaultAbsent) return status === "Presente";
+              return status !== "Assente";
+            })}
+            numTeams={form.numTeams || 2}
+            assignments={form.teamAssignments || {}}
+            onChange={({ assignments, numTeams }) =>
+              setForm((f) => ({ ...f, teamAssignments: assignments, numTeams }))
+            }
+          />
         </div>
       </div>}
 
@@ -1259,6 +1268,8 @@ function emptyTraining() {
     objectiveStatus: "todo",
     objectiveReview: "",
     sessionBlocks: [],
+    numTeams: 2,
+    teamAssignments: {},
   };
 }
 
@@ -2079,47 +2090,53 @@ const TEAM_COLORS = [
   { label: "Squadra D", color: "#a855f7", bg: "rgba(168,85,247,0.12)", border: "rgba(168,85,247,0.3)" },
 ];
 
-function TeamGenerator({ availablePlayers = [] }) {
-  const [numTeams, setNumTeams] = useState(2);
-  const [assignments, setAssignments] = useState({}); // playerId -> teamIndex (0-3)
+function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange }) {
   const [collapsed, setCollapsed] = useState(false);
 
-  const unassigned = availablePlayers.filter((p) => assignments[p.id] === undefined);
+  const unassigned = availablePlayers.filter((p) => assignments[String(p.id)] === undefined);
   const teams = Array.from({ length: numTeams }, (_, i) =>
-    availablePlayers.filter((p) => assignments[p.id] === i)
+    availablePlayers.filter((p) => assignments[String(p.id)] === i)
   );
 
   function assign(playerId, teamIndex) {
-    setAssignments((prev) => ({ ...prev, [playerId]: teamIndex }));
+    onChange({ assignments: { ...assignments, [String(playerId)]: teamIndex }, numTeams });
   }
 
   function unassign(playerId) {
-    setAssignments((prev) => {
-      const next = { ...prev };
-      delete next[playerId];
-      return next;
-    });
+    const next = { ...assignments };
+    delete next[String(playerId)];
+    onChange({ assignments: next, numTeams });
   }
 
   function changeTeams(n) {
-    setNumTeams(n);
-    setAssignments((prev) => {
-      const next = {};
-      Object.entries(prev).forEach(([id, t]) => {
-        if (t < n) next[id] = t;
-      });
-      return next;
-    });
+    const next = {};
+    Object.entries(assignments).forEach(([id, t]) => { if (t < n) next[id] = t; });
+    onChange({ assignments: next, numTeams: n });
   }
 
   function shuffle() {
-    const ids = availablePlayers.map((p) => p.id).sort(() => Math.random() - 0.5);
+    const ids = availablePlayers.map((p) => String(p.id)).sort(() => Math.random() - 0.5);
     const next = {};
     ids.forEach((id, i) => { next[id] = i % numTeams; });
-    setAssignments(next);
+    onChange({ assignments: next, numTeams });
   }
 
-  function reset() { setAssignments({}); }
+  function reset() { onChange({ assignments: {}, numTeams }); }
+
+  function printTeams() {
+    const win = window.open("", "_blank");
+    const rows = teams.map((members, i) =>
+      `<div style="flex:1;min-width:140px;border:1px solid ${TEAM_COLORS[i].border};border-radius:10px;padding:12px">
+        <h3 style="margin:0 0 10px;color:${TEAM_COLORS[i].color};font-size:13px;text-transform:uppercase">${TEAM_COLORS[i].label} (${members.length})</h3>
+        ${members.map((p) => `<p style="margin:4px 0;font-size:13px">${p.name}</p>`).join("")}
+      </div>`
+    ).join("");
+    win.document.write(`<html><head><title>Squadre</title><style>body{font-family:sans-serif;padding:24px}h2{margin-bottom:16px}.teams{display:flex;gap:12px;flex-wrap:wrap}@media print{button{display:none}}</style></head>
+      <body><h2>Squadre — ${new Date().toLocaleDateString("it")}</h2>
+      <div class="teams">${rows}</div>
+      <br><button onclick="window.print()">Stampa</button></body></html>`);
+    win.document.close();
+  }
 
   return (
     <AppCard>
@@ -2177,7 +2194,7 @@ function TeamGenerator({ availablePlayers = [] }) {
           )}
 
           {/* Squadre */}
-          <div style={{ display: "grid", gridTemplateColumns: numTeams === 2 ? "1fr 1fr" : "1fr 1fr", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {teams.map((members, i) => (
               <div key={i} style={{
                 borderRadius: 10, padding: "10px 12px",
@@ -2209,6 +2226,11 @@ function TeamGenerator({ availablePlayers = [] }) {
               background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.25)",
               color: "#38bdf8", fontSize: 12, fontWeight: 700, cursor: "pointer",
             }}>🔀 Genera casuale</button>
+            <button onClick={printTeams} style={{
+              padding: "7px 14px", borderRadius: 8,
+              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+              color: "#94a3b8", fontSize: 12, fontWeight: 700, cursor: "pointer",
+            }}>🖨 Stampa</button>
             <button onClick={reset} style={{
               padding: "7px 14px", borderRadius: 8,
               background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
