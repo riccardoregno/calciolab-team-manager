@@ -1291,6 +1291,7 @@ const PHASE_OPTIONS = [
   { id: "Parte principale", color: "#a78bfa" },
   { id: "Fisico",           color: "#4ade80" },
   { id: "Defaticamento",    color: "#94a3b8" },
+  { id: "Partita",          color: "#fb923c" },
 ];
 
 function AvailablePlayers({ players, date, availabilityRecords = [] }) {
