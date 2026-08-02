@@ -383,14 +383,16 @@ function Trainings({
         }
       />
 
-      <ActionBar
-        eyebrow={clubName}
-        title={form.title || t("pages.trainings.printTitlePlaceholder")}
-        subtitle={`${getThemeLabel(form.theme, t)} · ${form.matchDayDistance}`}
-        meta={<Badge tone="blue">{t("pages.trainings.savedCount", { count: sessions.length })}</Badge>}
-      >
-        <MetricStrip items={trainingMetricItems} min={isMobile ? 118 : 132} style={{ marginTop: isMobile ? 8 : 14 }} className="mobile-scroll-x" />
-      </ActionBar>
+      {editingId && (
+        <ActionBar
+          eyebrow={clubName}
+          title={form.title || t("pages.trainings.printTitlePlaceholder")}
+          subtitle={`${getThemeLabel(form.theme, t)} · ${form.matchDayDistance}`}
+          meta={<Badge tone="blue">{t("pages.trainings.savedCount", { count: sessions.length })}</Badge>}
+        >
+          <MetricStrip items={trainingMetricItems} min={isMobile ? 118 : 132} style={{ marginTop: isMobile ? 8 : 14 }} className="mobile-scroll-x" />
+        </ActionBar>
+      )}
 
       {/* Anteprima prossima seduta */}
       {nextSession && !editingId && (
