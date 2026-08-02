@@ -1278,8 +1278,10 @@ function getSessionAvailability(players, date, availabilityRecords = []) {
   const available = [];
   const unavailable = [];
 
+  const UNAVAILABLE_STATUSES = ["Infortunato", "Recupero", "Differenziato", "Squalificato"];
+
   players.forEach((player) => {
-    const isJun = player.squadra === "juniores";
+    const isJun = (player.gruppo || "prima") === "juniores";
     if (isJun) {
       if (isJunioresAvailableOnDate(player.id, date, availabilityRecords)) {
         available.push({ ...player, _juniores: true });
@@ -1287,14 +1289,14 @@ function getSessionAvailability(players, date, availabilityRecords = []) {
       return;
     }
     const unav = getPlayerUnavailabilityOnDate(player, date);
-    if (!unav && player.status !== "Infortunato" && player.status !== "Squalificato") {
+    if (!unav && !UNAVAILABLE_STATUSES.includes(player.status)) {
       available.push(player);
     } else {
       unavailable.push({ player, reason: unav?.label || player.status || "" });
     }
   });
 
-  const primaryTotal = players.filter((p) => p.squadra !== "juniores").length;
+  const primaryTotal = players.filter((p) => (p.gruppo || "prima") !== "juniores").length;
   return { available, unavailable, total: primaryTotal };
 }
 
