@@ -1030,6 +1030,8 @@ function Trainings({
               </div>
             )}
           </AppCard>
+
+          <TeamGenerator availablePlayers={sessionAvailability.available} />
         </div>
       </div>}
 
@@ -2057,5 +2059,156 @@ const sbtnStyle = {
   borderRadius: 7, padding: "3px 8px",
   cursor: "pointer", fontSize: 13, color: "#94a3b8",
 };
+
+/* ── Team Generator ─────────────────────────────────────────────── */
+
+const TEAM_COLORS = [
+  { label: "Squadra A", color: "#3b82f6", bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.3)" },
+  { label: "Squadra B", color: "#f97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.3)" },
+  { label: "Squadra C", color: "#22c55e", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.3)" },
+  { label: "Squadra D", color: "#a855f7", bg: "rgba(168,85,247,0.12)", border: "rgba(168,85,247,0.3)" },
+];
+
+function TeamGenerator({ availablePlayers = [] }) {
+  const [numTeams, setNumTeams] = useState(2);
+  const [assignments, setAssignments] = useState({}); // playerId -> teamIndex (0-3)
+  const [collapsed, setCollapsed] = useState(false);
+
+  const unassigned = availablePlayers.filter((p) => assignments[p.id] === undefined);
+  const teams = Array.from({ length: numTeams }, (_, i) =>
+    availablePlayers.filter((p) => assignments[p.id] === i)
+  );
+
+  function assign(playerId, teamIndex) {
+    setAssignments((prev) => ({ ...prev, [playerId]: teamIndex }));
+  }
+
+  function unassign(playerId) {
+    setAssignments((prev) => {
+      const next = { ...prev };
+      delete next[playerId];
+      return next;
+    });
+  }
+
+  function changeTeams(n) {
+    setNumTeams(n);
+    setAssignments((prev) => {
+      const next = {};
+      Object.entries(prev).forEach(([id, t]) => {
+        if (t < n) next[id] = t;
+      });
+      return next;
+    });
+  }
+
+  function shuffle() {
+    const ids = availablePlayers.map((p) => p.id).sort(() => Math.random() - 0.5);
+    const next = {};
+    ids.forEach((id, i) => { next[id] = i % numTeams; });
+    setAssignments(next);
+  }
+
+  function reset() { setAssignments({}); }
+
+  return (
+    <AppCard>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={() => setCollapsed((v) => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 16, padding: 0 }}>
+            {collapsed ? "▶" : "▼"}
+          </button>
+          <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>Generatore squadre</h4>
+        </div>
+        {!collapsed && (
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {[2, 3, 4].map((n) => (
+              <button key={n} onClick={() => changeTeams(n)} style={{
+                padding: "4px 10px", borderRadius: 7, border: "1px solid",
+                borderColor: numTeams === n ? "rgba(56,189,248,0.5)" : "rgba(255,255,255,0.1)",
+                background: numTeams === n ? "rgba(56,189,248,0.15)" : "transparent",
+                color: numTeams === n ? "#38bdf8" : "#64748b",
+                fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}>{n} squadre</button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {!collapsed && (
+        <>
+          {/* Giocatori non assegnati */}
+          {unassigned.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                Da assegnare ({unassigned.length})
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {unassigned.map((p) => (
+                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{
+                      fontSize: 12, fontWeight: 600, padding: "3px 8px", borderRadius: 6,
+                      background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1",
+                    }}>
+                      {p.name}
+                    </span>
+                    <div style={{ display: "flex", gap: 2 }}>
+                      {Array.from({ length: numTeams }, (_, i) => (
+                        <button key={i} onClick={() => assign(p.id, i)} title={TEAM_COLORS[i].label} style={{
+                          width: 16, height: 16, borderRadius: 4, border: "none", cursor: "pointer",
+                          background: TEAM_COLORS[i].color, opacity: 0.85,
+                        }} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Squadre */}
+          <div style={{ display: "grid", gridTemplateColumns: numTeams === 2 ? "1fr 1fr" : "1fr 1fr", gap: 10 }}>
+            {teams.map((members, i) => (
+              <div key={i} style={{
+                borderRadius: 10, padding: "10px 12px",
+                background: TEAM_COLORS[i].bg,
+                border: `1px solid ${TEAM_COLORS[i].border}`,
+                minHeight: 60,
+              }}>
+                <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 900, color: TEAM_COLORS[i].color, textTransform: "uppercase" }}>
+                  {TEAM_COLORS[i].label} <span style={{ opacity: 0.7 }}>({members.length})</span>
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {members.map((p) => (
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#e2e8f0" }}>{p.name}</span>
+                      <button onClick={() => unassign(p.id)} style={{
+                        background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 13, padding: "0 2px", lineHeight: 1,
+                      }} title="Rimuovi">✕</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Azioni */}
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button onClick={shuffle} style={{
+              flex: 1, padding: "7px 0", borderRadius: 8,
+              background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.25)",
+              color: "#38bdf8", fontSize: 12, fontWeight: 700, cursor: "pointer",
+            }}>🔀 Genera casuale</button>
+            <button onClick={reset} style={{
+              padding: "7px 14px", borderRadius: 8,
+              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+              color: "#64748b", fontSize: 12, fontWeight: 700, cursor: "pointer",
+            }}>Reset</button>
+          </div>
+        </>
+      )}
+    </AppCard>
+  );
+}
 
 export default Trainings;
