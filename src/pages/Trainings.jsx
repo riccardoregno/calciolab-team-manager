@@ -68,12 +68,7 @@ function Trainings({
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
   const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
   const [search, setSearch] = useState("");
-  const [editingId, setEditingId] = useState(() => {
-    if (location.state?.draftTraining || location.state?.newSession) return null;
-    const today = new Date().toISOString().slice(0, 10);
-    const next = [...sessions].filter((s) => s.date >= today).sort((a, b) => new Date(a.date) - new Date(b.date))[0];
-    return next?.id || null;
-  });
+  const [editingId, setEditingId] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [pickerBlock, setPickerBlock] = useState("Tutti");
   const [sessionsView, setSessionsView] = useState("lista"); // "lista" | "settimana"
@@ -126,12 +121,6 @@ function Trainings({
         return getInitialTrainingForm(JSON.parse(stored));
       }
     } catch { /* ignore */ }
-    // Auto-carica la prossima seduta in programma
-    if (!location.state?.newSession) {
-      const today = new Date().toISOString().slice(0, 10);
-      const next = [...sessions].filter((s) => s.date >= today).sort((a, b) => new Date(a.date) - new Date(b.date))[0];
-      if (next) return getInitialTrainingForm(next);
-    }
     return getInitialTrainingForm(null);
   });
 
@@ -1306,98 +1295,94 @@ function AvailablePlayers({ players, date, availabilityRecords = [], attendance 
   const { t } = useTranslation();
   const { available, unavailable, total } = getSessionAvailability(players, date, availabilityRecords);
 
-  // Conta quanti disponibili sono effettivamente presenti
-  // Prima squadra: presente per default (assente se esplicitamente segnato)
-  // Juniores: assenti per default (presente solo se esplicitamente segnato)
-  const presentCount = available.filter((p) => {
-    const saved = attendance[String(p.id)]?.status;
-    if (p._defaultAbsent) return saved === "Presente";
-    return !saved || saved === "Presente";
+  const primaAvailable = available.filter((p) => !p._juniores);
+  const junAvailable = available.filter((p) => p._juniores);
+  const primaPresent = primaAvailable.filter((p) => {
+    const s = attendance[String(p.id)]?.status;
+    return !s || s === "Presente";
   }).length;
+  const junPresent = junAvailable.filter((p) => attendance[String(p.id)]?.status === "Presente").length;
+
+  function PlayerChip({ p }) {
+    const name = [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
+    const savedStatus = attendance[String(p.id)]?.status;
+    const isAbsent = p._defaultAbsent ? savedStatus !== "Presente" : savedStatus === "Assente";
+    return (
+      <button
+        key={p.id}
+        type="button"
+        onClick={() => onToggle?.(p.id)}
+        title={isAbsent ? "Assente — clicca per segnare presente" : "Presente — clicca per segnare assente"}
+        style={{
+          fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: 999,
+          cursor: onToggle ? "pointer" : "default",
+          display: "inline-flex", alignItems: "center", gap: 5,
+          border: "1px solid",
+          background: isAbsent ? "rgba(248,113,113,0.08)" : "rgba(34,197,94,0.09)",
+          borderColor: isAbsent ? "rgba(248,113,113,0.3)" : "rgba(34,197,94,0.2)",
+          color: isAbsent ? "#fca5a5" : "#86efac",
+          textDecoration: isAbsent ? "line-through" : "none",
+          opacity: isAbsent ? 0.7 : 1,
+          transition: "all 0.15s",
+        }}
+      >
+        {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{name}
+      </button>
+    );
+  }
+
+  const labelStyle = { fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5, margin: "10px 0 5px" };
 
   return (
-    <div style={{
-      marginTop: 16,
-      paddingTop: 16,
-      borderTop: "1px solid rgba(255,255,255,0.07)",
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+    <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
         <h4 style={{ margin: 0, fontSize: 13, color: "#94a3b8", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4 }}>
           {t("pages.trainings.availablePlayers")}
         </h4>
-        <span style={{
-          fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999,
-          background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#22c55e",
-        }}>
-          {presentCount} / {total}
+        <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#22c55e" }}>
+          {primaPresent} / {total} prima
         </span>
+        {junAvailable.length > 0 && (
+          <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999, background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.3)", color: "#fb923c" }}>
+            +{junPresent} juniores
+          </span>
+        )}
         {unavailable.length > 0 && (
-          <span style={{
-            fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999,
-            background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.25)", color: "#f87171",
-          }}>
-            {t("pages.trainings.unavailablePlayers", { count: unavailable.length })}
+          <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.25)", color: "#f87171" }}>
+            {unavailable.length} non disp.
           </span>
         )}
-        {onToggle && (
-          <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>
-            Tocca per segnare assente/presente
-          </span>
-        )}
+        {onToggle && <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>Tocca per segnare assente/presente</span>}
       </div>
 
-      {/* Chip disponibili — cliccabili per toggle presenza */}
+      {/* Prima squadra */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {available.map((p) => {
+        {primaAvailable.map((p) => <PlayerChip key={p.id} p={p} />)}
+        {unavailable.map(({ player: p, reason }) => {
           const name = [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
-          const savedStatus = attendance[String(p.id)]?.status;
-          const isAbsent = p._defaultAbsent ? savedStatus !== "Presente" : savedStatus === "Assente";
+          const isInjured = p.status === "Infortunato" || String(reason).toLowerCase().includes("infortun");
           return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => onToggle?.(p.id)}
-              title={isAbsent ? "Assente — clicca per segnare presente" : "Presente — clicca per segnare assente"}
-              style={{
-                fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: 999,
-                cursor: onToggle ? "pointer" : "default",
-                display: "inline-flex", alignItems: "center", gap: 5,
-                border: "1px solid",
-                background: isAbsent ? "rgba(248,113,113,0.08)" : "rgba(34,197,94,0.09)",
-                borderColor: isAbsent ? "rgba(248,113,113,0.3)" : "rgba(34,197,94,0.2)",
-                color: isAbsent ? "#fca5a5" : "#86efac",
-                textDecoration: isAbsent ? "line-through" : "none",
-                opacity: isAbsent ? 0.7 : 1,
-                transition: "all 0.15s",
-              }}
-            >
-              {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{name}
-              {p._juniores && <span style={{ fontSize: 10, fontWeight: 900, color: isAbsent ? "#fca5a5" : "#fb923c", letterSpacing: 0.5 }}>JUN</span>}
-            </button>
+            <span key={p.id} title={reason || p.status || "Non disponibile"} style={{
+              fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999,
+              background: isInjured ? "rgba(248,113,113,0.08)" : "rgba(168,85,247,0.08)",
+              border: isInjured ? "1px solid rgba(248,113,113,0.2)" : "1px solid rgba(168,85,247,0.2)",
+              color: isInjured ? "#fca5a5" : "#d8b4fe", textDecoration: "line-through", opacity: 0.75,
+            }}>
+              {name}
+            </span>
           );
         })}
       </div>
 
-      {/* Chip non disponibili (non cliccabili — stati fissi da infortuni/squalifiche) */}
-      {unavailable.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-          {unavailable.map(({ player: p, reason }) => {
-            const name = [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
-            const isInjured = p.status === "Infortunato" || String(reason).toLowerCase().includes("infortun");
-            return (
-              <span key={p.id} title={`${reason || p.status || "Non disponibile"}${p.injuryType ? ` · ${p.injuryType}` : ""}`} style={{
-                fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999,
-                background: isInjured ? "rgba(248,113,113,0.08)" : "rgba(168,85,247,0.08)",
-                border: isInjured ? "1px solid rgba(248,113,113,0.2)" : "1px solid rgba(168,85,247,0.2)",
-                color: isInjured ? "#fca5a5" : "#d8b4fe",
-                textDecoration: "line-through",
-                opacity: 0.75,
-              }}>
-                {isInjured ? "🚑" : "🟥"} {name}
-              </span>
-            );
-          })}
-        </div>
+      {/* Juniores — sezione separata */}
+      {junAvailable.length > 0 && (
+        <>
+          <div style={labelStyle}>Juniores — clicca per abilitare</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {junAvailable.map((p) => <PlayerChip key={p.id} p={p} />)}
+          </div>
+        </>
       )}
     </div>
   );
