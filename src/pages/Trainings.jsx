@@ -1266,20 +1266,7 @@ function PrintBox({ title, value }) {
 // ─────────────────────────────────────────────
 // Box giocatori disponibili nel form seduta
 // ─────────────────────────────────────────────
-function isJunioresAvailableOnDate(playerId, date, availabilityRecords) {
-  if (!date || !availabilityRecords?.length) return false;
-  return availabilityRecords.some((r) => {
-    if (String(r.player_id) !== String(playerId)) return false;
-    if (r.status !== "available") return false;
-    if (!r.date_from || date < r.date_from) return false;
-    // date_to null = valido solo per il giorno date_from (un'unica giornata)
-    const dateTo = r.date_to ?? r.date_from;
-    if (date > dateTo) return false;
-    return true;
-  });
-}
-
-function getSessionAvailability(players, date, availabilityRecords = []) {
+function getSessionAvailability(players, date, _availabilityRecords = []) {
   const available = [];
   const unavailable = [];
 

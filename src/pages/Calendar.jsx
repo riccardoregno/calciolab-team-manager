@@ -68,9 +68,6 @@ function weekOffsetForDate(date) {
   return Math.round(diffDays / 7);
 }
 
-function monthDateForWeekOffset(offsetWeeks) {
-  return buildWeek(offsetWeeks)[0].date;
-}
 
 function Calendar({
   events, players, setSessions, setMatches, sessions = [], matches = [], appSettings = {} }) {
