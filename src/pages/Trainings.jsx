@@ -69,7 +69,12 @@ function Trainings({
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
   const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
   const [search, setSearch] = useState("");
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState(() => {
+    if (location.state?.draftTraining || location.state?.newSession) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const next = [...sessions].filter((s) => s.date >= today).sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+    return next?.id || null;
+  });
   const [formErrors, setFormErrors] = useState({});
   const [pickerBlock, setPickerBlock] = useState("Tutti");
   const [sessionsView, setSessionsView] = useState("lista"); // "lista" | "settimana"
@@ -111,13 +116,7 @@ function Trainings({
   const [form, setForm] = useState(() => {
     const fromState = location.state?.draftTraining;
     if (fromState) {
-      // Pulisce il backup sessionStorage subito, così un successivo
-      // back+forward non ricarica la bozza originale sovrascrivendo le modifiche
-      try {
-        sessionStorage.removeItem("trainings_draft");
-      } catch {
-        /* sessionStorage can be unavailable in restricted browsers */
-      }
+      try { sessionStorage.removeItem("trainings_draft"); } catch { /* ignore */ }
       return getInitialTrainingForm(fromState);
     }
     try {
@@ -126,8 +125,12 @@ function Trainings({
         sessionStorage.removeItem("trainings_draft");
         return getInitialTrainingForm(JSON.parse(stored));
       }
-    } catch {
-      /* Ignore stale or unreadable draft backups */
+    } catch { /* ignore */ }
+    // Auto-carica la prossima seduta in programma
+    if (!location.state?.newSession) {
+      const today = new Date().toISOString().slice(0, 10);
+      const next = [...sessions].filter((s) => s.date >= today).sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+      if (next) return getInitialTrainingForm(next);
     }
     return getInitialTrainingForm(null);
   });
@@ -154,41 +157,6 @@ function Trainings({
       resetForm();
     }
   }, [location.pathname, location.state, navigate, showToast, t]);
-
-  // Auto-carica la prossima seduta in programma (oggi o futura) all'apertura della pagina
-  const autoLoadedRef = useRef(false);
-  useEffect(() => {
-    if (autoLoadedRef.current) return;
-    if (location.state?.draftTraining || location.state?.newSession) return;
-    if (!sessions.length) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const next = [...sessions]
-      .filter((s) => s.date >= today)
-      .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
-    if (next) {
-      autoLoadedRef.current = true;
-      setEditingId(next.id);
-      setForm({
-        title: next.title || "",
-        date: next.date || localDateString(),
-        type: next.type || "Allenamento",
-        theme: next.theme || "Costruzione",
-        matchDayDistance: next.matchDayDistance || "MD-3",
-        objective: next.objective || "",
-        notes: next.notes || "",
-        exercises: next.exercises || [],
-        attendance: next.attendance || {},
-        sourceType: next.sourceType || "",
-        sourceMatchId: next.sourceMatchId || "",
-        sourceMatchLabel: next.sourceMatchLabel || "",
-        sourceMatchDate: next.sourceMatchDate || "",
-        sourceSummary: next.sourceSummary || "",
-        objectiveStatus: next.objectiveStatus || "todo",
-        objectiveReview: next.objectiveReview || "",
-        sessionBlocks: next.sessionBlocks || [],
-      });
-    }
-  }, [sessions, location.state]);
 
   // RPE calcolato dalla distanza dalla gara
   const rpeTarget = RPE_BY_MATCH_DAY[form.matchDayDistance] || RPE_BY_MATCH_DAY["MD-3"];
