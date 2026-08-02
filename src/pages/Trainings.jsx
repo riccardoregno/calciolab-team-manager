@@ -218,7 +218,13 @@ function Trainings({
     {
       key: "available",
       label: t("pages.trainings.printAvailablePlayers"),
-      value: sessionAvailability.total ? `${sessionAvailability.available.length}/${sessionAvailability.total}` : "-",
+      value: (() => {
+        const primaPresent = sessionAvailability.available.filter((p) => {
+          if (p._juniores) return false;
+          return form.attendance[String(p.id)]?.status !== "Assente";
+        }).length;
+        return sessionAvailability.total ? `${primaPresent}/${sessionAvailability.total}` : "-";
+      })(),
       color: "#22c55e",
     },
   ];
