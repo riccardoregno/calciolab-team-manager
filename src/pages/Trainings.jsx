@@ -2083,6 +2083,27 @@ const sbtnStyle = {
 
 /* ── Team Generator ─────────────────────────────────────────────── */
 
+const ROLE_ORDER = { P: 0, D: 1, C: 2, A: 3 };
+const ROLE_COLORS = { P: "#facc15", D: "#60a5fa", C: "#4ade80", A: "#f87171" };
+
+function getRoleTag(role) {
+  if (!role) return null;
+  const r = role.trim().toUpperCase();
+  if (r.startsWith("P")) return "P";
+  if (r.startsWith("D")) return "D";
+  if (r.startsWith("C")) return "C";
+  if (r.startsWith("A")) return "A";
+  return null;
+}
+
+function sortByRole(players) {
+  return [...players].sort((a, b) => {
+    const ra = ROLE_ORDER[getRoleTag(a.role)] ?? 99;
+    const rb = ROLE_ORDER[getRoleTag(b.role)] ?? 99;
+    return ra - rb;
+  });
+}
+
 const TEAM_COLORS = [
   { label: "Squadra A", color: "#3b82f6", bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.3)" },
   { label: "Squadra B", color: "#f97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.3)" },
@@ -2115,9 +2136,20 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
   }
 
   function shuffle() {
-    const ids = availablePlayers.map((p) => String(p.id)).sort(() => Math.random() - 0.5);
+    // Raggruppa per ruolo e distribuisce round-robin per bilanciare
+    const byRole = { P: [], D: [], C: [], A: [], "?": [] };
+    availablePlayers.forEach((p) => {
+      const tag = getRoleTag(p.role) || "?";
+      byRole[tag].push(String(p.id));
+    });
     const next = {};
-    ids.forEach((id, i) => { next[id] = i % numTeams; });
+    let teamIdx = 0;
+    ["P", "D", "C", "A", "?"].forEach((role) => {
+      byRole[role].sort(() => Math.random() - 0.5).forEach((id) => {
+        next[id] = teamIdx % numTeams;
+        teamIdx++;
+      });
+    });
     onChange({ assignments: next, numTeams });
   }
 
@@ -2171,24 +2203,31 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
                 Da assegnare ({unassigned.length})
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {unassigned.map((p) => (
-                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{
-                      fontSize: 12, fontWeight: 600, padding: "3px 8px", borderRadius: 6,
-                      background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1",
-                    }}>
-                      {p.name}
-                    </span>
-                    <div style={{ display: "flex", gap: 2 }}>
-                      {Array.from({ length: numTeams }, (_, i) => (
-                        <button key={i} onClick={() => assign(p.id, i)} title={TEAM_COLORS[i].label} style={{
-                          width: 16, height: 16, borderRadius: 4, border: "none", cursor: "pointer",
-                          background: TEAM_COLORS[i].color, opacity: 0.85,
-                        }} />
-                      ))}
+                {sortByRole(unassigned).map((p) => {
+                  const tag = getRoleTag(p.role);
+                  return (
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <span style={{
+                        fontSize: 12, fontWeight: 600, padding: "3px 8px", borderRadius: 6,
+                        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1",
+                        display: "flex", alignItems: "center", gap: 5,
+                      }}>
+                        {tag && (
+                          <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag], lineHeight: 1 }}>{tag}</span>
+                        )}
+                        {p.name}
+                      </span>
+                      <div style={{ display: "flex", gap: 2 }}>
+                        {Array.from({ length: numTeams }, (_, i) => (
+                          <button key={i} onClick={() => assign(p.id, i)} title={TEAM_COLORS[i].label} style={{
+                            width: 16, height: 16, borderRadius: 4, border: "none", cursor: "pointer",
+                            background: TEAM_COLORS[i].color, opacity: 0.85,
+                          }} />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -2206,14 +2245,20 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
                   {TEAM_COLORS[i].label} <span style={{ opacity: 0.7 }}>({members.length})</span>
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {members.map((p) => (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "#e2e8f0" }}>{p.name}</span>
-                      <button onClick={() => unassign(p.id)} style={{
-                        background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 13, padding: "0 2px", lineHeight: 1,
-                      }} title="Rimuovi">✕</button>
-                    </div>
-                  ))}
+                  {sortByRole(members).map((p) => {
+                    const tag = getRoleTag(p.role);
+                    return (
+                      <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#e2e8f0", display: "flex", alignItems: "center", gap: 5 }}>
+                          {tag && <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag], minWidth: 10 }}>{tag}</span>}
+                          {p.name}
+                        </span>
+                        <button onClick={() => unassign(p.id)} style={{
+                          background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 13, padding: "0 2px", lineHeight: 1,
+                        }} title="Rimuovi">✕</button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
