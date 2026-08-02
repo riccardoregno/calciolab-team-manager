@@ -1049,6 +1049,7 @@ function App() {
                 element={
                   gate(technicalRoles, <Trainings
                     exercises={exercises}
+                    setExercises={setExercises}
                     sessions={sessions}
                     setSessions={setSessions}
                     players={players}

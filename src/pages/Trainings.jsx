@@ -18,6 +18,7 @@ import { useAreaPermission } from "../components/auth/permissionContext";
 import { uploadTeamAttachment } from "../services/attachments";
 import { styles } from "../styles/index.js";
 import { createId, formatDate, getPlayerUnavailabilityOnDate, localDateString, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
+import { emptyExercise } from "../data/initialData";
 import { useTranslation } from "../i18n";
 import { sendTeamNotification } from "../services/notifications";
 import RpeMatrix from "../components/statistics/RpeMatrix";
@@ -56,7 +57,7 @@ function getRpeDisplayMeta(md, rpe, t) {
 }
 
 function Trainings({
-  exercises, sessions, setSessions, players = [], matches = [], appSettings = {}, loading = false, teamId = null }) {
+  exercises, setExercises, sessions, setSessions, players = [], matches = [], appSettings = {}, loading = false, teamId = null }) {
 
   const { t } = useTranslation();
   const isMobile = useIsMobile(760);
@@ -642,6 +643,8 @@ function Trainings({
     saveLabel={editingId ? t("pages.trainings.updateSession") : t("pages.trainings.saveSession")}
     teamId={teamId}
     canManage={canManage}
+    setExercises={setExercises}
+    existingExercises={exercises}
   />
 
           <AppCard>
@@ -1798,8 +1801,36 @@ function emptyBlock() {
   };
 }
 
-function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canManage }) {
+function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canManage, setExercises, existingExercises = [] }) {
   const [uploading, setUploading] = useState({});
+  const [savedToLib, setSavedToLib] = useState({}); // blockId → true quando appena salvato
+
+  function saveBlockToLibrary(block) {
+    if (!block.name?.trim()) return;
+    // Controlla se esiste già un esercizio con lo stesso titolo (evita duplicati)
+    const alreadyExists = existingExercises.some(
+      (e) => e.title?.trim().toLowerCase() === block.name.trim().toLowerCase()
+    );
+    if (alreadyExists) {
+      setSavedToLib((s) => ({ ...s, [block.id]: "exists" }));
+      setTimeout(() => setSavedToLib((s) => ({ ...s, [block.id]: null })), 2500);
+      return;
+    }
+    const intensityLabel = block.intensity >= 8 ? "Alta" : block.intensity >= 5 ? "Media" : "Bassa";
+    const newExercise = {
+      ...emptyExercise(),
+      id: createId("ex"),
+      title: block.name.trim(),
+      category: block.phase || "Parte principale",
+      description: block.description || block.notes || "",
+      duration: String(block.duration || ""),
+      intensity: intensityLabel,
+      image: block.image?.url || "",
+    };
+    setExercises?.((prev) => [newExercise, ...prev]);
+    setSavedToLib((s) => ({ ...s, [block.id]: "saved" }));
+    setTimeout(() => setSavedToLib((s) => ({ ...s, [block.id]: null })), 2500);
+  }
 
   async function handleImageUpload(blockId, file) {
     if (!file) return;
@@ -1893,7 +1924,23 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
                     }}
                   >{p.id}</button>
                 ))}
-                <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+                <div style={{ display: "flex", gap: 4, marginLeft: "auto", alignItems: "center" }}>
+                  {setExercises && block.name?.trim() && (
+                    <button
+                      onClick={() => saveBlockToLibrary(block)}
+                      title="Salva nella libreria esercizi"
+                      style={{
+                        ...sbtnStyle,
+                        fontSize: 12, padding: "2px 8px", borderRadius: 8,
+                        color: savedToLib[block.id] === "saved" ? "#4ade80" : savedToLib[block.id] === "exists" ? "#fb923c" : "#38bdf8",
+                        borderColor: savedToLib[block.id] === "saved" ? "rgba(74,222,128,0.4)" : savedToLib[block.id] === "exists" ? "rgba(251,146,60,0.4)" : "rgba(56,189,248,0.3)",
+                        background: savedToLib[block.id] === "saved" ? "rgba(74,222,128,0.08)" : savedToLib[block.id] === "exists" ? "rgba(251,146,60,0.08)" : "rgba(56,189,248,0.07)",
+                        width: "auto",
+                      }}
+                    >
+                      {savedToLib[block.id] === "saved" ? "✓ Salvato" : savedToLib[block.id] === "exists" ? "Già presente" : "📚 Libreria"}
+                    </button>
+                  )}
                   <button onClick={() => moveBlock(idx, -1)} disabled={idx === 0} style={sbtnStyle} aria-label="Sposta su">↑</button>
                   <button onClick={() => moveBlock(idx, 1)} disabled={idx === blocks.length - 1} style={sbtnStyle} aria-label="Sposta giù">↓</button>
                   <button onClick={() => removeBlock(block.id)} style={{ ...sbtnStyle, color: "#f87171" }} aria-label="Elimina">✕</button>
