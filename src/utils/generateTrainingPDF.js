@@ -9,6 +9,10 @@ import {
   textBox,
 } from "./pdfExportHelpers";
 
+const MARGIN = 14;
+const LINE_H = 4.5;
+const FONT_BODY = 8.5;
+
 export async function generateTrainingPDF({ session, exercises = [], appSettings = {}, save = true }) {
   if (!session) return null;
 
@@ -19,50 +23,50 @@ export async function generateTrainingPDF({ session, exercises = [], appSettings
     dateStr,
   });
 
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const contentW = pageW - MARGIN * 2;
+  const bottomMargin = 22;
+
+  function checkPage(neededH) {
+    if (y + neededH > pageH - bottomMargin) {
+      doc.addPage();
+      y = MARGIN;
+    }
+  }
+
   let y = startY;
+
+  // Titolo seduta
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.setTextColor(15, 23, 42);
-  doc.text(session.title || "Seduta", 14, y);
-  y += 8;
+  doc.text(session.title || "Seduta", MARGIN, y);
+  y += 7;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
-  doc.text([dateStr, session.theme || session.type || "", `${session.duration || 0}'`].filter(Boolean).join("  |  "), 14, y);
+  doc.text([dateStr, session.theme || session.type || "", `${session.duration || 0}'`].filter(Boolean).join("  |  "), MARGIN, y);
   y += 8;
 
-  const structuredBlocks = session.sessionBlocks || [];
-  const useStructured = structuredBlocks.length > 0;
-
-  const planned = useStructured ? [] : (session.exercises || []).map((block, index) => {
-    const exercise = exercises.find((item) => String(item.id) === String(block.exerciseId));
-    return {
-      title: exercise?.title || block.title || `Blocco ${index + 1}`,
-      minutes: block.minutes || block.duration || block.customDuration || exercise?.duration || "-",
-      block: exercise?.trainingBlock || exercise?.category || block.block || "-",
-      field: exercise?.fieldSize || exercise?.space || block.field || "-",
-      focus: block.note || exercise?.coachingPoints || exercise?.objective || exercise?.goal || exercise?.description || "-",
-    };
-  });
-
+  // KPI
   const kpiItems = [
     { label: "Obiettivo", value: session.objective || "-" },
-    { label: "Durata", value: `${session.duration || 0}'` },
+    { label: "Durata",    value: `${session.duration || 0}'` },
     ...(session.rpe ? [{ label: "RPE", value: session.rpe }] : []),
     ...(session.rpe && session.duration ? [{ label: "Carico", value: Number(session.duration) * Number(session.rpe) }] : []),
   ];
   y = keyValueGrid(doc, kpiItems, y);
 
+  // ── Timeline ──────────────────────────────────────────────────────
+  const structuredBlocks = session.sessionBlocks || [];
+  const useStructured = structuredBlocks.length > 0;
+
   y = sectionTitle(doc, "Timeline esercizi", y);
 
   if (useStructured) {
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-    const margin = 14;
-    const contentW = pageW - margin * 2;
-
-    // Pre-fetch immagini come base64
+    // Pre-fetch immagini
     async function urlToBase64(url) {
       try {
         const resp = await fetch(url);
@@ -86,74 +90,103 @@ export async function generateTrainingPDF({ session, exercises = [], appSettings
     for (const b of structuredBlocks) {
       const imgData = imgDataMap[b.id] || null;
       const description = b.description || b.notes || b.objective || "";
-      const descLines = description ? doc.splitTextToSize(description, contentW - 4) : [];
+      const descLines = description ? doc.splitTextToSize(description, contentW - 6) : [];
 
-      // Calcola altezza immagine proporzionale (max 90mm larghezza piena)
+      // Immagine: calcola proporzioni reali
       let imgH = 0;
+      let imgW = contentW - 4;
       if (imgData) {
         try {
           const props = doc.getImageProperties(imgData);
-          imgH = Math.min((contentW * props.height) / props.width, 90);
+          const ratio = props.height / props.width;
+          imgH = Math.min(imgW * ratio, 80); // max 80mm
+          imgW = imgH / ratio; // ricalcola larghezza per mantenere proporzioni
+          if (imgW > contentW - 4) imgW = contentW - 4;
         } catch { imgH = 60; }
       }
 
-      const textH = 6 + descLines.length * 4.5 + 10;
-      const blockH = textH + (imgData ? imgH + 4 : 0);
+      // Stima altezza blocco per sapere se fare page break
+      const estimatedH = 16 + descLines.length * LINE_H + (imgData ? imgH + 4 : 0) + 6;
+      checkPage(estimatedH);
 
-      if (y + blockH + 6 > pageH - 20) { doc.addPage(); y = 14; }
+      const blockStartY = y;
 
-      doc.setDrawColor(220, 220, 230);
-      doc.setFillColor(250, 251, 252);
-      doc.roundedRect(margin, y, contentW, blockH + 4, 2, 2, "FD");
-
-      // Testo: nome + durata/fase
+      // Header blocco
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(15, 23, 42);
-      doc.text(b.name || "Blocco", margin + 2, y + 6);
+      doc.text(b.name || "Blocco", MARGIN + 2, y + 6);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
+      doc.setFontSize(FONT_BODY);
       doc.setTextColor(100, 116, 139);
-      doc.text(`${b.duration || "-"} min${b.phase ? "  ·  " + b.phase : ""}`, margin + 2, y + 11);
+      doc.text(
+        `${b.duration || "-"} min${b.phase ? "  ·  " + b.phase : ""}`,
+        MARGIN + 2, y + 11
+      );
+      y += 14;
 
+      // Descrizione
       if (descLines.length) {
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(8.5);
+        doc.setFontSize(FONT_BODY);
         doc.setTextColor(71, 85, 105);
-        doc.text(descLines, margin + 2, y + 17);
+        doc.text(descLines, MARGIN + 2, y);
+        y += descLines.length * LINE_H + 3;
       }
 
-      // Immagine sotto, larghezza piena
+      // Immagine sotto, centrata
       if (imgData) {
+        const imgX = MARGIN + (contentW - imgW) / 2;
         try {
-          doc.addImage(imgData, "JPEG", margin + 2, y + textH + 2, contentW - 4, imgH);
-        } catch { /* immagine non supportata */ }
+          doc.addImage(imgData, "JPEG", imgX, y, imgW, imgH);
+        } catch {
+          try { doc.addImage(imgData, "PNG", imgX, y, imgW, imgH); } catch { /* skip */ }
+        }
+        y += imgH + 3;
       }
 
-      y += blockH + 8;
+      // Bordo blocco
+      doc.setDrawColor(220, 220, 230);
+      doc.setFillColor(250, 251, 252);
+      doc.roundedRect(MARGIN, blockStartY, contentW, y - blockStartY + 2, 2, 2, "S");
+
+      y += 6;
     }
-  } else if (planned.length) {
-    y = defaultTable(doc, {
-      startY: y,
-      head: [["Min", "Blocco", "Esercizio", "Campo", "Focus"]],
-      body: planned.map((item) => [item.minutes, item.block, item.title, item.field, item.focus]),
-      columnStyles: {
-        0: { cellWidth: 14 },
-        1: { cellWidth: 28 },
-        2: { cellWidth: 42 },
-        3: { cellWidth: 30 },
-      },
-    });
   } else {
-    doc.text("Nessun esercizio inserito.", 14, y);
-    y += 8;
+    const planned = (session.exercises || []).map((block, index) => {
+      const exercise = exercises.find((item) => String(item.id) === String(block.exerciseId));
+      return {
+        title: exercise?.title || block.title || `Blocco ${index + 1}`,
+        minutes: block.minutes || block.duration || block.customDuration || exercise?.duration || "-",
+        block: exercise?.trainingBlock || exercise?.category || block.block || "-",
+        field: exercise?.fieldSize || exercise?.space || block.field || "-",
+        focus: block.note || exercise?.coachingPoints || exercise?.objective || exercise?.goal || exercise?.description || "-",
+      };
+    });
+
+    if (planned.length) {
+      y = defaultTable(doc, {
+        startY: y,
+        head: [["Min", "Blocco", "Esercizio", "Campo", "Focus"]],
+        body: planned.map((item) => [item.minutes, item.block, item.title, item.field, item.focus]),
+        columnStyles: { 0: { cellWidth: 14 }, 1: { cellWidth: 28 }, 2: { cellWidth: 42 }, 3: { cellWidth: 30 } },
+      });
+    } else {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(FONT_BODY);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Nessun esercizio inserito.", MARGIN, y);
+      y += 8;
+    }
   }
 
+  // ── Materiali e note ─────────────────────────────────────────────
+  checkPage(50);
   y = sectionTitle(doc, "Materiali e note", y);
-  const boxW = (doc.internal.pageSize.getWidth() - 32) / 2;
-  textBox(doc, "Materiali", session.materials || "Da definire", 14, y, boxW, 30);
-  textBox(doc, "Note staff", session.notes || "Nessuna nota", 18 + boxW, y, boxW, 30);
+  const boxW = (pageW - 32) / 2;
+  textBox(doc, "Materiali",  session.materials || "Da definire",     MARGIN,        y, boxW, 30);
+  textBox(doc, "Note staff", session.notes     || "Nessuna nota", 18 + boxW,     y, boxW, 30);
 
   const filename = `Seduta_${safePdfName(session.title || "allenamento")}_${String(session.date || "").slice(0, 10)}.pdf`;
   return finishBrandedPdf(doc, { teamName, dateStr, assets, filename, save });
