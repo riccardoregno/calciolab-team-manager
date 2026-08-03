@@ -387,10 +387,10 @@ function TrainingTemplate({ session, exercises }) {
 
       <KpiGrid
         items={[
-          { label: t(`${T}.kpiObjective`), value: session.objective || t("pages.exportCenter.tpl.fallbackTbd") },
-          { label: t(`${T}.kpiRpe`),       value: session.rpe || "-" },
-          { label: t(`${T}.kpiBlocks`),    value: blockCount },
-          { label: t(`${T}.kpiLoad`),      value: `${Number(session.duration || 0) * Number(session.rpe || 0)}` },
+          ...(session.objective ? [{ label: t(`${T}.kpiObjective`), value: session.objective, wide: true }] : []),
+          { label: t(`${T}.kpiBlocks`), value: blockCount },
+          ...(session.rpe ? [{ label: t(`${T}.kpiRpe`), value: session.rpe }] : []),
+          ...(session.rpe && session.duration ? [{ label: t(`${T}.kpiLoad`), value: Number(session.duration) * Number(session.rpe) }] : []),
         ]}
       />
 
@@ -778,11 +778,11 @@ function PrintHeader({ eyebrow, title, meta }) {
 
 function KpiGrid({ items }) {
   return (
-    <div className="print-kpis">
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 12 }}>
       {items.map((item) => (
-        <div key={item.label} className="print-kpi">
+        <div key={item.label} className="print-kpi" style={item.wide ? { gridColumn: "1 / -1" } : {}}>
           <span>{item.label}</span>
-          <strong>{item.value || "-"}</strong>
+          <strong style={{ fontSize: item.wide ? 14 : undefined, fontWeight: item.wide ? 500 : undefined }}>{item.value || "-"}</strong>
         </div>
       ))}
     </div>
@@ -792,7 +792,17 @@ function KpiGrid({ items }) {
 function Section({ title, children }) {
   return (
     <section className="print-section">
-      <h2>{title}</h2>
+      <h2 style={{
+        margin: 0,
+        padding: "6px 12px",
+        fontSize: 11,
+        fontWeight: 900,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: "#ffffff",
+        background: "#8b1a2e",
+        borderRadius: 6,
+      }}>{title}</h2>
       {children}
     </section>
   );

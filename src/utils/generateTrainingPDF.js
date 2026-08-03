@@ -46,12 +46,13 @@ export async function generateTrainingPDF({ session, exercises = [], appSettings
     };
   });
 
-  y = keyValueGrid(doc, [
-    { label: "Obiettivo", value: session.objective || session.theme || "-" },
-    { label: "RPE", value: session.rpe || "-" },
+  const kpiItems = [
+    { label: "Obiettivo", value: session.objective || "-" },
     { label: "Durata", value: `${session.duration || 0}'` },
-    { label: "Carico", value: Number(session.duration || 0) * Number(session.rpe || 0) || "-" },
-  ], y);
+    ...(session.rpe ? [{ label: "RPE", value: session.rpe }] : []),
+    ...(session.rpe && session.duration ? [{ label: "Carico", value: Number(session.duration) * Number(session.rpe) }] : []),
+  ];
+  y = keyValueGrid(doc, kpiItems, y);
 
   y = sectionTitle(doc, "Timeline esercizi", y);
 

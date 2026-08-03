@@ -5,8 +5,8 @@ import { drawBrandedFooters, drawBrandedHeader, loadBrandingAssets } from "./pdf
 export { autoTable };
 
 export const PDF_COLORS = {
-  blue: [37, 99, 235],
-  blueLight: [96, 165, 250],
+  blue: [139, 26, 46],
+  blueLight: [185, 60, 82],
   dark: [15, 23, 42],
   darker: [8, 13, 24],
   text: [15, 23, 42],
