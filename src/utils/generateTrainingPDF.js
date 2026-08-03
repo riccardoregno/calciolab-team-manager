@@ -61,52 +61,67 @@ export async function generateTrainingPDF({ session, exercises = [], appSettings
     const margin = 14;
     const contentW = pageW - margin * 2;
 
+    // Pre-fetch immagini come base64
+    async function urlToBase64(url) {
+      try {
+        const resp = await fetch(url);
+        const blob = await resp.blob();
+        return await new Promise((res) => {
+          const reader = new FileReader();
+          reader.onload = () => res(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } catch { return null; }
+    }
+
+    const imgDataMap = {};
+    await Promise.all(
+      structuredBlocks.map(async (b) => {
+        const url = b.image?.url || b.imageUrl || "";
+        if (url) imgDataMap[b.id] = await urlToBase64(url);
+      })
+    );
+
     for (const b of structuredBlocks) {
-      const imageUrl = b.image?.url || b.imageUrl || "";
+      const imgData = imgDataMap[b.id] || null;
       const description = b.description || b.notes || b.objective || "";
-      const imgW = imageUrl ? 38 : 0;
-      const textX = margin + (imageUrl ? imgW + 4 : 0);
-      const textW = contentW - imgW - (imageUrl ? 4 : 0);
+      const imgW = imgData ? 50 : 0;
+      const textX = margin + (imgData ? imgW + 4 : 0);
+      const textW = contentW - imgW - (imgData ? 4 : 0);
 
-      // Calcola altezza blocco
       const descLines = description ? doc.splitTextToSize(description, textW - 2) : [];
-      const blockH = Math.max(imgW > 0 ? imgW * 0.6 : 0, 10 + descLines.length * 4.5 + 4);
+      const blockH = Math.max(imgData ? 36 : 0, 6 + descLines.length * 4.5 + 10);
 
-      // Nuova pagina se non c'è spazio
-      if (y + blockH + 4 > pageH - 20) { doc.addPage(); y = 14; }
+      if (y + blockH + 6 > pageH - 20) { doc.addPage(); y = 14; }
 
-      // Box bordo
       doc.setDrawColor(220, 220, 230);
       doc.setFillColor(250, 251, 252);
-      doc.roundedRect(margin, y, contentW, blockH + 6, 2, 2, "FD");
+      doc.roundedRect(margin, y, contentW, blockH + 4, 2, 2, "FD");
 
-      // Immagine
-      if (imageUrl) {
+      if (imgData) {
         try {
-          doc.addImage(imageUrl, "JPEG", margin + 2, y + 2, imgW - 2, blockH + 2);
-        } catch { /* immagine non caricabile */ }
+          doc.addImage(imgData, "JPEG", margin + 2, y + 2, imgW - 2, blockH);
+        } catch { /* immagine non supportata */ }
       }
 
-      // Nome + minuti
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(15, 23, 42);
-      doc.text(`${b.name || "Blocco"}`, textX + 1, y + 5);
+      doc.text(b.name || "Blocco", textX + 1, y + 6);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
       doc.setTextColor(100, 116, 139);
-      doc.text(`${b.duration || "-"} min${b.phase ? "  ·  " + b.phase : ""}`, textX + 1, y + 10);
+      doc.text(`${b.duration || "-"} min${b.phase ? "  ·  " + b.phase : ""}`, textX + 1, y + 11);
 
-      // Descrizione
       if (descLines.length) {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8.5);
         doc.setTextColor(71, 85, 105);
-        doc.text(descLines, textX + 1, y + 16);
+        doc.text(descLines, textX + 1, y + 17);
       }
 
-      y += blockH + 10;
+      y += blockH + 8;
     }
   } else if (planned.length) {
     y = defaultTable(doc, {
