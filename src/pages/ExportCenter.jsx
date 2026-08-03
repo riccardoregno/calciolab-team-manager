@@ -54,7 +54,17 @@ export default function ExportCenter({
     [matches]
   );
 
-  const effectiveSessionId = selectedSessionId || sortedSessions[0]?.id || "";
+  const defaultSession = useMemo(() => {
+    if (!sessions.length) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    // Preferisce la seduta di oggi o la prossima futura più vicina
+    const upcoming = [...sessions]
+      .filter((s) => s.date >= today)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    return upcoming[0] || sortedSessions[0];
+  }, [sessions, sortedSessions]);
+
+  const effectiveSessionId = selectedSessionId || defaultSession?.id || "";
   const effectiveMatchId = selectedMatchId || sortedMatches[0]?.id || "";
   const effectivePlayerId = selectedPlayerId || players[0]?.id || "";
 
