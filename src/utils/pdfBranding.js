@@ -34,7 +34,7 @@ export async function loadBrandingAssets(teamLogoUrl) {
   return { calciolabLogo, teamLogo };
 }
 
-const CA = [37, 99, 235];   // accent blue
+const CA = [139, 26, 46];   // amaranto Castenaso
 const CW = [255, 255, 255]; // white
 const CM = [100, 116, 139]; // muted
 

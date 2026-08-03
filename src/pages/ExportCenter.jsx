@@ -402,25 +402,22 @@ function TrainingTemplate({ session, exercises }) {
               const description = b.description || b.notes || b.objective || "";
               return (
                 <div key={b.id || index} style={{
-                  display: "grid",
-                  gridTemplateColumns: imageUrl ? "120px 1fr" : "1fr",
-                  gap: 12,
                   padding: "10px 12px",
                   border: "1px solid #e2e8f0",
                   borderRadius: 8,
                   pageBreakInside: "avoid",
+                  display: "grid",
+                  gap: 8,
                 }}>
-                  {imageUrl && (
-                    <img src={imageUrl} alt={b.name} style={{ width: "100%", borderRadius: 6, objectFit: "cover", maxHeight: 90 }} />
-                  )}
-                  <div>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
-                      <strong style={{ fontSize: 14 }}>{b.name || t(`${T}.colBlock`)}</strong>
-                      <span style={{ fontSize: 12, color: "#64748b" }}>{b.duration} min</span>
-                      {b.phase && <span style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>{b.phase}</span>}
-                    </div>
-                    {description && <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.4 }}>{description}</p>}
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                    <strong style={{ fontSize: 14 }}>{b.name || t(`${T}.colBlock`)}</strong>
+                    <span style={{ fontSize: 12, color: "#64748b" }}>{b.duration} min</span>
+                    {b.phase && <span style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>{b.phase}</span>}
                   </div>
+                  {description && <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.4 }}>{description}</p>}
+                  {imageUrl && (
+                    <img src={imageUrl} alt={b.name} style={{ width: "100%", borderRadius: 6, objectFit: "contain", maxHeight: 300, background: "#f1f5f9" }} />
+                  )}
                 </div>
               );
             })}

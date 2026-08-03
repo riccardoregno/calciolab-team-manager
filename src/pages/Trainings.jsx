@@ -334,6 +334,7 @@ function Trainings({
       sessionBlocks: session.sessionBlocks || [],
       numTeams: session.numTeams || 2,
       teamAssignments: session.teamAssignments || {},
+      materials: session.materials || "",
     });
 
     requestAnimationFrame(scrollToTrainingForm);
@@ -641,11 +642,16 @@ function Trainings({
           placeholder={t("pages.trainings.notesPlaceholder")}
           value={form.notes}
           onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          style={{
-            ...styles.input,
-            minHeight: 44,
-            resize: "vertical",
-          }}
+          style={{ ...styles.input, minHeight: 44, resize: "vertical" }}
+        />
+      </FieldLabel>
+
+      <FieldLabel label="Materiali">
+        <input
+          placeholder="Es. Palloni, cinesini, casacche..."
+          value={form.materials || ""}
+          onChange={(e) => setForm({ ...form, materials: e.target.value })}
+          style={styles.input}
         />
       </FieldLabel>
     </div>
@@ -1270,6 +1276,7 @@ function emptyTraining() {
     sessionBlocks: [],
     numTeams: 2,
     teamAssignments: {},
+    materials: "",
   };
 }
 
