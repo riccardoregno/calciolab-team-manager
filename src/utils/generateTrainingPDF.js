@@ -86,12 +86,19 @@ export async function generateTrainingPDF({ session, exercises = [], appSettings
     for (const b of structuredBlocks) {
       const imgData = imgDataMap[b.id] || null;
       const description = b.description || b.notes || b.objective || "";
-      const imgW = imgData ? 50 : 0;
-      const textX = margin + (imgData ? imgW + 4 : 0);
-      const textW = contentW - imgW - (imgData ? 4 : 0);
+      const descLines = description ? doc.splitTextToSize(description, contentW - 4) : [];
 
-      const descLines = description ? doc.splitTextToSize(description, textW - 2) : [];
-      const blockH = Math.max(imgData ? 36 : 0, 6 + descLines.length * 4.5 + 10);
+      // Calcola altezza immagine proporzionale (max 90mm larghezza piena)
+      let imgH = 0;
+      if (imgData) {
+        try {
+          const props = doc.getImageProperties(imgData);
+          imgH = Math.min((contentW * props.height) / props.width, 90);
+        } catch { imgH = 60; }
+      }
+
+      const textH = 6 + descLines.length * 4.5 + 10;
+      const blockH = textH + (imgData ? imgH + 4 : 0);
 
       if (y + blockH + 6 > pageH - 20) { doc.addPage(); y = 14; }
 
@@ -99,27 +106,29 @@ export async function generateTrainingPDF({ session, exercises = [], appSettings
       doc.setFillColor(250, 251, 252);
       doc.roundedRect(margin, y, contentW, blockH + 4, 2, 2, "FD");
 
-      if (imgData) {
-        try {
-          doc.addImage(imgData, "JPEG", margin + 2, y + 2, imgW - 2, blockH);
-        } catch { /* immagine non supportata */ }
-      }
-
+      // Testo: nome + durata/fase
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(15, 23, 42);
-      doc.text(b.name || "Blocco", textX + 1, y + 6);
+      doc.text(b.name || "Blocco", margin + 2, y + 6);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
       doc.setTextColor(100, 116, 139);
-      doc.text(`${b.duration || "-"} min${b.phase ? "  ·  " + b.phase : ""}`, textX + 1, y + 11);
+      doc.text(`${b.duration || "-"} min${b.phase ? "  ·  " + b.phase : ""}`, margin + 2, y + 11);
 
       if (descLines.length) {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8.5);
         doc.setTextColor(71, 85, 105);
-        doc.text(descLines, textX + 1, y + 17);
+        doc.text(descLines, margin + 2, y + 17);
+      }
+
+      // Immagine sotto, larghezza piena
+      if (imgData) {
+        try {
+          doc.addImage(imgData, "JPEG", margin + 2, y + textH + 2, contentW - 4, imgH);
+        } catch { /* immagine non supportata */ }
       }
 
       y += blockH + 8;
