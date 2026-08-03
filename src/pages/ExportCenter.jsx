@@ -359,6 +359,19 @@ function TrainingTemplate({ session, exercises }) {
     };
   });
 
+  // Blocchi strutturati (sessionBlocks) — usati quando non ci sono esercizi classici
+  const structuredBlocks = (session.sessionBlocks || []).map((b) => ({
+    title: b.name || b.label || t(`${T}.colBlock`),
+    duration: b.duration,
+    note: b.objective || b.notes || "",
+    exercise: null,
+    _isBlock: true,
+    intensity: b.intensity,
+  }));
+
+  const allRows = plannedExercises.length > 0 ? plannedExercises : structuredBlocks;
+  const blockCount = session.sessionBlocks?.length || plannedExercises.length;
+
   return (
     <article>
       <PrintHeader
@@ -375,32 +388,32 @@ function TrainingTemplate({ session, exercises }) {
         items={[
           { label: t(`${T}.kpiObjective`), value: session.objective || t("pages.exportCenter.tpl.fallbackTbd") },
           { label: t(`${T}.kpiRpe`),       value: session.rpe || "-" },
-          { label: t(`${T}.kpiBlocks`),    value: plannedExercises.length },
+          { label: t(`${T}.kpiBlocks`),    value: blockCount },
           { label: t(`${T}.kpiLoad`),      value: `${Number(session.duration || 0) * Number(session.rpe || 0)}` },
         ]}
       />
 
       <Section title={t(`${T}.sectionTimeline`)}>
-        {plannedExercises.length ? (
+        {allRows.length ? (
           <table>
             <thead>
               <tr>
                 <th>{t(`${T}.colMinutes`)}</th>
                 <th>{t(`${T}.colBlock`)}</th>
-                <th>{t(`${T}.colField`)}</th>
-                <th>{t(`${T}.colFocus`)}</th>
+                {!structuredBlocks.length && <th>{t(`${T}.colField`)}</th>}
+                <th>{structuredBlocks.length ? "Intensità" : t(`${T}.colFocus`)}</th>
               </tr>
             </thead>
             <tbody>
-              {plannedExercises.map((block, index) => (
+              {allRows.map((block, index) => (
                 <tr key={`${block.exerciseId || block.title}-${index}`}>
                   <td>{block.minutes || block.duration || "-"}</td>
                   <td>
                     <strong>{block.title}</strong>
-                    <small>{block.exercise?.category || block.exercise?.type || ""}</small>
+                    {!block._isBlock && <small>{block.exercise?.category || block.exercise?.type || ""}</small>}
                   </td>
-                  <td>{block.exercise?.fieldSize || block.exercise?.space || "-"}</td>
-                  <td>{block.note || block.exercise?.coachingPoints || block.exercise?.description || "-"}</td>
+                  {!structuredBlocks.length && <td>{block.exercise?.fieldSize || block.exercise?.space || "-"}</td>}
+                  <td>{block._isBlock ? (block.intensity != null ? `${block.intensity}/10` : "-") : (block.note || block.exercise?.coachingPoints || block.exercise?.description || "-")}</td>
                 </tr>
               ))}
             </tbody>
