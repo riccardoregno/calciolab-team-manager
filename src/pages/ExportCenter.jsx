@@ -369,18 +369,9 @@ function TrainingTemplate({ session, exercises }) {
     };
   });
 
-  // Blocchi strutturati (sessionBlocks) — usati quando non ci sono esercizi classici
-  const structuredBlocks = (session.sessionBlocks || []).map((b) => ({
-    title: b.name || b.label || t(`${T}.colBlock`),
-    duration: b.duration,
-    note: b.objective || b.notes || "",
-    exercise: null,
-    _isBlock: true,
-    intensity: b.intensity,
-  }));
-
-  const allRows = plannedExercises.length > 0 ? plannedExercises : structuredBlocks;
-  const blockCount = session.sessionBlocks?.length || plannedExercises.length;
+  const structuredBlocks = session.sessionBlocks || [];
+  const useStructured = structuredBlocks.length > 0;
+  const blockCount = structuredBlocks.length || plannedExercises.length;
 
   return (
     <article>
@@ -404,26 +395,56 @@ function TrainingTemplate({ session, exercises }) {
       />
 
       <Section title={t(`${T}.sectionTimeline`)}>
-        {allRows.length ? (
+        {useStructured ? (
+          <div style={{ display: "grid", gap: 12 }}>
+            {structuredBlocks.map((b, index) => {
+              const imageUrl = b.image?.url || b.imageUrl || "";
+              const description = b.description || b.notes || b.objective || "";
+              return (
+                <div key={b.id || index} style={{
+                  display: "grid",
+                  gridTemplateColumns: imageUrl ? "120px 1fr" : "1fr",
+                  gap: 12,
+                  padding: "10px 12px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 8,
+                  pageBreakInside: "avoid",
+                }}>
+                  {imageUrl && (
+                    <img src={imageUrl} alt={b.name} style={{ width: "100%", borderRadius: 6, objectFit: "cover", maxHeight: 90 }} />
+                  )}
+                  <div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
+                      <strong style={{ fontSize: 14 }}>{b.name || t(`${T}.colBlock`)}</strong>
+                      <span style={{ fontSize: 12, color: "#64748b" }}>{b.duration} min</span>
+                      {b.phase && <span style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>{b.phase}</span>}
+                    </div>
+                    {description && <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.4 }}>{description}</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : plannedExercises.length ? (
           <table>
             <thead>
               <tr>
                 <th>{t(`${T}.colMinutes`)}</th>
                 <th>{t(`${T}.colBlock`)}</th>
-                {!structuredBlocks.length && <th>{t(`${T}.colField`)}</th>}
-                <th>{structuredBlocks.length ? "Intensità" : t(`${T}.colFocus`)}</th>
+                <th>{t(`${T}.colField`)}</th>
+                <th>{t(`${T}.colFocus`)}</th>
               </tr>
             </thead>
             <tbody>
-              {allRows.map((block, index) => (
+              {plannedExercises.map((block, index) => (
                 <tr key={`${block.exerciseId || block.title}-${index}`}>
                   <td>{block.minutes || block.duration || "-"}</td>
                   <td>
                     <strong>{block.title}</strong>
-                    {!block._isBlock && <small>{block.exercise?.category || block.exercise?.type || ""}</small>}
+                    <small>{block.exercise?.category || block.exercise?.type || ""}</small>
                   </td>
-                  {!structuredBlocks.length && <td>{block.exercise?.fieldSize || block.exercise?.space || "-"}</td>}
-                  <td>{block._isBlock ? (block.intensity != null ? `${block.intensity}/10` : "-") : (block.note || block.exercise?.coachingPoints || block.exercise?.description || "-")}</td>
+                  <td>{block.exercise?.fieldSize || block.exercise?.space || "-"}</td>
+                  <td>{block.note || block.exercise?.coachingPoints || block.exercise?.description || "-"}</td>
                 </tr>
               ))}
             </tbody>
