@@ -207,9 +207,14 @@ export default function ExportCenter({
             title={t("pages.exportCenter.previewTitle", { label: activeType.label })}
             subtitle={t("pages.exportCenter.previewSubtitle")}
             rightContent={
-              <Button variant="ghost" onClick={handlePdfDownload} disabled={generatingPdf || !canGeneratePdf}>
-                {generatingPdf ? t("pages.exportCenter.generatingPdf") : t("pages.exportCenter.pdfBtn")}
-              </Button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Button variant="ghost" onClick={() => window.print()}>
+                  🖨 Stampa
+                </Button>
+                <Button variant="ghost" onClick={handlePdfDownload} disabled={generatingPdf || !canGeneratePdf}>
+                  {generatingPdf ? t("pages.exportCenter.generatingPdf") : t("pages.exportCenter.pdfBtn")}
+                </Button>
+              </div>
             }
           >
             <div className="print-area print-template">
