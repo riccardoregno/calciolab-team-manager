@@ -157,7 +157,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
           </div>
           <div style={s.topActions}>
             {canManage && (
-              <Button variant="ghost" onClick={() => markAll("Presente")}>
+              <Button variant="ghost" onClick={() => { if (window.confirm("Sei sicuro? Questo sovrascriverà le presenze di tutti i giocatori.")) markAll("Presente"); }}>
                 {t("pages.sessionAttendance.markAllPresent")}
               </Button>
             )}
