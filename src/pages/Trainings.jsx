@@ -2253,13 +2253,14 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
                         )}
                         {p.name}
                       </span>
-                      <div style={{ display: "flex", gap: 2 }}>
+                      <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
                         {Array.from({ length: numTeams }, (_, i) => (
                           <button key={i} onClick={() => assign(p.id, i)} title={TEAM_COLORS[i].label} style={{
                             width: 16, height: 16, borderRadius: 4, border: "none", cursor: "pointer",
                             background: TEAM_COLORS[i].color, opacity: 0.85,
                           }} />
                         ))}
+                        <button onClick={() => sendToBench(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 10, padding: "0 2px", fontWeight: 700 }} title="A disposizione">Disp.</button>
                       </div>
                     </div>
                   );
