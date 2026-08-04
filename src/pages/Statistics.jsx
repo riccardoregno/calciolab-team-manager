@@ -226,8 +226,10 @@ function Statistics({
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const stats = useMemo(() => {
     const filteredPlayers = squadraFilter === "prima"
-    ? players.filter((p) => p.squadra !== "juniores")
-    : players;
+      ? players.filter((p) => (p.gruppo || "prima") === "prima")
+      : squadraFilter === "juniores"
+      ? players.filter((p) => (p.gruppo || "prima") === "juniores")
+      : players;
   const baseStats = getStatsSummary(filteredEvents, filteredPlayers, playerStatsMap);
 
     return [...baseStats]
@@ -741,7 +743,7 @@ function Statistics({
 
           {/* Toggle Prima squadra / Tutti */}
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-            {[{ v: "prima", label: "Prima squadra" }, { v: "tutti", label: "Tutti" }].map(({ v, label }) => (
+            {[{ v: "prima", label: "Prima squadra" }, { v: "juniores", label: "Juniores" }, { v: "tutti", label: "Tutti" }].map(({ v, label }) => (
               <button
                 key={v}
                 onClick={() => setSquadraFilter(v)}
