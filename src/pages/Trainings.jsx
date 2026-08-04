@@ -2196,15 +2196,31 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
   function pullFromBench(playerId) { const next = { ...assignments }; delete next[String(playerId)]; onChange({ assignments: next, numTeams }); }
 
   function printTeams() {
+    const ROLE_PRINT_ORDER = { P: 0, D: 1, C: 2, A: 3 };
+    const ROLE_COLORS_PRINT = { P: "#ca8a04", D: "#2563eb", C: "#16a34a", A: "#dc2626" };
+    const sortForPrint = (arr) => [...arr].sort((a, b) => {
+      const ra = ROLE_PRINT_ORDER[getRoleTag(a.role)] ?? 99;
+      const rb = ROLE_PRINT_ORDER[getRoleTag(b.role)] ?? 99;
+      if (ra !== rb) return ra - rb;
+      return (a.lastName || a.name || "").localeCompare(b.lastName || b.name || "", "it");
+    });
+    const playerRow = (p) => {
+      const tag = getRoleTag(p.role);
+      const color = tag ? ROLE_COLORS_PRINT[tag] || "#666" : "#666";
+      return `<p style="margin:4px 0;font-size:13px;display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;font-weight:900;color:${color};min-width:12px">${tag || ""}</span>
+        ${p.name}
+      </p>`;
+    };
     const win = window.open("", "_blank");
     const rows = teams.map((members, i) =>
       `<div style="flex:1;min-width:140px;border:1px solid ${TEAM_COLORS[i].border};border-radius:10px;padding:12px">
         <h3 style="margin:0 0 10px;color:${TEAM_COLORS[i].color};font-size:13px;text-transform:uppercase">${TEAM_COLORS[i].label} (${members.length})</h3>
-        ${members.map((p) => `<p style="margin:4px 0;font-size:13px">${p.name}</p>`).join("")}
+        ${sortForPrint(members).map(playerRow).join("")}
       </div>`
     ).join("");
     const benchHtml = bench.length
-      ? `<div style="margin-top:16px;border:1px solid #ccc;border-radius:10px;padding:12px"><h3 style="margin:0 0 10px;color:#888;font-size:13px;text-transform:uppercase">A disposizione (${bench.length})</h3>${bench.map((p) => `<p style="margin:4px 0;font-size:13px;color:#666">${p.name}</p>`).join("")}</div>`
+      ? `<div style="margin-top:16px;border:1px solid #ccc;border-radius:10px;padding:12px"><h3 style="margin:0 0 10px;color:#888;font-size:13px;text-transform:uppercase">A disposizione (${bench.length})</h3>${sortForPrint(bench).map(playerRow).join("")}</div>`
       : "";
     win.document.write(`<html><head><title>Squadre</title><style>body{font-family:sans-serif;padding:24px}h2{margin-bottom:16px}.teams{display:flex;gap:12px;flex-wrap:wrap}@media print{button{display:none}}</style></head>
       <body><h2>Squadre — ${new Date().toLocaleDateString("it")}</h2>
