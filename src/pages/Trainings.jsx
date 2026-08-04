@@ -2422,8 +2422,15 @@ const FORMATIONS_DEF = {
   "4-4-2": [
     { role:"P", x:50, y:88 },
     { role:"D", x:15, y:65 },{ role:"D", x:35, y:70 },{ role:"D", x:65, y:70 },{ role:"D", x:85, y:65 },
-    { role:"C", x:15, y:45 },{ role:"C", x:38, y:43 },{ role:"C", x:62, y:43 },{ role:"C", x:85, y:45 },
+    { role:"C", x:15, y:42 },{ role:"C", x:38, y:49 },{ role:"C", x:62, y:49 },{ role:"C", x:85, y:42 },
     { role:"A", x:33, y:18 },{ role:"A", x:67, y:18 },
+  ],
+  "4-3-1-2": [
+    { role:"P", x:50, y:88 },
+    { role:"D", x:15, y:65 },{ role:"D", x:35, y:70 },{ role:"D", x:65, y:70 },{ role:"D", x:85, y:65 },
+    { role:"C", x:25, y:50 },{ role:"C", x:50, y:55 },{ role:"C", x:75, y:50 },
+    { role:"C", x:50, y:32 },
+    { role:"A", x:35, y:16 },{ role:"A", x:65, y:16 },
   ],
   "4-2-3-1": [
     { role:"P", x:50, y:88 },
