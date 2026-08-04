@@ -1057,6 +1057,27 @@ function Trainings({
               setForm((f) => ({ ...f, teamAssignments: assignments, numTeams }))
             }
           />
+          {(() => {
+            const allAvail = sessionAvailability.available.filter((p) => {
+              const status = form.attendance[String(p.id)]?.status;
+              if (p._defaultAbsent) return status === "Presente";
+              return status !== "Assente";
+            });
+            const assignments = form.teamAssignments || {};
+            const numTeams = form.numTeams || 2;
+            const teams = Array.from({ length: numTeams }, (_, i) =>
+              allAvail.filter((p) => String(assignments[String(p.id)]) === String(i))
+            );
+            const hasAnyTeam = teams.some((t) => t.length > 0);
+            if (!hasAnyTeam) return null;
+            return (
+              <FormationView
+                teams={teams}
+                teamColors={TEAM_COLORS}
+                numTeams={numTeams}
+              />
+            );
+          })()}
         </div>
       </div>}
 
@@ -2386,6 +2407,201 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
           </div>
         </>
       )}
+    </AppCard>
+  );
+}
+
+// ── Formazioni ────────────────────────────────────────────────────────────────
+const FORMATIONS_DEF = {
+  "4-3-3": [
+    { role:"P", x:50, y:88 },
+    { role:"D", x:15, y:68 },{ role:"D", x:35, y:65 },{ role:"D", x:65, y:65 },{ role:"D", x:85, y:68 },
+    { role:"C", x:25, y:45 },{ role:"C", x:50, y:42 },{ role:"C", x:75, y:45 },
+    { role:"A", x:18, y:20 },{ role:"A", x:50, y:16 },{ role:"A", x:82, y:20 },
+  ],
+  "4-4-2": [
+    { role:"P", x:50, y:88 },
+    { role:"D", x:15, y:68 },{ role:"D", x:35, y:65 },{ role:"D", x:65, y:65 },{ role:"D", x:85, y:68 },
+    { role:"C", x:15, y:45 },{ role:"C", x:38, y:43 },{ role:"C", x:62, y:43 },{ role:"C", x:85, y:45 },
+    { role:"A", x:33, y:18 },{ role:"A", x:67, y:18 },
+  ],
+  "4-2-3-1": [
+    { role:"P", x:50, y:88 },
+    { role:"D", x:15, y:68 },{ role:"D", x:35, y:65 },{ role:"D", x:65, y:65 },{ role:"D", x:85, y:68 },
+    { role:"C", x:35, y:52 },{ role:"C", x:65, y:52 },
+    { role:"C", x:18, y:35 },{ role:"C", x:50, y:33 },{ role:"C", x:82, y:35 },
+    { role:"A", x:50, y:15 },
+  ],
+  "3-5-2": [
+    { role:"P", x:50, y:88 },
+    { role:"D", x:25, y:68 },{ role:"D", x:50, y:65 },{ role:"D", x:75, y:68 },
+    { role:"C", x:12, y:48 },{ role:"C", x:30, y:44 },{ role:"C", x:50, y:42 },{ role:"C", x:70, y:44 },{ role:"C", x:88, y:48 },
+    { role:"A", x:33, y:18 },{ role:"A", x:67, y:18 },
+  ],
+  "3-4-3": [
+    { role:"P", x:50, y:88 },
+    { role:"D", x:25, y:68 },{ role:"D", x:50, y:65 },{ role:"D", x:75, y:68 },
+    { role:"C", x:18, y:48 },{ role:"C", x:40, y:45 },{ role:"C", x:60, y:45 },{ role:"C", x:82, y:48 },
+    { role:"A", x:18, y:20 },{ role:"A", x:50, y:16 },{ role:"A", x:82, y:20 },
+  ],
+  "5-3-2": [
+    { role:"P", x:50, y:88 },
+    { role:"D", x:10, y:70 },{ role:"D", x:28, y:66 },{ role:"D", x:50, y:64 },{ role:"D", x:72, y:66 },{ role:"D", x:90, y:70 },
+    { role:"C", x:25, y:45 },{ role:"C", x:50, y:42 },{ role:"C", x:75, y:45 },
+    { role:"A", x:33, y:18 },{ role:"A", x:67, y:18 },
+  ],
+};
+
+const ROLE_PRIORITY = { P:0, D:1, C:2, A:3 };
+
+function autoAssignFormation(players, formation) {
+  const slots = FORMATIONS_DEF[formation] || [];
+  const byRole = { P:[], D:[], C:[], A:[] };
+  players.forEach((p) => { const t = getRoleTag(p.role) || "A"; if (byRole[t]) byRole[t].push(p); });
+  const assigned = {};
+  slots.forEach((slot, idx) => {
+    const pool = byRole[slot.role];
+    if (pool.length > 0) {
+      assigned[idx] = pool.shift();
+    }
+  });
+  // fill remaining slots with leftover players
+  const leftover = Object.values(byRole).flat();
+  slots.forEach((_, idx) => {
+    if (!assigned[idx] && leftover.length > 0) assigned[idx] = leftover.shift();
+  });
+  return assigned;
+}
+
+function FormationView({ teams, teamColors, numTeams }) {
+  const [activeTeam, setActiveTeam] = useState(0);
+  const [formation, setFormation] = useState("4-3-3");
+  const [slotMap, setSlotMap] = useState({});
+  const [selected, setSelected] = useState(null); // slot index being swapped
+
+  const players = teams[activeTeam] || [];
+
+  useEffect(() => {
+    setSlotMap(autoAssignFormation([...players], formation));
+    setSelected(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTeam, formation, JSON.stringify(players.map((p)=>p.id))]);
+
+  const slots = FORMATIONS_DEF[formation] || [];
+  const ROLE_BADGE_COLORS = { P:"#ca8a04", D:"#2563eb", C:"#16a34a", A:"#dc2626" };
+
+  function clickSlot(idx) {
+    if (selected === null) { setSelected(idx); return; }
+    if (selected === idx) { setSelected(null); return; }
+    const next = { ...slotMap, [selected]: slotMap[idx], [idx]: slotMap[selected] };
+    setSlotMap(next);
+    setSelected(null);
+  }
+
+  function printFormation() {
+    const W = 400, H = 580;
+    const svgSlots = slots.map((slot, idx) => {
+      const p = slotMap[idx];
+      const cx = slot.x / 100 * W;
+      const cy = slot.y / 100 * H;
+      const tag = p ? (getRoleTag(p.role) || "") : "";
+      const col = ROLE_BADGE_COLORS[tag] || "#888";
+      const name = p ? (p.lastName || p.name || "").slice(0, 12) : "—";
+      return `<g>
+        <circle cx="${cx}" cy="${cy}" r="18" fill="${col}" opacity="0.85"/>
+        <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="9" font-weight="900" fill="white" font-family="sans-serif">${tag}</text>
+        <text x="${cx}" y="${cy + 9}" text-anchor="middle" font-size="8" fill="white" font-family="sans-serif">${name}</text>
+      </g>`;
+    }).join("");
+    const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+      <rect width="${W}" height="${H}" fill="#166534" rx="8"/>
+      <rect x="20" y="20" width="${W-40}" height="${H-40}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+      <line x1="20" y1="${H/2}" x2="${W-20}" y2="${H/2}" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <circle cx="${W/2}" cy="${H/2}" r="40" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <rect x="${W/2-50}" y="20" width="100" height="60" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <rect x="${W/2-50}" y="${H-80}" width="100" height="60" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      ${svgSlots}
+    </svg>`;
+    const win = window.open("", "_blank");
+    win.document.write(`<html><head><title>Schieramento</title><style>body{margin:0;padding:24px;font-family:sans-serif;background:#f8fafc}h2{margin-bottom:12px}@media print{button{display:none}}</style></head>
+      <body><h2>${teamColors[activeTeam]?.label || "Squadra"} — ${formation}</h2>${svg}
+      <br><button onclick="window.print()">Stampa</button></body></html>`);
+    win.document.close();
+  }
+
+  const FW = 280, FH = 400;
+
+  return (
+    <AppCard style={{ marginTop: 12 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12, flexWrap:"wrap", gap:8 }}>
+        <h4 style={{ margin:0, fontSize:14, fontWeight:800 }}>Schieramento</h4>
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
+          {Array.from({ length: numTeams }, (_, i) => (
+            <button key={i} onClick={() => setActiveTeam(i)} style={{
+              padding:"4px 10px", borderRadius:7, border:"1px solid",
+              borderColor: activeTeam===i ? teamColors[i]?.color : "rgba(255,255,255,0.1)",
+              background: activeTeam===i ? `${teamColors[i]?.color}22` : "transparent",
+              color: activeTeam===i ? teamColors[i]?.color : "#64748b",
+              fontSize:12, fontWeight:700, cursor:"pointer",
+            }}>{teamColors[i]?.label}</button>
+          ))}
+          <select value={formation} onChange={(e) => setFormation(e.target.value)} style={{
+            padding:"4px 8px", borderRadius:7, border:"1px solid rgba(255,255,255,0.12)",
+            background:"rgba(255,255,255,0.06)", color:"#e2e8f0", fontSize:12, fontWeight:700, cursor:"pointer",
+          }}>
+            {Object.keys(FORMATIONS_DEF).map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+          <button onClick={printFormation} style={{
+            padding:"4px 12px", borderRadius:7, border:"1px solid rgba(255,255,255,0.1)",
+            background:"rgba(255,255,255,0.04)", color:"#94a3b8", fontSize:12, fontWeight:700, cursor:"pointer",
+          }}>🖨 Stampa</button>
+        </div>
+      </div>
+      <p style={{ margin:"0 0 10px", fontSize:11, color:"#64748b" }}>Clicca due giocatori per scambiarli di posizione</p>
+
+      {/* Campo SVG */}
+      <div style={{ display:"flex", justifyContent:"center" }}>
+        <svg width={FW} height={FH} style={{ borderRadius:8, overflow:"hidden" }}>
+          {/* Campo verde */}
+          <rect width={FW} height={FH} fill="#15803d" rx="8"/>
+          {/* Righe campo */}
+          <rect x="14" y="14" width={FW-28} height={FH-28} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
+          <line x1="14" y1={FH/2} x2={FW-14} y2={FH/2} stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
+          <circle cx={FW/2} cy={FH/2} r="36" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
+          <circle cx={FW/2} cy={FH/2} r="3" fill="rgba(255,255,255,0.4)"/>
+          <rect x={FW/2-38} y="14" width="76" height="50" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
+          <rect x={FW/2-18} y="14" width="36" height="22" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
+          <rect x={FW/2-38} y={FH-64} width="76" height="50" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
+          <rect x={FW/2-18} y={FH-36} width="36" height="22" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
+          {/* Strisce alternate */}
+          {[0,1,2,3,4,5].map((i) => (
+            <rect key={i} x="14" y={14 + i*(FH-28)/6} width={FW-28} height={(FH-28)/6}
+              fill={i%2===0 ? "rgba(0,0,0,0.04)" : "transparent"} />
+          ))}
+          {/* Giocatori */}
+          {slots.map((slot, idx) => {
+            const p = slotMap[idx];
+            const cx = slot.x / 100 * FW;
+            const cy = slot.y / 100 * FH;
+            const tag = p ? (getRoleTag(p.role) || "") : "";
+            const col = ROLE_BADGE_COLORS[tag] || "#475569";
+            const isSelected = selected === idx;
+            const name = p ? (p.lastName || p.name || "—").slice(0, 10) : "—";
+            return (
+              <g key={idx} onClick={() => clickSlot(idx)} style={{ cursor:"pointer" }}>
+                <circle cx={cx} cy={cy} r="17"
+                  fill={isSelected ? "#facc15" : col}
+                  stroke={isSelected ? "#fbbf24" : "rgba(255,255,255,0.4)"}
+                  strokeWidth={isSelected ? 2.5 : 1.5}
+                  opacity="0.93"
+                />
+                <text x={cx} y={cy-3} textAnchor="middle" fontSize="9" fontWeight="900" fill="white" fontFamily="sans-serif">{tag}</text>
+                <text x={cx} y={cy+8} textAnchor="middle" fontSize="7.5" fill="white" fontFamily="sans-serif" fontWeight="600">{name}</text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
     </AppCard>
   );
 }
