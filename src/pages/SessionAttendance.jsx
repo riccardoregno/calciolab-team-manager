@@ -225,7 +225,12 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
       ) : (
         <AppCard>
           <div style={s.grid}>
-            {players.map((player) => {
+            {[...players].sort((a, b) => {
+              const RO = { Portiere: 0, Difensore: 1, "Difensore centrale": 1, Centrocampista: 2, Attaccante: 3 };
+              const ra = RO[a.role] ?? 99, rb = RO[b.role] ?? 99;
+              if (ra !== rb) return ra - rb;
+              return (a.lastName || a.name || "").localeCompare(b.lastName || b.name || "", "it");
+            }).map((player) => {
               const pid    = String(player.id);
               const data   = attendance[pid] || {};
               const status = getPlayerSessionStatus(player, session, attendance);
