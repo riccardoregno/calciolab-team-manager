@@ -2488,14 +2488,23 @@ function FormationView({ teams, teamColors, numTeams }) {
   const [selected, setSelected] = useState(null);
 
   const players = teams[activeTeam] || [];
-  const slotMap = slotMaps[activeTeam] || {};
 
-  const playerIds = JSON.stringify(players.map((p) => p.id));
+  // Quando cambia il modulo, azzera tutte le formazioni salvate
   useEffect(() => {
-    setSlotMaps((prev) => ({ ...prev, [activeTeam]: autoAssignFormation([...players], formation) }));
+    setSlotMaps({});
     setSelected(null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formation, playerIds]);
+  }, [formation]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Quando si cambia squadra, auto-assegna solo se non è già stata configurata
+  useEffect(() => {
+    setSlotMaps((prev) => {
+      if (prev[activeTeam] !== undefined) return prev;
+      return { ...prev, [activeTeam]: autoAssignFormation([...players], formation) };
+    });
+    setSelected(null);
+  }, [activeTeam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const slotMap = slotMaps[activeTeam] ?? autoAssignFormation([...players], formation);
 
   const slots = FORMATIONS_DEF[formation] || [];
   const ROLE_BADGE_COLORS = { P:"#ca8a04", D:"#2563eb", C:"#16a34a", A:"#dc2626" };
