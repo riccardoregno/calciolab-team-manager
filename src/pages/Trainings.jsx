@@ -2482,18 +2482,20 @@ function autoAssignFormation(players, formation) {
 
 function FormationView({ teams, teamColors, numTeams }) {
   const [activeTeam, setActiveTeam] = useState(0);
-  const [formation, setFormation] = useState("4-3-3");
-  // slotMaps: { [teamIndex]: { [slotIdx]: player } } — preserva disposizione per ogni squadra
+  // formations e slotMaps salvati per ogni squadra indipendentemente
+  const [formations, setFormations] = useState({});
   const [slotMaps, setSlotMaps] = useState({});
   const [selected, setSelected] = useState(null);
 
   const players = teams[activeTeam] || [];
+  const formation = formations[activeTeam] || "4-3-3";
 
-  // Quando cambia il modulo, azzera tutte le formazioni salvate
-  useEffect(() => {
-    setSlotMaps({});
+  function setFormation(f) {
+    // cambia modulo solo per la squadra attiva e resetta il suo slotMap
+    setFormations((prev) => ({ ...prev, [activeTeam]: f }));
+    setSlotMaps((prev) => ({ ...prev, [activeTeam]: autoAssignFormation([...players], f) }));
     setSelected(null);
-  }, [formation]); // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
   // Quando si cambia squadra, auto-assegna solo se non è già stata configurata
   useEffect(() => {
