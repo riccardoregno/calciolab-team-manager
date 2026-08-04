@@ -2148,25 +2148,40 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
 
   function shuffle() {
     const totalSlots = playersPerTeam * numTeams;
-    // Juniores vanno a disposizione per primi, poi i prima in eccesso
-    const juniores = availablePlayers.filter((p) => (p._juniores || p.gruppo === "juniores"));
-    const prima = availablePlayers.filter((p) => !(p._juniores || p.gruppo === "juniores"));
-
-    // Mescola entrambi i gruppi
+    const isJuniores = (p) => p._juniores || p.gruppo === "juniores";
     const shuffled = (arr) => [...arr].sort(() => Math.random() - 0.5);
-    const junioresMix = shuffled(juniores);
-    const primaMix = shuffled(prima);
 
-    // Riempi prima con i prima, poi con i juniores, il resto va a disposizione
-    const inGame = [...primaMix, ...junioresMix].slice(0, totalSlots);
-    const onBench = [...primaMix, ...junioresMix].slice(totalSlots);
+    // Separa portieri dagli altri
+    const portieri = shuffled(availablePlayers.filter((p) => getRoleTag(p.role) === "P"));
+    const altri = shuffled(availablePlayers.filter((p) => getRoleTag(p.role) !== "P"));
 
-    // Distribuisce inGame round-robin per ruolo
-    const byRole = { P: [], D: [], C: [], A: [], "?": [] };
-    inGame.forEach((p) => { const tag = getRoleTag(p.role) || "?"; byRole[tag].push(String(p.id)); });
+    // Max 1 portiere per squadra — gli extra (juniores prima) vanno a disposizione
+    const portieriInGame = [];
+    const portieriBench = [];
+    // Ordina: prima i prima, poi i juniores (i juniores escono per primi se in eccesso)
+    const portieriOrdinati = [...portieri.filter((p) => !isJuniores(p)), ...portieri.filter((p) => isJuniores(p))];
+    portieriOrdinati.forEach((p, i) => {
+      if (i < numTeams) portieriInGame.push(p);
+      else portieriBench.push(p);
+    });
+
+    // Slot rimanenti dopo i portieri
+    const slotsRimasti = totalSlots - portieriInGame.length;
+    // Juniores vanno a disposizione per primi tra gli altri
+    const altriOrdinati = [...altri.filter((p) => !isJuniores(p)), ...altri.filter((p) => isJuniores(p))];
+    const altriInGame = altriOrdinati.slice(0, slotsRimasti);
+    const altriBench = altriOrdinati.slice(slotsRimasti);
+
+    const onBench = [...portieriBench, ...altriBench];
+
+    // Distribuisce: 1 portiere per squadra, poi round-robin per ruolo
     const next = {};
+    portieriInGame.forEach((p, i) => { next[String(p.id)] = i; });
+
+    const byRole = { D: [], C: [], A: [], "?": [] };
+    altriInGame.forEach((p) => { const tag = getRoleTag(p.role) || "?"; byRole[tag].push(String(p.id)); });
     let teamIdx = 0;
-    ["P", "D", "C", "A", "?"].forEach((role) => {
+    ["D", "C", "A", "?"].forEach((role) => {
       byRole[role].sort(() => Math.random() - 0.5).forEach((id) => {
         next[id] = teamIdx % numTeams;
         teamIdx++;
