@@ -2483,16 +2483,19 @@ function autoAssignFormation(players, formation) {
 function FormationView({ teams, teamColors, numTeams }) {
   const [activeTeam, setActiveTeam] = useState(0);
   const [formation, setFormation] = useState("4-3-3");
-  const [slotMap, setSlotMap] = useState({});
-  const [selected, setSelected] = useState(null); // slot index being swapped
+  // slotMaps: { [teamIndex]: { [slotIdx]: player } } — preserva disposizione per ogni squadra
+  const [slotMaps, setSlotMaps] = useState({});
+  const [selected, setSelected] = useState(null);
 
   const players = teams[activeTeam] || [];
+  const slotMap = slotMaps[activeTeam] || {};
 
+  const playerIds = JSON.stringify(players.map((p) => p.id));
   useEffect(() => {
-    setSlotMap(autoAssignFormation([...players], formation));
+    setSlotMaps((prev) => ({ ...prev, [activeTeam]: autoAssignFormation([...players], formation) }));
     setSelected(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTeam, formation, JSON.stringify(players.map((p)=>p.id))]);
+  }, [formation, playerIds]);
 
   const slots = FORMATIONS_DEF[formation] || [];
   const ROLE_BADGE_COLORS = { P:"#ca8a04", D:"#2563eb", C:"#16a34a", A:"#dc2626" };
@@ -2501,7 +2504,7 @@ function FormationView({ teams, teamColors, numTeams }) {
     if (selected === null) { setSelected(idx); return; }
     if (selected === idx) { setSelected(null); return; }
     const next = { ...slotMap, [selected]: slotMap[idx], [idx]: slotMap[selected] };
-    setSlotMap(next);
+    setSlotMaps((prev) => ({ ...prev, [activeTeam]: next }));
     setSelected(null);
   }
 
