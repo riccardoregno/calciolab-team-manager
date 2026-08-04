@@ -172,10 +172,17 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
       {(() => {
         const getName = (p) => `${p.lastName || ""} ${p.firstName || ""}`.trim() || p.name || "—";
         const getSortKey = (p) => (p.lastName || p.name || "").toLowerCase();
-        const ROLE_ORDER = { Portiere: 0, Difensore: 1, "Difensore centrale": 1, Centrocampista: 2, Attaccante: 3 };
+        const getRoleOrder = (role) => {
+          const r = (role || "").toLowerCase();
+          if (r.startsWith("portiere")) return 0;
+          if (r.startsWith("difensore")) return 1;
+          if (r.startsWith("centrocampista")) return 2;
+          if (r.startsWith("attaccante")) return 3;
+          return 99;
+        };
         const sortByRole = (arr) => [...arr].sort((a, b) => {
-          const ra = ROLE_ORDER[a.role] ?? 99;
-          const rb = ROLE_ORDER[b.role] ?? 99;
+          const ra = getRoleOrder(a.role);
+          const rb = getRoleOrder(b.role);
           if (ra !== rb) return ra - rb;
           return getSortKey(a).localeCompare(getSortKey(b), "it");
         });
@@ -226,9 +233,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
         <AppCard>
           <div style={s.grid}>
             {[...players].sort((a, b) => {
-              const RO = { Portiere: 0, Difensore: 1, "Difensore centrale": 1, Centrocampista: 2, Attaccante: 3 };
-              const ra = RO[a.role] ?? 99, rb = RO[b.role] ?? 99;
-              if (ra !== rb) return ra - rb;
+              const ro = (r) => { const s = (r||"").toLowerCase(); return s.startsWith("portiere") ? 0 : s.startsWith("difensore") ? 1 : s.startsWith("centrocampista") ? 2 : s.startsWith("attaccante") ? 3 : 99; };
+              if (ro(a.role) !== ro(b.role)) return ro(a.role) - ro(b.role);
               return (a.lastName || a.name || "").localeCompare(b.lastName || b.name || "", "it");
             }).map((player) => {
               const pid    = String(player.id);
