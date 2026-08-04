@@ -59,6 +59,37 @@ function loadNewPlayerDraft(fallback) {
 
 const SUSPENSION_THRESHOLD = 5;
 
+function exportPlayersCSV(players, gruppo) {
+  const headers = ["Nome", "Ruolo", "Ruolo secondario", "Piede", "Stato", "Data di nascita", "Altezza", "Peso", "Nazionalità", "Email", "Numero maglia", "Gruppo", "Note"];
+  const rows = players.map((p) => [
+    p.name || `${p.firstName || p.first_name || ""} ${p.lastName || p.last_name || ""}`.trim(),
+    p.role || "",
+    p.secondaryRole || "",
+    p.foot || p.preferredFoot || "",
+    p.status || "",
+    p.birthDate || "",
+    p.height || "",
+    p.weight || "",
+    p.nationality || "",
+    p.email || "",
+    p.shirtNumber || "",
+    p.gruppo || "prima",
+    p.notes || "",
+  ]);
+
+  const csvContent = [headers, ...rows]
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob(["﻿" + csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `giocatori_${gruppo === "tutti" ? "tutti" : gruppo}_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function Players({ players, setPlayers, sessions = [], matches = [], loading = false, teamId = null }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -497,6 +528,20 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
             </Link>
             {canManage && (
               <>
+                <button
+                  onClick={() => exportPlayersCSV(filteredPlayers, gruppoFilter)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    flex: isMobile ? "1 1 100%" : "0 0 auto",
+                    minWidth: 0,
+                    justifyContent: "center",
+                    padding: "8px 14px", borderRadius: 12,
+                    background: "rgba(139,26,46,0.12)", border: "1px solid rgba(139,26,46,0.35)",
+                    color: "#f9a8b8", fontWeight: 800, fontSize: 13, cursor: "pointer",
+                  }}
+                >
+                  📤 Esporta
+                </button>
                 <button
                   onClick={() => setShowImport(true)}
                   style={{

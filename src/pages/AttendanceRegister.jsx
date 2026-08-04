@@ -762,6 +762,8 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
 }
 
 function buildRegisterStats(players, sessions, playerRpeIndex = {}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const pastSessions = sessions.filter((s) => (s.date || "") <= today);
   let present = 0;
   let absences = 0;
   let injuries = 0;
@@ -769,7 +771,7 @@ function buildRegisterStats(players, sessions, playerRpeIndex = {}) {
   const rpes = [];
 
   players.forEach((player) => {
-    sessions.forEach((session) => {
+    pastSessions.forEach((session) => {
       cells += 1;
       const entry = session.attendance?.[String(player.id)] || {};
       const status = getSessionStatus(player, session);
@@ -790,10 +792,12 @@ function buildRegisterStats(players, sessions, playerRpeIndex = {}) {
 }
 
 function buildPlayerStats(player, sessions, playerRpeIndex = {}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const pastSessions = sessions.filter((s) => (s.date || "") <= today);
   let present = 0;
   let load = 0;
 
-  sessions.forEach((session) => {
+  pastSessions.forEach((session) => {
     const entry = session.attendance?.[String(player.id)] || {};
     const status = getSessionStatus(player, session);
     const effectiveRpe = entry.rpe ?? playerRpeIndex[`${player.id}:${session.id}`];
@@ -804,7 +808,7 @@ function buildPlayerStats(player, sessions, playerRpeIndex = {}) {
   });
 
   return {
-    presencePct: sessions.length ? Math.round((present / sessions.length) * 100) : 0,
+    presencePct: pastSessions.length ? Math.round((present / pastSessions.length) * 100) : 0,
     load,
   };
 }
