@@ -2578,24 +2578,45 @@ function FormationView({ teams, teamColors, numTeams }) {
             <rect key={i} x="14" y={14 + i*(FH-28)/6} width={FW-28} height={(FH-28)/6}
               fill={i%2===0 ? "rgba(0,0,0,0.04)" : "transparent"} />
           ))}
+          {/* Slot vuoti (sfondo) */}
+          {slots.map((slot, idx) => {
+            const p = slotMap[idx];
+            if (p) return null;
+            const cx = slot.x / 100 * FW;
+            const cy = slot.y / 100 * FH;
+            const col = ROLE_BADGE_COLORS[slot.role] || "#475569";
+            const isSelected = selected === idx;
+            return (
+              <g key={`empty-${idx}`} onClick={() => clickSlot(idx)} style={{ cursor: isSelected ? "pointer" : "default" }}>
+                <circle cx={cx} cy={cy} r="17" fill={isSelected ? "#facc1544" : "rgba(255,255,255,0.08)"}
+                  stroke={col} strokeWidth="1.5" strokeDasharray="4 3" opacity="0.6"/>
+                <text x={cx} y={cy+4} textAnchor="middle" fontSize="9" fill={col} fontFamily="sans-serif" fontWeight="700" opacity="0.7">{slot.role}</text>
+              </g>
+            );
+          })}
           {/* Giocatori */}
           {slots.map((slot, idx) => {
             const p = slotMap[idx];
+            if (!p) return null;
             const cx = slot.x / 100 * FW;
             const cy = slot.y / 100 * FH;
-            const tag = p ? (getRoleTag(p.role) || "") : "";
-            const col = ROLE_BADGE_COLORS[tag] || "#475569";
+            // usa il ruolo della posizione in campo (non il ruolo anagrafico)
+            const posRole = slot.role;
+            const col = ROLE_BADGE_COLORS[posRole] || "#475569";
             const isSelected = selected === idx;
-            const name = p ? (p.lastName || p.name || "—").slice(0, 10) : "—";
+            const name = (p.lastName || p.name || "—").slice(0, 10);
+            const origRole = getRoleTag(p.role) || "";
+            const isDifferentRole = origRole && origRole !== posRole;
             return (
               <g key={idx} onClick={() => clickSlot(idx)} style={{ cursor:"pointer" }}>
+                <title>{name}{isDifferentRole ? ` (${origRole}→${posRole})` : ""}</title>
                 <circle cx={cx} cy={cy} r="17"
                   fill={isSelected ? "#facc15" : col}
-                  stroke={isSelected ? "#fbbf24" : "rgba(255,255,255,0.4)"}
-                  strokeWidth={isSelected ? 2.5 : 1.5}
+                  stroke={isSelected ? "#fbbf24" : isDifferentRole ? "#f97316" : "rgba(255,255,255,0.4)"}
+                  strokeWidth={isSelected ? 2.5 : isDifferentRole ? 2 : 1.5}
                   opacity="0.93"
                 />
-                <text x={cx} y={cy-3} textAnchor="middle" fontSize="9" fontWeight="900" fill="white" fontFamily="sans-serif">{tag}</text>
+                <text x={cx} y={cy-3} textAnchor="middle" fontSize="9" fontWeight="900" fill="white" fontFamily="sans-serif">{posRole}</text>
                 <text x={cx} y={cy+8} textAnchor="middle" fontSize="7.5" fill="white" fontFamily="sans-serif" fontWeight="600">{name}</text>
               </g>
             );
