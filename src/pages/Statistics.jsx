@@ -1480,8 +1480,14 @@ function getTeamSummary(stats) {
 
 function getStatsSummary(events, players, playerStatsMap = {}) {
   const today = new Date().toISOString().slice(0, 10);
-  // Conta solo sedute già avvenute (data <= oggi)
-  const trainingSessions = events.filter((e) => e.type !== "Partita" && (e.date || "") <= today);
+  // Conta solo sedute già avvenute: data < oggi, oppure data = oggi ma con presenze già registrate
+  const trainingSessions = events.filter((e) => {
+    if (e.type === "Partita") return false;
+    const d = e.date || "";
+    if (d < today) return true;
+    if (d === today) return e.attendance && Object.keys(e.attendance).length > 0;
+    return false;
+  });
   const totalTrainings = trainingSessions.length;
 
   return players.map((player) => {
