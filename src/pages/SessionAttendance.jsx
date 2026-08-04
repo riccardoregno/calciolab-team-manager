@@ -200,20 +200,24 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 14 }}>
                 <div>
                   <p style={{ color: "#22c55e", fontWeight: 800, fontSize: 13, marginBottom: 8 }}>✔ Presenti ({presentiList.length})</p>
-                  {presentiList.map((p) => (
-                    <div key={p.id} style={{ fontSize: 13, color: "#e2e8f0", padding: "3px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                      {getName(p)} <span style={{ color: "#64748b", fontSize: 11 }}>{p.role || ""}</span>
-                    </div>
-                  ))}
+                  {presentiList.map((p) => {
+                    const isJuniores = (p.gruppo || "prima") === "juniores";
+                    return (
+                      <div key={p.id} style={{ fontSize: 13, color: "#e2e8f0", padding: "3px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                        {getName(p)} <span style={{ color: "#64748b", fontSize: 11 }}>{p.role || ""}{isJuniores ? " · Juniores" : ""}</span>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div>
-                  <p style={{ color: "#f87171", fontWeight: 800, fontSize: 13, marginBottom: 8 }}>✖ Non in campo ({assentiList.length})</p>
+                  <p style={{ color: "#f87171", fontWeight: 800, fontSize: 13, marginBottom: 8 }}>✖ Assenti ({assentiList.length})</p>
                   {assentiList.map((p) => {
                     const st = getPlayerSessionStatus(p, session, attendance);
                     const stColor = { Assente: "#f87171", Infortunato: "#fb923c", Recupero: "#38bdf8", Permesso: "#38bdf8", Squalificato: "#c084fc" }[st] || "#94a3b8";
+                    const isJuniores = (p.gruppo || "prima") === "juniores";
                     return (
                       <div key={p.id} style={{ fontSize: 13, color: "#e2e8f0", padding: "3px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between" }}>
-                        <span>{getName(p)} <span style={{ color: "#64748b", fontSize: 11 }}>{p.role || ""}</span></span>
+                        <span>{getName(p)} <span style={{ color: "#64748b", fontSize: 11 }}>{p.role || ""}{isJuniores ? " · Juniores" : ""}</span></span>
                         <span style={{ color: stColor, fontSize: 11, fontWeight: 700 }}>{st}</span>
                       </div>
                     );
