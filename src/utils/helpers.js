@@ -161,13 +161,17 @@ export function normalizePlayer(player){
     Array.isArray(player.absences)
   ) return player;
 
-  // Se firstName/lastName sono vuoti ma name esiste, derivali dal name
-  const derivedFirstName = player.firstName || player.first_name || (() => {
+  // Rimuove il prefisso "?" da firstName/lastName (artefatto dell'import CSV)
+  const cleanFirst = (player.firstName || player.first_name || "").trim().replace(/^\?+\s*/, "");
+  const cleanLast  = (player.lastName  || player.last_name  || "").trim().replace(/^\?+\s*/, "");
+
+  // Se firstName/lastName sono vuoti (o erano solo "?"), derivali dal name
+  const derivedFirstName = cleanFirst || (() => {
     if (!player.name) return "";
     const parts = player.name.trim().replace(/^\?+\s*/, "").split(/\s+/).filter(Boolean);
     return parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0] || "";
   })();
-  const derivedLastName = player.lastName || player.last_name || (() => {
+  const derivedLastName = cleanLast || (() => {
     if (!player.name) return "";
     const parts = player.name.trim().replace(/^\?+\s*/, "").split(/\s+/).filter(Boolean);
     return parts.length > 1 ? parts[parts.length - 1] : "";
