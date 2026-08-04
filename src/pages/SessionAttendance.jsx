@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -51,6 +52,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const { id } = useParams();
   const navigate = useNavigate();
   const { canManage } = useAreaPermission();
+  const [showSummaryList, setShowSummaryList] = useState(false);
 
   const session = sessions.find((s) => String(s.id) === String(id));
 
@@ -165,6 +167,48 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
           </div>
         </div>
       </AppCard>
+
+      {/* Lista riepilogo presenti/assenti */}
+      {(() => {
+        const presentiList  = players.filter((p) => getPlayerSessionStatus(p, session, attendance) === "Presente");
+        const assentiList   = players.filter((p) => getPlayerSessionStatus(p, session, attendance) !== "Presente");
+        const getName = (p) => [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
+        return (
+          <AppCard>
+            <button
+              onClick={() => setShowSummaryList((v) => !v)}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, padding: 0 }}
+            >
+              {showSummaryList ? "▲" : "▼"} Lista presenti / non in campo
+            </button>
+            {showSummaryList && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 14 }}>
+                <div>
+                  <p style={{ color: "#22c55e", fontWeight: 800, fontSize: 13, marginBottom: 8 }}>✔ Presenti ({presentiList.length})</p>
+                  {presentiList.map((p) => (
+                    <div key={p.id} style={{ fontSize: 13, color: "#e2e8f0", padding: "3px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                      {getName(p)} <span style={{ color: "#64748b", fontSize: 11 }}>{p.role || ""}</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <p style={{ color: "#f87171", fontWeight: 800, fontSize: 13, marginBottom: 8 }}>✖ Non in campo ({assentiList.length})</p>
+                  {assentiList.map((p) => {
+                    const st = getPlayerSessionStatus(p, session, attendance);
+                    const stColor = { Assente: "#f87171", Infortunato: "#fb923c", Recupero: "#38bdf8", Permesso: "#38bdf8", Squalificato: "#c084fc" }[st] || "#94a3b8";
+                    return (
+                      <div key={p.id} style={{ fontSize: 13, color: "#e2e8f0", padding: "3px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between" }}>
+                        <span>{getName(p)} <span style={{ color: "#64748b", fontSize: 11 }}>{p.role || ""}</span></span>
+                        <span style={{ color: stColor, fontSize: 11, fontWeight: 700 }}>{st}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </AppCard>
+        );
+      })()}
 
       {players.length === 0 ? (
         <AppCard>
