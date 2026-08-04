@@ -2120,7 +2120,11 @@ const TEAM_COLORS = [
 
 function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [playersPerTeam, setPlayersPerTeam] = useState(11);
 
+  // Giocatori marcati "A disposizione" = assegnati al team index 99
+  const BENCH = 99;
+  const bench = availablePlayers.filter((p) => assignments[String(p.id)] === BENCH);
   const unassigned = availablePlayers.filter((p) => assignments[String(p.id)] === undefined);
   const teams = Array.from({ length: numTeams }, (_, i) =>
     availablePlayers.filter((p) => assignments[String(p.id)] === i)
@@ -2143,12 +2147,23 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
   }
 
   function shuffle() {
-    // Raggruppa per ruolo e distribuisce round-robin per bilanciare
+    const totalSlots = playersPerTeam * numTeams;
+    // Juniores vanno a disposizione per primi, poi i prima in eccesso
+    const juniores = availablePlayers.filter((p) => (p._juniores || p.gruppo === "juniores"));
+    const prima = availablePlayers.filter((p) => !(p._juniores || p.gruppo === "juniores"));
+
+    // Mescola entrambi i gruppi
+    const shuffled = (arr) => [...arr].sort(() => Math.random() - 0.5);
+    const junioresMix = shuffled(juniores);
+    const primaMix = shuffled(prima);
+
+    // Riempi prima con i prima, poi con i juniores, il resto va a disposizione
+    const inGame = [...primaMix, ...junioresMix].slice(0, totalSlots);
+    const onBench = [...primaMix, ...junioresMix].slice(totalSlots);
+
+    // Distribuisce inGame round-robin per ruolo
     const byRole = { P: [], D: [], C: [], A: [], "?": [] };
-    availablePlayers.forEach((p) => {
-      const tag = getRoleTag(p.role) || "?";
-      byRole[tag].push(String(p.id));
-    });
+    inGame.forEach((p) => { const tag = getRoleTag(p.role) || "?"; byRole[tag].push(String(p.id)); });
     const next = {};
     let teamIdx = 0;
     ["P", "D", "C", "A", "?"].forEach((role) => {
@@ -2157,10 +2172,13 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
         teamIdx++;
       });
     });
+    onBench.forEach((p) => { next[String(p.id)] = BENCH; });
     onChange({ assignments: next, numTeams });
   }
 
   function reset() { onChange({ assignments: {}, numTeams }); }
+  function sendToBench(playerId) { onChange({ assignments: { ...assignments, [String(playerId)]: BENCH }, numTeams }); }
+  function pullFromBench(playerId) { const next = { ...assignments }; delete next[String(playerId)]; onChange({ assignments: next, numTeams }); }
 
   function printTeams() {
     const win = window.open("", "_blank");
@@ -2170,9 +2188,12 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
         ${members.map((p) => `<p style="margin:4px 0;font-size:13px">${p.name}</p>`).join("")}
       </div>`
     ).join("");
+    const benchHtml = bench.length
+      ? `<div style="margin-top:16px;border:1px solid #ccc;border-radius:10px;padding:12px"><h3 style="margin:0 0 10px;color:#888;font-size:13px;text-transform:uppercase">A disposizione (${bench.length})</h3>${bench.map((p) => `<p style="margin:4px 0;font-size:13px;color:#666">${p.name}</p>`).join("")}</div>`
+      : "";
     win.document.write(`<html><head><title>Squadre</title><style>body{font-family:sans-serif;padding:24px}h2{margin-bottom:16px}.teams{display:flex;gap:12px;flex-wrap:wrap}@media print{button{display:none}}</style></head>
       <body><h2>Squadre — ${new Date().toLocaleDateString("it")}</h2>
-      <div class="teams">${rows}</div>
+      <div class="teams">${rows}</div>${benchHtml}
       <br><button onclick="window.print()">Stampa</button></body></html>`);
     win.document.close();
   }
@@ -2187,7 +2208,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
           <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>Generatore squadre</h4>
         </div>
         {!collapsed && (
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
             {[2, 3, 4].map((n) => (
               <button key={n} onClick={() => changeTeams(n)} style={{
                 padding: "4px 10px", borderRadius: 7, border: "1px solid",
@@ -2197,6 +2218,14 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
                 fontSize: 12, fontWeight: 700, cursor: "pointer",
               }}>{n} squadre</button>
             ))}
+            <div style={{ display: "flex", alignItems: "center", gap: 5, marginLeft: 4 }}>
+              <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>Gioc./squadra</span>
+              <input
+                type="number" min={1} max={30} value={playersPerTeam}
+                onChange={(e) => setPlayersPerTeam(Math.max(1, Number(e.target.value)))}
+                style={{ width: 44, padding: "3px 6px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#e2e8f0", fontSize: 12, fontWeight: 700, textAlign: "center" }}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -2260,6 +2289,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
                           {tag && <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag], minWidth: 10 }}>{tag}</span>}
                           {p.name}
                         </span>
+                        <button onClick={() => sendToBench(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 10, padding: "0 2px", lineHeight: 1 }} title="A disposizione">Disp.</button>
                         <button onClick={() => unassign(p.id)} style={{
                           background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 13, padding: "0 2px", lineHeight: 1,
                         }} title="Rimuovi">✕</button>
@@ -2270,6 +2300,39 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
               </div>
             ))}
           </div>
+
+          {/* A disposizione */}
+          {bench.length > 0 && (
+            <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                A disposizione ({bench.length})
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                {sortByRole(bench).map((p) => {
+                  const tag = getRoleTag(p.role);
+                  const isJ = p._juniores || p.gruppo === "juniores";
+                  return (
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                      <span style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>
+                        {tag && <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag] }}>{tag}</span>}
+                        {p.name}
+                        {isJ && <span style={{ fontSize: 10, color: "#475569" }}>Juniores</span>}
+                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        {Array.from({ length: numTeams }, (_, i) => (
+                          <button key={i} onClick={() => assign(p.id, i)} title={TEAM_COLORS[i].label} style={{
+                            width: 14, height: 14, borderRadius: 3, border: "none", cursor: "pointer",
+                            background: TEAM_COLORS[i].color, opacity: 0.75,
+                          }} />
+                        ))}
+                        <button onClick={() => pullFromBench(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 12, padding: "0 2px" }} title="Rimuovi da disposizione">✕</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Azioni */}
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
