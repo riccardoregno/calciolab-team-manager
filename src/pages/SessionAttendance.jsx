@@ -170,13 +170,14 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
 
       {/* Lista riepilogo presenti/assenti */}
       {(() => {
-        const getName = (p) => [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
+        const getName = (p) => `${p.lastName || ""} ${p.firstName || ""}`.trim() || p.name || "—";
+        const getSortKey = (p) => (p.lastName || p.name || "").toLowerCase();
         const ROLE_ORDER = { Portiere: 0, Difensore: 1, "Difensore centrale": 1, Centrocampista: 2, Attaccante: 3 };
         const sortByRole = (arr) => [...arr].sort((a, b) => {
           const ra = ROLE_ORDER[a.role] ?? 99;
           const rb = ROLE_ORDER[b.role] ?? 99;
           if (ra !== rb) return ra - rb;
-          return getName(a).localeCompare(getName(b), "it");
+          return getSortKey(a).localeCompare(getSortKey(b), "it");
         });
         const presentiList = sortByRole(players.filter((p) => getPlayerSessionStatus(p, session, attendance) === "Presente"));
         const assentiList  = sortByRole(players.filter((p) => getPlayerSessionStatus(p, session, attendance) !== "Presente"));
