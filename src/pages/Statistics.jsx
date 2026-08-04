@@ -34,7 +34,7 @@ function Statistics({
   const [playerStatsMap, setPlayerStatsMap] = useState({});
   const [statsLoading, setStatsLoading] = useState(false);
   const [playerMatchesDB, setPlayerMatchesDB] = useState([]);
-  const [sortBy, setSortBy] = useState("goals");
+  const [sortBy, setSortBy] = useState("role");
   const [sortOrder, setSortOrder] = useState("desc");
   const [searchPlayer, setSearchPlayer] = useState("");
   const [onlyWithStats, setOnlyWithStats] = useState(false);
@@ -277,14 +277,27 @@ function Statistics({
         return true;
       })
       .sort((a, b) => {
+        const ro = (r) => { const s = (r||"").toLowerCase(); return s.startsWith("portiere") ? 0 : s.startsWith("difensore") ? 1 : s.startsWith("centrocampista") ? 2 : s.startsWith("attaccante") ? 3 : 99; };
+
         if (sortBy === "name") {
           return sortOrder === "asc"
             ? a.name.localeCompare(b.name)
             : b.name.localeCompare(a.name);
         }
 
+        // Default: ordina per ruolo poi cognome
+        if (sortBy === "role") {
+          const rd = ro(a.role) - ro(b.role);
+          if (rd !== 0) return sortOrder === "asc" ? rd : -rd;
+          return (a.lastName || a.name || "").localeCompare(b.lastName || b.name || "", "it");
+        }
+
         const diff = Number(b[sortBy] || 0) - Number(a[sortBy] || 0);
-        return sortOrder === "asc" ? -diff : diff;
+        if (diff !== 0) return sortOrder === "asc" ? -diff : diff;
+        // Pareggio: fallback a ruolo poi cognome
+        const roleD = ro(a.role) - ro(b.role);
+        if (roleD !== 0) return roleD;
+        return (a.lastName || a.name || "").localeCompare(b.lastName || b.name || "", "it");
       });
   }, [
     filteredEvents,
@@ -1464,8 +1477,9 @@ function getTeamSummary(stats) {
 }
 
 function getStatsSummary(events, players, playerStatsMap = {}) {
-  // Calcola il totale delle sedute di allenamento (non partite)
-  const trainingSessions = events.filter((e) => e.type !== "Partita");
+  const today = new Date().toISOString().slice(0, 10);
+  // Conta solo sedute già avvenute (data <= oggi)
+  const trainingSessions = events.filter((e) => e.type !== "Partita" && (e.date || "") <= today);
   const totalTrainings = trainingSessions.length;
 
   return players.map((player) => {
@@ -1538,6 +1552,7 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
     return {
       id: player.id,
       name: player.name,
+      lastName: player.lastName || player.last_name || "",
       status: player.status || "Disponibile",
       role: player.role || "",
       presences,
