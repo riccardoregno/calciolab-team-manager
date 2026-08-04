@@ -161,10 +161,28 @@ export function normalizePlayer(player){
     Array.isArray(player.absences)
   ) return player;
 
+  // Se firstName/lastName sono vuoti ma name esiste, derivali dal name
+  const derivedFirstName = player.firstName || player.first_name || (() => {
+    if (!player.name) return "";
+    const parts = player.name.trim().replace(/^\?+\s*/, "").split(/\s+/).filter(Boolean);
+    return parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0] || "";
+  })();
+  const derivedLastName = player.lastName || player.last_name || (() => {
+    if (!player.name) return "";
+    const parts = player.name.trim().replace(/^\?+\s*/, "").split(/\s+/).filter(Boolean);
+    return parts.length > 1 ? parts[parts.length - 1] : "";
+  })();
+  const derivedName = player.name
+    ? player.name.trim().replace(/^\?+\s*/, "")
+    : [derivedFirstName, derivedLastName].filter(Boolean).join(" ");
+
   return {
     ...player,
     // FIX #12: ID sempre stringa — elimina type mismatch tra numeric initialData e UUID creati dall'utente
     id: String(player.id),
+    firstName: derivedFirstName,
+    lastName: derivedLastName,
+    name: derivedName,
     shirtNumber: player.shirtNumber || player.number || "",
     status: player.status || "Disponibile",
     returnPhase: player.returnPhase || "",
