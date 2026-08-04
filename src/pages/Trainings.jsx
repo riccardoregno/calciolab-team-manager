@@ -2415,39 +2415,39 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
 const FORMATIONS_DEF = {
   "4-3-3": [
     { role:"P", x:50, y:88 },
-    { role:"D", x:15, y:68 },{ role:"D", x:35, y:65 },{ role:"D", x:65, y:65 },{ role:"D", x:85, y:68 },
-    { role:"C", x:25, y:45 },{ role:"C", x:50, y:42 },{ role:"C", x:75, y:45 },
+    { role:"D", x:15, y:65 },{ role:"D", x:35, y:70 },{ role:"D", x:65, y:70 },{ role:"D", x:85, y:65 },
+    { role:"C", x:25, y:43 },{ role:"C", x:50, y:49 },{ role:"C", x:75, y:43 },
     { role:"A", x:18, y:20 },{ role:"A", x:50, y:16 },{ role:"A", x:82, y:20 },
   ],
   "4-4-2": [
     { role:"P", x:50, y:88 },
-    { role:"D", x:15, y:68 },{ role:"D", x:35, y:65 },{ role:"D", x:65, y:65 },{ role:"D", x:85, y:68 },
+    { role:"D", x:15, y:65 },{ role:"D", x:35, y:70 },{ role:"D", x:65, y:70 },{ role:"D", x:85, y:65 },
     { role:"C", x:15, y:45 },{ role:"C", x:38, y:43 },{ role:"C", x:62, y:43 },{ role:"C", x:85, y:45 },
     { role:"A", x:33, y:18 },{ role:"A", x:67, y:18 },
   ],
   "4-2-3-1": [
     { role:"P", x:50, y:88 },
-    { role:"D", x:15, y:68 },{ role:"D", x:35, y:65 },{ role:"D", x:65, y:65 },{ role:"D", x:85, y:68 },
+    { role:"D", x:15, y:65 },{ role:"D", x:35, y:70 },{ role:"D", x:65, y:70 },{ role:"D", x:85, y:65 },
     { role:"C", x:35, y:52 },{ role:"C", x:65, y:52 },
     { role:"C", x:18, y:35 },{ role:"C", x:50, y:33 },{ role:"C", x:82, y:35 },
     { role:"A", x:50, y:15 },
   ],
   "3-5-2": [
     { role:"P", x:50, y:88 },
-    { role:"D", x:25, y:68 },{ role:"D", x:50, y:65 },{ role:"D", x:75, y:68 },
-    { role:"C", x:12, y:48 },{ role:"C", x:30, y:44 },{ role:"C", x:50, y:42 },{ role:"C", x:70, y:44 },{ role:"C", x:88, y:48 },
+    { role:"D", x:25, y:65 },{ role:"D", x:50, y:70 },{ role:"D", x:75, y:65 },
+    { role:"C", x:12, y:48 },{ role:"C", x:30, y:44 },{ role:"C", x:50, y:50 },{ role:"C", x:70, y:44 },{ role:"C", x:88, y:48 },
     { role:"A", x:33, y:18 },{ role:"A", x:67, y:18 },
   ],
   "3-4-3": [
     { role:"P", x:50, y:88 },
-    { role:"D", x:25, y:68 },{ role:"D", x:50, y:65 },{ role:"D", x:75, y:68 },
+    { role:"D", x:25, y:65 },{ role:"D", x:50, y:70 },{ role:"D", x:75, y:65 },
     { role:"C", x:18, y:48 },{ role:"C", x:40, y:45 },{ role:"C", x:60, y:45 },{ role:"C", x:82, y:48 },
     { role:"A", x:18, y:20 },{ role:"A", x:50, y:16 },{ role:"A", x:82, y:20 },
   ],
   "5-3-2": [
     { role:"P", x:50, y:88 },
-    { role:"D", x:10, y:70 },{ role:"D", x:28, y:66 },{ role:"D", x:50, y:64 },{ role:"D", x:72, y:66 },{ role:"D", x:90, y:70 },
-    { role:"C", x:25, y:45 },{ role:"C", x:50, y:42 },{ role:"C", x:75, y:45 },
+    { role:"D", x:10, y:68 },{ role:"D", x:28, y:73 },{ role:"D", x:50, y:75 },{ role:"D", x:72, y:73 },{ role:"D", x:90, y:68 },
+    { role:"C", x:25, y:45 },{ role:"C", x:50, y:50 },{ role:"C", x:75, y:45 },
     { role:"A", x:33, y:18 },{ role:"A", x:67, y:18 },
   ],
 };
