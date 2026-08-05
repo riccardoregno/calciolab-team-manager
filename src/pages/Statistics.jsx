@@ -1561,7 +1561,21 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
   const trainingSessions = events.filter((e) => {
     if (e.type === "Partita") return false;
     const d = e.date || "";
-    return d <= today; // conta tutte le sedute passate + oggi
+    if (d < today) return true; // sedute passate: sempre
+    if (d === today) {
+      // conta se ha già dati di presenze
+      if (e.attendance && Object.keys(e.attendance).length > 0) return true;
+      // oppure se l'orario della sessione è già passato (es. 18:45 → conta dopo le 18:45)
+      if (e.time) {
+        const now = new Date();
+        const [h, m] = e.time.split(":").map(Number);
+        const sessionStart = new Date(now);
+        sessionStart.setHours(h, m || 0, 0, 0);
+        return now >= sessionStart;
+      }
+      return false;
+    }
+    return false; // sessioni future: non contare
   });
   const totalTrainings = trainingSessions.length;
 
@@ -1584,15 +1598,23 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
       { absences: 0, injuries: 0 }
     );
 
-    // % presenze allenamenti: su tutte le sessioni passate; assenza esplicita = assente, nessun dato = presente
-    const trainingPresences = trainingSessions.filter((s) => {
+    // % presenze allenamenti
+    // - sessione senza dati di presenze → non penalizza (non ancora registrata)
+    // - sessione con dati ma giocatore assente/non registrato → conta come assente
+    // - sessione con dati e giocatore "Presente" → conta come presente
+    const sessionsWithData = trainingSessions.filter(
+      (s) => s.attendance && Object.keys(s.attendance).length > 0
+    );
+    const trainingPresences = sessionsWithData.filter((s) => {
       const data = s.attendance?.[player.id];
-      if (!data) return true; // nessun dato registrato = presente di default
+      if (!data) return false; // dati registrati per altri ma non per questo giocatore = assente
       return data.status === "Presente";
     }).length;
+    // denominatore: solo le sessioni dove le presenze sono state registrate
+    const effectiveDenominator = sessionsWithData.length;
 
-    const trainingPct = totalTrainings > 0
-      ? Math.round((trainingPresences / totalTrainings) * 100)
+    const trainingPct = effectiveDenominator > 0
+      ? Math.round((trainingPresences / effectiveDenominator) * 100)
       : null;
 
     const ps = playerStatsMap[String(player.id)] || {};
@@ -1646,8 +1668,8 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
       injuries: attendance.injuries,
       trainingPresences,
       trainingPct,
-      totalTrainings,
-      registeredTrainings: totalTrainings,
+      totalTrainings: effectiveDenominator,
+      registeredTrainings: effectiveDenominator,
     };
   });
 }
