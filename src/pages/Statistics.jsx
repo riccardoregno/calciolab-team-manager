@@ -1586,8 +1586,8 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
     const pid = String(player.id);
     const trainingPresences = trainingSessions.filter((s) => {
       const entry = s.attendance?.[pid] ?? s.attendance?.[player.id];
-      if (entry?.status) return entry.status === "Presente" || entry.status === "Recupero";
-      return (player.gruppo || "prima") !== "juniores";
+      const status = entry?.status;
+      return status === "Presente" || status === "Recupero";
     }).length;
     const effectiveDenominator = trainingSessions.length;
 
