@@ -1252,25 +1252,96 @@ const assignmentTeamIndexStats = (v) => {
   return v;
 };
 
-function PartitelleStats({ events, players, squadraFilter }) {
-  const sessions = events.filter((e) => e.type !== "Partita" && e.partitella?.winner != null);
+const parseStatsDate = (dateStr) => {
+  if (!dateStr) return null;
+  const [year, month, day] = String(dateStr).slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+};
 
-  const stats = useMemo(() => {
-    const map = {};
-    sessions.forEach((s) => {
-      const { winner } = s.partitella;
-      const assignments = s.teamAssignments || {};
-      Object.entries(assignments).forEach(([pid, teamVal]) => {
-        const teamIdx = assignmentTeamIndexStats(teamVal);
-        if (teamIdx == null) return;
-        if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0 };
-        if (winner === "draw") map[pid].draws++;
-        else if (winner === teamIdx) map[pid].wins++;
-        else map[pid].losses++;
-      });
+const addStatsDays = (date, days) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+const getStatsWeekStart = (dateStr) => {
+  const date = parseStatsDate(dateStr);
+  if (!date) return null;
+  const day = date.getDay() || 7;
+  return addStatsDays(date, 1 - day);
+};
+
+const getStatsDateKey = (date) => {
+  if (!date) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatStatsShortDate = (date) =>
+  date.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
+
+const getMiniMatchStatsMap = (sessions) => {
+  const map = {};
+  sessions.forEach((s) => {
+    const { winner } = s.partitella || {};
+    const assignments = s.teamAssignments || {};
+    Object.entries(assignments).forEach(([pid, teamVal]) => {
+      const teamIdx = assignmentTeamIndexStats(teamVal);
+      if (teamIdx == null) return;
+      if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0 };
+      if (winner === "draw") map[pid].draws++;
+      else if (winner === teamIdx) map[pid].wins++;
+      else map[pid].losses++;
     });
-    return map;
-  }, [sessions]);
+  });
+  return map;
+};
+
+function PartitelleStats({ events, players, squadraFilter }) {
+  const [selectedWeek, setSelectedWeek] = useState("all");
+  const trainingEvents = events.filter((e) => (e.type || "Allenamento") !== "Partita" && e.date);
+  const sessions = trainingEvents.filter((e) => e.partitella?.winner != null);
+
+  const weeks = new Map();
+  trainingEvents.forEach((event) => {
+    const start = getStatsWeekStart(event.date);
+    if (!start) return;
+    const key = getStatsDateKey(start);
+    if (!weeks.has(key)) {
+      weeks.set(key, {
+        key,
+        start,
+        end: addStatsDays(start, 6),
+        trainingCount: 0,
+        miniCount: 0,
+      });
+    }
+    const week = weeks.get(key);
+    week.trainingCount += 1;
+    if (event.partitella?.winner != null) week.miniCount += 1;
+  });
+
+  const weekOptions = Array.from(weeks.values())
+    .sort((a, b) => a.start - b.start)
+    .map((week, index) => ({ ...week, number: index + 1 }));
+
+  const effectiveWeek = selectedWeek === "all" || weekOptions.some((week) => week.key === selectedWeek)
+    ? selectedWeek
+    : "all";
+
+  const selectedWeekMeta = weekOptions.find((week) => week.key === effectiveWeek) || null;
+  const selectedSessions = effectiveWeek === "all"
+    ? sessions
+    : sessions.filter((event) => getStatsDateKey(getStatsWeekStart(event.date)) === effectiveWeek);
+  const selectedTrainingCount = effectiveWeek === "all"
+    ? trainingEvents.length
+    : selectedWeekMeta?.trainingCount || 0;
+
+  const stats = getMiniMatchStatsMap(selectedSessions);
+  const allStats = getMiniMatchStatsMap(sessions);
 
   const filteredPlayers = players.filter((p) => {
     if (squadraFilter === "tutti") return true;
@@ -1287,6 +1358,8 @@ function PartitelleStats({ events, players, squadraFilter }) {
   const rows = Array.from(rowPlayers.values())
     .map((p) => ({ p, ...(stats[String(p.id)] || { wins: 0, losses: 0, draws: 0 }) }))
     .sort((a, b) => (a.p.name || "").localeCompare(b.p.name || "", "it", { sensitivity: "base" }));
+  const weeklyFines = rows.reduce((sum, row) => sum + row.losses, 0);
+  const totalFines = Object.values(allStats).reduce((sum, row) => sum + row.losses, 0);
 
   return (
     <AppCard style={{ marginBottom: 18 }}>
@@ -1296,12 +1369,25 @@ function PartitelleStats({ events, players, squadraFilter }) {
             Statistiche partitelle
           </h3>
           <p style={{ color: "#64748b", margin: "4px 0 0", fontSize: 13, lineHeight: 1.4 }}>
-            {sessions.length} {sessions.length === 1 ? "partitella registrata" : "partitelle registrate"}
+            {selectedSessions.length} partitelle salvate su {selectedTrainingCount} allenamenti
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <select
+            value={effectiveWeek}
+            onChange={(event) => setSelectedWeek(event.target.value)}
+            style={{ ...styles.input, height: 32, width: 260, maxWidth: "100%", fontSize: 12, padding: "0 10px" }}
+          >
+            <option value="all">Tutte le settimane</option>
+            {weekOptions.map((week) => (
+              <option key={week.key} value={week.key}>
+                Settimana {week.number} - {formatStatsShortDate(week.start)}-{formatStatsShortDate(week.end)} ({week.miniCount}/{week.trainingCount})
+              </option>
+            ))}
+          </select>
           <StatChip label="Giocatori" value={rows.length} />
-          <StatChip label="Multe" value={`€ ${rows.reduce((sum, row) => sum + row.losses, 0)}`} color="#f97316" />
+          <StatChip label={effectiveWeek === "all" ? "Multe selezione" : "Multe settimana"} value={`€ ${weeklyFines}`} color="#f97316" />
+          <StatChip label="Multe totale" value={`€ ${totalFines}`} color="#fb923c" />
         </div>
       </div>
 
