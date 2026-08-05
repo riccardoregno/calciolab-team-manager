@@ -1593,12 +1593,16 @@ function getTrainingSessionStatus(player, session) {
   return getTrainingDefaultStatus(player, session.date);
 }
 
+function hasRecordedAttendance(session) {
+  return Object.keys(session.attendance || {}).length > 0;
+}
+
 function getStatsSummary(events, players, playerStatsMap = {}) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString();
   const trainingSessions = events
     .filter((e) => (e.type || "Allenamento") === "Allenamento")
     .map((e) => ({ ...e, date: normalizeStatsDate(e.date) }))
-    .filter((e) => e.date && e.date <= today);
+    .filter((e) => e.date && (e.date < today || (e.date === today && hasRecordedAttendance(e))));
   return players.map((player) => {
     const attendance = events.reduce(
       (acc, event) => {
