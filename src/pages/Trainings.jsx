@@ -2510,8 +2510,6 @@ const FORMATIONS_DEF = {
   ],
 };
 
-const ROLE_PRIORITY = { P:0, D:1, C:2, A:3 };
-
 function autoAssignFormation(players, formation) {
   const slots = FORMATIONS_DEF[formation] || [];
   const byRole = { P:[], D:[], C:[], A:[] };
@@ -2570,14 +2568,16 @@ function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSa
     setSaved(false);
   }
 
-  // Quando si cambia squadra, auto-assegna solo se non è già stata configurata
-  useEffect(() => {
-    setSlotMaps((prev) => {
-      if (prev[activeTeam] !== undefined) return prev;
-      return { ...prev, [activeTeam]: autoAssignFormation([...players], formation) };
-    });
+  function selectTeam(teamIdx) {
+    setActiveTeam(teamIdx);
     setSelected(null);
-  }, [activeTeam]); // eslint-disable-line react-hooks/exhaustive-deps
+    setSlotMaps((prev) => {
+      if (prev[teamIdx] !== undefined) return prev;
+      const teamPlayers = teams[teamIdx] || [];
+      const teamFormation = formations[teamIdx] || "4-3-3";
+      return { ...prev, [teamIdx]: autoAssignFormation([...teamPlayers], teamFormation) };
+    });
+  }
 
   const slotMap = slotMaps[activeTeam] ?? autoAssignFormation([...players], formation);
 
@@ -2647,7 +2647,7 @@ function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSa
         <h4 style={{ margin:0, fontSize:14, fontWeight:800 }}>Schieramento</h4>
         <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
           {Array.from({ length: numTeams }, (_, i) => (
-            <button key={i} onClick={() => setActiveTeam(i)} style={{
+            <button key={i} onClick={() => selectTeam(i)} style={{
               padding:"4px 10px", borderRadius:7, border:"1px solid",
               borderColor: activeTeam===i ? teamColors[i]?.color : "rgba(255,255,255,0.1)",
               background: activeTeam===i ? `${teamColors[i]?.color}22` : "transparent",

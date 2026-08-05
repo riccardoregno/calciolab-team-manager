@@ -8,7 +8,7 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 
-import { formatDate, localDateString, normalizeAppSettings } from "../utils/helpers";
+import { formatDate, getPlayerUnavailabilityOnDate, localDateString, normalizeAppSettings } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { loadAllPlayerStats, loadPlayerMatches, loadPlayerMatchesForPeriod } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
@@ -1555,10 +1555,34 @@ function getTeamSummary(stats) {
   };
 }
 
+const VALID_ATTENDANCE_STATUSES = new Set(["Presente", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"]);
+const TRAINING_PRESENT_STATUSES = new Set(["Presente", "Recupero"]);
+
+function getTrainingUnavailabilityStatus(player, dateStr) {
+  if (player.status === "Infortunato") return "Infortunato";
+  if (player.status === "Squalificato") return "Squalificato";
+  const unavailability = getPlayerUnavailabilityOnDate(player, dateStr);
+  if (unavailability?.type === "injury") return "Infortunato";
+  if (unavailability?.type === "absence") return "Permesso";
+  return null;
+}
+
+function getTrainingDefaultStatus(player, dateStr) {
+  const unavailableStatus = getTrainingUnavailabilityStatus(player, dateStr);
+  if (unavailableStatus) return unavailableStatus;
+  if (player.status === "Recupero" || player.status === "Differenziato") return "Recupero";
+  if ((player.gruppo || "prima") === "juniores") return "Assente";
+  return "Presente";
+}
+
+function getTrainingSessionStatus(player, session) {
+  const entry = session.attendance?.[String(player.id)] || {};
+  if (entry.status && VALID_ATTENDANCE_STATUSES.has(entry.status)) return entry.status;
+  return getTrainingDefaultStatus(player, session.date);
+}
+
 function getStatsSummary(events, players, playerStatsMap = {}) {
   const today = new Date().toISOString().slice(0, 10);
-  // Conta solo sedute già avvenute: data < oggi, oppure data = oggi ma con presenze già registrate
-  // Tutte le sessioni passate (strettamente prima di oggi)
   const trainingSessions = events.filter((e) => {
     if ((e.type || "Allenamento") !== "Allenamento") return false;
     const d = e.date || "";
@@ -1583,11 +1607,9 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
       { absences: 0, injuries: 0 }
     );
 
-    const pid = String(player.id);
     const trainingPresences = trainingSessions.filter((s) => {
-      const entry = s.attendance?.[pid] ?? s.attendance?.[player.id];
-      const status = entry?.status;
-      return status === "Presente" || status === "Recupero";
+      const status = getTrainingSessionStatus(player, s);
+      return TRAINING_PRESENT_STATUSES.has(status);
     }).length;
     const effectiveDenominator = trainingSessions.length;
 
