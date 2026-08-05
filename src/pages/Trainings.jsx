@@ -334,6 +334,8 @@ function Trainings({
       sessionBlocks: session.sessionBlocks || [],
       numTeams: session.numTeams || 2,
       teamAssignments: session.teamAssignments || {},
+      partitella: session.partitella || null,
+      teamFormations: session.teamFormations || {},
       materials: session.materials || "",
     });
 
@@ -1078,7 +1080,16 @@ function Trainings({
                 teamColors={TEAM_COLORS}
                 numTeams={numTeams}
                 savedFormations={form.teamFormations || {}}
-                onSave={(data) => setForm((f) => ({ ...f, teamFormations: data }))}
+                onSave={(data) => {
+                  setForm((f) => ({ ...f, teamFormations: data }));
+                  if (editingId) {
+                    setSessions((prevSessions) =>
+                      prevSessions.map((session) =>
+                        session.id === editingId ? { ...session, teamFormations: data } : session
+                      )
+                    );
+                  }
+                }}
               />
             );
           })()}
@@ -1303,6 +1314,8 @@ function emptyTraining() {
     sessionBlocks: [],
     numTeams: 2,
     teamAssignments: {},
+    partitella: null,
+    teamFormations: {},
     materials: "",
   };
 }
