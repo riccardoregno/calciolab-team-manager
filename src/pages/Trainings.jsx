@@ -1082,9 +1082,10 @@ function Trainings({
               />
             );
           })()}
-          <MiniMatchStats sessions={sessions} players={players} />
         </div>
       </div>}
+
+      <MiniMatchStats sessions={sessions} players={players} />
 
       <div className="no-print" style={{ marginTop: 28 }}>
         <AppCard>
