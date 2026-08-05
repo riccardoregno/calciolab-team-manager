@@ -1235,7 +1235,84 @@ function Statistics({
           </AppCard>
         </div>
       </div>
+
+      {/* ── Statistiche Partitelle ── */}
+      <PartitelleStats events={events} players={players} squadraFilter={squadraFilter} />
+
     </div>
+  );
+}
+
+// ── Statistiche Partitelle ────────────────────────────────────────────────────
+const BENCH_BASE_STATS = 100;
+
+function PartitelleStats({ events, players, squadraFilter }) {
+  const sessions = events.filter((e) => e.type !== "Partita" && e.partitella?.winner != null);
+
+  const stats = useMemo(() => {
+    const map = {};
+    sessions.forEach((s) => {
+      const { winner } = s.partitella;
+      const assignments = s.teamAssignments || {};
+      Object.entries(assignments).forEach(([pid, teamVal]) => {
+        if (typeof teamVal !== "number" || teamVal >= BENCH_BASE_STATS) return;
+        if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0 };
+        if (winner === "draw") map[pid].draws++;
+        else if (winner === teamVal) map[pid].wins++;
+        else map[pid].losses++;
+      });
+    });
+    return map;
+  }, [sessions]);
+
+  const filteredPlayers = players.filter((p) => {
+    if (squadraFilter === "tutti") return true;
+    return (p.gruppo || "prima") === squadraFilter;
+  });
+
+  const rows = filteredPlayers
+    .filter((p) => stats[String(p.id)])
+    .map((p) => ({ p, ...stats[String(p.id)] }))
+    .sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+
+  if (!rows.length) return null;
+
+  return (
+    <AppCard style={{ marginTop: 20 }}>
+      <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800 }}>
+        ⚽ Statistiche partitelle di allenamento
+        <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 400, color: "#64748b" }}>
+          {sessions.length} {sessions.length === 1 ? "partita" : "partite"} registrate
+        </span>
+      </h3>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+              {["Giocatore", "Vinte", "Perse", "Pari", "Multa (€)"].map((h) => (
+                <th key={h} style={{ padding: "6px 12px", textAlign: h === "Giocatore" ? "left" : "center", color: "#64748b", fontWeight: 700, fontSize: 11, textTransform: "uppercase" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ p, wins, losses, draws }) => (
+              <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <td style={{ padding: "8px 12px", color: "#e2e8f0", fontWeight: 600 }}>
+                  {p.name}
+                  <span style={{ marginLeft: 6, fontSize: 11, color: "#475569", fontWeight: 400 }}>{p.role}</span>
+                </td>
+                <td style={{ padding: "8px 12px", textAlign: "center", color: "#22c55e", fontWeight: 700 }}>{wins}</td>
+                <td style={{ padding: "8px 12px", textAlign: "center", color: losses > 0 ? "#ef4444" : "#64748b", fontWeight: losses > 0 ? 700 : 400 }}>{losses}</td>
+                <td style={{ padding: "8px 12px", textAlign: "center", color: "#94a3b8" }}>{draws}</td>
+                <td style={{ padding: "8px 12px", textAlign: "center", color: losses > 0 ? "#f97316" : "#64748b", fontWeight: losses > 0 ? 700 : 400 }}>
+                  {losses > 0 ? `€ ${losses}` : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </AppCard>
   );
 }
 
@@ -1484,9 +1561,7 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
   const trainingSessions = events.filter((e) => {
     if (e.type === "Partita") return false;
     const d = e.date || "";
-    if (d < today) return true;
-    if (d === today) return e.attendance && Object.keys(e.attendance).length > 0;
-    return false;
+    return d <= today; // conta tutte le sedute passate + oggi
   });
   const totalTrainings = trainingSessions.length;
 
