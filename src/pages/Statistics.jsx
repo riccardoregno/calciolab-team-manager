@@ -1095,7 +1095,7 @@ function Statistics({
                     <span style={s.tdNum}>{row.presences}</span>
                     <span style={s.tdNum}>{row.absences}</span>
                     <span style={s.tdNum}>{row.injuries}</span>
-                    <span style={s.tdNum}>{row.trainingPresences}/{row.registeredTrainings}</span>
+                    <span style={s.tdNum}>{row.trainingPresences}/{row.totalTrainings}</span>
                     <span style={{
                       ...s.tdNum,
                       color: row.trainingPct === null
@@ -1509,22 +1509,16 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
       { absences: 0, injuries: 0 }
     );
 
-    // % presenze allenamenti: conta le sedute dove lo status è "Presente" (o non registrato = presente di default)
+    // % presenze allenamenti: su tutte le sessioni passate; assenza esplicita = assente, nessun dato = presente
     const trainingPresences = trainingSessions.filter((s) => {
       const data = s.attendance?.[player.id];
-      // Se non c'è nessun dato registrato per questa seduta, non la contiamo
-      if (!data) return false;
+      if (!data) return true; // nessun dato registrato = presente di default
       return data.status === "Presente";
     }).length;
 
-    // Sedute con dati registrati per questo giocatore
-    const registeredTrainings = trainingSessions.filter(
-      (s) => s.attendance?.[player.id]
-    ).length;
-
-    const trainingPct = registeredTrainings > 0
-      ? Math.round((trainingPresences / registeredTrainings) * 100)
-      : null; // null = nessun dato inserito
+    const trainingPct = totalTrainings > 0
+      ? Math.round((trainingPresences / totalTrainings) * 100)
+      : null;
 
     const ps = playerStatsMap[String(player.id)] || {};
 
@@ -1578,7 +1572,7 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
       trainingPresences,
       trainingPct,
       totalTrainings,
-      registeredTrainings,
+      registeredTrainings: totalTrainings,
     };
   });
 }
