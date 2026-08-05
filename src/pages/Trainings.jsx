@@ -1053,9 +1053,11 @@ function Trainings({
             })}
             numTeams={form.numTeams || 2}
             assignments={form.teamAssignments || {}}
+            partitella={form.partitella}
             onChange={({ assignments, numTeams }) =>
               setForm((f) => ({ ...f, teamAssignments: assignments, numTeams }))
             }
+            onPartitellaChange={(data) => setForm((f) => ({ ...f, partitella: data }))}
           />
           {(() => {
             const allAvail = sessionAvailability.available.filter((p) => {
@@ -1066,7 +1068,7 @@ function Trainings({
             const assignments = form.teamAssignments || {};
             const numTeams = form.numTeams || 2;
             const teams = Array.from({ length: numTeams }, (_, i) =>
-              allAvail.filter((p) => String(assignments[String(p.id)]) === String(i))
+              allAvail.filter((p) => assignments[String(p.id)] === i)
             );
             const hasAnyTeam = teams.some((t) => t.length > 0);
             if (!hasAnyTeam) return null;
@@ -1080,6 +1082,7 @@ function Trainings({
               />
             );
           })()}
+          <MiniMatchStats sessions={sessions} players={players} />
         </div>
       </div>}
 
@@ -2141,13 +2144,18 @@ const TEAM_COLORS = [
   { label: "Squadra D", color: "#a855f7", bg: "rgba(168,85,247,0.12)", border: "rgba(168,85,247,0.3)" },
 ];
 
-function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange }) {
+// bench per squadra: team i → 100+i
+const BENCH_BASE = 100;
+const benchKey = (i) => BENCH_BASE + i;
+const isBenchKey = (v) => typeof v === "number" && v >= BENCH_BASE;
+
+function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitella, onChange, onPartitellaChange }) {
   const [collapsed, setCollapsed] = useState(false);
   const [playersPerTeam, setPlayersPerTeam] = useState(11);
 
-  // Giocatori marcati "A disposizione" = assegnati al team index 99
-  const BENCH = 99;
-  const bench = availablePlayers.filter((p) => assignments[String(p.id)] === BENCH);
+  const benches = Array.from({ length: numTeams }, (_, i) =>
+    availablePlayers.filter((p) => assignments[String(p.id)] === benchKey(i))
+  );
   const unassigned = availablePlayers.filter((p) => assignments[String(p.id)] === undefined);
   const teams = Array.from({ length: numTeams }, (_, i) =>
     availablePlayers.filter((p) => assignments[String(p.id)] === i)
@@ -2165,7 +2173,10 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
 
   function changeTeams(n) {
     const next = {};
-    Object.entries(assignments).forEach(([id, t]) => { if (t < n) next[id] = t; });
+    Object.entries(assignments).forEach(([id, t]) => {
+      if (typeof t === "number" && t < n) next[id] = t;
+      else if (isBenchKey(t) && (t - BENCH_BASE) < n) next[id] = t;
+    });
     onChange({ assignments: next, numTeams: n });
   }
 
@@ -2210,12 +2221,13 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
         teamIdx++;
       });
     });
-    onBench.forEach((p) => { next[String(p.id)] = BENCH; });
+    // bench condiviso: distribuisce round-robin tra squadre esistenti
+    onBench.forEach((p, idx) => { next[String(p.id)] = benchKey(idx % numTeams); });
     onChange({ assignments: next, numTeams });
   }
 
   function reset() { onChange({ assignments: {}, numTeams }); }
-  function sendToBench(playerId) { onChange({ assignments: { ...assignments, [String(playerId)]: BENCH }, numTeams }); }
+  function sendToBench(playerId, teamIndex) { onChange({ assignments: { ...assignments, [String(playerId)]: benchKey(teamIndex) }, numTeams }); }
   function pullFromBench(playerId) { const next = { ...assignments }; delete next[String(playerId)]; onChange({ assignments: next, numTeams }); }
 
   function printTeams() {
@@ -2242,8 +2254,9 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
         ${sortForPrint(members).map(playerRow).join("")}
       </div>`
     ).join("");
-    const benchHtml = bench.length
-      ? `<div style="margin-top:16px;border:1px solid #ccc;border-radius:10px;padding:12px"><h3 style="margin:0 0 10px;color:#888;font-size:13px;text-transform:uppercase">A disposizione (${bench.length})</h3>${sortForPrint(bench).map(playerRow).join("")}</div>`
+    const allBench = benches.flat();
+    const benchHtml = allBench.length
+      ? benches.map((b, i) => b.length ? `<div style="margin-top:16px;border:1px solid ${TEAM_COLORS[i].border};border-radius:10px;padding:12px"><h3 style="margin:0 0 10px;color:${TEAM_COLORS[i].color};font-size:13px;text-transform:uppercase">A disposizione ${TEAM_COLORS[i].label} (${b.length})</h3>${sortForPrint(b).map(playerRow).join("")}</div>` : "").join("")
       : "";
     win.document.write(`<html><head><title>Squadre</title><style>body{font-family:sans-serif;padding:24px}h2{margin-bottom:16px}.teams{display:flex;gap:12px;flex-wrap:wrap}@media print{button{display:none}}</style></head>
       <body><h2>Squadre — ${new Date().toLocaleDateString("it")}</h2>
@@ -2314,7 +2327,9 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
                             background: TEAM_COLORS[i].color, opacity: 0.85,
                           }} />
                         ))}
-                        <button onClick={() => sendToBench(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 10, padding: "0 2px", fontWeight: 700 }} title="A disposizione">Disp.</button>
+                        {Array.from({ length: numTeams }, (_, i) => (
+                          <button key={i} onClick={() => sendToBench(p.id, i)} title={`A disposizione ${TEAM_COLORS[i].label}`} style={{ background: "none", border: "none", cursor: "pointer", color: TEAM_COLORS[i].color, fontSize: 10, padding: "0 2px", fontWeight: 700 }}>Disp.{String.fromCharCode(65+i)}</button>
+                        ))}
                       </div>
                     </div>
                   );
@@ -2344,7 +2359,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
                           {tag && <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag], minWidth: 10 }}>{tag}</span>}
                           {p.name}
                         </span>
-                        <button onClick={() => sendToBench(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 10, padding: "0 2px", lineHeight: 1 }} title="A disposizione">Disp.</button>
+                        <button onClick={() => sendToBench(p.id, i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 10, padding: "0 2px", lineHeight: 1 }} title="A disposizione">Disp.</button>
                         <button onClick={() => unassign(p.id)} style={{
                           background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 13, padding: "0 2px", lineHeight: 1,
                         }} title="Rimuovi">✕</button>
@@ -2356,36 +2371,64 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, onChange 
             ))}
           </div>
 
-          {/* A disposizione */}
-          {bench.length > 0 && (
-            <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                A disposizione ({bench.length})
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                {sortByRole(bench).map((p) => {
-                  const tag = getRoleTag(p.role);
-                  const isJ = p._juniores || p.gruppo === "juniores";
-                  return (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-                      <span style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>
-                        {tag && <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag] }}>{tag}</span>}
-                        {p.name}
-                        {isJ && <span style={{ fontSize: 10, color: "#475569" }}>Juniores</span>}
-                      </span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        {Array.from({ length: numTeams }, (_, i) => (
-                          <button key={i} onClick={() => assign(p.id, i)} title={TEAM_COLORS[i].label} style={{
-                            width: 14, height: 14, borderRadius: 3, border: "none", cursor: "pointer",
-                            background: TEAM_COLORS[i].color, opacity: 0.75,
-                          }} />
-                        ))}
-                        <button onClick={() => pullFromBench(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 12, padding: "0 2px" }} title="Rimuovi da disposizione">✕</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+          {/* A disposizione per squadra */}
+          {benches.some((b) => b.length > 0) && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+              {benches.map((b, i) => (
+                <div key={i} style={{ padding: "10px 12px", borderRadius: 10, background: TEAM_COLORS[i].bg, border: `1px solid ${TEAM_COLORS[i].border}` }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 800, color: TEAM_COLORS[i].color, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    A disp. {TEAM_COLORS[i].label} ({b.length})
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    {sortByRole(b).map((p) => {
+                      const tag = getRoleTag(p.role);
+                      const isJ = p._juniores || p.gruppo === "juniores";
+                      return (
+                        <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                          <span style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>
+                            {tag && <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag] }}>{tag}</span>}
+                            {p.name}
+                            {isJ && <span style={{ fontSize: 10, color: "#475569" }}>Jun</span>}
+                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            {Array.from({ length: numTeams }, (_, j) => (
+                              <button key={j} onClick={() => assign(p.id, j)} title={TEAM_COLORS[j].label} style={{
+                                width: 14, height: 14, borderRadius: 3, border: "none", cursor: "pointer",
+                                background: TEAM_COLORS[j].color, opacity: 0.75,
+                              }} />
+                            ))}
+                            <button onClick={() => pullFromBench(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 12, padding: "0 2px" }}>✕</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Risultato partitella */}
+          {teams.some((t) => t.length > 0) && (
+            <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8" }}>Risultato:</span>
+              {Array.from({ length: numTeams }, (_, i) => (
+                <button key={i} onClick={() => onPartitellaChange?.({ winner: i })} style={{
+                  padding: "4px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  border: `1px solid ${partitella?.winner === i ? TEAM_COLORS[i].color : "rgba(255,255,255,0.1)"}`,
+                  background: partitella?.winner === i ? `${TEAM_COLORS[i].color}22` : "transparent",
+                  color: partitella?.winner === i ? TEAM_COLORS[i].color : "#64748b",
+                }}>🏆 {TEAM_COLORS[i].label}</button>
+              ))}
+              <button onClick={() => onPartitellaChange?.({ winner: "draw" })} style={{
+                padding: "4px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                border: `1px solid ${partitella?.winner === "draw" ? "#f59e0b" : "rgba(255,255,255,0.1)"}`,
+                background: partitella?.winner === "draw" ? "rgba(245,158,11,0.15)" : "transparent",
+                color: partitella?.winner === "draw" ? "#f59e0b" : "#64748b",
+              }}>🤝 Pareggio</button>
+              {partitella?.winner != null && (
+                <button onClick={() => onPartitellaChange?.(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 11 }}>✕ Cancella</button>
+              )}
             </div>
           )}
 
@@ -2689,6 +2732,73 @@ function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSa
             );
           })}
         </svg>
+      </div>
+    </AppCard>
+  );
+}
+
+// ── Statistiche Partitelle ────────────────────────────────────────────────────
+function MiniMatchStats({ sessions = [], players = [] }) {
+  const stats = useMemo(() => {
+    const map = {}; // playerId → { wins, losses, draws }
+    sessions.forEach((s) => {
+      if (!s.partitella || s.partitella.winner == null) return;
+      const { winner } = s.partitella;
+      const assignments = s.teamAssignments || {};
+      Object.entries(assignments).forEach(([pid, teamVal]) => {
+        if (typeof teamVal !== "number" || teamVal >= BENCH_BASE) return; // skip bench
+        if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0 };
+        if (winner === "draw") { map[pid].draws++; }
+        else if (winner === teamVal) { map[pid].wins++; }
+        else { map[pid].losses++; }
+      });
+    });
+    return map;
+  }, [sessions]);
+
+  const rows = useMemo(() => {
+    return players
+      .filter((p) => stats[String(p.id)])
+      .map((p) => ({ p, ...stats[String(p.id)] }))
+      .sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        return a.losses - b.losses;
+      });
+  }, [players, stats]);
+
+  if (!rows.length) return null;
+
+  const totalSessions = sessions.filter((s) => s.partitella?.winner != null).length;
+
+  return (
+    <AppCard style={{ marginTop: 12 }}>
+      <h4 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 800 }}>
+        Statistiche partitelle
+        <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: "#64748b" }}>{totalSessions} partite registrate</span>
+      </h4>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+              {["Giocatore", "Vinte", "Perse", "Pari", "Multa (€)"].map((h) => (
+                <th key={h} style={{ padding: "6px 10px", textAlign: h === "Giocatore" ? "left" : "center", color: "#64748b", fontWeight: 700, fontSize: 11 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ p, wins, losses, draws }) => (
+              <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <td style={{ padding: "7px 10px", color: "#e2e8f0", fontWeight: 600 }}>{p.name}</td>
+                <td style={{ padding: "7px 10px", textAlign: "center", color: "#22c55e", fontWeight: 700 }}>{wins}</td>
+                <td style={{ padding: "7px 10px", textAlign: "center", color: "#ef4444", fontWeight: 700 }}>{losses}</td>
+                <td style={{ padding: "7px 10px", textAlign: "center", color: "#94a3b8" }}>{draws}</td>
+                <td style={{ padding: "7px 10px", textAlign: "center", color: losses > 0 ? "#f97316" : "#64748b", fontWeight: losses > 0 ? 700 : 400 }}>
+                  {losses > 0 ? `€ ${losses}` : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </AppCard>
   );
