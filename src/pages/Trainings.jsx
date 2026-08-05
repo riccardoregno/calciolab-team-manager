@@ -2154,7 +2154,12 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
   const [playersPerTeam, setPlayersPerTeam] = useState(11);
 
   const benches = Array.from({ length: numTeams }, (_, i) =>
-    availablePlayers.filter((p) => assignments[String(p.id)] === benchKey(i))
+    availablePlayers.filter((p) => {
+      const v = assignments[String(p.id)];
+      if (v === benchKey(i)) return true;
+      if (i === 0 && v === 99) return true; // retrocompatibilità vecchio BENCH=99
+      return false;
+    })
   );
   const unassigned = availablePlayers.filter((p) => assignments[String(p.id)] === undefined);
   const teams = Array.from({ length: numTeams }, (_, i) =>
