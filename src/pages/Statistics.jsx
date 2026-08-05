@@ -1245,6 +1245,12 @@ function Statistics({
 
 // ── Statistiche Partitelle ────────────────────────────────────────────────────
 const BENCH_BASE_STATS = 100;
+const assignmentTeamIndexStats = (v) => {
+  if (typeof v !== "number") return null;
+  if (v === 99) return 0;
+  if (v >= BENCH_BASE_STATS) return v - BENCH_BASE_STATS;
+  return v;
+};
 
 function PartitelleStats({ events, players, squadraFilter }) {
   const sessions = events.filter((e) => e.type !== "Partita" && e.partitella?.winner != null);
@@ -1255,10 +1261,11 @@ function PartitelleStats({ events, players, squadraFilter }) {
       const { winner } = s.partitella;
       const assignments = s.teamAssignments || {};
       Object.entries(assignments).forEach(([pid, teamVal]) => {
-        if (typeof teamVal !== "number" || teamVal >= BENCH_BASE_STATS) return;
+        const teamIdx = assignmentTeamIndexStats(teamVal);
+        if (teamIdx == null) return;
         if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0 };
         if (winner === "draw") map[pid].draws++;
-        else if (winner === teamVal) map[pid].wins++;
+        else if (winner === teamIdx) map[pid].wins++;
         else map[pid].losses++;
       });
     });

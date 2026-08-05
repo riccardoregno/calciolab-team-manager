@@ -2149,6 +2149,12 @@ const TEAM_COLORS = [
 const BENCH_BASE = 100;
 const benchKey = (i) => BENCH_BASE + i;
 const isBenchKey = (v) => typeof v === "number" && v >= BENCH_BASE;
+const assignmentTeamIndex = (v) => {
+  if (typeof v !== "number") return null;
+  if (v === 99) return 0;
+  if (v >= BENCH_BASE) return v - BENCH_BASE;
+  return v;
+};
 
 function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitella, onChange, onPartitellaChange }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -2752,10 +2758,11 @@ function MiniMatchStats({ sessions = [], players = [] }) {
       const { winner } = s.partitella;
       const assignments = s.teamAssignments || {};
       Object.entries(assignments).forEach(([pid, teamVal]) => {
-        if (typeof teamVal !== "number" || teamVal >= BENCH_BASE) return; // skip bench
+        const teamIdx = assignmentTeamIndex(teamVal);
+        if (teamIdx == null) return;
         if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0 };
         if (winner === "draw") { map[pid].draws++; }
-        else if (winner === teamVal) { map[pid].wins++; }
+        else if (winner === teamIdx) { map[pid].wins++; }
         else { map[pid].losses++; }
       });
     });
