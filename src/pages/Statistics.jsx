@@ -1560,7 +1560,7 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
   // Conta solo sedute già avvenute: data < oggi, oppure data = oggi ma con presenze già registrate
   // Tutte le sessioni passate (strettamente prima di oggi)
   const trainingSessions = events.filter((e) => {
-    if (e.type === "Partita") return false;
+    if ((e.type || "Allenamento") !== "Allenamento") return false;
     const d = e.date || "";
     return d < today;
   });
