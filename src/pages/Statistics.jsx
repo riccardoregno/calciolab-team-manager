@@ -1593,16 +1593,34 @@ function getTrainingSessionStatus(player, session) {
   return getTrainingDefaultStatus(player, session.date);
 }
 
-function hasRecordedAttendance(session) {
-  return Object.keys(session.attendance || {}).length > 0;
+function normalizeStatsTime(value) {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return "";
+  const hours = Math.min(23, Number(match[1]));
+  const minutes = Math.min(59, Number(match[2]));
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function getTrainingTime(session) {
+  return normalizeStatsTime(session.time || session.startTime || session.start_time) || "20:00";
+}
+
+function isCompletedTrainingSession(session, today, nowTime) {
+  if (!session.date) return false;
+  if (session.date < today) return true;
+  if (session.date > today) return false;
+  return getTrainingTime(session) <= nowTime;
 }
 
 function getStatsSummary(events, players, playerStatsMap = {}) {
   const today = localDateString();
+  const now = new Date();
+  const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const trainingSessions = events
     .filter((e) => (e.type || "Allenamento") === "Allenamento")
     .map((e) => ({ ...e, date: normalizeStatsDate(e.date) }))
-    .filter((e) => e.date && (e.date < today || (e.date === today && hasRecordedAttendance(e))));
+    .filter((e) => isCompletedTrainingSession(e, today, nowTime));
   return players.map((player) => {
     const attendance = events.reduce(
       (acc, event) => {
