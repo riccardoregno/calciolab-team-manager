@@ -701,6 +701,9 @@ function Statistics({
         )}
       </AppCard>
 
+      {/* ── Statistiche Partitelle ── */}
+      <PartitelleStats events={events} players={players} squadraFilter={squadraFilter} />
+
       {/* ── Griglia principale ── */}
       <div style={{ ...s.mainGrid, ...(isNarrow ? s.mainGridStack : null) }}>
 
@@ -1236,9 +1239,6 @@ function Statistics({
         </div>
       </div>
 
-      {/* ── Statistiche Partitelle ── */}
-      <PartitelleStats events={events} players={players} squadraFilter={squadraFilter} />
-
     </div>
   );
 }
@@ -1282,43 +1282,56 @@ function PartitelleStats({ events, players, squadraFilter }) {
     .map((p) => ({ p, ...stats[String(p.id)] }))
     .sort((a, b) => b.wins - a.wins || a.losses - b.losses);
 
-  if (!rows.length) return null;
-
   return (
-    <AppCard style={{ marginTop: 20 }}>
-      <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800 }}>
-        ⚽ Statistiche partitelle di allenamento
-        <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 400, color: "#64748b" }}>
-          {sessions.length} {sessions.length === 1 ? "partita" : "partite"} registrate
-        </span>
-      </h3>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              {["Giocatore", "Vinte", "Perse", "Pari", "Multa (€)"].map((h) => (
-                <th key={h} style={{ padding: "6px 12px", textAlign: h === "Giocatore" ? "left" : "center", color: "#64748b", fontWeight: 700, fontSize: 11, textTransform: "uppercase" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ p, wins, losses, draws }) => (
-              <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                <td style={{ padding: "8px 12px", color: "#e2e8f0", fontWeight: 600 }}>
-                  {p.name}
-                  <span style={{ marginLeft: 6, fontSize: 11, color: "#475569", fontWeight: 400 }}>{p.role}</span>
-                </td>
-                <td style={{ padding: "8px 12px", textAlign: "center", color: "#22c55e", fontWeight: 700 }}>{wins}</td>
-                <td style={{ padding: "8px 12px", textAlign: "center", color: losses > 0 ? "#ef4444" : "#64748b", fontWeight: losses > 0 ? 700 : 400 }}>{losses}</td>
-                <td style={{ padding: "8px 12px", textAlign: "center", color: "#94a3b8" }}>{draws}</td>
-                <td style={{ padding: "8px 12px", textAlign: "center", color: losses > 0 ? "#f97316" : "#64748b", fontWeight: losses > 0 ? 700 : 400 }}>
-                  {losses > 0 ? `€ ${losses}` : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <AppCard style={{ marginBottom: 18 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2, fontWeight: 800 }}>
+            Statistiche partitelle
+          </h3>
+          <p style={{ color: "#64748b", margin: "4px 0 0", fontSize: 13, lineHeight: 1.4 }}>
+            {sessions.length} {sessions.length === 1 ? "partitella registrata" : "partitelle registrate"}
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <StatChip label="Giocatori" value={rows.length} />
+          <StatChip label="Multe" value={`€ ${rows.reduce((sum, row) => sum + row.losses, 0)}`} color="#f97316" />
+        </div>
       </div>
+
+      {rows.length === 0 ? (
+        <div style={s.emptyTable}>
+          Nessuna partitella con risultato salvato per questi filtri.
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                {["Giocatore", "Vinte", "Perse", "Pari", "Multa (€)"].map((h) => (
+                  <th key={h} style={{ padding: "8px 12px", textAlign: h === "Giocatore" ? "left" : "center", color: "#64748b", fontWeight: 800, fontSize: 11, textTransform: "uppercase" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ p, wins, losses, draws }) => (
+                <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <td style={{ padding: "10px 12px", color: "#e2e8f0", fontWeight: 700 }}>
+                    {p.name}
+                    <span style={{ marginLeft: 6, fontSize: 11, color: "#475569", fontWeight: 500 }}>{p.role}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px", textAlign: "center", color: "#22c55e", fontWeight: 800 }}>{wins}</td>
+                  <td style={{ padding: "10px 12px", textAlign: "center", color: losses > 0 ? "#ef4444" : "#64748b", fontWeight: losses > 0 ? 800 : 500 }}>{losses}</td>
+                  <td style={{ padding: "10px 12px", textAlign: "center", color: "#94a3b8" }}>{draws}</td>
+                  <td style={{ padding: "10px 12px", textAlign: "center", color: losses > 0 ? "#f97316" : "#64748b", fontWeight: losses > 0 ? 800 : 500 }}>
+                    {losses > 0 ? `€ ${losses}` : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </AppCard>
   );
 }
