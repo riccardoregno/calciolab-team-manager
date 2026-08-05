@@ -1558,24 +1558,13 @@ function getTeamSummary(stats) {
 function getStatsSummary(events, players, playerStatsMap = {}) {
   const today = new Date().toISOString().slice(0, 10);
   // Conta solo sedute già avvenute: data < oggi, oppure data = oggi ma con presenze già registrate
+  // Conta solo le sessioni con presenze effettivamente registrate e con data <= oggi
   const trainingSessions = events.filter((e) => {
     if (e.type === "Partita") return false;
     const d = e.date || "";
-    if (d < today) return true; // sedute passate: sempre
-    if (d === today) {
-      // conta se ha già dati di presenze
-      if (e.attendance && Object.keys(e.attendance).length > 0) return true;
-      // oppure se l'orario della sessione è già passato (es. 18:45 → conta dopo le 18:45)
-      if (e.time) {
-        const now = new Date();
-        const [h, m] = e.time.split(":").map(Number);
-        const sessionStart = new Date(now);
-        sessionStart.setHours(h, m || 0, 0, 0);
-        return now >= sessionStart;
-      }
-      return false;
-    }
-    return false; // sessioni future: non contare
+    if (d > today) return false;
+    // deve avere dati di presenze registrati
+    return e.attendance && Object.keys(e.attendance).length > 0;
   });
   const totalTrainings = trainingSessions.length;
 
@@ -1598,20 +1587,13 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
       { absences: 0, injuries: 0 }
     );
 
-    // % presenze allenamenti
-    // - sessione senza dati di presenze → non penalizza (non ancora registrata)
-    // - sessione con dati ma giocatore assente/non registrato → conta come assente
-    // - sessione con dati e giocatore "Presente" → conta come presente
-    const sessionsWithData = trainingSessions.filter(
-      (s) => s.attendance && Object.keys(s.attendance).length > 0
-    );
-    const trainingPresences = sessionsWithData.filter((s) => {
+    // trainingSessions contiene già solo sessioni con presenze registrate e data <= oggi
+    const trainingPresences = trainingSessions.filter((s) => {
       const data = s.attendance?.[player.id];
-      if (!data) return false; // dati registrati per altri ma non per questo giocatore = assente
+      if (!data) return false; // non registrato = assente
       return data.status === "Presente";
     }).length;
-    // denominatore: solo le sessioni dove le presenze sono state registrate
-    const effectiveDenominator = sessionsWithData.length;
+    const effectiveDenominator = trainingSessions.length;
 
     const trainingPct = effectiveDenominator > 0
       ? Math.round((trainingPresences / effectiveDenominator) * 100)
