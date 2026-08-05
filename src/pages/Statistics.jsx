@@ -1277,7 +1277,14 @@ function PartitelleStats({ events, players, squadraFilter }) {
     return (p.gruppo || "prima") === squadraFilter;
   });
 
-  const rows = filteredPlayers
+  const playerById = new Map(players.map((p) => [String(p.id), p]));
+  const rowPlayers = new Map(filteredPlayers.map((p) => [String(p.id), p]));
+  Object.keys(stats).forEach((pid) => {
+    const player = playerById.get(pid);
+    if (player) rowPlayers.set(pid, player);
+  });
+
+  const rows = Array.from(rowPlayers.values())
     .map((p) => ({ p, ...(stats[String(p.id)] || { wins: 0, losses: 0, draws: 0 }) }))
     .sort((a, b) => (a.p.name || "").localeCompare(b.p.name || "", "it", { sensitivity: "base" }));
 

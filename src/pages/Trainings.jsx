@@ -1056,10 +1056,28 @@ function Trainings({
             numTeams={form.numTeams || 2}
             assignments={form.teamAssignments || {}}
             partitella={form.partitella}
-            onChange={({ assignments, numTeams }) =>
-              setForm((f) => ({ ...f, teamAssignments: assignments, numTeams }))
-            }
-            onPartitellaChange={(data) => setForm((f) => ({ ...f, partitella: data }))}
+            onChange={({ assignments, numTeams }) => {
+              setForm((f) => ({ ...f, teamAssignments: assignments, numTeams }));
+              if (editingId) {
+                setSessions((prevSessions) =>
+                  prevSessions.map((session) =>
+                    session.id === editingId
+                      ? { ...session, teamAssignments: assignments, numTeams }
+                      : session
+                  )
+                );
+              }
+            }}
+            onPartitellaChange={(data) => {
+              setForm((f) => ({ ...f, partitella: data }));
+              if (editingId) {
+                setSessions((prevSessions) =>
+                  prevSessions.map((session) =>
+                    session.id === editingId ? { ...session, partitella: data } : session
+                  )
+                );
+              }
+            }}
           />
           {(() => {
             const allAvail = sessionAvailability.available.filter((p) => {
