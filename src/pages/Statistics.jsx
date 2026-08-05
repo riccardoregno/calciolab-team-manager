@@ -1558,12 +1558,11 @@ function getTeamSummary(stats) {
 function getStatsSummary(events, players, playerStatsMap = {}) {
   const today = new Date().toISOString().slice(0, 10);
   // Conta solo sedute già avvenute: data < oggi, oppure data = oggi ma con presenze già registrate
-  // Conta solo le sessioni passate (data strettamente < oggi) con presenze registrate
+  // Tutte le sessioni passate (strettamente prima di oggi)
   const trainingSessions = events.filter((e) => {
     if (e.type === "Partita") return false;
     const d = e.date || "";
-    if (d >= today) return false; // esclude oggi e future
-    return e.attendance && Object.keys(e.attendance).length > 0;
+    return d < today;
   });
   const totalTrainings = trainingSessions.length;
 
@@ -1586,12 +1585,16 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
       { absences: 0, injuries: 0 }
     );
 
-    // trainingSessions contiene già solo sessioni con presenze registrate e data < oggi
+    // Stessa logica di AttendanceRegister: nessun dato = presente di default (prima squadra)
     const pid = String(player.id);
+    const isJuniores = (player.gruppo || "prima") === "juniores";
     const trainingPresences = trainingSessions.filter((s) => {
-      const data = s.attendance?.[pid] ?? s.attendance?.[player.id];
-      if (!data) return false;
-      return data.status === "Presente";
+      const entry = s.attendance?.[pid] ?? s.attendance?.[player.id];
+      if (entry?.status) {
+        return entry.status === "Presente" || entry.status === "Recupero";
+      }
+      // nessun dato: prima squadra = presente, juniores = assente
+      return !isJuniores;
     }).length;
     const effectiveDenominator = trainingSessions.length;
 
