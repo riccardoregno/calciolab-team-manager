@@ -1075,6 +1075,8 @@ function Trainings({
                 teams={teams}
                 teamColors={TEAM_COLORS}
                 numTeams={numTeams}
+                savedFormations={form.teamFormations || {}}
+                onSave={(data) => setForm((f) => ({ ...f, teamFormations: data }))}
               />
             );
           })()}
@@ -2480,21 +2482,43 @@ function autoAssignFormation(players, formation) {
   return assigned;
 }
 
-function FormationView({ teams, teamColors, numTeams }) {
+function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSave }) {
   const [activeTeam, setActiveTeam] = useState(0);
-  // formations e slotMaps salvati per ogni squadra indipendentemente
   const [formations, setFormations] = useState({});
   const [slotMaps, setSlotMaps] = useState({});
   const [selected, setSelected] = useState(null);
+  const [saved, setSaved] = useState(false);
+
+  // Carica dati salvati al primo render
+  const loadedRef = useRef(false);
+  useEffect(() => {
+    if (loadedRef.current || !Object.keys(savedFormations).length) return;
+    loadedRef.current = true;
+    const restoredFormations = {};
+    const restoredSlotMaps = {};
+    Object.entries(savedFormations).forEach(([ti, data]) => {
+      const teamIdx = Number(ti);
+      restoredFormations[teamIdx] = data.formation || "4-3-3";
+      const allPlayers = teams.flat();
+      const slotMap = {};
+      Object.entries(data.slots || {}).forEach(([slotIdx, playerId]) => {
+        const p = allPlayers.find((pl) => String(pl.id) === String(playerId));
+        if (p) slotMap[Number(slotIdx)] = p;
+      });
+      restoredSlotMaps[teamIdx] = slotMap;
+    });
+    setFormations(restoredFormations);
+    setSlotMaps(restoredSlotMaps);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const players = teams[activeTeam] || [];
   const formation = formations[activeTeam] || "4-3-3";
 
   function setFormation(f) {
-    // cambia modulo solo per la squadra attiva e resetta il suo slotMap
     setFormations((prev) => ({ ...prev, [activeTeam]: f }));
     setSlotMaps((prev) => ({ ...prev, [activeTeam]: autoAssignFormation([...players], f) }));
     setSelected(null);
+    setSaved(false);
   }
 
   // Quando si cambia squadra, auto-assegna solo se non è già stata configurata
@@ -2507,6 +2531,22 @@ function FormationView({ teams, teamColors, numTeams }) {
   }, [activeTeam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const slotMap = slotMaps[activeTeam] ?? autoAssignFormation([...players], formation);
+
+  function handleSave() {
+    const data = {};
+    const allFormations = { ...formations };
+    const allSlotMaps = { ...slotMaps };
+    Array.from({ length: numTeams }, (_, i) => {
+      const fm = allFormations[i] || "4-3-3";
+      const sm = allSlotMaps[i] || {};
+      const slots = {};
+      Object.entries(sm).forEach(([slotIdx, p]) => { if (p) slots[slotIdx] = String(p.id); });
+      data[i] = { formation: fm, slots };
+    });
+    onSave?.(data);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
 
   const slots = FORMATIONS_DEF[formation] || [];
   const ROLE_BADGE_COLORS = { P:"#ca8a04", D:"#2563eb", C:"#16a34a", A:"#dc2626" };
@@ -2576,6 +2616,12 @@ function FormationView({ teams, teamColors, numTeams }) {
             padding:"4px 12px", borderRadius:7, border:"1px solid rgba(255,255,255,0.1)",
             background:"rgba(255,255,255,0.04)", color:"#94a3b8", fontSize:12, fontWeight:700, cursor:"pointer",
           }}>🖨 Stampa</button>
+          <button onClick={handleSave} style={{
+            padding:"4px 12px", borderRadius:7, fontSize:12, fontWeight:700, cursor:"pointer",
+            border: saved ? "1px solid #22c55e" : "1px solid rgba(56,189,248,0.3)",
+            background: saved ? "rgba(34,197,94,0.12)" : "rgba(56,189,248,0.1)",
+            color: saved ? "#22c55e" : "#38bdf8",
+          }}>{saved ? "✓ Salvato" : "💾 Salva"}</button>
         </div>
       </div>
       <p style={{ margin:"0 0 10px", fontSize:11, color:"#64748b" }}>Clicca due giocatori per scambiarli di posizione</p>
