@@ -1558,6 +1558,18 @@ function getTeamSummary(stats) {
 const VALID_ATTENDANCE_STATUSES = new Set(["Presente", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"]);
 const TRAINING_PRESENT_STATUSES = new Set(["Presente", "Recupero"]);
 
+function normalizeStatsDate(value) {
+  if (!value) return "";
+  const raw = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function getTrainingUnavailabilityStatus(player, dateStr) {
   if (player.status === "Infortunato") return "Infortunato";
   if (player.status === "Squalificato") return "Squalificato";
@@ -1583,11 +1595,10 @@ function getTrainingSessionStatus(player, session) {
 
 function getStatsSummary(events, players, playerStatsMap = {}) {
   const today = new Date().toISOString().slice(0, 10);
-  const trainingSessions = events.filter((e) => {
-    if ((e.type || "Allenamento") !== "Allenamento") return false;
-    const d = e.date || "";
-    return d < today;
-  });
+  const trainingSessions = events
+    .filter((e) => (e.type || "Allenamento") === "Allenamento")
+    .map((e) => ({ ...e, date: normalizeStatsDate(e.date) }))
+    .filter((e) => e.date && e.date <= today);
   return players.map((player) => {
     const attendance = events.reduce(
       (acc, event) => {
