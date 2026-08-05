@@ -180,14 +180,24 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
           if (r.startsWith("attaccante")) return 3;
           return 99;
         };
+        const isJun = (p) => (p.gruppo || "prima") === "juniores";
         const sortByRole = (arr) => [...arr].sort((a, b) => {
           const ra = getRoleOrder(a.role);
           const rb = getRoleOrder(b.role);
           if (ra !== rb) return ra - rb;
           return getSortKey(a).localeCompare(getSortKey(b), "it");
         });
+        const sortByGruppoRole = (arr) => [...arr].sort((a, b) => {
+          const ga = isJun(a) ? 1 : 0;
+          const gb = isJun(b) ? 1 : 0;
+          if (ga !== gb) return ga - gb;
+          const ra = getRoleOrder(a.role);
+          const rb = getRoleOrder(b.role);
+          if (ra !== rb) return ra - rb;
+          return getSortKey(a).localeCompare(getSortKey(b), "it");
+        });
         const presentiList = sortByRole(players.filter((p) => getPlayerSessionStatus(p, session, attendance) === "Presente"));
-        const assentiList  = sortByRole(players.filter((p) => getPlayerSessionStatus(p, session, attendance) !== "Presente"));
+        const assentiList  = sortByGruppoRole(players.filter((p) => getPlayerSessionStatus(p, session, attendance) !== "Presente"));
         return (
           <AppCard>
             <button
