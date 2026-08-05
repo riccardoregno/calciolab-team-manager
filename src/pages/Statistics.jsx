@@ -1278,9 +1278,8 @@ function PartitelleStats({ events, players, squadraFilter }) {
   });
 
   const rows = filteredPlayers
-    .filter((p) => stats[String(p.id)])
-    .map((p) => ({ p, ...stats[String(p.id)] }))
-    .sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+    .map((p) => ({ p, ...(stats[String(p.id)] || { wins: 0, losses: 0, draws: 0 }) }))
+    .sort((a, b) => (a.p.name || "").localeCompare(b.p.name || "", "it", { sensitivity: "base" }));
 
   return (
     <AppCard style={{ marginBottom: 18 }}>
@@ -1301,7 +1300,7 @@ function PartitelleStats({ events, players, squadraFilter }) {
 
       {rows.length === 0 ? (
         <div style={s.emptyTable}>
-          Nessuna partitella con risultato salvato per questi filtri.
+          Nessun giocatore trovato per questi filtri.
         </div>
       ) : (
         <div style={{ overflowX: "auto" }}>
