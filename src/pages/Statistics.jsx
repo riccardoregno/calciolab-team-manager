@@ -1287,14 +1287,16 @@ const getMiniMatchStatsMap = (sessions) => {
   const map = {};
   sessions.forEach((s) => {
     const { winner } = s.partitella || {};
+    const goals = s.partitella?.goals || {};
     const assignments = s.teamAssignments || {};
     Object.entries(assignments).forEach(([pid, teamVal]) => {
       const teamIdx = assignmentTeamIndexStats(teamVal);
       if (teamIdx == null) return;
-      if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0 };
+      if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0, goals: 0 };
       if (winner === "draw") map[pid].draws++;
       else if (winner === teamIdx) map[pid].wins++;
       else map[pid].losses++;
+      map[pid].goals += Math.max(0, Number(goals[pid]) || 0);
     });
   });
   return map;
@@ -1356,10 +1358,13 @@ function PartitelleStats({ events, players, squadraFilter }) {
   });
 
   const rows = Array.from(rowPlayers.values())
-    .map((p) => ({ p, ...(stats[String(p.id)] || { wins: 0, losses: 0, draws: 0 }) }))
+    .map((p) => ({ p, ...(stats[String(p.id)] || { wins: 0, losses: 0, draws: 0, goals: 0 }) }))
     .sort((a, b) => (a.p.name || "").localeCompare(b.p.name || "", "it", { sensitivity: "base" }));
   const weeklyFines = rows.reduce((sum, row) => sum + row.losses, 0);
+  const weeklyGoals = rows.reduce((sum, row) => sum + row.goals, 0);
   const totalFines = Object.values(allStats).reduce((sum, row) => sum + row.losses, 0);
+  const totalGoals = Object.values(allStats).reduce((sum, row) => sum + row.goals, 0);
+  const topForm = [...rows].sort((a, b) => b.goals - a.goals || b.wins - a.wins || a.p.name.localeCompare(b.p.name, "it", { sensitivity: "base" }))[0];
 
   return (
     <AppCard style={{ marginBottom: 18 }}>
@@ -1386,6 +1391,9 @@ function PartitelleStats({ events, players, squadraFilter }) {
             ))}
           </select>
           <StatChip label="Giocatori" value={rows.length} />
+          <StatChip label={effectiveWeek === "all" ? "Gol selezione" : "Gol settimana"} value={weeklyGoals} color="#4ade80" />
+          <StatChip label="Gol totale" value={totalGoals} color="#22c55e" />
+          <StatChip label="Più in forma" value={topForm?.goals > 0 ? `${topForm.p.name} (${topForm.goals})` : "N/D"} color="#38bdf8" />
           <StatChip label={effectiveWeek === "all" ? "Multe selezione" : "Multe settimana"} value={`€ ${weeklyFines}`} color="#f97316" />
           <StatChip label="Multe totale" value={`€ ${totalFines}`} color="#fb923c" />
         </div>
@@ -1400,18 +1408,19 @@ function PartitelleStats({ events, players, squadraFilter }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                {["Giocatore", "Vinte", "Perse", "Pari", "Multa (€)"].map((h) => (
+                {["Giocatore", "Gol", "Vinte", "Perse", "Pari", "Multa (€)"].map((h) => (
                   <th key={h} style={{ padding: "8px 12px", textAlign: h === "Giocatore" ? "left" : "center", color: "#64748b", fontWeight: 800, fontSize: 11, textTransform: "uppercase" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ p, wins, losses, draws }) => (
+              {rows.map(({ p, wins, losses, draws, goals }) => (
                 <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                   <td style={{ padding: "10px 12px", color: "#e2e8f0", fontWeight: 700 }}>
                     {p.name}
                     <span style={{ marginLeft: 6, fontSize: 11, color: "#475569", fontWeight: 500 }}>{p.role}</span>
                   </td>
+                  <td style={{ padding: "10px 12px", textAlign: "center", color: goals > 0 ? "#4ade80" : "#64748b", fontWeight: goals > 0 ? 800 : 500 }}>{goals}</td>
                   <td style={{ padding: "10px 12px", textAlign: "center", color: "#22c55e", fontWeight: 800 }}>{wins}</td>
                   <td style={{ padding: "10px 12px", textAlign: "center", color: losses > 0 ? "#ef4444" : "#64748b", fontWeight: losses > 0 ? 800 : 500 }}>{losses}</td>
                   <td style={{ padding: "10px 12px", textAlign: "center", color: "#94a3b8" }}>{draws}</td>

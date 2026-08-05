@@ -2190,6 +2190,7 @@ const assignmentTeamIndex = (v) => {
 function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitella, onChange, onPartitellaChange }) {
   const [collapsed, setCollapsed] = useState(false);
   const [playersPerTeam, setPlayersPerTeam] = useState(11);
+  const miniGoals = partitella?.goals || {};
 
   const benches = Array.from({ length: numTeams }, (_, i) =>
     availablePlayers.filter((p) => {
@@ -2272,6 +2273,41 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
   function reset() { onChange({ assignments: {}, numTeams }); }
   function sendToBench(playerId, teamIndex) { onChange({ assignments: { ...assignments, [String(playerId)]: benchKey(teamIndex) }, numTeams }); }
   function pullFromBench(playerId) { const next = { ...assignments }; delete next[String(playerId)]; onChange({ assignments: next, numTeams }); }
+  function updatePartitella(partial) {
+    onPartitellaChange?.({ ...(partitella || {}), ...partial });
+  }
+  function setMiniGoals(playerId, value) {
+    const goals = Math.max(0, Number(value) || 0);
+    const nextGoals = { ...miniGoals };
+    if (goals > 0) nextGoals[String(playerId)] = goals;
+    else delete nextGoals[String(playerId)];
+    updatePartitella({ goals: nextGoals });
+  }
+  function renderGoalInput(playerId) {
+    return (
+      <label style={{ display: "flex", alignItems: "center", gap: 4, color: "#64748b", fontSize: 10, fontWeight: 800 }}>
+        Gol
+        <input
+          type="number"
+          min="0"
+          value={miniGoals[String(playerId)] || 0}
+          onChange={(event) => setMiniGoals(playerId, event.target.value)}
+          style={{
+            width: 34,
+            height: 22,
+            padding: "0 4px",
+            borderRadius: 6,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(15,23,42,0.55)",
+            color: "#e2e8f0",
+            fontSize: 11,
+            fontWeight: 800,
+            textAlign: "center",
+          }}
+        />
+      </label>
+    );
+  }
 
   function printTeams() {
     const ROLE_PRINT_ORDER = { P: 0, D: 1, C: 2, A: 3 };
@@ -2402,10 +2438,13 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
                           {tag && <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag], minWidth: 10 }}>{tag}</span>}
                           {p.name}
                         </span>
-                        <button onClick={() => sendToBench(p.id, i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 10, padding: "0 2px", lineHeight: 1 }} title="A disposizione">Disp.</button>
-                        <button onClick={() => unassign(p.id)} style={{
-                          background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 13, padding: "0 2px", lineHeight: 1,
-                        }} title="Rimuovi">✕</button>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {renderGoalInput(p.id)}
+                          <button onClick={() => sendToBench(p.id, i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 10, padding: "0 2px", lineHeight: 1 }} title="A disposizione">Disp.</button>
+                          <button onClick={() => unassign(p.id)} style={{
+                            background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 13, padding: "0 2px", lineHeight: 1,
+                          }} title="Rimuovi">✕</button>
+                        </div>
                       </div>
                     );
                   })}
@@ -2434,6 +2473,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
                             {isJ && <span style={{ fontSize: 10, color: "#475569" }}>Jun</span>}
                           </span>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            {renderGoalInput(p.id)}
                             {Array.from({ length: numTeams }, (_, j) => (
                               <button key={j} onClick={() => assign(p.id, j)} title={TEAM_COLORS[j].label} style={{
                                 width: 14, height: 14, borderRadius: 3, border: "none", cursor: "pointer",
@@ -2456,21 +2496,21 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
             <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8" }}>Risultato:</span>
               {Array.from({ length: numTeams }, (_, i) => (
-                <button key={i} onClick={() => onPartitellaChange?.({ winner: i })} style={{
+                <button key={i} onClick={() => updatePartitella({ winner: i })} style={{
                   padding: "4px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer",
                   border: `1px solid ${partitella?.winner === i ? TEAM_COLORS[i].color : "rgba(255,255,255,0.1)"}`,
                   background: partitella?.winner === i ? `${TEAM_COLORS[i].color}22` : "transparent",
                   color: partitella?.winner === i ? TEAM_COLORS[i].color : "#64748b",
                 }}>🏆 {TEAM_COLORS[i].label}</button>
               ))}
-              <button onClick={() => onPartitellaChange?.({ winner: "draw" })} style={{
+              <button onClick={() => updatePartitella({ winner: "draw" })} style={{
                 padding: "4px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer",
                 border: `1px solid ${partitella?.winner === "draw" ? "#f59e0b" : "rgba(255,255,255,0.1)"}`,
                 background: partitella?.winner === "draw" ? "rgba(245,158,11,0.15)" : "transparent",
                 color: partitella?.winner === "draw" ? "#f59e0b" : "#64748b",
               }}>🤝 Pareggio</button>
               {partitella?.winner != null && (
-                <button onClick={() => onPartitellaChange?.(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 11 }}>✕ Cancella</button>
+                <button onClick={() => onPartitellaChange?.(miniGoals && Object.keys(miniGoals).length ? { goals: miniGoals } : null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 11 }}>✕ Cancella risultato</button>
               )}
             </div>
           )}
