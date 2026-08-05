@@ -1586,10 +1586,11 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
       { absences: 0, injuries: 0 }
     );
 
-    // trainingSessions contiene già solo sessioni con presenze registrate e data <= oggi
+    // trainingSessions contiene già solo sessioni con presenze registrate e data < oggi
+    const pid = String(player.id);
     const trainingPresences = trainingSessions.filter((s) => {
-      const data = s.attendance?.[player.id];
-      if (!data) return false; // non registrato = assente
+      const data = s.attendance?.[pid] ?? s.attendance?.[player.id];
+      if (!data) return false;
       return data.status === "Presente";
     }).length;
     const effectiveDenominator = trainingSessions.length;
