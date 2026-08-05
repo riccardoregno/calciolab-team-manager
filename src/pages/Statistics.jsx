@@ -1564,8 +1564,6 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
     const d = e.date || "";
     return d < today;
   });
-  const totalTrainings = trainingSessions.length;
-
   return players.map((player) => {
     const attendance = events.reduce(
       (acc, event) => {
@@ -1588,16 +1586,8 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
     const pid = String(player.id);
     const trainingPresences = trainingSessions.filter((s) => {
       const entry = s.attendance?.[pid] ?? s.attendance?.[player.id];
-      const status = entry?.status;
-      if (!status) {
-        // Nessun dato esplicito: se la sessione è completamente vuota (coach non ha ancora
-        // registrato nessuno), considera tutti i non-juniores presenti per default.
-        // Se la sessione ha già dati per altri giocatori, questo player era assente.
-        const sessionHasAnyData = Object.keys(s.attendance || {}).length > 0;
-        if (sessionHasAnyData) return false;
-        return (player.gruppo || "prima") !== "juniores";
-      }
-      return status === "Presente" || status === "Recupero";
+      if (entry?.status) return entry.status === "Presente" || entry.status === "Recupero";
+      return (player.gruppo || "prima") !== "juniores";
     }).length;
     const effectiveDenominator = trainingSessions.length;
 
