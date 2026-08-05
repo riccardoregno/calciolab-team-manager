@@ -1585,16 +1585,19 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
       { absences: 0, injuries: 0 }
     );
 
-    // Stessa logica di AttendanceRegister: nessun dato = presente di default (prima squadra)
     const pid = String(player.id);
-    const isJuniores = (player.gruppo || "prima") === "juniores";
     const trainingPresences = trainingSessions.filter((s) => {
       const entry = s.attendance?.[pid] ?? s.attendance?.[player.id];
-      if (entry?.status) {
-        return entry.status === "Presente" || entry.status === "Recupero";
+      const status = entry?.status;
+      if (!status) {
+        // Nessun dato esplicito: se la sessione è completamente vuota (coach non ha ancora
+        // registrato nessuno), considera tutti i non-juniores presenti per default.
+        // Se la sessione ha già dati per altri giocatori, questo player era assente.
+        const sessionHasAnyData = Object.keys(s.attendance || {}).length > 0;
+        if (sessionHasAnyData) return false;
+        return (player.gruppo || "prima") !== "juniores";
       }
-      // nessun dato: prima squadra = presente, juniores = assente
-      return !isJuniores;
+      return status === "Presente" || status === "Recupero";
     }).length;
     const effectiveDenominator = trainingSessions.length;
 
