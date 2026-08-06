@@ -47,7 +47,9 @@ export async function createBrandedPdf({ appSettings = {}, subtitle = "", dateSt
     dateStr,
     teamLogo: assets.teamLogo,
   });
-  return { doc, teamName, assets, y: startY };
+  const pageW = doc.internal.pageSize.getWidth();
+  const margins = { l: 14, r: 14, t: 14, b: 14 };
+  return { doc, teamName, assets, y: startY, pageW, margins };
 }
 
 export function finishBrandedPdf(doc, { teamName, dateStr, assets, filename, save = true }) {

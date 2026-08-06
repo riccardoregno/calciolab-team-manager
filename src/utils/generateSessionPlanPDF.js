@@ -38,7 +38,7 @@ export async function generateSessionPlanPDF({ session, appSettings, save = true
     { label: "Durata tot", value: totalMinutes(session) > 0 ? `${totalMinutes(session)} min` : "—" },
     { label: "RPE target", value: session.rpeTarget ? String(session.rpeTarget) : "—" },
   ];
-  y = keyValueGrid(doc, meta, y, { cols: 3, usableW, margins });
+  y = keyValueGrid(doc, meta, y, { columns: 3 });
 
   if (session.objective) {
     y = textBox(doc, "Obiettivo", session.objective, margins.l, y, usableW);

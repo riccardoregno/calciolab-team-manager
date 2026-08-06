@@ -137,13 +137,10 @@ function Trainings({
     }
 
     if (newSession) {
-      async function resetForm() {
-        setEditingId(null);
-        setForm(emptyTraining());
-        setFormErrors({});
-        requestAnimationFrame(scrollToTrainingForm);
-      }
-      resetForm();
+      setEditingId(null);
+      setForm(emptyTraining());
+      setFormErrors({});
+      setTimeout(scrollToTrainingForm, 150);
     }
   }, [location.pathname, location.state, navigate, showToast, t]);
 
@@ -374,8 +371,13 @@ function Trainings({
   }
 
   async function exportSessionPlanPDF() {
-    const { generateSessionPlanPDF } = await import("../utils/generateSessionPlanPDF");
-    await generateSessionPlanPDF({ session: form, appSettings });
+    try {
+      const { generateSessionPlanPDF } = await import("../utils/generateSessionPlanPDF");
+      await generateSessionPlanPDF({ session: form, appSettings });
+    } catch (err) {
+      console.error("PDF export failed:", err);
+      showToast("Errore nella generazione del PDF", "error");
+    }
   }
 
   return (
