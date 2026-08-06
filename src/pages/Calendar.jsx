@@ -861,9 +861,9 @@ const wv = {
   dayCardPast: { opacity: 0.55 },
   dayCardOpen: { background: "rgba(56,189,248,0.06)", border: "1px solid rgba(56,189,248,0.22)" },
   addBtn: {
-    width: 36, height: 36, borderRadius: 8,
+    width: 28, height: 28, borderRadius: 7,
     background: "rgba(56,189,248,0.15)", border: "1px solid rgba(56,189,248,0.3)",
-    color: "#38bdf8", cursor: "pointer", fontSize: 18, fontWeight: 900,
+    color: "#38bdf8", cursor: "pointer", fontSize: 16, fontWeight: 900,
     display: "grid", placeItems: "center", lineHeight: 1, padding: 0, minHeight: 0,
   },
   addBtnSmall: {
@@ -872,7 +872,7 @@ const wv = {
     color: "#38bdf8", cursor: "pointer", fontSize: 15, fontWeight: 900,
     display: "grid", placeItems: "center", lineHeight: 1, padding: 0, minHeight: 0,
   },
-  dayHeader:      { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 },
+  dayHeader:      { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 },
   dayHeaderMobile:{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 },
   eventList:      { display: "grid", gap: 6 },
   eventListMobile:{ display: "grid", gap: 4 },
