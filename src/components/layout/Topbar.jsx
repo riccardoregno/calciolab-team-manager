@@ -274,7 +274,7 @@ export default function Topbar({
                   )}
                   {notifications.length > 0 && (
                     <button
-                      onClick={markAllRead}
+                      onClick={(e) => { e.stopPropagation(); markAllRead(); setOpenNotifications(false); }}
                       style={{ background: "none", border: "none", color: "#38bdf8", cursor: "pointer", fontSize: 11, fontWeight: 700, padding: 0 }}
                     >
                       ✓ Leggi tutto
