@@ -644,7 +644,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                           {t(weekDayKeys[index])}
                         </span>
                         <span style={{ fontSize: 12, color: "#475569" }}>
-                          {formatShortDate(day.key)}
+                          {formatShortDate(day.key).slice(0, 5)}
                         </span>
                       </>
                     ) : (
@@ -653,7 +653,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                           {t(weekDayKeys[index])}
                         </p>
                         <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>
-                          {formatShortDate(day.key)}
+                          {formatShortDate(day.key).slice(0, 5)}
                         </p>
                       </>
                     )}
