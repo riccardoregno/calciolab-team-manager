@@ -721,12 +721,12 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                             </>
                           ) : (
                             <>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
-                                <Badge tone={event.type === "Partita" ? "orange" : event.type === "Altro" ? "blue" : "green"}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, minWidth: 0 }}>
+                                <Badge tone={event.type === "Partita" ? "orange" : event.type === "Altro" ? "blue" : "green"} style={{ flexShrink: 1, overflow: "hidden", minWidth: 0 }}>
                                   {t(EVENT_TYPES.find(et => et.value === event.type)?.labelKey ?? "pages.calendar.typeTraining")}
                                 </Badge>
                                 {canManage && (
-                                  <div style={{ display: "flex", gap: 3 }}>
+                                  <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
                                     <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica evento" aria-label="Modifica evento">✏️</button>
                                     <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento" aria-label="Elimina evento">🗑️</button>
                                   </div>
@@ -855,7 +855,7 @@ const wv = {
   },
   kpiGrid:     { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 },
   grid:        { display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 10 },
-  dayCard:     { borderRadius: 12, padding: 12, background: "#131f2e", border: "1px solid rgba(255,255,255,0.10)", minHeight: 126, display: "grid", alignContent: "start", gap: 8 },
+  dayCard:     { borderRadius: 12, padding: 12, background: "#131f2e", border: "1px solid rgba(255,255,255,0.10)", minHeight: 126, display: "grid", alignContent: "start", gap: 8, overflow: "hidden" },
   dayCardMobile: { minHeight: "auto", padding: "10px 14px" },
   dayCardToday:{ background: "rgba(56,189,248,0.09)", border: "1px solid rgba(56,189,248,0.28)" },
   dayCardPast: { opacity: 0.55 },
