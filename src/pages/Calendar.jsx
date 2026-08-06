@@ -855,7 +855,7 @@ const wv = {
   },
   kpiGrid:     { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 },
   grid:        { display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 10 },
-  dayCard:     { borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", minHeight: 126, display: "grid", alignContent: "start", gap: 8 },
+  dayCard:     { borderRadius: 12, padding: 12, background: "#131f2e", border: "1px solid rgba(255,255,255,0.10)", minHeight: 126, display: "grid", alignContent: "start", gap: 8 },
   dayCardMobile: { minHeight: "auto", padding: "10px 14px" },
   dayCardToday:{ background: "rgba(56,189,248,0.09)", border: "1px solid rgba(56,189,248,0.28)" },
   dayCardPast: { opacity: 0.55 },
@@ -876,7 +876,7 @@ const wv = {
   dayHeaderMobile:{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 },
   eventList:      { display: "grid", gap: 6 },
   eventListMobile:{ display: "grid", gap: 4 },
-  event:       { padding: "8px 10px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid" },
+  event:       { padding: "8px 10px", borderRadius: 10, background: "#1e2d3d", border: "1px solid rgba(255,255,255,0.10)", borderLeft: "3px solid" },
   iconBtn: {
     width: 32, height: 32, borderRadius: 7, padding: 0, minHeight: 0,
     background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
