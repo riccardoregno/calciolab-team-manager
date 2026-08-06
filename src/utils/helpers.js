@@ -1636,11 +1636,24 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
   const events = [...sessions, ...matches].filter((event) => event.date && event.date <= todayStr);
   const playerEvents = events
     .map((event) => {
-      const data = event.attendance?.[player.id];
+      const data = event.attendance?.[player.id] ?? event.attendance?.[String(player.id)];
       if(!data) return null;
       return { event, data };
     })
     .filter(Boolean);
+
+  // Sessioni allenamento passate (strettamente < oggi)
+  const trainingSessions = sessions.filter((s) => (s.type || "Allenamento") === "Allenamento" && s.date && s.date < todayStr);
+  const pid = String(player.id);
+  const isJuniores = (player.gruppo || "prima") === "juniores";
+  const trainingPresences = trainingSessions.filter((s) => {
+    const entry = s.attendance?.[pid] ?? s.attendance?.[player.id];
+    const status = entry?.status;
+    if (!status) return !isJuniores; // default: prima = presente, juniores = assente
+    return status === "Presente" || status === "Recupero";
+  }).length;
+  const totalTrainings = trainingSessions.length;
+  const trainingPct = totalTrainings > 0 ? Math.round((trainingPresences / totalTrainings) * 100) : null;
 
   const rpeValues = playerEvents
     .map(({ data }) => Number(data.rpe || 0))
@@ -1669,12 +1682,15 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
 
   return {
     stats: {
-      presences: playerEvents.filter(({ data }) => data.status === "Presente").length,
+      presences: playerEvents.filter(({ event, data }) => event.type === "Partita" && data.status === "Presente").length,
       minutes,
       goals: playerEvents.reduce((sum, { data }) => sum + Number(data.goals || 0), 0),
       assists: playerEvents.reduce((sum, { data }) => sum + Number(data.assists || 0), 0),
       avgRpe: rpeValues.length ? Math.round(rpeValues.reduce((sum, value) => sum + value, 0) / rpeValues.length) : 0,
       load,
+      trainingPresences,
+      totalTrainings,
+      trainingPct,
     },
     latestTests,
     recentEvents: playerEvents

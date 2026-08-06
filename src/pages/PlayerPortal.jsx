@@ -658,6 +658,15 @@ function PlayerView({
             <strong style={{ fontSize: 20, lineHeight: 1 }}>{value || 0}</strong>
           </div>
         ))}
+        <div style={ps.kpiItem}>
+          <p style={{ margin: "0 0 2px", color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>Allenamenti</p>
+          <strong style={{ fontSize: 20, lineHeight: 1 }}>{summary.stats.trainingPresences}/{summary.stats.totalTrainings}</strong>
+          {summary.stats.trainingPct !== null && (
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: summary.stats.trainingPct >= 80 ? "#4ade80" : summary.stats.trainingPct >= 50 ? "#fb923c" : "#f87171" }}>
+              {summary.stats.trainingPct}%
+            </p>
+          )}
+        </div>
       </div>
 
       {/* ── Tab bar desktop ── */}
