@@ -137,6 +137,7 @@ function Trainings({
     }
 
     if (newSession) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditingId(null);
       setForm(emptyTraining());
       setFormErrors({});
@@ -1418,7 +1419,29 @@ const PHASE_OPTIONS = [
 
 function AvailablePlayers({ players, date, availabilityRecords = [], attendance = {}, onToggle }) {
   const { t } = useTranslation();
-  const { available, unavailable, total } = getSessionAvailability(players, date, availabilityRecords);
+  const sessionAvailableStatuses = new Set(["Presente", "Recupero"]);
+  const attendanceUnavailableLabels = {
+    Assente: "Assente nel registro",
+    Infortunato: "Infortunato nel registro",
+    Permesso: "Permesso nel registro",
+    Squalificato: "Squalificato nel registro",
+  };
+  const sessionAvailability = getSessionAvailability(players, date, availabilityRecords);
+  const available = [];
+  const unavailable = [...sessionAvailability.unavailable];
+
+  sessionAvailability.available.forEach((player) => {
+    const savedStatus = attendance[String(player.id)]?.status;
+    if (!player._defaultAbsent && savedStatus && !sessionAvailableStatuses.has(savedStatus)) {
+      unavailable.push({
+        player,
+        reason: attendanceUnavailableLabels[savedStatus] || `${savedStatus} nel registro`,
+      });
+      return;
+    }
+    available.push(player);
+  });
+  const total = sessionAvailability.total;
 
   const primaAvailable = available.filter((p) => !p._juniores);
   const junAvailable = available.filter((p) => p._juniores);
@@ -1431,7 +1454,7 @@ function AvailablePlayers({ players, date, availabilityRecords = [], attendance 
   function PlayerChip({ p }) {
     const name = [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
     const savedStatus = attendance[String(p.id)]?.status;
-    const isAbsent = p._defaultAbsent ? savedStatus !== "Presente" : savedStatus === "Assente";
+    const isAbsent = p._defaultAbsent ? savedStatus !== "Presente" : Boolean(savedStatus && !sessionAvailableStatuses.has(savedStatus));
     return (
       <button
         key={p.id}

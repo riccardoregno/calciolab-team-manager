@@ -22,6 +22,13 @@ const PREP_PLANNING_MAX_DAYS = 62;
 // Soglia sotto la quale un giorno viene segnalato come "critico"
 // (percentuale di rosa disponibile).
 const PREP_CRITICAL_RATIO = 0.7;
+const PREP_AVAILABLE_ATTENDANCE = new Set(["Presente", "Recupero"]);
+const PREP_UNAVAILABLE_ATTENDANCE_LABELS = {
+  Assente: "Assente nel registro",
+  Infortunato: "Infortunato nel registro",
+  Permesso: "Permesso nel registro",
+  Squalificato: "Squalificato nel registro",
+};
 
 function getDefaultPrepRange() {
   const now = new Date();
@@ -70,12 +77,28 @@ function buildPrepDays(players, sessions, matches, start, end) {
       break;
     }
     const dateStr = cursor.toISOString().slice(0, 10);
+    const trainingSession = trainingByDate.get(dateStr);
     const absentEntries = primaPlayers
-      .map((player) => ({ player, info: getPlayerUnavailabilityOnDate(player, dateStr) }))
+      .map((player) => {
+        const info = getPlayerUnavailabilityOnDate(player, dateStr);
+        if (info) return { player, info };
+
+        const attendanceStatus = trainingSession?.attendance?.[String(player.id)]?.status;
+        if (attendanceStatus && !PREP_AVAILABLE_ATTENDANCE.has(attendanceStatus)) {
+          return {
+            player,
+            info: {
+              type: "attendance",
+              label: PREP_UNAVAILABLE_ATTENDANCE_LABELS[attendanceStatus] || `${attendanceStatus} nel registro`,
+            },
+          };
+        }
+
+        return { player, info: null };
+      })
       .filter((entry) => entry.info);
     const absentIds = new Set(absentEntries.map((entry) => entry.player.id));
     const availablePlayers = primaPlayers.filter((player) => !absentIds.has(player.id));
-    const trainingSession = trainingByDate.get(dateStr);
     const availableJuniors = juniorPlayers.filter(
       (player) => {
         if (!trainingSession || getPlayerUnavailabilityOnDate(player, dateStr)) return false;
