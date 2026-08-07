@@ -532,6 +532,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
 function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, canManage = true, appSettings = {}, offset = 0, setOffset }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const isCompactWeek = useIsMobile(1540);
   const [openDay, setOpenDay] = useState(null); // dateKey del giorno con form aperto
   const [editingEvent, setEditingEvent] = useState(null);
   const [activeEvent, setActiveEvent] = useState(null);
@@ -580,6 +581,11 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
 
   // Label periodo settimana
   const weekLabel = `${formatShortDate(week[0].key)} – ${formatShortDate(week[6].key)}`;
+  const weekGridColumns = isMobile
+    ? "1fr"
+    : isCompactWeek
+    ? "repeat(4,minmax(0,1fr))"
+    : "repeat(7,minmax(0,1fr))";
 
   async function exportWeekCalendarPDF() {
     const { generateWeekCalendarPDF } = await import("../utils/generateWeekCalendarPDF");
@@ -587,10 +593,10 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
   }
 
   return (
-    <div style={{ display: "grid", gap: 20 }}>
+    <div style={wv.page}>
       {/* Navigazione settimana */}
-      <div style={wv.navBar}>
-        <Button variant="ghost" onClick={() => setOffset((o) => o - 1)}>{t("pages.calendar.prevBtn")}</Button>
+      <div style={{ ...wv.navBar, ...(isMobile ? wv.navBarMobile : {}) }}>
+        <Button variant="ghost" onClick={() => setOffset((o) => o - 1)} style={isMobile ? wv.navButtonMobile : undefined}>{t("pages.calendar.prevBtn")}</Button>
         <div style={wv.navCenter}>
           <span style={wv.navLabel}>{weekLabel}</span>
           {!isCurrentWeek && (
@@ -599,7 +605,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
             </button>
           )}
         </div>
-        <Button variant="ghost" onClick={() => setOffset((o) => o + 1)}>{t("pages.calendar.nextBtn")}</Button>
+        <Button variant="ghost" onClick={() => setOffset((o) => o + 1)} style={isMobile ? wv.navButtonMobile : undefined}>{t("pages.calendar.nextBtn")}</Button>
       </div>
 
       {/* KPI */}
@@ -616,7 +622,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div style={{ ...wv.grid, gridTemplateColumns: isMobile ? "1fr" : "repeat(7,minmax(0,1fr))" }}>
+        <div style={{ ...wv.grid, gridTemplateColumns: weekGridColumns }}>
           {week.map((day, index) => {
             const dayEvents  = weekEvents.filter((e) => e.date === day.key);
             const isToday    = day.key === todayKey;
@@ -629,6 +635,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                 dateKey={day.key}
                 style={{
                   ...wv.dayCard,
+                  ...(isCompactWeek ? wv.dayCardCompact : {}),
                   ...(isMobile ? wv.dayCardMobile : {}),
                   ...(isToday ? wv.dayCardToday : {}),
                   ...(isPast  ? wv.dayCardPast  : {}),
@@ -637,7 +644,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
               >
                 {/* Header giorno */}
                 <div style={isMobile ? wv.dayHeaderMobile : wv.dayHeader}>
-                  <div style={isMobile ? { display: "flex", alignItems: "center", gap: 10 } : {}}>
+                  <div style={isMobile ? { display: "flex", alignItems: "center", gap: 10, minWidth: 0 } : { minWidth: 0 }}>
                     {isMobile ? (
                       <>
                         <span style={{ fontWeight: 900, fontSize: 13, color: isToday ? "#38bdf8" : "#94a3b8", textTransform: "uppercase", minWidth: 34 }}>
@@ -665,7 +672,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                     {canManage && onQuickCreate && (
                       <button
                         onClick={() => setOpenDay(isOpen ? null : day.key)}
-                        style={wv.addBtn}
+                        style={{ ...wv.addBtn, ...(isCompactWeek ? wv.addBtnCompact : {}) }}
                         title="Aggiungi evento"
                       >
                         {isOpen ? "×" : "+"}
@@ -695,6 +702,7 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                           style={{
                             ...wv.event,
                             borderLeftColor: event.type === "Partita" ? "#fb923c" : event.type === "Altro" ? "#38bdf8" : "#22c55e",
+                            ...(isCompactWeek ? wv.eventCompact : {}),
                             ...(isMobile ? { display: "flex", alignItems: "center", gap: 10, padding: "8px 10px" } : {}),
                           }}
                         >
@@ -727,17 +735,17 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                                 </Badge>
                                 {canManage && (
                                   <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
-                                    <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica evento" aria-label="Modifica evento">✏️</button>
-                                    <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento" aria-label="Elimina evento">🗑️</button>
+                                    <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={{ ...wv.iconBtn, ...(isCompactWeek ? wv.iconBtnCompact : {}) }} title="Modifica evento" aria-label="Modifica evento">✏️</button>
+                                    <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, ...(isCompactWeek ? wv.iconBtnCompact : {}), background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento" aria-label="Elimina evento">🗑️</button>
                                   </div>
                                 )}
                               </div>
-                              <p style={{ margin: "4px 0 0", fontWeight: 700, fontSize: 13 }}>
+                              <p style={wv.eventTitle}>
                                 {event.time && <span style={{ color: "#38bdf8", marginRight: 5 }}>{event.time}</span>}
                                 {event.type === "Partita" ? (event.opponent || event.title) : event.title}
                               </p>
                               {(event.theme || event.opponent || event.objective || event.notes) && (
-                                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
+                                <p style={wv.eventMeta}>
                                   {event.theme || event.opponent || event.objective || event.notes}
                                 </p>
                               )}
@@ -823,6 +831,12 @@ function AlertCol({ title, players }) {
 }
 
 const wv = {
+  page: {
+    display: "grid",
+    gap: 20,
+    width: "100%",
+    minWidth: 0,
+  },
   navBar: {
     display: "flex",
     justifyContent: "space-between",
@@ -833,16 +847,27 @@ const wv = {
     background: "rgba(255,255,255,0.04)",
     border: "1px solid rgba(255,255,255,0.08)",
   },
+  navBarMobile: {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    justifyItems: "stretch",
+  },
+  navButtonMobile: {
+    width: "100%",
+  },
   navCenter: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     gap: 4,
+    minWidth: 0,
   },
   navLabel: {
     fontWeight: 700,
     fontSize: 15,
     color: "#e2e8f0",
+    textAlign: "center",
+    overflowWrap: "anywhere",
   },
   todayBtn: {
     background: "none",
@@ -853,9 +878,10 @@ const wv = {
     fontWeight: 700,
     padding: 0,
   },
-  kpiGrid:     { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 },
-  grid:        { display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 10 },
-  dayCard:     { borderRadius: 12, padding: 12, background: "#131f2e", border: "1px solid rgba(255,255,255,0.10)", minHeight: 126, display: "grid", alignContent: "start", gap: 8, overflow: "hidden" },
+  kpiGrid:     { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, minWidth: 0 },
+  grid:        { display: "grid", gridTemplateColumns: "repeat(7,minmax(180px,1fr))", gap: 10, minWidth: 0 },
+  dayCard:     { borderRadius: 12, padding: 12, background: "#131f2e", border: "1px solid rgba(255,255,255,0.10)", minHeight: 154, display: "grid", alignContent: "start", gap: 8, overflow: "hidden", minWidth: 0 },
+  dayCardCompact: { minHeight: 126, padding: 10 },
   dayCardMobile: { minHeight: "auto", padding: "10px 14px" },
   dayCardToday:{ background: "rgba(56,189,248,0.09)", border: "1px solid rgba(56,189,248,0.28)" },
   dayCardPast: { opacity: 0.55 },
@@ -866,22 +892,27 @@ const wv = {
     color: "#38bdf8", cursor: "pointer", fontSize: 18, fontWeight: 900,
     display: "grid", placeItems: "center", lineHeight: 1, padding: 0, minHeight: 0,
   },
+  addBtnCompact: { width: 32, height: 32, fontSize: 16 },
   addBtnSmall: {
     width: 32, height: 32, borderRadius: 7,
     background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.25)",
     color: "#38bdf8", cursor: "pointer", fontSize: 15, fontWeight: 900,
     display: "grid", placeItems: "center", lineHeight: 1, padding: 0, minHeight: 0,
   },
-  dayHeader:      { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 },
+  dayHeader:      { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, minWidth: 0 },
   dayHeaderMobile:{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  eventList:      { display: "grid", gap: 6 },
+  eventList:      { display: "grid", gap: 6, minWidth: 0 },
   eventListMobile:{ display: "grid", gap: 4 },
-  event:       { padding: "8px 10px", borderRadius: 10, background: "#1e2d3d", border: "1px solid rgba(255,255,255,0.10)", borderLeft: "3px solid" },
+  event:       { padding: "8px 10px", borderRadius: 10, background: "#1e2d3d", border: "1px solid rgba(255,255,255,0.10)", borderLeft: "3px solid", minWidth: 0 },
+  eventCompact:{ padding: "7px 9px" },
+  eventTitle:  { margin: "4px 0 0", fontWeight: 700, fontSize: 13, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  eventMeta:   { margin: "2px 0 0", fontSize: 12, lineHeight: 1.25, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   iconBtn: {
     width: 32, height: 32, borderRadius: 7, padding: 0, minHeight: 0,
     background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
     cursor: "pointer", fontSize: 13, display: "grid", placeItems: "center", lineHeight: 1,
   },
+  iconBtnCompact: { width: 28, height: 28, fontSize: 12 },
   muted:       { color: "#475569", margin: 0, fontSize: 12 },
   alertHeader: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 },
   alertGrid:   { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 },
