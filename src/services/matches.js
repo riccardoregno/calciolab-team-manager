@@ -9,7 +9,7 @@ export async function getMatchPlayerStats({ teamId, matchId }) {
   if (!isSupabaseConfigured) return { data: [], error: null };
   return supabase
     .from("player_matches")
-    .select("*")
+    .select("player_id, match_id, minutes_played, goals, assists, yellow_cards, red_cards, rating")
     .eq("team_id", teamId)
     .eq("match_id", matchId);
 }

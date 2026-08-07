@@ -120,11 +120,11 @@ if (typeof window !== "undefined") {
 
 /** @param {{ teamId?: string }} [params]
  * @returns {Promise<{data: any[], error: any}>} */
-export async function loadRemoteState({ teamId } = {}) {
+export async function loadRemoteState({ teamId, entityKeys } = {}) {
   if (!isSupabaseConfigured || !teamId) {
     return { state: loadLocalState(), source: "local" };
   }
-  return loadTeamTablesState(teamId);
+  return loadTeamTablesState(teamId, { entityKeys });
 }
 
 // FIX #6: questa funzione è ora esportata e chiamata direttamente da useTeamData
@@ -132,24 +132,47 @@ export async function loadRemoteState({ teamId } = {}) {
 /** @param {object} state
  * @param {string} teamId
  * @returns {Promise<{data: any[], error: any}>} */
-export async function saveTeamTablesState(state, teamId) {
+export async function saveTeamTablesState(state, teamId, { keys } = {}) {
   try {
     const normalized = normalizeAppState(state);
+    const selectedKeys = Array.isArray(keys) && keys.length > 0 ? new Set(keys) : null;
+    const shouldSyncKey = (key) => !selectedKeys || selectedKeys.has(key);
 
     const entityResults = await Promise.allSettled(
-      Object.entries(ENTITY_TABLES).map(async ([stateKey, table]) => {
-        await syncEntityTable(table, teamId, normalized[stateKey] || [], {
-          allowEmptyDelete: hasEmptyEntityIntent(stateKey),
-        });
-        return { key: stateKey, table };
-      })
+      Object.entries(ENTITY_TABLES)
+        .filter(([stateKey]) => shouldSyncKey(stateKey))
+        .map(async ([stateKey, table]) => {
+          try {
+            await syncEntityTable(table, teamId, normalized[stateKey] || [], {
+              allowEmptyDelete: hasEmptyEntityIntent(stateKey),
+            });
+          } catch (error) {
+            error._syncTable = table;
+            throw error;
+          }
+          return { key: stateKey, table };
+        })
     );
 
     // Salva appSettings nella colonna `settings` e setPlays nella colonna `set_plays`.
-    const settingsResults = await Promise.allSettled([
-      syncAppSettings(teamId, normalized.appSettings || {}).then(() => ({ key: "appSettings", table: "teams.settings" })),
-      syncSetPlays(teamId, normalized.setPlays || {}).then(() => ({ key: "setPlays", table: "teams.set_plays" })),
-    ]);
+    const settingsSyncs = [];
+    if (shouldSyncKey("appSettings")) {
+      settingsSyncs.push(syncAppSettings(teamId, normalized.appSettings || {})
+        .then(() => ({ key: "appSettings", table: "teams.settings" }))
+        .catch((error) => {
+          error._syncTable = "teams.settings";
+          throw error;
+        }));
+    }
+    if (shouldSyncKey("setPlays")) {
+      settingsSyncs.push(syncSetPlays(teamId, normalized.setPlays || {})
+        .then(() => ({ key: "setPlays", table: "teams.set_plays" }))
+        .catch((error) => {
+          error._syncTable = "teams.set_plays";
+          throw error;
+        }));
+    }
+    const settingsResults = await Promise.allSettled(settingsSyncs);
 
     const failures = collectSyncFailures([...entityResults, ...settingsResults]);
     if (failures.length > 0) {
@@ -206,17 +229,24 @@ async function syncSetPlays(teamId, setPlays) {
 }
 
 // ─── Load ──────────────────────────────────────────────────────────────────
-async function loadTeamTablesState(teamId) {
+async function loadTeamTablesState(teamId, { entityKeys } = {}) {
   try {
+    const selectedEntityEntries = Array.isArray(entityKeys) && entityKeys.length > 0
+      ? Object.entries(ENTITY_TABLES).filter(([stateKey]) => entityKeys.includes(stateKey))
+      : Object.entries(ENTITY_TABLES);
+
     const tableResults = await Promise.allSettled(
-      Object.entries(ENTITY_TABLES).map(async ([stateKey, table]) => {
+      selectedEntityEntries.map(async ([stateKey, table]) => {
         // FIX #2: seleziona anche updated_at per conflict detection futura
         const { data, error } = await supabase
           .from(table)
           .select("id, data, updated_at")
           .eq("team_id", teamId);
 
-        if (error) throw error;
+        if (error) {
+          error._syncTable = table;
+          throw error;
+        }
 
         return [
           stateKey,
@@ -239,12 +269,23 @@ async function loadTeamTablesState(teamId) {
       throw new Error(`Lettura Supabase fallita: ${failures.map((failure) => failure.table).join(", ")}`);
     }
 
-    // Carica appSettings e setPlays dalla colonna teams
-    const { data: teamRow, error: teamRowError } = await supabase
-      .from("teams")
-      .select("settings, set_plays")
-      .eq("id", teamId)
-      .maybeSingle();
+    // Carica appSettings e setPlays dalla colonna teams solo nei full refresh
+    // o quando una di queste sezioni serve davvero.
+    const shouldLoadTeamSettings =
+      !Array.isArray(entityKeys) ||
+      entityKeys.includes("appSettings") ||
+      entityKeys.includes("setPlays");
+    let teamRow = null;
+    let teamRowError = null;
+    if (shouldLoadTeamSettings) {
+      const teamResult = await supabase
+        .from("teams")
+        .select("settings, set_plays")
+        .eq("id", teamId)
+        .maybeSingle();
+      teamRow = teamResult.data;
+      teamRowError = teamResult.error;
+    }
 
     if (teamRowError) {
       failures.push({ table: "teams.settings", error: teamRowError });
@@ -287,9 +328,9 @@ async function loadTeamTablesState(teamId) {
       ...entityState,
       // Usa settings remoti solo se contengono dati reali. Un JSONB vuoto ({})
       // non deve cancellare profilo societa', logo e campi salvati in locale.
-      appSettings: resolveAppSettings(teamRow?.settings, localState.appSettings),
+      appSettings: shouldLoadTeamSettings ? resolveAppSettings(teamRow?.settings, localState.appSettings) : localState.appSettings,
       // setPlays: preferisce remoto se presente, altrimenti locale (stessa logica di appSettings)
-      setPlays: resolveSetPlays(teamRow?.set_plays, localState.setPlays),
+      setPlays: shouldLoadTeamSettings ? resolveSetPlays(teamRow?.set_plays, localState.setPlays) : localState.setPlays,
     });
 
     saveLocalState(state);
@@ -376,7 +417,7 @@ function collectSyncFailures(results) {
     .map((result, index) => {
       if (result.status === "fulfilled") return null;
       const tableEntry = Object.entries(ENTITY_TABLES)[index];
-      const table = tableEntry?.[1] || (index === Object.keys(ENTITY_TABLES).length ? "teams.settings" : "teams.set_plays");
+      const table = result.reason?._syncTable || tableEntry?.[1] || (index === Object.keys(ENTITY_TABLES).length ? "teams.settings" : "teams.set_plays");
       return {
         table,
         message: result.reason?.message || String(result.reason || "Errore sconosciuto"),

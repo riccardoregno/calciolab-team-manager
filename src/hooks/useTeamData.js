@@ -28,6 +28,10 @@ const ARRAY_ENTITY_KEYS = [
   "physicalTests", "gpsSessions", "staffTasks", "injuryRecords",
 ];
 
+const REMOTE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const MIN_FOCUS_REFRESH_INTERVAL_MS = 60 * 1000;
+const REMOTE_SAVE_DEBOUNCE_MS = 1500;
+
 // Merge a 3 vie per id: confronta lo stato locale con l'ultimo stato
 // sincronizzato (baseline) per capire SOLO quali record sono stati davvero
 // aggiunti/modificati/eliminati in questa scheda, poi applica solo quella
@@ -88,6 +92,8 @@ export function useTeamData({ teamId } = {}) {
   const pendingSaveCount = useRef(0);
   const hasUnsyncedLocalChanges = useRef(false);
   const stateRef = useRef(state);
+  const dirtyKeysRef = useRef(new Set());
+  const lastRemoteRefreshAtRef = useRef(0);
   // Ultimo stato conosciuto come sincronizzato (da hydration o refresh remoto):
   // baseline per il merge a 3 vie nel salvataggio debounced, vedi sopra.
   const lastSyncedSnapshotRef = useRef(null);
@@ -99,6 +105,7 @@ export function useTeamData({ teamId } = {}) {
   const applyLoadedState = useCallback(({ state: loadedState, source, error }) => {
     setState(loadedState);
     lastSyncedSnapshotRef.current = loadedState;
+    dirtyKeysRef.current.clear();
     setStorageSource(source);
     setStorageError(error?.message || null);
     const canSyncRemote = (source === "supabase" || source === "pending-upload") && !error;
@@ -107,8 +114,13 @@ export function useTeamData({ teamId } = {}) {
     if (source === "supabase" && !error) {
       hasUnsyncedLocalChanges.current = false;
       setLastSyncedAt(new Date().toISOString());
+      lastRemoteRefreshAtRef.current = Date.now();
     }
     hydrated.current = true;
+  }, []);
+
+  const markDirty = useCallback((key) => {
+    if (key) dirtyKeysRef.current.add(key);
   }, []);
 
   const refreshTeamData = useCallback(async () => {
@@ -116,7 +128,8 @@ export function useTeamData({ teamId } = {}) {
 
     setRefreshing(true);
     if (hasUnsyncedLocalChanges.current) {
-      const retryResult = await saveTeamTablesState(stateRef.current, teamId);
+      const retryKeys = Array.from(dirtyKeysRef.current);
+      const retryResult = await saveTeamTablesState(stateRef.current, teamId, { keys: retryKeys });
       setStorageSource((prev) => retryResult.source !== prev ? retryResult.source : prev);
       setStorageError((prev) => {
         const next = retryResult.error?.message || null;
@@ -130,6 +143,7 @@ export function useTeamData({ teamId } = {}) {
       }
 
       hasUnsyncedLocalChanges.current = false;
+      retryKeys.forEach((key) => dirtyKeysRef.current.delete(key));
       setLastSyncedAt(new Date().toISOString());
     }
 
@@ -203,7 +217,8 @@ export function useTeamData({ teamId } = {}) {
     }
 
     function handleVisibleRefresh() {
-      if (document.visibilityState === "visible") {
+      const refreshIsStale = Date.now() - lastRemoteRefreshAtRef.current > MIN_FOCUS_REFRESH_INTERVAL_MS;
+      if (document.visibilityState === "visible" && refreshIsStale) {
         refreshFromRemote();
       }
     }
@@ -215,7 +230,7 @@ export function useTeamData({ teamId } = {}) {
       if (document.visibilityState === "visible") {
         refreshFromRemote();
       }
-    }, 30000);
+    }, REMOTE_REFRESH_INTERVAL_MS);
 
     return () => {
       active = false;
@@ -242,6 +257,8 @@ export function useTeamData({ teamId } = {}) {
     }
 
     const normalized = normalizeAppState(state);
+    const keysToSave = Array.from(dirtyKeysRef.current);
+    if (keysToSave.length === 0) return;
     hasUnsyncedLocalChanges.current = true;
     pendingSaveCount.current += 1;
     const timeoutId = window.setTimeout(async () => {
@@ -251,11 +268,14 @@ export function useTeamData({ teamId } = {}) {
       // restano invece di essere cancellati dal salvataggio di questa scheda.
       let toSave = normalized;
       try {
-        const remoteResult = await loadRemoteState({ teamId });
+        const dirtyEntityKeys = keysToSave.filter((key) => ARRAY_ENTITY_KEYS.includes(key));
+        const remoteResult = dirtyEntityKeys.length > 0
+          ? await loadRemoteState({ teamId, entityKeys: dirtyEntityKeys })
+          : null;
         if (remoteResult?.state) {
           const baseline = lastSyncedSnapshotRef.current;
           const merged = { ...normalized };
-          ARRAY_ENTITY_KEYS.forEach((key) => {
+          dirtyEntityKeys.forEach((key) => {
             merged[key] = mergeEntityArrayWithRemote(baseline?.[key], normalized[key], remoteResult.state[key]);
           });
           toSave = merged;
@@ -264,10 +284,11 @@ export function useTeamData({ teamId } = {}) {
         // Se il refresh fallisce si procede comunque con il solo stato locale,
         // come accadeva prima di questa modifica.
       }
-      const result = await saveTeamTablesState(toSave, teamId);
+      const result = await saveTeamTablesState(toSave, teamId, { keys: keysToSave });
       pendingSaveCount.current = Math.max(0, pendingSaveCount.current - 1);
       if (result.source === "supabase" && !result.error) {
         hasUnsyncedLocalChanges.current = false;
+        keysToSave.forEach((key) => dirtyKeysRef.current.delete(key));
         lastSyncedSnapshotRef.current = toSave;
         setLastSyncedAt(new Date().toISOString());
       } else {
@@ -280,7 +301,7 @@ export function useTeamData({ teamId } = {}) {
         const next = result.error?.message || null;
         return next !== prev ? next : prev;
       });
-    }, 300);
+    }, REMOTE_SAVE_DEBOUNCE_MS);
 
     return () => {
       window.clearTimeout(timeoutId);
@@ -291,72 +312,87 @@ export function useTeamData({ teamId } = {}) {
   const actions = useMemo(
     () => ({
       setPlayers(players) {
+        markDirty("players");
         setState((prev) => {
           const raw = typeof players === "function" ? players(prev.players) : players;
           return { ...prev, players: (raw || []).map(normalizePlayer) };
         });
       },
       setExercises(exercises) {
+        markDirty("exercises");
         setState((prev) => {
           const raw = typeof exercises === "function" ? exercises(prev.exercises) : exercises;
           return { ...prev, exercises: (raw || []).map(normalizeExercise) };
         });
       },
       setSessions(sessions) {
+        markDirty("sessions");
         setState((prev) => {
           const raw = typeof sessions === "function" ? sessions(prev.sessions) : sessions;
           return { ...prev, sessions: (raw || []).map(normalizeSession) };
         });
       },
       setMatches(matches) {
+        markDirty("matches");
         setState((prev) => {
           const raw = typeof matches === "function" ? matches(prev.matches) : matches;
           return { ...prev, matches: (raw || []).map(normalizeMatch) };
         });
       },
       setPhysicalTests(physicalTests) {
+        markDirty("physicalTests");
         setState((prev) => {
           const raw = typeof physicalTests === "function" ? physicalTests(prev.physicalTests) : physicalTests;
           return { ...prev, physicalTests: (raw || []).map(normalizePhysicalTest) };
         });
       },
       setGpsSessions(gpsSessions) {
+        markDirty("gpsSessions");
         setState((prev) => {
           const raw = typeof gpsSessions === "function" ? gpsSessions(prev.gpsSessions) : gpsSessions;
           return { ...prev, gpsSessions: (raw || []).map(normalizeGpsSession) };
         });
       },
       setStaffTasks(staffTasks) {
+        markDirty("staffTasks");
         setState((prev) => {
           const raw = typeof staffTasks === "function" ? staffTasks(prev.staffTasks) : staffTasks;
           return { ...prev, staffTasks: (raw || []).map(normalizeStaffTask) };
         });
       },
       setInjuryRecords(injuryRecords) {
+        markDirty("injuryRecords");
         setState((prev) => {
           const raw = typeof injuryRecords === "function" ? injuryRecords(prev.injuryRecords) : injuryRecords;
           return { ...prev, injuryRecords: (raw || []).map(normalizeInjuryRecord) };
         });
       },
       setAppSettings(appSettings) {
+        markDirty("appSettings");
         setState((prev) => {
           const raw = typeof appSettings === "function" ? appSettings(prev.appSettings) : appSettings;
           return { ...prev, appSettings: normalizeAppSettings(raw || {}) };
         });
       },
       setSetPlays(setPlays) {
+        markDirty("setPlays");
         setState((prev) => {
           const raw = typeof setPlays === "function" ? setPlays(prev.setPlays) : setPlays;
           return { ...prev, setPlays: normalizeSetPlays(raw || {}) };
         });
       },
       setState(updater) {
+        [
+          "players", "exercises", "sessions", "matches",
+          "physicalTests", "gpsSessions", "staffTasks", "injuryRecords",
+          "appSettings", "setPlays",
+        ].forEach(markDirty);
         setState((prev) =>
           normalizeAppState(typeof updater === "function" ? updater(prev) : updater)
         );
       },
     }),
-    []
+    [markDirty]
   );
 
   return {

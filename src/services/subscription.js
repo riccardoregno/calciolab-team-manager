@@ -37,15 +37,14 @@ export async function updateTeamSubscription(teamId, fields) {
     return { data: null, error: null };
   }
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("teams")
     .update(fields)
-    .eq("id", teamId)
-    .select();
+    .eq("id", teamId);
 
   if (error && import.meta.env.DEV) {
     console.error("[subscription] Errore aggiornamento:", error.message);
   }
 
-  return { data, error };
+  return { data: null, error };
 }

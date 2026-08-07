@@ -88,7 +88,7 @@ export function useStaffChat({ teamId, userId, authorName = "", authorRole = "he
 
     supabase
       .from("staff_messages")
-      .select("*")
+      .select("id, team_id, user_id, author_name, author_role, content, created_at")
       .eq("team_id", teamId)
       .order("created_at", { ascending: true })
       .limit(PAGE_SIZE)
@@ -196,7 +196,7 @@ export function useStaffChat({ teamId, userId, authorName = "", authorRole = "he
         author_role: authorRole,
         content:     trimmed,
       })
-      .select()
+      .select("id, team_id, user_id, author_name, author_role, content, created_at")
       .single();
 
     setSending(false);

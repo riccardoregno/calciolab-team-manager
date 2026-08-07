@@ -294,12 +294,38 @@ export default function Availability({
       };
     }
 
+    function applyAvailabilityChange(payload) {
+      if (!active) return;
+      const row = payload.new || payload.old;
+      if (!row?.id) return;
+
+      setSelfAvailData((prev) => {
+        if (payload.eventType === "DELETE") {
+          return prev.filter((item) => String(item.id) !== String(row.id));
+        }
+
+        const nextRow = {
+          id: row.id,
+          player_id: row.player_id,
+          status: row.status,
+          reason: row.reason,
+          date_from: row.date_from,
+          date_to: row.date_to,
+          created_at: row.created_at,
+        };
+        const withoutExisting = prev.filter((item) => String(item.id) !== String(row.id));
+        return [nextRow, ...withoutExisting]
+          .sort((a, b) => String(b.date_from || "").localeCompare(String(a.date_from || "")))
+          .slice(0, 200);
+      });
+    }
+
     const channel = supabase
       .channel(`player_availability:${teamId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "player_availability", filter: `team_id=eq.${teamId}` },
-        () => loadPlayerAvailability()
+        applyAvailabilityChange
       )
       .subscribe();
 

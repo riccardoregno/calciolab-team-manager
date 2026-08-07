@@ -42,7 +42,7 @@ export async function upsertRpe({ teamId, playerId, eventId, eventType, rpeValue
       notes:      notes || "",
       updated_at: new Date().toISOString(),
     }, { onConflict: "team_id,player_id,event_id" })
-    .select()
+    .select("player_id, event_id, event_type, rpe_value, notes, created_at")
     .single();
   return { data, error };
 }

@@ -492,6 +492,7 @@ function PlayerView({
       .eq("player_id", String(myPlayerId))
       .order("match_id", { ascending: false })
       // match_id non è cronologico — il sort per data avviene lato client dopo join con matches
+      .limit(60)
       .then(({ data }) => {
         if (!cancelled) setMyMatchStats(data || []);
       });
@@ -502,6 +503,7 @@ function PlayerView({
     if (!teamId || !myPlayerId) return undefined;
     touchPlayerPortalActivity({ teamId, playerId: myPlayerId, increment: true });
     const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       touchPlayerPortalActivity({ teamId, playerId: myPlayerId, increment: false });
     }, 60000);
     return () => window.clearInterval(intervalId);
