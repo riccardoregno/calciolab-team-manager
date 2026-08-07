@@ -339,6 +339,8 @@ function Trainings({
       partitella: session.partitella || null,
       teamFormations: session.teamFormations || {},
       materials: session.materials || "",
+      completed: Boolean(session.completed),
+      completedAt: session.completedAt || "",
     });
 
     requestAnimationFrame(scrollToTrainingForm);
@@ -367,6 +369,21 @@ function Trainings({
         });
       },
     });
+  }
+
+  function toggleTrainingCompleted(id) {
+    if (!canManage) return;
+    setSessions((prevSessions) =>
+      prevSessions.map((session) => {
+        if (session.id !== id) return session;
+        const completed = !session.completed;
+        return {
+          ...session,
+          completed,
+          completedAt: completed ? new Date().toISOString() : "",
+        };
+      })
+    );
   }
 
   function cancelEdit() {
@@ -1202,6 +1219,8 @@ function Trainings({
                 const sessionTotal =
                   (session.exercises || []).reduce((sum, item) => sum + Number(item.customDuration || 0), 0) +
                   (session.sessionBlocks || []).reduce((sum, b) => sum + (Number(b.duration) || 0), 0);
+                const canMarkCompleted = Boolean(session.date && session.date < localDateString());
+                const isCompleted = Boolean(session.completed);
 
                 return (
                   <div
@@ -1229,7 +1248,10 @@ function Trainings({
                       }}
                     >
                       <div>
-                        <h3 style={{ margin: 0, lineHeight: 1.2 }}>{session.title}</h3>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          <h3 style={{ margin: 0, lineHeight: 1.2 }}>{session.title}</h3>
+                          {isCompleted && <Badge tone="green">Effettuata</Badge>}
+                        </div>
 
                         <p style={{ color: "#94a3b8", margin: "8px 0", lineHeight: 1.4 }}>
                           {formatDate(session.date)} · {getThemeLabel(session.theme, t)} ·{" "}
@@ -1272,6 +1294,22 @@ function Trainings({
                       </div>
 
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        {canManage && canMarkCompleted && (
+                          <Button
+                            variant="ghost"
+                            aria-pressed={isCompleted}
+                            title={isCompleted ? "Segna come da effettuare" : "Segna come effettuata"}
+                            onClick={() => toggleTrainingCompleted(session.id)}
+                            style={{
+                              background: isCompleted ? "rgba(34,197,94,0.14)" : "rgba(255,255,255,0.06)",
+                              border: isCompleted ? "1px solid rgba(34,197,94,0.35)" : "1px solid rgba(255,255,255,0.10)",
+                              color: isCompleted ? "#86efac" : "white",
+                            }}
+                          >
+                            {isCompleted ? "✓ Effettuata" : "□ Effettuata"}
+                          </Button>
+                        )}
+
                         <Button
                           variant="ghost"
                           onClick={() => navigate(`/session-attendance/${session.id}`)}
@@ -1334,6 +1372,8 @@ function emptyTraining() {
     partitella: null,
     teamFormations: {},
     materials: "",
+    completed: false,
+    completedAt: "",
   };
 }
 

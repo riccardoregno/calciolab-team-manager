@@ -94,7 +94,9 @@ export function normalizeSession(s){
     date:s.date || new Date().toISOString().slice(0, 10),
     title:s.title || "Seduta",
     exercises:s.exercises || [],
-    attendance:s.attendance || {}
+    attendance:s.attendance || {},
+    completed:Boolean(s.completed),
+    completedAt:s.completedAt || ""
   };
 }
 
