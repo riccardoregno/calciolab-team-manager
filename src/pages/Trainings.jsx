@@ -1925,6 +1925,9 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
       return;
     }
     const intensityLabel = block.intensity >= 8 ? "Alta" : block.intensity >= 5 ? "Media" : "Bassa";
+    // Usa l'URL immagine solo se è permanente (non blob: e non in upload)
+    const imageUrl = block.image?.url || "";
+    const isPermanentUrl = imageUrl && !imageUrl.startsWith("blob:") && !block.image?.uploading;
     const newExercise = {
       ...emptyExercise(),
       id: createId("ex"),
@@ -1933,7 +1936,7 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
       description: block.description || block.notes || "",
       duration: String(block.duration || ""),
       intensity: intensityLabel,
-      image: block.image?.url || "",
+      image: isPermanentUrl ? imageUrl : "",
     };
     setExercises?.((prev) => [newExercise, ...prev]);
     setSavedToLib((s) => ({ ...s, [block.id]: "saved" }));
