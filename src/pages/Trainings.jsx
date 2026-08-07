@@ -2257,10 +2257,49 @@ const assignmentTeamIndex = (v) => {
   return v;
 };
 
+function getPlayerFullName(player) {
+  return [player?.firstName, player?.lastName].filter(Boolean).join(" ") || player?.name || "—";
+}
+
+function getPlayerLastName(player) {
+  const lastName = player?.lastName || "";
+  if (lastName) return lastName;
+  const parts = (player?.name || "").trim().split(/\s+/).filter(Boolean);
+  return parts.length > 1 ? parts[parts.length - 1] : parts[0] || "";
+}
+
+function getPlayerFirstInitial(player) {
+  const firstName = player?.firstName || "";
+  if (firstName) return firstName.trim().charAt(0).toUpperCase();
+  const parts = (player?.name || "").trim().split(/\s+/).filter(Boolean);
+  return parts.length > 1 ? parts[0].charAt(0).toUpperCase() : "";
+}
+
+function getDuplicateLastNames(players = []) {
+  const counts = new Map();
+  players.forEach((player) => {
+    const key = getPlayerLastName(player).toLowerCase();
+    if (!key) return;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  return new Set([...counts.entries()].filter(([, count]) => count > 1).map(([key]) => key));
+}
+
+function getPlayerTeamLabel(player, duplicateLastNames = new Set()) {
+  const lastName = getPlayerLastName(player);
+  const isDuplicate = duplicateLastNames.has(lastName.toLowerCase());
+  if (isDuplicate && lastName) {
+    const initial = getPlayerFirstInitial(player);
+    return initial ? `${initial}. ${lastName}` : lastName;
+  }
+  return getPlayerFullName(player);
+}
+
 function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitella, onChange, onPartitellaChange }) {
   const [collapsed, setCollapsed] = useState(false);
   const [playersPerTeam, setPlayersPerTeam] = useState(11);
   const miniGoals = partitella?.goals || {};
+  const duplicateLastNames = useMemo(() => getDuplicateLastNames(availablePlayers), [availablePlayers]);
 
   const benches = Array.from({ length: numTeams }, (_, i) =>
     availablePlayers.filter((p) => {
@@ -2391,9 +2430,10 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
     const playerRow = (p) => {
       const tag = getRoleTag(p.role);
       const color = tag ? ROLE_COLORS_PRINT[tag] || "#666" : "#666";
+      const name = getPlayerTeamLabel(p, duplicateLastNames);
       return `<p style="margin:4px 0;font-size:13px;display:flex;align-items:center;gap:6px">
         <span style="font-size:10px;font-weight:900;color:${color};min-width:12px">${tag || ""}</span>
-        ${p.name}
+        ${name}
       </p>`;
     };
     const win = window.open("", "_blank");
@@ -2457,17 +2497,18 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {sortByRole(unassigned).map((p) => {
                   const tag = getRoleTag(p.role);
+                  const name = getPlayerTeamLabel(p, duplicateLastNames);
                   return (
                     <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       <span style={{
                         fontSize: 12, fontWeight: 600, padding: "3px 8px", borderRadius: 6,
                         background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1",
                         display: "flex", alignItems: "center", gap: 5,
-                      }}>
+                      }} title={getPlayerFullName(p)}>
                         {tag && (
                           <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag], lineHeight: 1 }}>{tag}</span>
                         )}
-                        {p.name}
+                        {name}
                       </span>
                       <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
                         {Array.from({ length: numTeams }, (_, i) => (
@@ -2502,11 +2543,12 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {sortByRole(members).map((p) => {
                     const tag = getRoleTag(p.role);
+                    const name = getPlayerTeamLabel(p, duplicateLastNames);
                     return (
                       <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "#e2e8f0", display: "flex", alignItems: "center", gap: 5 }}>
+                        <span title={getPlayerFullName(p)} style={{ fontSize: 12, fontWeight: 600, color: "#e2e8f0", display: "flex", alignItems: "center", gap: 5 }}>
                           {tag && <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag], minWidth: 10 }}>{tag}</span>}
-                          {p.name}
+                          {name}
                         </span>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {renderGoalInput(p.id)}
@@ -2535,11 +2577,12 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
                     {sortByRole(b).map((p) => {
                       const tag = getRoleTag(p.role);
                       const isJ = p._juniores || p.gruppo === "juniores";
+                      const name = getPlayerTeamLabel(p, duplicateLastNames);
                       return (
                         <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-                          <span style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>
+                          <span title={getPlayerFullName(p)} style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>
                             {tag && <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag] }}>{tag}</span>}
-                            {p.name}
+                            {name}
                             {isJ && <span style={{ fontSize: 10, color: "#475569" }}>Jun</span>}
                           </span>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -2706,6 +2749,7 @@ function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSa
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const players = teams[activeTeam] || [];
+  const duplicateLastNames = useMemo(() => getDuplicateLastNames(teams.flat()), [teams]);
   const formation = formations[activeTeam] || "4-3-3";
 
   function setFormation(f) {
@@ -2763,7 +2807,7 @@ function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSa
       const cy = slot.y / 100 * H;
       const tag = p ? (getRoleTag(p.role) || "") : "";
       const col = ROLE_BADGE_COLORS[tag] || "#888";
-      const name = p ? (p.lastName || p.name || "").slice(0, 12) : "—";
+      const name = p ? getPlayerTeamLabel(p, duplicateLastNames).slice(0, 12) : "—";
       return `<g>
         <circle cx="${cx}" cy="${cy}" r="18" fill="${col}" opacity="0.85"/>
         <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="9" font-weight="900" fill="white" font-family="sans-serif">${tag}</text>
@@ -2867,7 +2911,7 @@ function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSa
             const posRole = slot.role;
             const col = ROLE_BADGE_COLORS[posRole] || "#475569";
             const isSelected = selected === idx;
-            const name = (p.lastName || p.name || "—").slice(0, 10);
+            const name = getPlayerTeamLabel(p, duplicateLastNames).slice(0, 10);
             const origRole = getRoleTag(p.role) || "";
             const isDifferentRole = origRole && origRole !== posRole;
             return (
