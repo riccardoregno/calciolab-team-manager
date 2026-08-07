@@ -193,6 +193,10 @@ function Trainings({
     () => getSessionAvailability(players, form.date, availabilityRecords),
     [players, form.date, availabilityRecords]
   );
+  const sessionAssignablePlayers = useMemo(
+    () => sessionAvailability.available.filter((player) => isPlayerAvailableForSession(player, form.attendance)),
+    [sessionAvailability.available, form.attendance]
+  );
   const objectiveStatusMeta = getObjectiveStatusMeta(form.objectiveStatus);
   const trainingMetricItems = [
     {
@@ -1051,11 +1055,7 @@ function Trainings({
           </AppCard>
 
           <TeamGenerator
-            availablePlayers={sessionAvailability.available.filter((p) => {
-              const status = form.attendance[String(p.id)]?.status;
-              if (p._defaultAbsent) return status === "Presente";
-              return status !== "Assente";
-            })}
+            availablePlayers={sessionAssignablePlayers}
             numTeams={form.numTeams || 2}
             assignments={form.teamAssignments || {}}
             partitella={form.partitella}
@@ -1083,11 +1083,7 @@ function Trainings({
             }}
           />
           {(() => {
-            const allAvail = sessionAvailability.available.filter((p) => {
-              const status = form.attendance[String(p.id)]?.status;
-              if (p._defaultAbsent) return status === "Presente";
-              return status !== "Assente";
-            });
+            const allAvail = sessionAssignablePlayers;
             const assignments = form.teamAssignments || {};
             const numTeams = form.numTeams || 2;
             const teams = Array.from({ length: numTeams }, (_, i) =>
@@ -1381,6 +1377,20 @@ function PrintBox({ title, value }) {
 // ─────────────────────────────────────────────
 // Box giocatori disponibili nel form seduta
 // ─────────────────────────────────────────────
+const SESSION_AVAILABLE_ATTENDANCE = new Set(["Presente", "Recupero"]);
+const ATTENDANCE_UNAVAILABLE_LABELS = {
+  Assente: "Assente nel registro",
+  Infortunato: "Infortunato nel registro",
+  Permesso: "Permesso nel registro",
+  Squalificato: "Squalificato nel registro",
+};
+
+function isPlayerAvailableForSession(player, attendance = {}) {
+  const savedStatus = attendance[String(player.id)]?.status;
+  if (player._defaultAbsent) return savedStatus === "Presente";
+  return !savedStatus || SESSION_AVAILABLE_ATTENDANCE.has(savedStatus);
+}
+
 function getSessionAvailability(players, date, _availabilityRecords = []) {
   const available = [];
   const unavailable = [];
@@ -1419,23 +1429,16 @@ const PHASE_OPTIONS = [
 
 function AvailablePlayers({ players, date, availabilityRecords = [], attendance = {}, onToggle }) {
   const { t } = useTranslation();
-  const sessionAvailableStatuses = new Set(["Presente", "Recupero"]);
-  const attendanceUnavailableLabels = {
-    Assente: "Assente nel registro",
-    Infortunato: "Infortunato nel registro",
-    Permesso: "Permesso nel registro",
-    Squalificato: "Squalificato nel registro",
-  };
   const sessionAvailability = getSessionAvailability(players, date, availabilityRecords);
   const available = [];
   const unavailable = [...sessionAvailability.unavailable];
 
   sessionAvailability.available.forEach((player) => {
     const savedStatus = attendance[String(player.id)]?.status;
-    if (!player._defaultAbsent && savedStatus && !sessionAvailableStatuses.has(savedStatus)) {
+    if (!player._defaultAbsent && savedStatus && !SESSION_AVAILABLE_ATTENDANCE.has(savedStatus)) {
       unavailable.push({
         player,
-        reason: attendanceUnavailableLabels[savedStatus] || `${savedStatus} nel registro`,
+        reason: ATTENDANCE_UNAVAILABLE_LABELS[savedStatus] || `${savedStatus || "Assente"} nel registro`,
       });
       return;
     }
@@ -1453,8 +1456,7 @@ function AvailablePlayers({ players, date, availabilityRecords = [], attendance 
 
   function PlayerChip({ p }) {
     const name = [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name || "—";
-    const savedStatus = attendance[String(p.id)]?.status;
-    const isAbsent = p._defaultAbsent ? savedStatus !== "Presente" : Boolean(savedStatus && !sessionAvailableStatuses.has(savedStatus));
+    const isAbsent = !isPlayerAvailableForSession(p, attendance);
     return (
       <button
         key={p.id}
