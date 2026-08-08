@@ -56,7 +56,7 @@ function getRpeDisplayMeta(md, rpe, t) {
 }
 
 function Trainings({
-  exercises, setExercises, sessions, setSessions, players = [], _matches = [], appSettings = {}, loading = false, teamId = null }) {
+  exercises, setExercises, sessions, setSessions, players = [], _matches = [], appSettings = {}, setAppSettings, loading = false, teamId = null }) {
 
   const { t } = useTranslation();
   const isMobile = useIsMobile(760);
@@ -1130,7 +1130,7 @@ function Trainings({
         </div>
       </div>}
 
-      <MiniMatchStats sessions={sessions} players={players} />
+      <MiniMatchStats sessions={sessions} players={players} appSettings={appSettings} setAppSettings={setAppSettings} />
 
       <div className="no-print" style={{ marginTop: 28 }}>
         <AppCard>
@@ -2989,7 +2989,17 @@ function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSa
 const PODIUM_FINE = { 1: 0, 2: 1, 3: 2 };
 
 // ── Statistiche Partitelle ────────────────────────────────────────────────────
-function MiniMatchStats({ sessions = [], players = [] }) {
+function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppSettings }) {
+  const torelloFines = appSettings.torelloFines || {};
+
+  function changeTorello(playerId, delta) {
+    const current = torelloFines[String(playerId)] || 0;
+    const next = Math.max(0, current + delta);
+    const updated = { ...torelloFines };
+    if (next === 0) delete updated[String(playerId)];
+    else updated[String(playerId)] = next;
+    setAppSettings?.((prev) => ({ ...prev, torelloFines: updated }));
+  }
   const stats = useMemo(() => {
     const map = {}; // playerId → { wins, seconds, thirds, losses, draws, fine }
     sessions.forEach((s) => {
@@ -3027,13 +3037,17 @@ function MiniMatchStats({ sessions = [], players = [] }) {
 
   const rows = useMemo(() => {
     return players
-      .filter((p) => stats[String(p.id)])
-      .map((p) => ({ p, ...stats[String(p.id)] }))
+      .filter((p) => stats[String(p.id)] || torelloFines[String(p.id)])
+      .map((p) => {
+        const s = stats[String(p.id)] || { wins: 0, losses: 0, draws: 0, fine: 0 };
+        const torello = torelloFines[String(p.id)] || 0;
+        return { p, ...s, torello, totalFine: s.fine + torello };
+      })
       .sort((a, b) => {
-        if (b.wins !== a.wins) return b.wins - a.wins;
-        return a.fine - b.fine;
+        if (b.totalFine !== a.totalFine) return b.totalFine - a.totalFine;
+        return a.p.name.localeCompare(b.p.name, "it");
       });
-  }, [players, stats]);
+  }, [players, stats, torelloFines]);
 
   if (!rows.length) return null;
 
@@ -3049,20 +3063,36 @@ function MiniMatchStats({ sessions = [], players = [] }) {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              {["Giocatore", "Vinte", "Perse", "Pari", "Multa (€)"].map((h) => (
+              {["Giocatore", "Vinte", "Perse", "Pari", "Partitelle (€)", "Torello (€)", "Totale (€)"].map((h) => (
                 <th key={h} style={{ padding: "6px 10px", textAlign: h === "Giocatore" ? "left" : "center", color: "#64748b", fontWeight: 700, fontSize: 11 }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ p, wins, losses, draws, fine }) => (
+            {rows.map(({ p, wins, losses, draws, fine, torello, totalFine }) => (
               <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                 <td style={{ padding: "7px 10px", color: "#e2e8f0", fontWeight: 600 }}>{p.name}</td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: "#22c55e", fontWeight: 700 }}>{wins}</td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: "#ef4444", fontWeight: 700 }}>{losses}</td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: "#94a3b8" }}>{draws}</td>
-                <td style={{ padding: "7px 10px", textAlign: "center", color: fine > 0 ? "#f97316" : "#64748b", fontWeight: fine > 0 ? 700 : 400 }}>
+                <td style={{ padding: "7px 10px", textAlign: "center", color: fine > 0 ? "#f97316" : "#64748b" }}>
                   {fine > 0 ? `€ ${fine}` : "—"}
+                </td>
+                <td style={{ padding: "7px 10px", textAlign: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    {setAppSettings && (
+                      <button onClick={() => changeTorello(p.id, -1)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#94a3b8", cursor: "pointer", fontSize: 13, lineHeight: 1, display: "grid", placeItems: "center" }}>−</button>
+                    )}
+                    <span style={{ color: torello > 0 ? "#f97316" : "#64748b", fontWeight: torello > 0 ? 700 : 400, minWidth: 20, textAlign: "center" }}>
+                      {torello > 0 ? `€ ${torello}` : "—"}
+                    </span>
+                    {setAppSettings && (
+                      <button onClick={() => changeTorello(p.id, 1)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#94a3b8", cursor: "pointer", fontSize: 13, lineHeight: 1, display: "grid", placeItems: "center" }}>+</button>
+                    )}
+                  </div>
+                </td>
+                <td style={{ padding: "7px 10px", textAlign: "center", color: totalFine > 0 ? "#ef4444" : "#64748b", fontWeight: totalFine > 0 ? 800 : 400 }}>
+                  {totalFine > 0 ? `€ ${totalFine}` : "—"}
                 </td>
               </tr>
             ))}

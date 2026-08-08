@@ -1055,6 +1055,7 @@ function App() {
                     players={players}
                     matches={matches}
                     appSettings={previewAppSettings}
+                    setAppSettings={setAppSettings}
                     loading={loading}
                     teamId={auth.team?.id}
                   />, "sessions")
