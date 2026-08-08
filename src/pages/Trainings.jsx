@@ -2991,6 +2991,7 @@ const PODIUM_FINE = { 1: 0, 2: 1, 3: 2 };
 // ── Statistiche Partitelle ────────────────────────────────────────────────────
 function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppSettings }) {
   const torelloFines = appSettings.torelloFines || {};
+  const [sortMode, setSortMode] = useState("alpha"); // "alpha" | "fineDesc" | "fineAsc"
 
   function changeTorello(playerId, delta) {
     const current = torelloFines[String(playerId)] || 0;
@@ -3045,20 +3046,40 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
       })
       .sort((a, b) => {
         const lastName = (p) => (p.name || "").split(" ").pop() || "";
+        if (sortMode === "fineDesc") return b.totalFine - a.totalFine || lastName(a.p).localeCompare(lastName(b.p), "it");
+        if (sortMode === "fineAsc")  return a.totalFine - b.totalFine || lastName(a.p).localeCompare(lastName(b.p), "it");
         return lastName(a.p).localeCompare(lastName(b.p), "it");
       });
-  }, [players, stats, torelloFines]);
+  }, [players, stats, torelloFines, sortMode]);
 
   if (!rows.length) return null;
 
   const totalSessions = sessions.filter((s) => s.partitella?.winner != null || s.partitella?.podium).length;
 
+  const totPartitelle = rows.reduce((s, r) => s + r.fine, 0);
+  const totTorello    = rows.reduce((s, r) => s + r.torello, 0);
+  const totTotale     = rows.reduce((s, r) => s + r.totalFine, 0);
+
+  const sortBtnStyle = (mode) => ({
+    padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer",
+    border: `1px solid ${sortMode === mode ? "#38bdf8" : "rgba(255,255,255,0.1)"}`,
+    background: sortMode === mode ? "rgba(56,189,248,0.12)" : "transparent",
+    color: sortMode === mode ? "#38bdf8" : "#64748b",
+  });
+
   return (
     <AppCard style={{ marginTop: 12 }}>
-      <h4 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 800 }}>
-        Statistiche partitelle
-        <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: "#64748b" }}>{totalSessions} partite registrate</span>
-      </h4>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>
+          Statistiche partitelle
+          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: "#64748b" }}>{totalSessions} partite</span>
+        </h4>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button style={sortBtnStyle("alpha")}   onClick={() => setSortMode("alpha")}>A→Z</button>
+          <button style={sortBtnStyle("fineDesc")} onClick={() => setSortMode("fineDesc")}>Multa ↓</button>
+          <button style={sortBtnStyle("fineAsc")}  onClick={() => setSortMode("fineAsc")}>Multa ↑</button>
+        </div>
+      </div>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
@@ -3097,6 +3118,21 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr style={{ borderTop: "2px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.03)" }}>
+              <td style={{ padding: "8px 10px", color: "#94a3b8", fontWeight: 800, fontSize: 11 }}>TOTALE CASSA</td>
+              <td colSpan={3} />
+              <td style={{ padding: "8px 10px", textAlign: "center", color: totPartitelle > 0 ? "#f97316" : "#64748b", fontWeight: 800 }}>
+                {totPartitelle > 0 ? `€ ${totPartitelle}` : "—"}
+              </td>
+              <td style={{ padding: "8px 10px", textAlign: "center", color: totTorello > 0 ? "#f97316" : "#64748b", fontWeight: 800 }}>
+                {totTorello > 0 ? `€ ${totTorello}` : "—"}
+              </td>
+              <td style={{ padding: "8px 10px", textAlign: "center", color: totTotale > 0 ? "#ef4444" : "#64748b", fontWeight: 900, fontSize: 13 }}>
+                {totTotale > 0 ? `€ ${totTotale}` : "—"}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </AppCard>
