@@ -816,6 +816,7 @@ export function normalizeAppSettings(settings = {}){
     communications: (settings.communications || []).map(normalizeComm),
     developmentPreviewPlan: settings.developmentPreviewPlan || "",
     developmentPreviewRole: settings.developmentPreviewRole || "",
+    torelloFines: settings.torelloFines && typeof settings.torelloFines === "object" ? settings.torelloFines : {},
     // FIX: il sistema di codici promo è stato spostato lato server
     // (Edge Function redeem-promo-code + tabelle promo_codes/promo_redemptions,
     // non leggibili/scrivibili dal client). Prima la lista dei codici era

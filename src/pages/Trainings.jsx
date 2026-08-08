@@ -3044,8 +3044,8 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
         return { p, ...s, torello, totalFine: s.fine + torello };
       })
       .sort((a, b) => {
-        if (b.totalFine !== a.totalFine) return b.totalFine - a.totalFine;
-        return a.p.name.localeCompare(b.p.name, "it");
+        const lastName = (p) => (p.name || "").split(" ").pop() || "";
+        return lastName(a.p).localeCompare(lastName(b.p), "it");
       });
   }, [players, stats, torelloFines]);
 
