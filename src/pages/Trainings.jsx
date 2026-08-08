@@ -3025,8 +3025,6 @@ function MiniMatchStats({ sessions = [], players = [] }) {
     return map;
   }, [sessions]);
 
-  const hasPodium = sessions.some((s) => s.partitella?.podium);
-
   const rows = useMemo(() => {
     return players
       .filter((p) => stats[String(p.id)])
@@ -3051,21 +3049,17 @@ function MiniMatchStats({ sessions = [], players = [] }) {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              {["Giocatore", "🥇 1°", hasPodium ? "🥈 2°" : null, hasPodium ? "🥉 3°" : null, hasPodium ? null : "Perse", "Pari", "Multa (€)"]
-                .filter(Boolean)
-                .map((h) => (
-                  <th key={h} style={{ padding: "6px 10px", textAlign: h === "Giocatore" ? "left" : "center", color: "#64748b", fontWeight: 700, fontSize: 11 }}>{h}</th>
-                ))}
+              {["Giocatore", "Vinte", "Perse", "Pari", "Multa (€)"].map((h) => (
+                <th key={h} style={{ padding: "6px 10px", textAlign: h === "Giocatore" ? "left" : "center", color: "#64748b", fontWeight: 700, fontSize: 11 }}>{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ p, wins, seconds, thirds, losses, draws, fine }) => (
+            {rows.map(({ p, wins, losses, draws, fine }) => (
               <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                 <td style={{ padding: "7px 10px", color: "#e2e8f0", fontWeight: 600 }}>{p.name}</td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: "#22c55e", fontWeight: 700 }}>{wins}</td>
-                {hasPodium && <td style={{ padding: "7px 10px", textAlign: "center", color: "#94a3b8", fontWeight: 600 }}>{seconds}</td>}
-                {hasPodium && <td style={{ padding: "7px 10px", textAlign: "center", color: "#ef4444", fontWeight: 700 }}>{thirds}</td>}
-                {!hasPodium && <td style={{ padding: "7px 10px", textAlign: "center", color: "#ef4444", fontWeight: 700 }}>{losses}</td>}
+                <td style={{ padding: "7px 10px", textAlign: "center", color: "#ef4444", fontWeight: 700 }}>{losses}</td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: "#94a3b8" }}>{draws}</td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: fine > 0 ? "#f97316" : "#64748b", fontWeight: fine > 0 ? 700 : 400 }}>
                   {fine > 0 ? `€ ${fine}` : "—"}
