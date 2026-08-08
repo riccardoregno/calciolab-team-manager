@@ -1381,6 +1381,7 @@ export function getTeamAverageAge(players = []) {
  */
 export function getPlayerQuickStats(player, sessions = [], matches = []) {
   const pid = player?.id;
+  const today = new Date().toISOString().slice(0, 10);
 
   const appearances = matches.reduce((count, match) => {
     const data = match?.attendance?.[pid];
@@ -1388,13 +1389,18 @@ export function getPlayerQuickStats(player, sessions = [], matches = []) {
     return count + 1;
   }, 0);
 
+  // Solo sedute di allenamento passate (< oggi)
+  const pastTrainings = sessions.filter(
+    (s) => (s.type || "Allenamento") === "Allenamento" && s.date && s.date < today
+  );
+
   let registered = 0;
   let present = 0;
-  sessions.forEach((session) => {
-    const data = session?.attendance?.[pid];
+  pastTrainings.forEach((session) => {
+    const data = session?.attendance?.[pid] ?? session?.attendance?.[String(pid)];
     if (!data) return;
     registered += 1;
-    if (data.status === "Presente") present += 1;
+    if (data.status === "Presente" || data.status === "Recupero") present += 1;
   });
 
   const trainingPct = registered > 0 ? Math.round((present / registered) * 100) : null;
