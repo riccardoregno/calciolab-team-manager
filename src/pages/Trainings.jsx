@@ -2606,24 +2606,75 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
 
           {/* Risultato partitella */}
           {teams.some((t) => t.length > 0) && (
-            <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8" }}>Risultato:</span>
-              {Array.from({ length: numTeams }, (_, i) => (
-                <button key={i} onClick={() => updatePartitella({ winner: i })} style={{
-                  padding: "4px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer",
-                  border: `1px solid ${partitella?.winner === i ? TEAM_COLORS[i].color : "rgba(255,255,255,0.1)"}`,
-                  background: partitella?.winner === i ? `${TEAM_COLORS[i].color}22` : "transparent",
-                  color: partitella?.winner === i ? TEAM_COLORS[i].color : "#64748b",
-                }}>🏆 {TEAM_COLORS[i].label}</button>
-              ))}
-              <button onClick={() => updatePartitella({ winner: "draw" })} style={{
-                padding: "4px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer",
-                border: `1px solid ${partitella?.winner === "draw" ? "#f59e0b" : "rgba(255,255,255,0.1)"}`,
-                background: partitella?.winner === "draw" ? "rgba(245,158,11,0.15)" : "transparent",
-                color: partitella?.winner === "draw" ? "#f59e0b" : "#64748b",
-              }}>🤝 Pareggio</button>
-              {partitella?.winner != null && (
-                <button onClick={() => onPartitellaChange?.(miniGoals && Object.keys(miniGoals).length ? { goals: miniGoals } : null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 11 }}>✕ Cancella risultato</button>
+            <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              {numTeams === 3 ? (
+                /* ── Podio 3 squadre ── */
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8" }}>Podio:</span>
+                  {[
+                    { pos: 1, medal: "🥇", fine: 0,  fineTxt: "free",  color: "#f59e0b" },
+                    { pos: 2, medal: "🥈", fine: 1,  fineTxt: "1€",   color: "#94a3b8" },
+                    { pos: 3, medal: "🥉", fine: 2,  fineTxt: "2€",   color: "#b45309" },
+                  ].map(({ pos, medal, fineTxt, color }) => {
+                    const podium = partitella?.podium || {};
+                    return (
+                      <div key={pos} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color, minWidth: 46 }}>
+                          {medal} {pos}° <span style={{ fontSize: 10, fontWeight: 500, color: "#64748b" }}>({fineTxt})</span>
+                        </span>
+                        {Array.from({ length: numTeams }, (_, teamIdx) => {
+                          const selected = podium[teamIdx] === pos;
+                          return (
+                            <button
+                              key={teamIdx}
+                              onClick={() => {
+                                const next = { ...podium };
+                                // rimuovi squadra da posizione precedente
+                                Object.keys(next).forEach((k) => { if (Number(k) === teamIdx) delete next[k]; });
+                                // rimuovi chi era già in questa posizione
+                                Object.keys(next).forEach((k) => { if (next[k] === pos) delete next[k]; });
+                                if (!selected) next[teamIdx] = pos;
+                                const hasPodium = Object.keys(next).length > 0;
+                                onPartitellaChange?.({ ...(partitella || {}), podium: hasPodium ? next : null, winner: undefined });
+                              }}
+                              style={{
+                                padding: "3px 10px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                                border: `1px solid ${selected ? TEAM_COLORS[teamIdx].color : "rgba(255,255,255,0.1)"}`,
+                                background: selected ? `${TEAM_COLORS[teamIdx].color}22` : "transparent",
+                                color: selected ? TEAM_COLORS[teamIdx].color : "#64748b",
+                              }}
+                            >{TEAM_COLORS[teamIdx].label.replace("Squadra ", "")}</button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                  {partitella?.podium && (
+                    <button onClick={() => onPartitellaChange?.(miniGoals && Object.keys(miniGoals).length ? { goals: miniGoals } : null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 11, marginLeft: 4 }}>✕ Cancella</button>
+                  )}
+                </div>
+              ) : (
+                /* ── Vince/perde/pareggia (2 squadre) ── */
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8" }}>Risultato:</span>
+                  {Array.from({ length: numTeams }, (_, i) => (
+                    <button key={i} onClick={() => updatePartitella({ winner: i })} style={{
+                      padding: "4px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                      border: `1px solid ${partitella?.winner === i ? TEAM_COLORS[i].color : "rgba(255,255,255,0.1)"}`,
+                      background: partitella?.winner === i ? `${TEAM_COLORS[i].color}22` : "transparent",
+                      color: partitella?.winner === i ? TEAM_COLORS[i].color : "#64748b",
+                    }}>🏆 {TEAM_COLORS[i].label}</button>
+                  ))}
+                  <button onClick={() => updatePartitella({ winner: "draw" })} style={{
+                    padding: "4px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    border: `1px solid ${partitella?.winner === "draw" ? "#f59e0b" : "rgba(255,255,255,0.1)"}`,
+                    background: partitella?.winner === "draw" ? "rgba(245,158,11,0.15)" : "transparent",
+                    color: partitella?.winner === "draw" ? "#f59e0b" : "#64748b",
+                  }}>🤝 Pareggio</button>
+                  {partitella?.winner != null && (
+                    <button onClick={() => onPartitellaChange?.(miniGoals && Object.keys(miniGoals).length ? { goals: miniGoals } : null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 11 }}>✕ Cancella risultato</button>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -2934,25 +2985,47 @@ function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSa
   );
 }
 
+// multa per posizione nel podio: 1°=0€, 2°=1€, 3°=2€
+const PODIUM_FINE = { 1: 0, 2: 1, 3: 2 };
+
 // ── Statistiche Partitelle ────────────────────────────────────────────────────
 function MiniMatchStats({ sessions = [], players = [] }) {
   const stats = useMemo(() => {
-    const map = {}; // playerId → { wins, losses, draws }
+    const map = {}; // playerId → { wins, seconds, thirds, losses, draws, fine }
     sessions.forEach((s) => {
-      if (!s.partitella || s.partitella.winner == null) return;
-      const { winner } = s.partitella;
       const assignments = s.teamAssignments || {};
-      Object.entries(assignments).forEach(([pid, teamVal]) => {
-        const teamIdx = assignmentTeamIndex(teamVal);
-        if (teamIdx == null) return;
-        if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0 };
-        if (winner === "draw") { map[pid].draws++; }
-        else if (winner === teamIdx) { map[pid].wins++; }
-        else { map[pid].losses++; }
-      });
+      const p = s.partitella;
+      if (!p) return;
+
+      if (p.podium && Object.keys(p.podium).length > 0) {
+        // ── modalità podio (3 squadre) ──
+        Object.entries(assignments).forEach(([pid, teamVal]) => {
+          const teamIdx = assignmentTeamIndex(teamVal);
+          if (teamIdx == null) return;
+          const placement = p.podium[teamIdx]; // 1, 2 o 3
+          if (!placement) return;
+          if (!map[pid]) map[pid] = { wins: 0, seconds: 0, thirds: 0, losses: 0, draws: 0, fine: 0 };
+          if (placement === 1) map[pid].wins++;
+          else if (placement === 2) { map[pid].seconds++; map[pid].losses++; }
+          else if (placement === 3) { map[pid].thirds++; map[pid].losses++; }
+          map[pid].fine += PODIUM_FINE[placement] ?? 0;
+        });
+      } else if (p.winner != null) {
+        // ── modalità classica (2 squadre o vecchio formato) ──
+        Object.entries(assignments).forEach(([pid, teamVal]) => {
+          const teamIdx = assignmentTeamIndex(teamVal);
+          if (teamIdx == null) return;
+          if (!map[pid]) map[pid] = { wins: 0, seconds: 0, thirds: 0, losses: 0, draws: 0, fine: 0 };
+          if (p.winner === "draw") { map[pid].draws++; }
+          else if (p.winner === teamIdx) { map[pid].wins++; }
+          else { map[pid].losses++; map[pid].fine += 1; }
+        });
+      }
     });
     return map;
   }, [sessions]);
+
+  const hasPodium = sessions.some((s) => s.partitella?.podium);
 
   const rows = useMemo(() => {
     return players
@@ -2960,13 +3033,13 @@ function MiniMatchStats({ sessions = [], players = [] }) {
       .map((p) => ({ p, ...stats[String(p.id)] }))
       .sort((a, b) => {
         if (b.wins !== a.wins) return b.wins - a.wins;
-        return a.losses - b.losses;
+        return a.fine - b.fine;
       });
   }, [players, stats]);
 
   if (!rows.length) return null;
 
-  const totalSessions = sessions.filter((s) => s.partitella?.winner != null).length;
+  const totalSessions = sessions.filter((s) => s.partitella?.winner != null || s.partitella?.podium).length;
 
   return (
     <AppCard style={{ marginTop: 12 }}>
@@ -2978,20 +3051,24 @@ function MiniMatchStats({ sessions = [], players = [] }) {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              {["Giocatore", "Vinte", "Perse", "Pari", "Multa (€)"].map((h) => (
-                <th key={h} style={{ padding: "6px 10px", textAlign: h === "Giocatore" ? "left" : "center", color: "#64748b", fontWeight: 700, fontSize: 11 }}>{h}</th>
-              ))}
+              {["Giocatore", "🥇 1°", hasPodium ? "🥈 2°" : null, hasPodium ? "🥉 3°" : null, hasPodium ? null : "Perse", "Pari", "Multa (€)"]
+                .filter(Boolean)
+                .map((h) => (
+                  <th key={h} style={{ padding: "6px 10px", textAlign: h === "Giocatore" ? "left" : "center", color: "#64748b", fontWeight: 700, fontSize: 11 }}>{h}</th>
+                ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ p, wins, losses, draws }) => (
+            {rows.map(({ p, wins, seconds, thirds, losses, draws, fine }) => (
               <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                 <td style={{ padding: "7px 10px", color: "#e2e8f0", fontWeight: 600 }}>{p.name}</td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: "#22c55e", fontWeight: 700 }}>{wins}</td>
-                <td style={{ padding: "7px 10px", textAlign: "center", color: "#ef4444", fontWeight: 700 }}>{losses}</td>
+                {hasPodium && <td style={{ padding: "7px 10px", textAlign: "center", color: "#94a3b8", fontWeight: 600 }}>{seconds}</td>}
+                {hasPodium && <td style={{ padding: "7px 10px", textAlign: "center", color: "#ef4444", fontWeight: 700 }}>{thirds}</td>}
+                {!hasPodium && <td style={{ padding: "7px 10px", textAlign: "center", color: "#ef4444", fontWeight: 700 }}>{losses}</td>}
                 <td style={{ padding: "7px 10px", textAlign: "center", color: "#94a3b8" }}>{draws}</td>
-                <td style={{ padding: "7px 10px", textAlign: "center", color: losses > 0 ? "#f97316" : "#64748b", fontWeight: losses > 0 ? 700 : 400 }}>
-                  {losses > 0 ? `€ ${losses}` : "—"}
+                <td style={{ padding: "7px 10px", textAlign: "center", color: fine > 0 ? "#f97316" : "#64748b", fontWeight: fine > 0 ? 700 : 400 }}>
+                  {fine > 0 ? `€ ${fine}` : "—"}
                 </td>
               </tr>
             ))}
