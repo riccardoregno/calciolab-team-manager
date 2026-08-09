@@ -2292,7 +2292,7 @@ function getPlayerTeamLabel(player, duplicateLastNames = new Set()) {
     const initial = getPlayerFirstInitial(player);
     return initial ? `${initial}. ${lastName}` : lastName;
   }
-  return getPlayerFullName(player);
+  return lastName || getPlayerFullName(player);
 }
 
 function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitella, onChange, onPartitellaChange }) {
@@ -2962,7 +2962,7 @@ function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSa
             const posRole = slot.role;
             const col = ROLE_BADGE_COLORS[posRole] || "#475569";
             const isSelected = selected === idx;
-            const name = getPlayerTeamLabel(p, duplicateLastNames).slice(0, 10);
+            const name = getPlayerTeamLabel(p, duplicateLastNames);
             const origRole = getRoleTag(p.role) || "";
             const isDifferentRole = origRole && origRole !== posRole;
             return (
