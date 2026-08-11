@@ -3023,14 +3023,20 @@ function formatWeekLabel(weekKey) {
   return `Sett. ${w} · ${d} ${m}`;
 }
 
+const STATS_ABSENT_STATUSES = new Set(["Assente", "Infortunato", "Squalificato", "Permesso", "Differenziato"]);
+
 function calcPartitellaStats(sessions) {
   const map = {};
   sessions.forEach((s) => {
     const assignments = s.teamAssignments || {};
+    const attendance = s.attendance || {};
     const p = s.partitella;
     if (!p) return;
     if (p.podium && Object.keys(p.podium).length > 0) {
       Object.entries(assignments).forEach(([pid, teamVal]) => {
+        // salta chi era assente/infortunato in quella seduta
+        const attStatus = attendance[pid]?.status || attendance[String(pid)]?.status;
+        if (attStatus && STATS_ABSENT_STATUSES.has(attStatus)) return;
         const teamIdx = assignmentTeamIndex(teamVal);
         if (teamIdx == null) return;
         const placement = p.podium[teamIdx];
@@ -3042,6 +3048,8 @@ function calcPartitellaStats(sessions) {
       });
     } else if (p.winner != null) {
       Object.entries(assignments).forEach(([pid, teamVal]) => {
+        const attStatus = attendance[pid]?.status || attendance[String(pid)]?.status;
+        if (attStatus && STATS_ABSENT_STATUSES.has(attStatus)) return;
         const teamIdx = assignmentTeamIndex(teamVal);
         if (teamIdx == null) return;
         if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0, fine: 0 };
@@ -3055,7 +3063,8 @@ function calcPartitellaStats(sessions) {
 }
 
 function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppSettings }) {
-  const torelloFinesWeekly = appSettings.torelloFinesWeekly || {};
+  const torelloFines = appSettings.torelloFines || {};         // totale globale (legacy + modifiche in vista Totale)
+  const torelloFinesWeekly = appSettings.torelloFinesWeekly || {}; // per-settimana
   const [sortMode, setSortMode] = useState("alpha");
   const [selectedWeek, setSelectedWeek] = useState("totale");
 
@@ -3079,34 +3088,43 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
 
   const stats = useMemo(() => calcPartitellaStats(filteredSessions), [filteredSessions]);
 
-  // Torello: per settimana o totale (somma di tutte le settimane)
+  // Torello: in vista Totale legge torelloFines (globale) + somma settimanale
+  //          in vista settimana specifica legge solo quella settimana
   function getTorello(playerId) {
     const pid = String(playerId);
     if (selectedWeek === "totale") {
-      return Object.values(torelloFinesWeekly).reduce((sum, weekMap) => sum + (weekMap[pid] || 0), 0);
+      const weekly = Object.values(torelloFinesWeekly).reduce((sum, weekMap) => sum + (weekMap[pid] || 0), 0);
+      return (torelloFines[pid] || 0) + weekly;
     }
     return torelloFinesWeekly[selectedWeek]?.[pid] || 0;
   }
 
   function changeTorello(playerId, delta) {
-    const week = selectedWeek === "totale" ? getISOWeekKey(new Date().toISOString().slice(0, 10)) : selectedWeek;
-    if (!week) return;
     const pid = String(playerId);
-    const current = torelloFinesWeekly[week]?.[pid] || 0;
-    const next = Math.max(0, current + delta);
-    const updatedWeek = { ...(torelloFinesWeekly[week] || {}) };
-    if (next === 0) delete updatedWeek[pid];
-    else updatedWeek[pid] = next;
-    const updated = { ...torelloFinesWeekly, [week]: updatedWeek };
-    setAppSettings?.((prev) => ({ ...prev, torelloFinesWeekly: updated }));
+    if (selectedWeek === "totale") {
+      // modifica il totale globale (torelloFines legacy)
+      const current = torelloFines[pid] || 0;
+      const next = Math.max(0, current + delta);
+      const updated = { ...torelloFines };
+      if (next === 0) delete updated[pid];
+      else updated[pid] = next;
+      setAppSettings?.((prev) => ({ ...prev, torelloFines: updated }));
+    } else {
+      const current = torelloFinesWeekly[selectedWeek]?.[pid] || 0;
+      const next = Math.max(0, current + delta);
+      const updatedWeek = { ...(torelloFinesWeekly[selectedWeek] || {}) };
+      if (next === 0) delete updatedWeek[pid];
+      else updatedWeek[pid] = next;
+      setAppSettings?.((prev) => ({ ...prev, torelloFinesWeekly: { ...torelloFinesWeekly, [selectedWeek]: updatedWeek } }));
+    }
   }
 
-  // Tutti i giocatori con almeno una statistica (partitella o torello in qualsiasi settimana)
+  // Tutti i giocatori con almeno una statistica torello (globale o settimanale)
   const allTorelloPlayers = useMemo(() => {
-    const pids = new Set();
+    const pids = new Set(Object.keys(torelloFines));
     Object.values(torelloFinesWeekly).forEach((wm) => Object.keys(wm).forEach((pid) => pids.add(pid)));
     return pids;
-  }, [torelloFinesWeekly]);
+  }, [torelloFines, torelloFinesWeekly]);
 
   const rows = useMemo(() => {
     return players
@@ -3188,13 +3206,13 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
                 </td>
                 <td style={{ padding: "7px 10px", textAlign: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    {setAppSettings && selectedWeek !== "totale" && (
+                    {setAppSettings && (
                       <button onClick={() => changeTorello(p.id, -1)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#94a3b8", cursor: "pointer", fontSize: 13, lineHeight: 1, display: "grid", placeItems: "center" }}>−</button>
                     )}
                     <span style={{ color: torello > 0 ? "#f97316" : "#64748b", fontWeight: torello > 0 ? 700 : 400, minWidth: 20, textAlign: "center" }}>
                       {torello > 0 ? `€ ${torello}` : "—"}
                     </span>
-                    {setAppSettings && selectedWeek !== "totale" && (
+                    {setAppSettings && (
                       <button onClick={() => changeTorello(p.id, 1)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#94a3b8", cursor: "pointer", fontSize: 13, lineHeight: 1, display: "grid", placeItems: "center" }}>+</button>
                     )}
                   </div>
@@ -3222,11 +3240,6 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
           </tfoot>
         </table>
       </div>
-      {selectedWeek === "totale" && setAppSettings && (
-        <p style={{ margin: "8px 0 0", fontSize: 10, color: "#475569" }}>
-          Per modificare le multe del torello seleziona una settimana specifica.
-        </p>
-      )}
     </AppCard>
   );
 }
