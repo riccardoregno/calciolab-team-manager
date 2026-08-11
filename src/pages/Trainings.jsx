@@ -190,8 +190,8 @@ function Trainings({
     selectedExercises.reduce((sum, item) => sum + Number(item.customDuration || item.duration || 0), 0) +
     (form.sessionBlocks || []).reduce((sum, b) => sum + (Number(b.duration) || 0), 0);
   const sessionAvailability = useMemo(
-    () => getSessionAvailability(players, form.date, availabilityRecords),
-    [players, form.date, availabilityRecords]
+    () => getSessionAvailability(players, form.date, availabilityRecords, form.attendance),
+    [players, form.date, availabilityRecords, form.attendance]
   );
   const sessionAssignablePlayers = useMemo(
     () => sessionAvailability.available.filter((player) => isPlayerAvailableForSession(player, form.attendance)),
@@ -1431,7 +1431,7 @@ function isPlayerAvailableForSession(player, attendance = {}) {
   return !savedStatus || SESSION_AVAILABLE_ATTENDANCE.has(savedStatus);
 }
 
-function getSessionAvailability(players, date, _availabilityRecords = []) {
+function getSessionAvailability(players, date, _availabilityRecords = [], sessionAttendance = {}) {
   const available = [];
   const unavailable = [];
 
@@ -1439,15 +1439,19 @@ function getSessionAvailability(players, date, _availabilityRecords = []) {
 
   players.forEach((player) => {
     const isJun = (player.gruppo || "prima") === "juniores";
+    // Se il coach ha esplicitamente marcato "Presente" nel registro seduta, il giocatore è sempre disponibile
+    const sessionStatus = sessionAttendance[String(player.id)]?.status;
+    const forcedPresent = sessionStatus === "Presente";
+
     if (isJun) {
       // Juniores compaiono sempre nella lista; di default sono Assenti finché il coach non li abilita
-      if (!getPlayerUnavailabilityOnDate(player, date) && !UNAVAILABLE_STATUSES.includes(player.status)) {
+      if (forcedPresent || (!getPlayerUnavailabilityOnDate(player, date) && !UNAVAILABLE_STATUSES.includes(player.status))) {
         available.push({ ...player, _juniores: true, _defaultAbsent: true });
       }
       return;
     }
     const unav = getPlayerUnavailabilityOnDate(player, date);
-    if (!unav && !UNAVAILABLE_STATUSES.includes(player.status)) {
+    if (forcedPresent || (!unav && !UNAVAILABLE_STATUSES.includes(player.status))) {
       available.push(player);
     } else {
       unavailable.push({ player, reason: unav?.label || player.status || "" });
@@ -2996,73 +3000,134 @@ function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSa
 const PODIUM_FINE = { 1: 0, 2: 1, 3: 2 };
 
 // ── Statistiche Partitelle ────────────────────────────────────────────────────
+function getISOWeekKey(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + "T12:00:00");
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() + 4 - day);
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return `${d.getFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+function formatWeekLabel(weekKey) {
+  // weekKey = "2026-W33" → "Sett. 33 · lun 10 ago"
+  const [year, wPart] = weekKey.split("-W");
+  const w = parseInt(wPart, 10);
+  // trova il lunedì della settimana ISO
+  const jan4 = new Date(parseInt(year, 10), 0, 4);
+  const monday = new Date(jan4);
+  monday.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1 + (w - 1) * 7);
+  const d = monday.getDate();
+  const m = monday.toLocaleDateString("it-IT", { month: "short" });
+  return `Sett. ${w} · ${d} ${m}`;
+}
+
+function calcPartitellaStats(sessions) {
+  const map = {};
+  sessions.forEach((s) => {
+    const assignments = s.teamAssignments || {};
+    const p = s.partitella;
+    if (!p) return;
+    if (p.podium && Object.keys(p.podium).length > 0) {
+      Object.entries(assignments).forEach(([pid, teamVal]) => {
+        const teamIdx = assignmentTeamIndex(teamVal);
+        if (teamIdx == null) return;
+        const placement = p.podium[teamIdx];
+        if (!placement) return;
+        if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0, fine: 0 };
+        if (placement === 1) map[pid].wins++;
+        else { map[pid].losses++; }
+        map[pid].fine += PODIUM_FINE[placement] ?? 0;
+      });
+    } else if (p.winner != null) {
+      Object.entries(assignments).forEach(([pid, teamVal]) => {
+        const teamIdx = assignmentTeamIndex(teamVal);
+        if (teamIdx == null) return;
+        if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0, fine: 0 };
+        if (p.winner === "draw") { map[pid].draws++; }
+        else if (p.winner === teamIdx) { map[pid].wins++; }
+        else { map[pid].losses++; map[pid].fine += 1; }
+      });
+    }
+  });
+  return map;
+}
+
 function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppSettings }) {
-  const torelloFines = appSettings.torelloFines || {};
-  const [sortMode, setSortMode] = useState("alpha"); // "alpha" | "fineDesc" | "fineAsc"
+  const torelloFinesWeekly = appSettings.torelloFinesWeekly || {};
+  const [sortMode, setSortMode] = useState("alpha");
+  const [selectedWeek, setSelectedWeek] = useState("totale");
 
-  function changeTorello(playerId, delta) {
-    const current = torelloFines[String(playerId)] || 0;
-    const next = Math.max(0, current + delta);
-    const updated = { ...torelloFines };
-    if (next === 0) delete updated[String(playerId)];
-    else updated[String(playerId)] = next;
-    setAppSettings?.((prev) => ({ ...prev, torelloFines: updated }));
-  }
-  const stats = useMemo(() => {
-    const map = {}; // playerId → { wins, seconds, thirds, losses, draws, fine }
+  // Settimane con partitelle, ordinate cronologicamente
+  const weeks = useMemo(() => {
+    const keys = new Set();
     sessions.forEach((s) => {
-      const assignments = s.teamAssignments || {};
-      const p = s.partitella;
-      if (!p) return;
-
-      if (p.podium && Object.keys(p.podium).length > 0) {
-        // ── modalità podio (3 squadre) ──
-        Object.entries(assignments).forEach(([pid, teamVal]) => {
-          const teamIdx = assignmentTeamIndex(teamVal);
-          if (teamIdx == null) return;
-          const placement = p.podium[teamIdx]; // 1, 2 o 3
-          if (!placement) return;
-          if (!map[pid]) map[pid] = { wins: 0, seconds: 0, thirds: 0, losses: 0, draws: 0, fine: 0 };
-          if (placement === 1) map[pid].wins++;
-          else if (placement === 2) { map[pid].seconds++; map[pid].losses++; }
-          else if (placement === 3) { map[pid].thirds++; map[pid].losses++; }
-          map[pid].fine += PODIUM_FINE[placement] ?? 0;
-        });
-      } else if (p.winner != null) {
-        // ── modalità classica (2 squadre o vecchio formato) ──
-        Object.entries(assignments).forEach(([pid, teamVal]) => {
-          const teamIdx = assignmentTeamIndex(teamVal);
-          if (teamIdx == null) return;
-          if (!map[pid]) map[pid] = { wins: 0, seconds: 0, thirds: 0, losses: 0, draws: 0, fine: 0 };
-          if (p.winner === "draw") { map[pid].draws++; }
-          else if (p.winner === teamIdx) { map[pid].wins++; }
-          else { map[pid].losses++; map[pid].fine += 1; }
-        });
+      if ((s.partitella?.winner != null || s.partitella?.podium) && s.date) {
+        const k = getISOWeekKey(s.date);
+        if (k) keys.add(k);
       }
     });
-    return map;
+    return ["totale", ...Array.from(keys).sort()];
   }, [sessions]);
+
+  // Sessioni filtrate per settimana selezionata
+  const filteredSessions = useMemo(() => {
+    if (selectedWeek === "totale") return sessions;
+    return sessions.filter((s) => s.date && getISOWeekKey(s.date) === selectedWeek);
+  }, [sessions, selectedWeek]);
+
+  const stats = useMemo(() => calcPartitellaStats(filteredSessions), [filteredSessions]);
+
+  // Torello: per settimana o totale (somma di tutte le settimane)
+  function getTorello(playerId) {
+    const pid = String(playerId);
+    if (selectedWeek === "totale") {
+      return Object.values(torelloFinesWeekly).reduce((sum, weekMap) => sum + (weekMap[pid] || 0), 0);
+    }
+    return torelloFinesWeekly[selectedWeek]?.[pid] || 0;
+  }
+
+  function changeTorello(playerId, delta) {
+    const week = selectedWeek === "totale" ? getISOWeekKey(new Date().toISOString().slice(0, 10)) : selectedWeek;
+    if (!week) return;
+    const pid = String(playerId);
+    const current = torelloFinesWeekly[week]?.[pid] || 0;
+    const next = Math.max(0, current + delta);
+    const updatedWeek = { ...(torelloFinesWeekly[week] || {}) };
+    if (next === 0) delete updatedWeek[pid];
+    else updatedWeek[pid] = next;
+    const updated = { ...torelloFinesWeekly, [week]: updatedWeek };
+    setAppSettings?.((prev) => ({ ...prev, torelloFinesWeekly: updated }));
+  }
+
+  // Tutti i giocatori con almeno una statistica (partitella o torello in qualsiasi settimana)
+  const allTorelloPlayers = useMemo(() => {
+    const pids = new Set();
+    Object.values(torelloFinesWeekly).forEach((wm) => Object.keys(wm).forEach((pid) => pids.add(pid)));
+    return pids;
+  }, [torelloFinesWeekly]);
 
   const rows = useMemo(() => {
     return players
-      .filter((p) => stats[String(p.id)] || torelloFines[String(p.id)])
+      .filter((p) => stats[String(p.id)] || allTorelloPlayers.has(String(p.id)))
       .map((p) => {
         const s = stats[String(p.id)] || { wins: 0, losses: 0, draws: 0, fine: 0 };
-        const torello = torelloFines[String(p.id)] || 0;
+        const torello = getTorello(p.id);
         return { p, ...s, torello, totalFine: s.fine + torello };
       })
+      .filter((r) => r.wins || r.losses || r.draws || r.torello || selectedWeek === "totale")
       .sort((a, b) => {
         const lastName = (p) => (p.name || "").split(" ").pop() || "";
         if (sortMode === "fineDesc") return b.totalFine - a.totalFine || lastName(a.p).localeCompare(lastName(b.p), "it");
         if (sortMode === "fineAsc")  return a.totalFine - b.totalFine || lastName(a.p).localeCompare(lastName(b.p), "it");
         return lastName(a.p).localeCompare(lastName(b.p), "it");
       });
-  }, [players, stats, torelloFines, sortMode]);
+  }, [players, stats, allTorelloPlayers, sortMode, selectedWeek, torelloFinesWeekly]);
 
-  if (!rows.length) return null;
+  if (!rows.length && weeks.length <= 1) return null;
 
-  const totalSessions = sessions.filter((s) => s.partitella?.winner != null || s.partitella?.podium).length;
-
+  const totalSessions = filteredSessions.filter((s) => s.partitella?.winner != null || s.partitella?.podium).length;
   const totPartitelle = rows.reduce((s, r) => s + r.fine, 0);
   const totTorello    = rows.reduce((s, r) => s + r.torello, 0);
   const totTotale     = rows.reduce((s, r) => s + r.totalFine, 0);
@@ -3074,18 +3139,33 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
     color: sortMode === mode ? "#38bdf8" : "#64748b",
   });
 
+  const weekBtnStyle = (w) => ({
+    padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+    border: `1px solid ${selectedWeek === w ? "#a78bfa" : "rgba(255,255,255,0.1)"}`,
+    background: selectedWeek === w ? "rgba(167,139,250,0.15)" : "transparent",
+    color: selectedWeek === w ? "#a78bfa" : "#64748b",
+  });
+
   return (
     <AppCard style={{ marginTop: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
         <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>
           Statistiche partitelle
           <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: "#64748b" }}>{totalSessions} partite</span>
         </h4>
         <div style={{ display: "flex", gap: 6 }}>
-          <button style={sortBtnStyle("alpha")}   onClick={() => setSortMode("alpha")}>A→Z</button>
+          <button style={sortBtnStyle("alpha")}    onClick={() => setSortMode("alpha")}>A→Z</button>
           <button style={sortBtnStyle("fineDesc")} onClick={() => setSortMode("fineDesc")}>Multa ↓</button>
           <button style={sortBtnStyle("fineAsc")}  onClick={() => setSortMode("fineAsc")}>Multa ↑</button>
         </div>
+      </div>
+      {/* Filtro settimana */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+        {weeks.map((w) => (
+          <button key={w} style={weekBtnStyle(w)} onClick={() => setSelectedWeek(w)}>
+            {w === "totale" ? "Totale" : formatWeekLabel(w)}
+          </button>
+        ))}
       </div>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -3108,13 +3188,13 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
                 </td>
                 <td style={{ padding: "7px 10px", textAlign: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    {setAppSettings && (
+                    {setAppSettings && selectedWeek !== "totale" && (
                       <button onClick={() => changeTorello(p.id, -1)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#94a3b8", cursor: "pointer", fontSize: 13, lineHeight: 1, display: "grid", placeItems: "center" }}>−</button>
                     )}
                     <span style={{ color: torello > 0 ? "#f97316" : "#64748b", fontWeight: torello > 0 ? 700 : 400, minWidth: 20, textAlign: "center" }}>
                       {torello > 0 ? `€ ${torello}` : "—"}
                     </span>
-                    {setAppSettings && (
+                    {setAppSettings && selectedWeek !== "totale" && (
                       <button onClick={() => changeTorello(p.id, 1)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#94a3b8", cursor: "pointer", fontSize: 13, lineHeight: 1, display: "grid", placeItems: "center" }}>+</button>
                     )}
                   </div>
@@ -3142,6 +3222,11 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
           </tfoot>
         </table>
       </div>
+      {selectedWeek === "totale" && setAppSettings && (
+        <p style={{ margin: "8px 0 0", fontSize: 10, color: "#475569" }}>
+          Per modificare le multe del torello seleziona una settimana specifica.
+        </p>
+      )}
     </AppCard>
   );
 }
