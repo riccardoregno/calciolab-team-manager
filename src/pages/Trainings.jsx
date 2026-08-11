@@ -3085,7 +3085,9 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
   useEffect(() => {
     if (!setAppSettings) return;
     if (Object.keys(torelloFines).length === 0) return;
-    if (Object.keys(torelloFinesWeekly).length > 0) return;
+    // blocca migrazione solo se ci sono valori reali nelle settimane (non oggetti vuoti)
+    const hasRealWeeklyData = Object.values(torelloFinesWeekly).some((wm) => Object.keys(wm).length > 0);
+    if (hasRealWeeklyData) return;
     const firstWeek = weeks.find((w) => w !== "totale");
     if (!firstWeek) return;
     setAppSettings((prev) => ({
