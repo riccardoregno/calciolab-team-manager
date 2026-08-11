@@ -3081,10 +3081,11 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
   }, [sessions]);
 
   // Migrazione one-shot: sposta torelloFines (legacy) nella prima settimana con partitelle
+  // Dipende da weeks perché sessions carica in modo asincrono
   useEffect(() => {
     if (!setAppSettings) return;
-    if (Object.keys(torelloFines).length === 0) return;       // niente da migrare
-    if (Object.keys(torelloFinesWeekly).length > 0) return;   // già migrato
+    if (Object.keys(torelloFines).length === 0) return;
+    if (Object.keys(torelloFinesWeekly).length > 0) return;
     const firstWeek = weeks.find((w) => w !== "totale");
     if (!firstWeek) return;
     setAppSettings((prev) => ({
@@ -3092,7 +3093,7 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
       torelloFines: {},
       torelloFinesWeekly: { [firstWeek]: { ...torelloFines } },
     }));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [weeks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sessioni filtrate per settimana selezionata
   const filteredSessions = useMemo(() => {
