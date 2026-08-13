@@ -294,10 +294,23 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const rows = parseCsv(String(reader.result || ""));
-      const imported = rows
-        .map((row) => calendarRowToMatch(row, clubLogo, clubName))
-        .filter(Boolean);
+      let imported = [];
+      if (file.name.endsWith(".json")) {
+        try {
+          const parsed = JSON.parse(reader.result || "[]");
+          imported = (Array.isArray(parsed) ? parsed : []).map((m) => ({
+            ...emptyMatch(clubLogo),
+            ...m,
+            id: m.id || createId("match"),
+          }));
+        } catch {
+          showToast(t("pages.matches.noValidMatches"), "warn");
+          return;
+        }
+      } else {
+        const rows = parseCsv(String(reader.result || ""));
+        imported = rows.map((row) => calendarRowToMatch(row, clubLogo, clubName)).filter(Boolean);
+      }
 
       if (!imported.length) {
         showToast(t("pages.matches.noValidMatches"), "warn");
@@ -370,7 +383,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
                 <label style={{ display: "inline-flex" }}>
                   <input
                     type="file"
-                    accept=".csv,text/csv"
+                    accept=".csv,.json,text/csv,application/json"
                     onChange={(event) => {
                       importCalendar(event.target.files?.[0]);
                       event.target.value = "";
