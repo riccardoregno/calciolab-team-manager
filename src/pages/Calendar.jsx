@@ -94,7 +94,7 @@ function Calendar({
     setView(nextView);
   }
 
-  function quickCreate({ date, type, title, time, notes }) {
+  function quickCreate({ date, type, matchKind, title, time, notes }) {
     if (!canManage) return;
     const base = {
       id:    createId(type === "Partita" ? "match" : "session"),
@@ -108,6 +108,7 @@ function Calendar({
       setMatches?.([...matches, {
         ...base,
         type:       "Partita",
+        matchKind:  matchKind || "Campionato",
         opponent,
         title:      opponent,
         location:   "Casa",
@@ -924,13 +925,14 @@ const wv = {
 // ─────────────────────────────────────────────
 function QuickAddForm({ date, onSave, onCancel, compact = false }) {
   const { t } = useTranslation();
-  const [type,  setType]  = useState("Allenamento");
+  const [type,      setType]      = useState("Allenamento");
+  const [matchKind, setMatchKind] = useState("Campionato");
   const [title, setTitle] = useState("");
   const [time,  setTime]  = useState("");
   const [notes, setNotes] = useState("");
 
   function handleSave() {
-    onSave({ date, type, title: title.trim(), time, notes: notes.trim() });
+    onSave({ date, type, matchKind: type === "Partita" ? matchKind : undefined, title: title.trim(), time, notes: notes.trim() });
     setType("Allenamento");
     setTitle("");
     setTime("");
@@ -954,6 +956,26 @@ function QuickAddForm({ date, onSave, onCancel, compact = false }) {
           </button>
         ))}
       </div>
+
+      {/* Tipo partita — solo per Partita */}
+      {type === "Partita" && (
+        <div style={{ display: "flex", gap: 6 }}>
+          {["Campionato", "Coppa", "Amichevole"].map((k) => (
+            <button
+              key={k}
+              onClick={() => setMatchKind(k)}
+              style={{
+                ...qa.typeBtn,
+                fontSize: 11,
+                padding: "3px 8px",
+                ...(matchKind === k ? qa.typeBtnActive : {}),
+              }}
+            >
+              {k}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Titolo / avversario + orario */}
       <div style={{ display: "flex", gap: 8 }}>
