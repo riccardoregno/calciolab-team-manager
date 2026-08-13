@@ -77,6 +77,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   const [importSummary, setImportSummary] = useState(null);
   const [importPreview, setImportPreview] = useState(null);
   const savingRef = useRef(false);
+  const importFileRef = useRef(null);
 
   function openResultEdit(match) {
     const parts = String(match.result || "").match(/(\d+)\s*[-:]\s*(\d+)/);
@@ -384,8 +385,8 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
             {canManage && (
               <>
                 <input
+                  ref={importFileRef}
                   type="file"
-                  id="import-calendar-file"
                   accept=".csv,.json,text/csv,application/json"
                   onChange={(event) => {
                     importCalendar(event.target.files?.[0]);
@@ -393,7 +394,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
                   }}
                   style={{ display: "none" }}
                 />
-                <Button variant="ghost" onClick={() => document.getElementById("import-calendar-file").click()}>
+                <Button variant="ghost" onClick={() => importFileRef.current?.click()}>
                   {t("pages.matches.importCsv")}
                 </Button>
                 <Button onClick={openNewMatch}>{t("pages.matches.newMatch")}</Button>
