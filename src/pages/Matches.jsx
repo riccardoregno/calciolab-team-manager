@@ -295,20 +295,23 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
     const reader = new FileReader();
     reader.onload = () => {
       let imported = [];
-      if (file.name.endsWith(".json")) {
+      const rawText = String(reader.result || "").trim();
+      // Prova JSON prima (inizia con '[' o '{'), poi fallback CSV
+      if (rawText.startsWith("[") || rawText.startsWith("{")) {
         try {
-          const parsed = JSON.parse(reader.result || "[]");
-          imported = (Array.isArray(parsed) ? parsed : []).map((m) => ({
+          const parsed = JSON.parse(rawText);
+          const arr = Array.isArray(parsed) ? parsed : [parsed];
+          imported = arr.map((m) => ({
             ...emptyMatch(clubLogo),
             ...m,
             id: m.id || createId("match"),
           }));
         } catch {
-          showToast(t("pages.matches.noValidMatches"), "warn");
-          return;
+          // JSON non valido, prova come CSV
         }
-      } else {
-        const rows = parseCsv(String(reader.result || ""));
+      }
+      if (!imported.length) {
+        const rows = parseCsv(rawText);
         imported = rows.map((row) => calendarRowToMatch(row, clubLogo, clubName)).filter(Boolean);
       }
 
