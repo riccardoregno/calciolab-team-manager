@@ -380,18 +380,19 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
             </Link>
             {canManage && (
               <>
-                <label style={{ display: "inline-flex" }}>
-                  <input
-                    type="file"
-                    accept=".csv,.json,text/csv,application/json"
-                    onChange={(event) => {
-                      importCalendar(event.target.files?.[0]);
-                      event.target.value = "";
-                    }}
-                    style={{ display: "none" }}
-                  />
-                  <Button variant="ghost">{t("pages.matches.importCsv")}</Button>
-                </label>
+                <input
+                  type="file"
+                  id="import-calendar-file"
+                  accept=".csv,.json,text/csv,application/json"
+                  onChange={(event) => {
+                    importCalendar(event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                  style={{ display: "none" }}
+                />
+                <Button variant="ghost" onClick={() => document.getElementById("import-calendar-file").click()}>
+                  {t("pages.matches.importCsv")}
+                </Button>
                 <Button onClick={openNewMatch}>{t("pages.matches.newMatch")}</Button>
               </>
             )}
