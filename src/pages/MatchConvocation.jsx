@@ -12,7 +12,8 @@ import { useTranslation } from "../i18n";
 import { createRsvpLink, fetchMatchRsvps, sendMatchConvocationEmail } from "../services/rsvp";
 import { useIsMobile } from "../hooks/useIsMobile";
 
-const MAX_PLAYERS = 22;
+const MAX_PLAYERS_COMPETITIVE = 22;
+const MAX_PLAYERS_FRIENDLY    = 30;
 
 const ROLE_ORDER = ["Portiere", "Difensore", "Centrocampista", "Attaccante"];
 const ROLE_LABEL = {
@@ -189,6 +190,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   const { canManage } = useAreaPermission();
 
   const match = matches.find((m) => String(m.id) === String(id));
+  const MAX_PLAYERS = match?.matchKind === "Amichevole" ? MAX_PLAYERS_FRIENDLY : MAX_PLAYERS_COMPETITIVE;
   const existing = match?.convocazione || {};
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
   const homeVenue = getHomeVenue(workspaceProfile);
