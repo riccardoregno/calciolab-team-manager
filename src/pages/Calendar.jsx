@@ -997,22 +997,43 @@ function QuickAddForm({ date, onSave, onCancel, compact = false }) {
     setNotes("");
   }
 
+  function selectQuickType(value) {
+    if (value === "Amichevole") {
+      setType("Partita");
+      setMatchKind("Amichevole");
+      return;
+    }
+    setType(value);
+    if (value === "Partita" && matchKind === "Amichevole") setMatchKind("Campionato");
+  }
+
+  const quickTypes = [
+    ...EVENT_TYPES.slice(0, 2),
+    { value: "Amichevole", labelKey: "pages.matches.matchKindAmichevole" },
+    EVENT_TYPES[2],
+  ];
+
   return (
     <div style={{ ...qa.wrap, ...(compact ? qa.wrapCompact : {}) }}>
       {/* Tipo */}
       <div style={qa.typeRow}>
-        {EVENT_TYPES.map((et) => (
+        {quickTypes.map((et) => {
+          const isActive = et.value === "Amichevole"
+            ? type === "Partita" && matchKind === "Amichevole"
+            : type === et.value && !(et.value === "Partita" && matchKind === "Amichevole");
+          return (
           <button
             key={et.value}
-            onClick={() => setType(et.value)}
+            onClick={() => selectQuickType(et.value)}
             style={{
               ...qa.typeBtn,
-              ...(type === et.value ? qa.typeBtnActive : {}),
+              ...(isActive ? qa.typeBtnActive : {}),
             }}
           >
             {t(et.labelKey)}
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* Tipo partita — solo per Partita */}

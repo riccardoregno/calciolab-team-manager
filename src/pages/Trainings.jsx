@@ -1344,6 +1344,15 @@ function Trainings({
                           {t("pages.trainings.attendance")}
                         </Button>
 
+                        {session.isFriendlyMatch && (
+                          <Button
+                            variant="ghost"
+                            onClick={() => navigate(`/match-stats/${session.id}`)}
+                          >
+                            Minutaggi
+                          </Button>
+                        )}
+
                         {canManage && !session.isFriendlyMatch && (
                           <>
                             <Button
