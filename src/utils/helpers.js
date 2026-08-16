@@ -1383,16 +1383,24 @@ export function getTeamAverageAge(players = []) {
 export function getPlayerQuickStats(player, sessions = [], matches = []) {
   const pid = player?.id;
   const today = new Date().toISOString().slice(0, 10);
+  const isFriendlyMatch = (match) => {
+    if (match?.isFriendly === true || match?.friendly === true) return true;
+    const fields = [match?.matchKind, match?.match_kind, match?.competition, match?.category, match?.kind, match?.title, match?.notes];
+    return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
+  };
 
   const appearances = matches.reduce((count, match) => {
+    if (isFriendlyMatch(match)) return count;
     const data = match?.attendance?.[pid];
     if (!data || data.status === "Assente") return count;
     return count + 1;
   }, 0);
 
-  // Solo sedute di allenamento passate (< oggi)
-  const pastTrainings = sessions.filter(
-    (s) => (s.type || "Allenamento") === "Allenamento" && s.date && s.date < today
+  const friendlyMatches = matches.filter(isFriendlyMatch);
+
+  // Sedute di allenamento passate + amichevoli, trattate come allenamento.
+  const pastTrainings = [...sessions, ...friendlyMatches].filter(
+    (s) => ((s.type || "Allenamento") === "Allenamento" || isFriendlyMatch(s)) && s.date && s.date < today
   );
 
   let registered = 0;
@@ -1643,6 +1651,11 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
   // devono riflettere solo ciò che è realmente accaduto finora, non gli
   // allenamenti futuri già marcati di default.
   const todayStr = localDateString();
+  const isFriendlyMatch = (match) => {
+    if (match?.isFriendly === true || match?.friendly === true) return true;
+    const fields = [match?.matchKind, match?.match_kind, match?.competition, match?.category, match?.kind, match?.title, match?.notes];
+    return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
+  };
   const events = [...sessions, ...matches].filter((event) => event.date && event.date <= todayStr);
   const playerEvents = events
     .map((event) => {
@@ -1652,8 +1665,9 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
     })
     .filter(Boolean);
 
-  // Sessioni allenamento passate (strettamente < oggi)
-  const trainingSessions = sessions.filter((s) => (s.type || "Allenamento") === "Allenamento" && s.date && s.date < todayStr);
+  const friendlyMatches = matches.filter(isFriendlyMatch);
+  // Sessioni allenamento passate + amichevoli (strettamente < oggi)
+  const trainingSessions = [...sessions, ...friendlyMatches].filter((s) => ((s.type || "Allenamento") === "Allenamento" || isFriendlyMatch(s)) && s.date && s.date < todayStr);
   const pid = String(player.id);
   const isJuniores = (player.gruppo || "prima") === "juniores";
   const trainingPresences = trainingSessions.filter((s) => {

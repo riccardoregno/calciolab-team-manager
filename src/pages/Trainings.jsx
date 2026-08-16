@@ -55,8 +55,15 @@ function getRpeDisplayMeta(md, rpe, t) {
   };
 }
 
+function isFriendlyMatch(match) {
+  if (match?.type !== "Partita") return false;
+  if (match.isFriendly === true || match.friendly === true) return true;
+  const fields = [match.matchKind, match.match_kind, match.competition, match.category, match.kind, match.title, match.notes];
+  return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
+}
+
 function Trainings({
-  exercises, setExercises, sessions, setSessions, players = [], _matches = [], appSettings = {}, setAppSettings, loading = false, teamId = null }) {
+  exercises, setExercises, sessions, setSessions, players = [], matches = [], appSettings = {}, setAppSettings, loading = false, teamId = null }) {
 
   const { t } = useTranslation();
   const isMobile = useIsMobile(760);
@@ -151,9 +158,27 @@ function Trainings({
   // L'elenco "Sedute salvate" deve seguire l'ordine cronologico delle sedute,
   // non l'ordine grezzo con cui arrivano dal backend (che può essere
   // qualsiasi cosa, es. ordine di sincronizzazione).
+  const friendlyMatchSessions = useMemo(
+    () => matches
+      .filter(isFriendlyMatch)
+      .map((match) => {
+        const opponent = match.opponent || match.title || "Avversario";
+        return {
+          ...match,
+          type: "Amichevole",
+          title: `Amichevole - ${opponent}`,
+          theme: "Amichevole",
+          exercises: [],
+          sessionBlocks: [],
+          isFriendlyMatch: true,
+        };
+      }),
+    [matches]
+  );
+
   const sortedSessions = useMemo(
-    () => [...sessions].sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)),
-    [sessions]
+    () => [...sessions, ...friendlyMatchSessions].sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)),
+    [sessions, friendlyMatchSessions]
   );
 
   // Prossima seduta disponibile (da oggi in poi, quella con data più vicina)
@@ -1151,7 +1176,7 @@ function Trainings({
             </div>
 
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <Badge tone="blue">{t("pages.trainings.savedCount", { count: sessions.length })}</Badge>
+              <Badge tone="blue">{t("pages.trainings.savedCount", { count: sortedSessions.length })}</Badge>
               <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: 3, gap: 2 }}>
                 {[["lista","≡"],["settimana","◫"]].map(([v, icon]) => (
                   <button key={v} onClick={() => setSessionsView(v)} style={{
@@ -1166,7 +1191,7 @@ function Trainings({
 
           {sessionsView === "settimana" && (
             <WeekView
-              sessions={sessions}
+              sessions={sortedSessions}
               weekOffset={weekOffset}
               onPrevWeek={() => setWeekOffset((o) => o - 1)}
               onNextWeek={() => setWeekOffset((o) => o + 1)}
@@ -1186,9 +1211,9 @@ function Trainings({
           )}
 
           {sessionsView === "lista" && <>
-          {loading && sessions.length === 0 ? (
+          {loading && sortedSessions.length === 0 ? (
             <SkeletonList rows={3} cols={2} />
-          ) : sessions.length === 0 ? (
+          ) : sortedSessions.length === 0 ? (
             <EmptyState
               icon="📋"
               title={t("pages.trainings.noSavedTitle")}
@@ -1219,8 +1244,10 @@ function Trainings({
                 const sessionTotal =
                   (session.exercises || []).reduce((sum, item) => sum + Number(item.customDuration || 0), 0) +
                   (session.sessionBlocks || []).reduce((sum, b) => sum + (Number(b.duration) || 0), 0);
-                const canMarkCompleted = Boolean(session.date && session.date < localDateString());
-                const isCompleted = Boolean(session.completed);
+                const canMarkCompleted = !session.isFriendlyMatch && Boolean(session.date && session.date < localDateString());
+                const isCompleted = session.isFriendlyMatch
+                  ? Boolean(session.date && session.date < localDateString())
+                  : Boolean(session.completed);
 
                 return (
                   <div
@@ -1254,7 +1281,7 @@ function Trainings({
                         </div>
 
                         <p style={{ color: "#94a3b8", margin: "8px 0", lineHeight: 1.4 }}>
-                          {formatDate(session.date)} · {getThemeLabel(session.theme, t)} ·{" "}
+                          {formatDate(session.date)} · {session.isFriendlyMatch ? "Amichevole" : getThemeLabel(session.theme, t)} ·{" "}
                           {sessionTotal} min
                         </p>
 
@@ -1317,7 +1344,7 @@ function Trainings({
                           {t("pages.trainings.attendance")}
                         </Button>
 
-                        {canManage && (
+                        {canManage && !session.isFriendlyMatch && (
                           <>
                             <Button
                               variant="ghost"
@@ -1739,31 +1766,37 @@ function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, on
                 {daySessions.length === 0 && onCreateSession && (
                   <div style={{ textAlign: "center", paddingTop: 10, color: "#334155", fontSize: 18, lineHeight: 1 }}>+</div>
                 )}
-                {daySessions.map((s) => (
-                  <div key={s.id} style={{
-                    borderRadius: 6, padding: "5px 7px",
-                    background: "rgba(56,189,248,0.13)", border: "1px solid rgba(56,189,248,0.25)",
-                    cursor: "pointer",
-                  }}
-                    onClick={() => onEditSession(s)}
-                    title={s.title || "Allenamento"}
-                  >
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "#38bdf8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {s.title || "Allenamento"}
-                    </div>
-                    {s.exercises?.length > 0 && (
-                      <div style={{ fontSize: 10, color: "#64748b" }}>
-                        {s.exercises.reduce((t, e) => t + Number(e.customDuration || 0), 0)} min
-                      </div>
-                    )}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onNavigateAttendance(s.id); }}
-                      style={{ marginTop: 4, width: "100%", fontSize: 11, fontWeight: 700, padding: "6px 0", borderRadius: 4, border: "1px solid rgba(56,189,248,0.3)", background: "rgba(56,189,248,0.08)", color: "#38bdf8", cursor: "pointer" }}
+                {daySessions.map((s) => {
+                  const openSession = () => {
+                    if (s.isFriendlyMatch) onNavigateAttendance(s.id);
+                    else onEditSession(s);
+                  };
+                  return (
+                    <div key={s.id} style={{
+                      borderRadius: 6, padding: "5px 7px",
+                      background: "rgba(56,189,248,0.13)", border: "1px solid rgba(56,189,248,0.25)",
+                      cursor: "pointer",
+                    }}
+                      onClick={openSession}
+                      title={s.title || "Allenamento"}
                     >
-                      Presenze
-                    </button>
-                  </div>
-                ))}
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "#38bdf8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {s.title || "Allenamento"}
+                      </div>
+                      {s.exercises?.length > 0 && (
+                        <div style={{ fontSize: 10, color: "#64748b" }}>
+                          {s.exercises.reduce((t, e) => t + Number(e.customDuration || 0), 0)} min
+                        </div>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onNavigateAttendance(s.id); }}
+                        style={{ marginTop: 4, width: "100%", fontSize: 11, fontWeight: 700, padding: "6px 0", borderRadius: 4, border: "1px solid rgba(56,189,248,0.3)", background: "rgba(56,189,248,0.08)", color: "#38bdf8", cursor: "pointer" }}
+                      >
+                        Presenze
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
@@ -3063,8 +3096,8 @@ function calcPartitellaStats(sessions) {
 }
 
 function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppSettings }) {
-  const torelloFines = appSettings.torelloFines || {};              // legacy flat (da migrare alla prima settimana)
-  const torelloFinesWeekly = appSettings.torelloFinesWeekly || {}; // per-settimana (struttura definitiva)
+  const torelloFines = useMemo(() => appSettings.torelloFines || {}, [appSettings.torelloFines]);              // legacy flat (da migrare alla prima settimana)
+  const torelloFinesWeekly = useMemo(() => appSettings.torelloFinesWeekly || {}, [appSettings.torelloFinesWeekly]); // per-settimana (struttura definitiva)
   const [sortMode, setSortMode] = useState("alpha");
   const [selectedWeek, setSelectedWeek] = useState("totale");
 
@@ -3105,15 +3138,6 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
 
   const stats = useMemo(() => calcPartitellaStats(filteredSessions), [filteredSessions]);
 
-  function getTorello(playerId) {
-    const pid = String(playerId);
-    if (selectedWeek === "totale") {
-      return Object.values(torelloFinesWeekly).reduce((sum, wm) => sum + (wm[pid] || 0), 0)
-           + (torelloFines[pid] || 0); // fallback pre-migrazione
-    }
-    return torelloFinesWeekly[selectedWeek]?.[pid] || 0;
-  }
-
   function changeTorello(playerId, delta) {
     if (!setAppSettings || selectedWeek === "totale") return;
     const pid = String(playerId);
@@ -3125,28 +3149,29 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
     setAppSettings((prev) => ({ ...prev, torelloFinesWeekly: { ...torelloFinesWeekly, [selectedWeek]: updatedWeek } }));
   }
 
-  const allTorelloPlayers = useMemo(() => {
-    const pids = new Set(Object.keys(torelloFines));
-    Object.values(torelloFinesWeekly).forEach((wm) => Object.keys(wm).forEach((pid) => pids.add(pid)));
-    return pids;
-  }, [torelloFines, torelloFinesWeekly]);
-
   const rows = useMemo(() => {
+    const getRowTorello = (playerId) => {
+      const pid = String(playerId);
+      if (selectedWeek === "totale") {
+        return Object.values(torelloFinesWeekly).reduce((sum, wm) => sum + (wm[pid] || 0), 0)
+             + (torelloFines[pid] || 0);
+      }
+      return torelloFinesWeekly[selectedWeek]?.[pid] || 0;
+    };
+
     return players
-      .filter((p) => stats[String(p.id)] || allTorelloPlayers.has(String(p.id)))
       .map((p) => {
         const s = stats[String(p.id)] || { wins: 0, losses: 0, draws: 0, fine: 0 };
-        const torello = getTorello(p.id);
+        const torello = getRowTorello(p.id);
         return { p, ...s, torello, totalFine: s.fine + torello };
       })
-      .filter((r) => r.wins || r.losses || r.draws || r.torello || selectedWeek === "totale")
       .sort((a, b) => {
-        const lastName = (p) => (p.name || "").split(" ").pop() || "";
+        const lastName = (p) => getPlayerLastName(p);
         if (sortMode === "fineDesc") return b.totalFine - a.totalFine || lastName(a.p).localeCompare(lastName(b.p), "it");
         if (sortMode === "fineAsc")  return a.totalFine - b.totalFine || lastName(a.p).localeCompare(lastName(b.p), "it");
         return lastName(a.p).localeCompare(lastName(b.p), "it");
       });
-  }, [players, stats, allTorelloPlayers, sortMode, selectedWeek, torelloFinesWeekly, torelloFines]);
+  }, [players, stats, sortMode, selectedWeek, torelloFinesWeekly, torelloFines]);
 
   if (!rows.length && weeks.length <= 1) return null;
 
@@ -3202,7 +3227,7 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
           <tbody>
             {rows.map(({ p, wins, losses, draws, fine, torello, totalFine }) => (
               <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                <td style={{ padding: "7px 10px", color: "#e2e8f0", fontWeight: 600 }}>{p.name}</td>
+                <td style={{ padding: "7px 10px", color: "#e2e8f0", fontWeight: 600 }}>{getPlayerFullName(p)}</td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: "#22c55e", fontWeight: 700 }}>{wins}</td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: "#ef4444", fontWeight: 700 }}>{losses}</td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: "#94a3b8" }}>{draws}</td>

@@ -18,6 +18,17 @@ import { useIsMobile } from "../hooks/useIsMobile";
 const StatisticsCharts = lazy(() => import("../components/statistics/StatisticsCharts"));
 const MinutaggioMatrix = lazy(() => import("../components/statistics/MinutaggioMatrix"));
 
+function isFriendlyMatch(event) {
+  if (event?.type !== "Partita") return false;
+  if (event.isFriendly === true || event.friendly === true) return true;
+  const fields = [event.matchKind, event.match_kind, event.competition, event.category, event.kind, event.title, event.notes];
+  return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
+}
+
+function isTrainingStatsEvent(event) {
+  return (event?.type || "Allenamento") === "Allenamento" || isFriendlyMatch(event);
+}
+
 function Statistics({
   events, players, appSettings = {}, setAppSettings }) {
   const { t } = useTranslation();
@@ -150,7 +161,7 @@ function Statistics({
       return;
     }
     const matchEvents = events.filter(
-      (e) => e.type === "Partita" && (!from || e.date >= from) && (!to || e.date <= to)
+      (e) => e.type === "Partita" && !isFriendlyMatch(e) && (!from || e.date >= from) && (!to || e.date <= to)
     );
     setCaricoMatchCount(matchEvents.length);
     if (!auth.team?.id || matchEvents.length === 0) {
@@ -215,7 +226,11 @@ function Statistics({
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
-      const matchesType = eventType === "Tutti" || event.type === eventType;
+      const matchesType =
+        eventType === "Tutti" ||
+        (eventType === "Partita" && event.type === "Partita" && !isFriendlyMatch(event)) ||
+        (eventType !== "Partita" && event.type === eventType) ||
+        (eventType === "Allenamento" && isFriendlyMatch(event));
       const afterStart = !fromDate || event.date >= fromDate;
       const beforeEnd = !toDate || event.date <= toDate;
 
@@ -1304,7 +1319,7 @@ const getMiniMatchStatsMap = (sessions) => {
 
 function PartitelleStats({ events, players, squadraFilter }) {
   const [selectedWeek, setSelectedWeek] = useState("all");
-  const trainingEvents = events.filter((e) => (e.type || "Allenamento") !== "Partita" && e.date);
+  const trainingEvents = events.filter((e) => isTrainingStatsEvent(e) && e.date);
   const sessions = trainingEvents.filter((e) => e.partitella?.winner != null);
 
   const weeks = new Map();
@@ -1739,7 +1754,7 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
   const now = new Date();
   const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const trainingSessions = events
-    .filter((e) => (e.type || "Allenamento") === "Allenamento")
+    .filter(isTrainingStatsEvent)
     .map((e) => ({ ...e, date: normalizeStatsDate(e.date) }))
     .filter((e) => isCompletedTrainingSession(e, today, nowTime));
   return players.map((player) => {
@@ -1779,7 +1794,7 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
     // se i dati non sono stati sincronizzati. Il badge "Dati locali" in UI avvisa l'utente.
     const hasSupabaseStats = Object.keys(ps).length > 0;
     const localMatchStats = hasSupabaseStats ? null : events
-      .filter((e) => e.type === "Partita")
+      .filter((e) => e.type === "Partita" && !isFriendlyMatch(e))
       .reduce(
         (acc, event) => {
           const d = event.attendance?.[player.id];

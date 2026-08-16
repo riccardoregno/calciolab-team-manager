@@ -1618,6 +1618,7 @@ export const it = {
       fieldTitle: "Titolo",
       fieldDate: "Data",
       fieldTime: "Orario",
+      fieldMatchKind: "Tipo partita",
       fieldLocation: "Campo",
       locationHome: "Casa",
       locationAway: "Trasferta",

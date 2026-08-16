@@ -47,19 +47,42 @@ function getPlayerSessionStatus(player, session, attendance) {
   return STATUS_TONE[entry.status] ? entry.status : getDefaultStatus(player, normalizeDateStr(session.date));
 }
 
-export default function SessionAttendance({ players = [], sessions = [], setSessions }) {
+function isFriendlyMatch(match) {
+  if (match?.type !== "Partita") return false;
+  if (match.isFriendly === true || match.friendly === true) return true;
+  const fields = [match.matchKind, match.match_kind, match.competition, match.category, match.kind, match.title, match.notes];
+  return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
+}
+
+function getFriendlySession(match) {
+  if (!match) return null;
+  const opponent = match.opponent || match.title || "Avversario";
+  return {
+    ...match,
+    title: `Amichevole - ${opponent}`,
+    theme: "Amichevole",
+    exercises: [],
+    isFriendlyMatch: true,
+  };
+}
+
+export default function SessionAttendance({ players = [], sessions = [], setSessions, matches = [], setMatches }) {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { canManage } = useAreaPermission();
   const [showSummaryList, setShowSummaryList] = useState(false);
 
-  const session = sessions.find((s) => String(s.id) === String(id));
+  const trainingSession = sessions.find((s) => String(s.id) === String(id));
+  const friendlyMatch = matches.find((match) => String(match.id) === String(id) && isFriendlyMatch(match));
+  const session = trainingSession || getFriendlySession(friendlyMatch);
+  const updateEvents = session?.isFriendlyMatch ? setMatches : setSessions;
 
   function updatePlayer(playerId, field, value) {
     if (!canManage) return;
     if (!session) return;
-    setSessions((prevSessions) =>
+    if (!updateEvents) return;
+    updateEvents((prevSessions) =>
       prevSessions.map((item) => {
         if (String(item.id) !== String(id)) return item;
         const current = item.attendance?.[playerId] || {};
@@ -77,7 +100,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   function markAll(status) {
     if (!canManage) return;
     if (!session) return;
-    setSessions((prevSessions) =>
+    if (!updateEvents) return;
+    updateEvents((prevSessions) =>
       prevSessions.map((item) => {
         if (String(item.id) !== String(id)) return item;
         const newAttendance = {};

@@ -1618,6 +1618,7 @@ export const en = {
       sessionTitlePlaceholder: "Session title",
       fieldDate: "Date",
       fieldTime: "Time",
+      fieldMatchKind: "Match type",
       fieldLocation: "Venue",
       locationHome: "Home",
       locationAway: "Away",

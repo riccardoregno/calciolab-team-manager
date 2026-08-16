@@ -945,6 +945,8 @@ function App() {
                     players={players}
                     sessions={sessions}
                     setSessions={setSessions}
+                    matches={matches}
+                    setMatches={setMatches}
                   />, "sessions")
                 }
               />

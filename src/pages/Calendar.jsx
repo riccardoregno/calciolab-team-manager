@@ -28,6 +28,12 @@ const EVENT_TYPES = [
   { value: "Altro",       labelKey: "pages.calendar.typeOther",   tone: "blue" },
 ];
 
+const MATCH_KIND_OPTIONS = [
+  { value: "Campionato", labelKey: "pages.matches.matchKindCampionato" },
+  { value: "Coppa", labelKey: "pages.matches.matchKindCoppa" },
+  { value: "Amichevole", labelKey: "pages.matches.matchKindAmichevole" },
+];
+
 const weekDayKeys = [
   "pages.calendar.weekDayMon",
   "pages.calendar.weekDayTue",
@@ -560,6 +566,10 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
     }
   }
 
+  function handleMatchKindChange(event, matchKind) {
+    onEditEvent?.(event, { matchKind });
+  }
+
   const week         = buildWeek(offset);
 
   // Filtra gli eventi della settimana confrontando le chiavi YYYY-MM-DD come stringhe
@@ -723,6 +733,9 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                               </div>
                               {canManage && (
                                 <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+                                  {event.type === "Partita" && (
+                                    <MatchKindSelect event={event} onChange={handleMatchKindChange} compact />
+                                  )}
                                   <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={wv.iconBtn} title="Modifica" aria-label="Modifica">✏️</button>
                                   <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina" aria-label="Elimina">🗑️</button>
                                 </div>
@@ -736,6 +749,9 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                                 </Badge>
                                 {canManage && (
                                   <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+                                    {event.type === "Partita" && (
+                                      <MatchKindSelect event={event} onChange={handleMatchKindChange} compact={isCompactWeek} />
+                                    )}
                                     <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} style={{ ...wv.iconBtn, ...(isCompactWeek ? wv.iconBtnCompact : {}) }} title="Modifica evento" aria-label="Modifica evento">✏️</button>
                                     <button onClick={(e) => { e.stopPropagation(); onDeleteEvent?.(event); }} style={{ ...wv.iconBtn, ...(isCompactWeek ? wv.iconBtnCompact : {}), background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }} title="Elimina evento" aria-label="Elimina evento">🗑️</button>
                                   </div>
@@ -810,6 +826,30 @@ function WeekKpi({ label, value, tone, sub }) {
       <h2 style={{ margin: "10px 0 5px", fontSize: 28, lineHeight: 1 }}>{value}</h2>
       {sub && <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>{sub}</p>}
     </AppCard>
+  );
+}
+
+function MatchKindSelect({ event, onChange, compact = false }) {
+  const { t } = useTranslation();
+
+  return (
+    <select
+      value={event.matchKind || event.match_kind || "Campionato"}
+      onChange={(e) => {
+        e.stopPropagation();
+        onChange?.(event, e.target.value);
+      }}
+      onClick={(e) => e.stopPropagation()}
+      aria-label={t("pages.calendar.fieldMatchKind")}
+      title={t("pages.calendar.fieldMatchKind")}
+      style={{ ...wv.matchKindSelect, ...(compact ? wv.matchKindSelectCompact : {}) }}
+    >
+      {MATCH_KIND_OPTIONS.map((option) => (
+        <option key={option.value} value={option.value}>
+          {t(option.labelKey)}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -914,6 +954,24 @@ const wv = {
     cursor: "pointer", fontSize: 13, display: "grid", placeItems: "center", lineHeight: 1,
   },
   iconBtnCompact: { width: 28, height: 28, fontSize: 12 },
+  matchKindSelect: {
+    height: 32,
+    maxWidth: 122,
+    borderRadius: 7,
+    border: "1px solid rgba(251,146,60,0.35)",
+    background: "rgba(15,23,42,0.92)",
+    color: "#fed7aa",
+    cursor: "pointer",
+    fontSize: 11,
+    fontWeight: 800,
+    padding: "0 6px",
+  },
+  matchKindSelectCompact: {
+    height: 28,
+    maxWidth: 104,
+    fontSize: 10,
+    padding: "0 4px",
+  },
   muted:       { color: "#475569", margin: 0, fontSize: 12 },
   alertHeader: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 },
   alertGrid:   { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 },
@@ -1035,6 +1093,7 @@ function EventEditModal({ event, onSave, onClose }) {
     time:     event.time || "",
     notes:    event.notes || "",
     // match-only
+    matchKind: event.matchKind || event.match_kind || "Campionato",
     location: event.location || "Casa",
     result:   event.result || "",
     // session-only
@@ -1050,6 +1109,7 @@ function EventEditModal({ event, onSave, onClose }) {
           date:     form.date,
           time:     form.time,
           notes:    form.notes,
+          matchKind: form.matchKind,
           location: form.location,
           result:   form.result,
         }
@@ -1102,6 +1162,13 @@ function EventEditModal({ event, onSave, onClose }) {
 
           {isMatch && (
             <>
+              <label style={em.label}>{t("pages.calendar.fieldMatchKind")}</label>
+              <select style={em.input} value={form.matchKind} onChange={(e) => setForm({ ...form, matchKind: e.target.value })}>
+                <option value="Campionato">{t("pages.matches.matchKindCampionato")}</option>
+                <option value="Coppa">{t("pages.matches.matchKindCoppa")}</option>
+                <option value="Amichevole">{t("pages.matches.matchKindAmichevole")}</option>
+              </select>
+
               <label style={em.label}>{t("pages.calendar.fieldLocation")}</label>
               <select style={em.input} value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}>
                 <option value="Casa">{t("pages.calendar.locationHome")}</option>
