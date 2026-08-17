@@ -870,7 +870,7 @@ function App() {
 
               <Route
                 path="/availability"
-                element={gate(["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"], <Availability players={players} setPlayers={setPlayers} sessions={sessions} matches={matches} loading={loading} teamId={auth.team?.id} appSettings={previewAppSettings} />, "availability")}
+                element={gate(["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"], <Availability players={players} setPlayers={setPlayers} sessions={sessions} matches={matches} loading={loading} teamId={auth.team?.id} appSettings={previewAppSettings} refreshing={refreshing} onSyncNow={auth.team?.id ? refreshTeamData : null} />, "availability")}
               />
 
               <Route

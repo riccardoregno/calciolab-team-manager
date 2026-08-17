@@ -279,7 +279,7 @@ function getMedicalType(status, injuryType, differentiatedType) {
 // Componente principale
 // ─────────────────────────────────────────────
 export default function Availability({
-  players = [], setPlayers, sessions = [], matches = [], loading = false, teamId = null, appSettings = {} }) {
+  players = [], setPlayers, sessions = [], matches = [], loading = false, teamId = null, appSettings = {}, refreshing = false, onSyncNow = null }) {
 
   const { t } = useTranslation();
   const location = useLocation();
@@ -405,6 +405,16 @@ export default function Availability({
   // il numero di riferimento usato per organizzare gli allenamenti della prima squadra.
   const primaPlayers = players.filter((p) => (p.gruppo || "prima") === "prima");
   const availablePlayers = primaPlayers.filter((p) => !UNAVAILABLE.includes(p.status || "Disponibile"));
+
+  async function handleSyncNow() {
+    if (!onSyncNow) return;
+    const result = await onSyncNow();
+    if (result?.source === "supabase") {
+      showToast("Dati aggiornati dal cloud", "ok");
+    } else if (result?.error) {
+      showToast("Aggiornamento cloud non riuscito", "warn");
+    }
+  }
 
   const injuryReport = useMemo(() => {
     const today = new Date();
@@ -653,7 +663,16 @@ export default function Availability({
       <PageHeader
         title={t("pages.availability.title")}
         subtitle={t("pages.availability.subtitle")}
-        action={canManage ? <Button onClick={openAdd}>{t("pages.availability.btnAdd")}</Button> : null}
+        action={
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {onSyncNow && (
+              <Button variant="ghost" onClick={handleSyncNow} disabled={refreshing}>
+                {refreshing ? "Aggiornamento..." : "Aggiorna dati"}
+              </Button>
+            )}
+            {canManage && <Button onClick={openAdd}>{t("pages.availability.btnAdd")}</Button>}
+          </div>
+        }
       />
 
       {/* KPI + azione */}
@@ -661,7 +680,8 @@ export default function Availability({
         className="mobile-scroll-x"
         style={{ marginBottom: 12 }}
         items={[
-          { key: "available", label: t("pages.availability.kpiAvailable"), value: availablePlayers.length, color: "#22c55e" },
+          { key: "available", label: "Disponibili prima squadra", value: `${availablePlayers.length}/${primaPlayers.length}`, color: "#22c55e" },
+          { key: "totalRoster", label: "Rosa totale", value: players.length, color: "#38bdf8" },
           ...STATUS_OPTIONS.map((s) => {
             const n = players.filter((p) => p.status === s.value).length;
             return n > 0 ? { key: s.value, label: t(s.labelKey), value: n, color: s.color } : null;

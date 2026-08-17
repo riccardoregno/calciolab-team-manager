@@ -11,6 +11,7 @@ import { SkeletonList } from "../components/ui/Skeleton";
 import MetricStrip from "../components/ui/MetricStrip";
 import SearchBar from "../components/ui/SearchBar";
 import SortableTrainingTimeline from "../components/trainings/SortableTrainingTimeline";
+import ExerciseDiagram from "../components/exercises/ExerciseDiagram";
 import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useAreaPermission } from "../components/auth/permissionContext";
@@ -848,8 +849,21 @@ function Trainings({
                           ? "1px solid rgba(56,189,248,0.35)"
                           : "1px solid rgba(255,255,255,0.08)",
                         minHeight: 100,
+                        display: "grid",
+                        gap: 10,
                       }}
                     >
+                      {(exercise.image || exercise.tacticalBoard || exercise.source === "fp5") && (
+                        <ExerciseDiagram
+                          exercise={exercise}
+                          height={118}
+                          style={{
+                            border: "1px solid rgba(255,255,255,0.10)",
+                            background: "rgba(15,23,42,0.6)",
+                          }}
+                        />
+                      )}
+
                       {/* Block badge */}
                       {(() => {
                         const blk = exercise.trainingBlock || getBlockFromCategory(exercise.category);
@@ -933,7 +947,9 @@ function Trainings({
                     className="training-variant-row"
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "1fr 100px 100px 1fr",
+                      gridTemplateColumns: item.image || item.tacticalBoard || item.source === "fp5"
+                        ? "92px minmax(160px,1fr) 100px 100px minmax(160px,1fr)"
+                        : "1fr 100px 100px 1fr",
                       gap: 12,
                       alignItems: "center",
                       padding: 12,
@@ -942,6 +958,17 @@ function Trainings({
                       border: "1px solid rgba(255,255,255,0.08)",
                     }}
                   >
+                    {(item.image || item.tacticalBoard || item.source === "fp5") && (
+                      <ExerciseDiagram
+                        exercise={item}
+                        height={62}
+                        style={{
+                          border: "1px solid rgba(255,255,255,0.10)",
+                          background: "rgba(15,23,42,0.6)",
+                        }}
+                      />
+                    )}
+
                     <strong>{item.title}</strong>
 
                     <input
@@ -2003,6 +2030,31 @@ const trainingStyles = {
     fontSize: 11,
     paddingTop: 12,
   },
+  blockImagePreview: {
+    width: "100%",
+    maxHeight: 220,
+    aspectRatio: "16 / 9",
+    objectFit: "cover",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.1)",
+    display: "block",
+    background: "rgba(15,23,42,0.72)",
+  },
+  blockImageFallback: {
+    minHeight: 132,
+    borderRadius: 10,
+    border: "1px dashed rgba(248,113,113,0.32)",
+    background: "rgba(127,29,29,0.12)",
+    color: "#fecaca",
+    display: "grid",
+    placeItems: "center",
+    alignContent: "center",
+    gap: 5,
+    textAlign: "center",
+    fontSize: 12,
+    lineHeight: 1.35,
+    padding: 14,
+  },
 };
 
 /* ── Session Builder ──────────────────────────────────────────── */
@@ -2200,13 +2252,9 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
                 />
 
                 {/* Foto */}
-                {block.image?.url ? (
-                  <div style={{ position: "relative", display: "inline-block", maxWidth: "100%" }}>
-                    <img
-                      src={block.image.url}
-                      alt="Esercizio"
-                      style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", display: "block" }}
-                    />
+                {getBlockImageUrl(block.image) ? (
+                  <div style={{ position: "relative", display: "block", width: "min(100%, 520px)" }}>
+                    <BlockImagePreview src={getBlockImageUrl(block.image)} />
                     <button
                       onClick={() => updateBlock(block.id, "image", null)}
                       style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.65)", border: "none", borderRadius: 999, color: "#f87171", cursor: "pointer", width: 26, height: 26, fontSize: 13, lineHeight: "26px", textAlign: "center" }}
@@ -2252,6 +2300,34 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
         )}
       </div>
     </AppCard>
+  );
+}
+
+function getBlockImageUrl(image) {
+  if (!image) return "";
+  if (typeof image === "string") return image;
+  return image.url || image.publicUrl || image.src || "";
+}
+
+function BlockImagePreview({ src }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div style={trainingStyles.blockImageFallback}>
+        <strong>Anteprima non disponibile</strong>
+        <span>Ricarica l'immagine per salvarla di nuovo.</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt="Anteprima esercizio"
+      onError={() => setFailed(true)}
+      style={trainingStyles.blockImagePreview}
+    />
   );
 }
 
