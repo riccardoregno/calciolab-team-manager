@@ -3142,6 +3142,13 @@ function formatWeekLabel(weekKey) {
 }
 
 const STATS_ABSENT_STATUSES = new Set(["Assente", "Infortunato", "Squalificato", "Permesso", "Differenziato"]);
+const DRAW_FINE_AMOUNT = 0.5;
+
+function formatFineAmount(amount) {
+  const value = Number(amount) || 0;
+  if (value <= 0) return "—";
+  return `€ ${value.toLocaleString("it-IT", { minimumFractionDigits: Number.isInteger(value) ? 0 : 2, maximumFractionDigits: 2 })}`;
+}
 
 function calcPartitellaStats(sessions) {
   const map = {};
@@ -3171,7 +3178,7 @@ function calcPartitellaStats(sessions) {
         const teamIdx = assignmentTeamIndex(teamVal);
         if (teamIdx == null) return;
         if (!map[pid]) map[pid] = { wins: 0, losses: 0, draws: 0, fine: 0 };
-        if (p.winner === "draw") { map[pid].draws++; }
+        if (p.winner === "draw") { map[pid].draws++; map[pid].fine += DRAW_FINE_AMOUNT; }
         else if (p.winner === teamIdx) { map[pid].wins++; }
         else { map[pid].losses++; map[pid].fine += 1; }
       });
@@ -3317,7 +3324,7 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
                 <td style={{ padding: "7px 10px", textAlign: "center", color: "#ef4444", fontWeight: 700 }}>{losses}</td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: "#94a3b8" }}>{draws}</td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: fine > 0 ? "#f97316" : "#64748b" }}>
-                  {fine > 0 ? `€ ${fine}` : "—"}
+                  {formatFineAmount(fine)}
                 </td>
                 <td style={{ padding: "7px 10px", textAlign: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
@@ -3325,7 +3332,7 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
                       <button onClick={() => changeTorello(p.id, -1)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#94a3b8", cursor: "pointer", fontSize: 13, lineHeight: 1, display: "grid", placeItems: "center" }}>−</button>
                     )}
                     <span style={{ color: torello > 0 ? "#f97316" : "#64748b", fontWeight: torello > 0 ? 700 : 400, minWidth: 20, textAlign: "center" }}>
-                      {torello > 0 ? `€ ${torello}` : "—"}
+                      {formatFineAmount(torello)}
                     </span>
                     {setAppSettings && selectedWeek !== "totale" && (
                       <button onClick={() => changeTorello(p.id, 1)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#94a3b8", cursor: "pointer", fontSize: 13, lineHeight: 1, display: "grid", placeItems: "center" }}>+</button>
@@ -3333,7 +3340,7 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
                   </div>
                 </td>
                 <td style={{ padding: "7px 10px", textAlign: "center", color: totalFine > 0 ? "#ef4444" : "#64748b", fontWeight: totalFine > 0 ? 800 : 400 }}>
-                  {totalFine > 0 ? `€ ${totalFine}` : "—"}
+                  {formatFineAmount(totalFine)}
                 </td>
               </tr>
             ))}
