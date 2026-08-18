@@ -1158,11 +1158,20 @@ function Trainings({
             const teams = Array.from({ length: numTeams }, (_, i) =>
               allAvail.filter((p) => assignments[String(p.id)] === i)
             );
+            const benches = Array.from({ length: numTeams }, (_, i) =>
+              allAvail.filter((p) => {
+                const value = assignments[String(p.id)];
+                if (value === benchKey(i)) return true;
+                if (i === 0 && value === 99) return true;
+                return false;
+              })
+            );
             const hasAnyTeam = teams.some((t) => t.length > 0);
             if (!hasAnyTeam) return null;
             return (
               <FormationView
                 teams={teams}
+                benches={benches}
                 teamColors={TEAM_COLORS}
                 numTeams={numTeams}
                 savedFormations={form.teamFormations || {}}
@@ -2353,6 +2362,15 @@ function getRoleTag(role) {
   return null;
 }
 
+function escapePrintHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function sortByRole(players) {
   return [...players].sort((a, b) => {
     const ra = ROLE_ORDER[getRoleTag(a.role)] ?? 99;
@@ -2899,7 +2917,7 @@ function autoAssignFormation(players, formation) {
   return assigned;
 }
 
-function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSave }) {
+function FormationView({ teams, benches = [], teamColors, numTeams, savedFormations = {}, onSave }) {
   const [activeTeam, setActiveTeam] = useState(0);
   const [formations, setFormations] = useState({});
   const [slotMaps, setSlotMaps] = useState({});
@@ -2980,32 +2998,72 @@ function FormationView({ teams, teamColors, numTeams, savedFormations = {}, onSa
   }
 
   function printFormation() {
-    const W = 400, H = 580;
-    const svgSlots = slots.map((slot, idx) => {
-      const p = slotMap[idx];
-      const cx = slot.x / 100 * W;
-      const cy = slot.y / 100 * H;
-      const tag = p ? (getRoleTag(p.role) || "") : "";
-      const col = ROLE_BADGE_COLORS[tag] || "#888";
-      const name = p ? getPlayerTeamLabel(p, duplicateLastNames).slice(0, 12) : "—";
-      return `<g>
-        <circle cx="${cx}" cy="${cy}" r="18" fill="${col}" opacity="0.85"/>
-        <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="9" font-weight="900" fill="white" font-family="sans-serif">${tag}</text>
-        <text x="${cx}" y="${cy + 9}" text-anchor="middle" font-size="8" fill="white" font-family="sans-serif">${name}</text>
-      </g>`;
-    }).join("");
-    const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-      <rect width="${W}" height="${H}" fill="#166534" rx="8"/>
-      <rect x="20" y="20" width="${W-40}" height="${H-40}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
-      <line x1="20" y1="${H/2}" x2="${W-20}" y2="${H/2}" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
-      <circle cx="${W/2}" cy="${H/2}" r="40" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
-      <rect x="${W/2-50}" y="20" width="100" height="60" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
-      <rect x="${W/2-50}" y="${H-80}" width="100" height="60" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
-      ${svgSlots}
-    </svg>`;
+    const W = 320, H = 464;
+    const sortForPrint = (arr) => sortByRole(arr || []);
+    const playerName = (p) => escapePrintHtml(getPlayerTeamLabel(p, duplicateLastNames));
+    const allFormations = { ...formations };
+    const allSlotMaps = { ...slotMaps, [activeTeam]: slotMap };
+
+    const renderField = (teamIdx) => {
+      const teamPlayers = teams[teamIdx] || [];
+      const teamFormation = allFormations[teamIdx] || "4-3-3";
+      const teamSlots = FORMATIONS_DEF[teamFormation] || [];
+      const teamSlotMap = allSlotMaps[teamIdx] ?? autoAssignFormation([...teamPlayers], teamFormation);
+      const svgSlots = teamSlots.map((slot, idx) => {
+        const p = teamSlotMap[idx];
+        const cx = slot.x / 100 * W;
+        const cy = slot.y / 100 * H;
+        const tag = p ? (getRoleTag(p.role) || slot.role || "") : slot.role || "";
+        const col = ROLE_BADGE_COLORS[slot.role] || ROLE_BADGE_COLORS[tag] || "#888";
+        const name = p ? playerName(p).slice(0, 12) : "";
+        return `<g>
+          <circle cx="${cx}" cy="${cy}" r="15" fill="${p ? col : "rgba(255,255,255,0.10)"}" stroke="${p ? "rgba(255,255,255,0.42)" : col}" stroke-width="1.2" ${p ? 'opacity="0.9"' : 'stroke-dasharray="4 3"'}/>
+          <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="8" font-weight="900" fill="white" font-family="sans-serif">${escapePrintHtml(tag)}</text>
+          <text x="${cx}" y="${cy + 8}" text-anchor="middle" font-size="7" fill="white" font-family="sans-serif">${name}</text>
+        </g>`;
+      }).join("");
+      const bench = benches[teamIdx] || [];
+      const benchHtml = bench.length
+        ? `<div class="bench"><strong>A disposizione (${bench.length})</strong>${sortForPrint(bench).map((p) => {
+            const tag = getRoleTag(p.role) || "";
+            return `<span><b>${escapePrintHtml(tag)}</b> ${playerName(p)}</span>`;
+          }).join("")}</div>`
+        : `<div class="bench empty"><strong>A disposizione</strong><span>Nessuno</span></div>`;
+
+      return `<section class="team-card">
+        <h2>${escapePrintHtml(teamColors[teamIdx]?.label || `Squadra ${teamIdx + 1}`)} — ${escapePrintHtml(teamFormation)}</h2>
+        <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+          <rect width="${W}" height="${H}" fill="#166534" rx="8"/>
+          <rect x="16" y="16" width="${W-32}" height="${H-32}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.4"/>
+          <line x1="16" y1="${H/2}" x2="${W-16}" y2="${H/2}" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+          <circle cx="${W/2}" cy="${H/2}" r="34" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+          <rect x="${W/2-44}" y="16" width="88" height="52" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+          <rect x="${W/2-44}" y="${H-68}" width="88" height="52" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+          ${svgSlots}
+        </svg>
+        ${benchHtml}
+      </section>`;
+    };
+
+    const content = Array.from({ length: numTeams }, (_, i) => renderField(i)).join("");
     const win = window.open("", "_blank");
-    win.document.write(`<html><head><title>Schieramento</title><style>body{margin:0;padding:24px;font-family:sans-serif;background:#f8fafc}h2{margin-bottom:12px}@media print{button{display:none}}</style></head>
-      <body><h2>${teamColors[activeTeam]?.label || "Squadra"} — ${formation}</h2>${svg}
+    win.document.write(`<html><head><title>Schieramento</title><style>
+      @page{size:A4 landscape;margin:10mm}
+      *{box-sizing:border-box}
+      body{margin:0;padding:18px;font-family:sans-serif;background:#f8fafc;color:#0f172a}
+      .sheet{display:grid;grid-template-columns:repeat(${Math.min(numTeams, 2)},minmax(0,1fr));gap:18px;align-items:start}
+      .team-card{break-inside:avoid}
+      h1{margin:0 0 12px;font-size:20px}
+      h2{margin:0 0 8px;font-size:16px}
+      svg{display:block;width:100%;height:auto;max-height:520px;border-radius:8px}
+      .bench{margin-top:8px;padding:8px 10px;border:1px solid #dbe3ef;border-radius:8px;background:white;display:flex;flex-wrap:wrap;gap:6px 10px;font-size:11px;line-height:1.25}
+      .bench strong{width:100%;font-size:11px;text-transform:uppercase;color:#475569}
+      .bench span{white-space:nowrap}
+      .bench b{font-size:10px;color:#2563eb}
+      .empty span{color:#94a3b8}
+      @media print{body{padding:0}button{display:none}.sheet{gap:12px}h1{font-size:18px}h2{font-size:14px}.bench{font-size:10px}}
+    </style></head>
+      <body><h1>Schieramento squadre — ${new Date().toLocaleDateString("it")}</h1><div class="sheet">${content}</div>
       <br><button onclick="window.print()">Stampa</button></body></html>`);
     win.document.close();
   }
