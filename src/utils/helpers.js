@@ -293,6 +293,8 @@ export function normalizeMatch(match){
       captainId: match.lineup?.captainId || "",
       roles: match.lineup?.roles || {},
       ready: Boolean(match.lineup?.ready),
+      subsMade: Number(match.lineup?.subsMade || 0),
+      formationPlans: match.lineup?.formationPlans || {},
     },
     matchPlan: match.matchPlan || "",
     opponentNotes: match.opponentNotes || "",
@@ -1227,6 +1229,7 @@ export function getLineup(match){
     roles: match?.lineup?.roles || {},
     ready: Boolean(match?.lineup?.ready),
     subsMade: Number(match?.lineup?.subsMade || 0),
+    formationPlans: match?.lineup?.formationPlans || {},
   };
 }
 

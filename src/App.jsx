@@ -13,6 +13,7 @@ import AppCard from "./components/ui/AppCard";
 import Button from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import PWAInstallBanner from "./components/ui/PWAInstallBanner";
+import PWAUpdateBanner from "./components/ui/PWAUpdateBanner";
 import PushBanner from "./components/ui/PushBanner";
 import BillingBanner from "./components/ui/BillingBanner";
 import DeepLinkHandler from "./components/utils/DeepLinkHandler";
@@ -1118,6 +1119,7 @@ function App() {
         <MobileBottomNav currentRole={auth.team?.role || null} storageSource={storageSource} chatUnread={chatUnread} />
       )}
       <PWAInstallBanner />
+      <PWAUpdateBanner />
       <PushBanner />
       {/* Push notifications — dentro BrowserRouter perché il hook usa useNavigate */}
       <PushNotificationHandler

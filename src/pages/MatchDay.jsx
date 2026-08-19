@@ -20,6 +20,7 @@ import {
   PlayerList, TeamMark, MiniStat, PrintKpi, PrintBox, PlayerPrintTable,
   SectionHeader, MatchCommandCenter,
 } from "../components/matchday/MatchDayElements";
+import MatchFormationPlanner from "../components/matchday/MatchFormationPlanner";
 import {
   getOpponentScouting, getPreMatchChecklist, getChecklistItems, hasText,
   getMatchVenue, buildMatchPlanPrefill, buildStaffNotesPrefill,
@@ -830,6 +831,15 @@ function MatchDay({
             />
           </AppCard>
         </div>
+
+        <MatchFormationPlanner
+          match={selectedMatch}
+          lineup={lineup}
+          players={players}
+          onChange={updateLineup}
+          clubName={clubName}
+          isMobile={isMobile}
+        />
 
         <div style={{ ...matchDayStyles.mainGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
           <AppCard>

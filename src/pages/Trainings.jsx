@@ -1242,6 +1242,7 @@ function Trainings({
                 requestAnimationFrame(scrollToTrainingForm);
               } : null}
               onNavigateAttendance={(id) => navigate(`/session-attendance/${id}`)}
+              onNavigateFormation={(id) => navigate(`/match-day/${id}`)}
               canManage={canManage}
             />
           )}
@@ -1381,12 +1382,20 @@ function Trainings({
                         </Button>
 
                         {session.isFriendlyMatch && (
-                          <Button
-                            variant="ghost"
-                            onClick={() => navigate(`/match-stats/${session.id}`)}
-                          >
-                            Minutaggi
-                          </Button>
+                          <>
+                            <Button
+                              variant="ghost"
+                              onClick={() => navigate(`/match-day/${session.id}`)}
+                            >
+                              Formazione
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              onClick={() => navigate(`/match-stats/${session.id}`)}
+                            >
+                              Minutaggi
+                            </Button>
+                          </>
                         )}
 
                         {canManage && !session.isFriendlyMatch && (
@@ -1745,7 +1754,7 @@ function getWeekStart(offset) {
   return d;
 }
 
-function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, onEditSession, onCreateSession, onNavigateAttendance }) {
+function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, onEditSession, onCreateSession, onNavigateAttendance, onNavigateFormation }) {
   const weekStart = getWeekStart(weekOffset);
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
@@ -1813,7 +1822,7 @@ function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, on
                 )}
                 {daySessions.map((s) => {
                   const openSession = () => {
-                    if (s.isFriendlyMatch) onNavigateAttendance(s.id);
+                    if (s.isFriendlyMatch) onNavigateFormation?.(s.id);
                     else onEditSession(s);
                   };
                   return (
@@ -1839,6 +1848,14 @@ function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, on
                       >
                         Presenze
                       </button>
+                      {s.isFriendlyMatch && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onNavigateFormation?.(s.id); }}
+                          style={{ marginTop: 4, width: "100%", fontSize: 11, fontWeight: 700, padding: "6px 0", borderRadius: 4, border: "1px solid rgba(34,197,94,0.35)", background: "rgba(34,197,94,0.10)", color: "#86efac", cursor: "pointer" }}
+                        >
+                          Formazione
+                        </button>
+                      )}
                     </div>
                   );
                 })}
