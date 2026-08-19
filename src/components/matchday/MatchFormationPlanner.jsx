@@ -70,6 +70,11 @@ function shortName(player = {}) {
   return String(label).slice(0, 12);
 }
 
+function getShirtNumber(player = {}, lineup = {}) {
+  const matchNumber = lineup.shirtNumbers?.[String(player.id)];
+  return String(matchNumber || player.shirtNumber || player.number || "").trim();
+}
+
 function escapeHtml(value = "") {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -204,6 +209,14 @@ export default function MatchFormationPlanner({
     updatePlan(activeHalf, { slots: {} });
   }
 
+  function updateShirtNumber(playerId, value) {
+    const cleanValue = String(value || "").replace(/\D/g, "").slice(0, 2);
+    const nextNumbers = { ...(lineup.shirtNumbers || {}) };
+    if (cleanValue) nextNumbers[String(playerId)] = cleanValue;
+    else delete nextNumbers[String(playerId)];
+    onChange({ shirtNumbers: nextNumbers });
+  }
+
   function printPlans() {
     const W = 320;
     const H = 464;
@@ -219,14 +232,20 @@ export default function MatchFormationPlanner({
         const cx = (slot.x / 100) * W;
         const cy = (slot.y / 100) * H;
         const color = ROLE_COLORS[slot.role] || "#64748b";
+        const shirtNumber = player ? getShirtNumber(player, lineup) : "";
+        const marker = shirtNumber || slot.role;
         return `<g>
           <circle cx="${cx}" cy="${cy}" r="16" fill="${player ? color : "rgba(255,255,255,0.10)"}" stroke="rgba(255,255,255,0.45)" stroke-width="1.2"/>
-          <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="8" font-weight="900" fill="white" font-family="sans-serif">${slot.role}</text>
+          <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="9" font-weight="900" fill="white" font-family="sans-serif">${escapeHtml(marker)}</text>
           <text x="${cx}" y="${cy + 8}" text-anchor="middle" font-size="7" fill="white" font-family="sans-serif">${escapeHtml(player ? shortName(player) : "")}</text>
         </g>`;
       }).join("");
       const benchHtml = bench.length
-        ? bench.map((player) => `<span><b>${escapeHtml(getRoleTag(player.role))}</b> ${escapeHtml(playerName(player))}</span>`).join("")
+        ? bench.map((player) => {
+            const shirtNumber = getShirtNumber(player, lineup);
+            const marker = shirtNumber ? `#${shirtNumber}` : getRoleTag(player.role) || "-";
+            return `<span><b>${escapeHtml(marker)}</b> ${escapeHtml(playerName(player))}</span>`;
+          }).join("")
         : "<span>Nessuno</span>";
 
       return `<section class="team-card">
@@ -314,6 +333,7 @@ export default function MatchFormationPlanner({
         <FormationField
           slots={slots}
           plan={activePlan}
+          lineup={lineup}
           playerMap={playerMap}
           selectedSlot={selectedSlot}
           onSlotClick={setSelectedSlot}
@@ -328,9 +348,26 @@ export default function MatchFormationPlanner({
           <p style={plannerStyles.hint}>
             Seleziona uno slot sul campo, poi scegli un convocato. Clic su uno slot pieno per liberarlo.
           </p>
+          <div style={plannerStyles.numberGrid}>
+            {calledPlayers.map((player) => (
+              <label key={player.id} style={plannerStyles.numberRow}>
+                <span>{playerName(player)}</span>
+                <input
+                  value={getShirtNumber(player, lineup)}
+                  onChange={(event) => updateShirtNumber(player.id, event.target.value)}
+                  placeholder="#"
+                  inputMode="numeric"
+                  maxLength={2}
+                  style={plannerStyles.numberInput}
+                />
+              </label>
+            ))}
+          </div>
           <div style={plannerStyles.playerGrid}>
             {availablePlayers.map((player) => {
               const role = getRoleTag(player.role);
+              const shirtNumber = getShirtNumber(player, lineup);
+              const marker = shirtNumber ? `#${shirtNumber}` : role || "-";
               return (
                 <button
                   key={player.id}
@@ -342,7 +379,7 @@ export default function MatchFormationPlanner({
                     opacity: selectedSlot == null ? 0.55 : 1,
                   }}
                 >
-                  <span style={{ ...plannerStyles.roleBadge, color: ROLE_COLORS[role] || "#94a3b8" }}>{role || "-"}</span>
+                  <span style={{ ...plannerStyles.roleBadge, color: ROLE_COLORS[role] || "#94a3b8" }}>{marker}</span>
                   {playerName(player)}
                 </button>
               );
@@ -363,7 +400,7 @@ export default function MatchFormationPlanner({
   );
 }
 
-function FormationField({ slots, plan, playerMap, selectedSlot, onSlotClick, onClearSlot }) {
+function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotClick, onClearSlot }) {
   const W = 300;
   const H = 430;
 
@@ -386,6 +423,8 @@ function FormationField({ slots, plan, playerMap, selectedSlot, onSlotClick, onC
           const cy = (slot.y / 100) * H;
           const selected = selectedSlot === index;
           const color = ROLE_COLORS[slot.role] || "#64748b";
+          const shirtNumber = player ? getShirtNumber(player, lineup) : "";
+          const marker = player ? shirtNumber || slot.role : slot.role;
           return (
             <g
               key={index}
@@ -402,7 +441,7 @@ function FormationField({ slots, plan, playerMap, selectedSlot, onSlotClick, onC
                 strokeWidth={selected ? 2.5 : 1.5}
                 strokeDasharray={player ? "" : "4 3"}
               />
-              <text x={cx} y={cy - 4} textAnchor="middle" fontSize="9" fontWeight="900" fill="white" fontFamily="sans-serif">{slot.role}</text>
+              <text x={cx} y={cy - 4} textAnchor="middle" fontSize="10" fontWeight="900" fill="white" fontFamily="sans-serif">{marker}</text>
               <text x={cx} y={cy + 8} textAnchor="middle" fontSize="7.5" fontWeight="700" fill="white" fontFamily="sans-serif">{player ? shortName(player) : ""}</text>
             </g>
           );
@@ -514,6 +553,36 @@ const plannerStyles = {
     gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))",
     gap: 8,
   },
+  numberGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+    gap: 8,
+    padding: 10,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.035)",
+  },
+  numberRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 46px",
+    gap: 8,
+    alignItems: "center",
+    color: "#cbd5e1",
+    fontSize: 12,
+    fontWeight: 750,
+    minWidth: 0,
+  },
+  numberInput: {
+    width: 46,
+    height: 32,
+    borderRadius: 9,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(15,23,42,0.9)",
+    color: "#e2e8f0",
+    textAlign: "center",
+    fontWeight: 900,
+    boxSizing: "border-box",
+  },
   playerButton: {
     minHeight: 38,
     borderRadius: 10,
@@ -529,7 +598,7 @@ const plannerStyles = {
     cursor: "pointer",
   },
   roleBadge: {
-    width: 18,
+    width: 26,
     fontSize: 11,
     fontWeight: 950,
     flex: "0 0 auto",
