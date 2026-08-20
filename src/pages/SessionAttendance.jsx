@@ -32,12 +32,9 @@ function normalizeDateStr(value) {
 }
 
 function getDefaultStatus(player, dateStr) {
-  if (player.status === "Infortunato") return "Infortunato";
-  if (player.status === "Squalificato") return "Squalificato";
   const unavailability = getPlayerUnavailabilityOnDate(player, dateStr);
   if (unavailability?.type === "injury") return "Infortunato";
   if (unavailability?.type === "absence") return "Permesso";
-  if (player.status === "Recupero" || player.status === "Differenziato") return "Recupero";
   if ((player.gruppo || "prima") === "juniores") return "Assente";
   return "Presente";
 }

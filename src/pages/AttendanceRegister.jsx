@@ -58,15 +58,10 @@ function normalizeDateStr(value) {
   return `${year}-${month}-${day}`;
 }
 
-// Indisponibilità "forte" per una data: lo status esplicito sulla scheda
-// giocatore (player.status) ha sempre la priorità più alta perché è una
-// decisione attiva del mister; poi gli infortuni datati (player.injuries[]);
-// infine le assenze pianificate (player.absences[]: ferie/permesso/studio/
-// lavoro). Un infortunio batte sempre una ferie sovrapposta sullo stesso
-// giorno — non deve mai diventare una multa.
+// Indisponibilità "forte" per una data: contano solo infortuni/assenze con
+// date che coprono quella seduta. Lo status anagrafico attuale non deve
+// riscrivere lo storico o le sedute fuori periodo.
 function getUnavailabilityStatus(player, dateStr) {
-  if (player.status === "Infortunato") return "Infortunato";
-  if (player.status === "Squalificato") return "Squalificato";
   const unavailability = getPlayerUnavailabilityOnDate(player, dateStr);
   if (unavailability?.type === "injury") return "Infortunato";
   if (unavailability?.type === "absence") return "Permesso";
@@ -76,7 +71,6 @@ function getUnavailabilityStatus(player, dateStr) {
 function getDefaultStatus(player, dateStr) {
   const unavailableStatus = getUnavailabilityStatus(player, dateStr);
   if (unavailableStatus) return unavailableStatus;
-  if (player.status === "Recupero" || player.status === "Differenziato") return "Recupero";
   // I Juniores non fanno parte del gruppo base: di default risultano Assenti
   // per ogni seduta, finché il mister non li marca manualmente Presenti
   // (a quel punto contano come un disponibile aggiuntivo rispetto alla prima squadra).

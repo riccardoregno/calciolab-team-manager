@@ -1519,8 +1519,6 @@ function getSessionAvailability(players, date, _availabilityRecords = [], sessio
   const available = [];
   const unavailable = [];
 
-  const UNAVAILABLE_STATUSES = ["Infortunato", "Recupero", "Differenziato", "Squalificato"];
-
   players.forEach((player) => {
     const isJun = (player.gruppo || "prima") === "juniores";
     // Se il coach ha esplicitamente marcato "Presente" nel registro seduta, il giocatore è sempre disponibile
@@ -1529,16 +1527,16 @@ function getSessionAvailability(players, date, _availabilityRecords = [], sessio
 
     if (isJun) {
       // Juniores compaiono sempre nella lista; di default sono Assenti finché il coach non li abilita
-      if (forcedPresent || (!getPlayerUnavailabilityOnDate(player, date) && !UNAVAILABLE_STATUSES.includes(player.status))) {
+      if (forcedPresent || !getPlayerUnavailabilityOnDate(player, date)) {
         available.push({ ...player, _juniores: true, _defaultAbsent: true });
       }
       return;
     }
     const unav = getPlayerUnavailabilityOnDate(player, date);
-    if (forcedPresent || (!unav && !UNAVAILABLE_STATUSES.includes(player.status))) {
+    if (forcedPresent || !unav) {
       available.push(player);
     } else {
-      unavailable.push({ player, reason: unav?.label || player.status || "" });
+      unavailable.push({ player, reason: unav?.label || "" });
     }
   });
 
@@ -1557,7 +1555,7 @@ const PHASE_OPTIONS = [
 
 function AvailablePlayers({ players, date, availabilityRecords = [], attendance = {}, onToggle }) {
   const { t } = useTranslation();
-  const sessionAvailability = getSessionAvailability(players, date, availabilityRecords);
+  const sessionAvailability = getSessionAvailability(players, date, availabilityRecords, attendance);
   const available = [];
   const unavailable = [...sessionAvailability.unavailable];
 
