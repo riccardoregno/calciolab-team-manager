@@ -72,12 +72,15 @@ const menuGroups = [
   },
 ];
 
-export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp = null, chatUnread = 0 }) {
+export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp = null, chatUnread = 0, onboardingCompleted = null }) {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const currentRole = currentRoleProp || getCurrentUserRole(appSettings);
-  const profile = normalizeAppSettings(appSettings).workspaceProfile;
+  const normalizedSettings = normalizeAppSettings(appSettings);
+  const profile = normalizedSettings.workspaceProfile;
   const managesJuniores = profile.managesJuniores && profile.teamLevel === "prima";
+  const shouldHideCompletedOnboarding =
+    onboardingCompleted ?? normalizedSettings.onboarding.completed;
 
   const junioresiGroup = managesJuniores ? [{
     titleKey: "navigation.groups.juniors",
@@ -91,7 +94,10 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
   const visibleGroups = allGroups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => isRoleAllowed(currentRole, item.roles)),
+      items: group.items.filter((item) => {
+        if (item.to === "/onboarding" && shouldHideCompletedOnboarding) return false;
+        return isRoleAllowed(currentRole, item.roles);
+      }),
     }))
     .filter((group) => group.items.length > 0);
 

@@ -508,7 +508,12 @@ function App() {
       <div className="app-shell" style={styles.appShell}>
         {auth.team?.role !== "player" && (
           <div className="desktop-sidebar">
-            <Sidebar appSettings={previewAppSettings} currentRole={auth.team?.role || null} chatUnread={chatUnread} />
+            <Sidebar
+              appSettings={previewAppSettings}
+              currentRole={auth.team?.role || null}
+              chatUnread={chatUnread}
+              onboardingCompleted={onboardingDone}
+            />
           </div>
         )}
 
