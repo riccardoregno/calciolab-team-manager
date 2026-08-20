@@ -1707,8 +1707,6 @@ function normalizeStatsDate(value) {
 }
 
 function getTrainingUnavailabilityStatus(player, dateStr) {
-  if (player.status === "Infortunato") return "Infortunato";
-  if (player.status === "Squalificato") return "Squalificato";
   const unavailability = getPlayerUnavailabilityOnDate(player, dateStr);
   if (unavailability?.type === "injury") return "Infortunato";
   if (unavailability?.type === "absence") return "Permesso";
@@ -1718,7 +1716,6 @@ function getTrainingUnavailabilityStatus(player, dateStr) {
 function getTrainingDefaultStatus(player, dateStr) {
   const unavailableStatus = getTrainingUnavailabilityStatus(player, dateStr);
   if (unavailableStatus) return unavailableStatus;
-  if (player.status === "Recupero" || player.status === "Differenziato") return "Recupero";
   if ((player.gruppo || "prima") === "juniores") return "Assente";
   return "Presente";
 }
