@@ -735,7 +735,10 @@ function Trainings({
   {/* ── Session Builder: blocchi strutturati ── */}
   <SessionBlockBuilder
     blocks={form.sessionBlocks || []}
-    onChange={(blocks) => setForm((prev) => ({ ...prev, sessionBlocks: blocks }))}
+    onChange={(blocks) => setForm((prev) => ({
+      ...prev,
+      sessionBlocks: typeof blocks === "function" ? blocks(prev.sessionBlocks || []) : blocks,
+    }))}
     onSave={canManage ? saveTraining : null}
     saveLabel={editingId ? t("pages.trainings.updateSession") : t("pages.trainings.saveSession")}
     teamId={teamId}
@@ -2140,15 +2143,21 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
     } catch {
       previewUrl = URL.createObjectURL(file);
     }
-    onChange(blocks.map((b) => b.id === blockId ? { ...b, image: { url: previewUrl, uploading: Boolean(teamId) } } : b));
+    onChange((currentBlocks) =>
+      currentBlocks.map((b) => b.id === blockId ? { ...b, image: { url: previewUrl, uploading: Boolean(teamId) } } : b)
+    );
 
     if (teamId) {
       setUploading((u) => ({ ...u, [blockId]: true }));
       try {
         const att = await uploadTeamAttachment({ teamId, folder: "session-blocks", file });
-        onChange(blocks.map((b) => b.id === blockId ? { ...b, image: { url: att.url, path: att.path } } : b));
+        onChange((currentBlocks) =>
+          currentBlocks.map((b) => b.id === blockId ? { ...b, image: { url: att.url, path: att.path } } : b)
+        );
       } catch {
-        onChange(blocks.map((b) => b.id === blockId ? { ...b, image: { url: previewUrl, uploadFailed: true } } : b));
+        onChange((currentBlocks) =>
+          currentBlocks.map((b) => b.id === blockId ? { ...b, image: { url: previewUrl, uploadFailed: true } } : b)
+        );
       } finally {
         setUploading((u) => ({ ...u, [blockId]: false }));
       }
