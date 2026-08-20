@@ -2134,8 +2134,13 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
 
   async function handleImageUpload(blockId, file) {
     if (!file) return;
-    const localUrl = URL.createObjectURL(file);
-    onChange(blocks.map((b) => b.id === blockId ? { ...b, image: { url: localUrl, uploading: true } } : b));
+    let previewUrl = "";
+    try {
+      previewUrl = await readFileAsDataUrl(file);
+    } catch {
+      previewUrl = URL.createObjectURL(file);
+    }
+    onChange(blocks.map((b) => b.id === blockId ? { ...b, image: { url: previewUrl, uploading: Boolean(teamId) } } : b));
 
     if (teamId) {
       setUploading((u) => ({ ...u, [blockId]: true }));
@@ -2143,7 +2148,7 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
         const att = await uploadTeamAttachment({ teamId, folder: "session-blocks", file });
         onChange(blocks.map((b) => b.id === blockId ? { ...b, image: { url: att.url, path: att.path } } : b));
       } catch {
-        onChange(blocks.map((b) => b.id === blockId ? { ...b, image: { url: localUrl } } : b));
+        onChange(blocks.map((b) => b.id === blockId ? { ...b, image: { url: previewUrl, uploadFailed: true } } : b));
       } finally {
         setUploading((u) => ({ ...u, [blockId]: false }));
       }
@@ -2280,7 +2285,7 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
                 {/* Foto */}
                 {getBlockImageUrl(block.image) ? (
                   <div style={{ position: "relative", display: "block", width: "min(100%, 520px)" }}>
-                    <BlockImagePreview src={getBlockImageUrl(block.image)} />
+                    <BlockImagePreview key={getBlockImageUrl(block.image)} src={getBlockImageUrl(block.image)} />
                     <button
                       onClick={() => updateBlock(block.id, "image", null)}
                       style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.65)", border: "none", borderRadius: 999, color: "#f87171", cursor: "pointer", width: 26, height: 26, fontSize: 13, lineHeight: "26px", textAlign: "center" }}
@@ -2333,6 +2338,15 @@ function getBlockImageUrl(image) {
   if (!image) return "";
   if (typeof image === "string") return image;
   return image.url || image.publicUrl || image.src || "";
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 function BlockImagePreview({ src }) {
