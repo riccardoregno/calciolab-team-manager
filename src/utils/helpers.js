@@ -1382,12 +1382,14 @@ export function getTeamAverageAge(players = []) {
  * aggiuntiva a Supabase). Usate al posto di "Categoria"/"Piede" nelle viste
  * Players: presenze in partita e % presenza agli allenamenti.
  *   - appearances: numero di partite in cui il giocatore non risulta "Assente"
- *   - trainingPct: % di allenamenti con status "Presente" sul totale delle
- *     sedute con dato registrato per quel giocatore (null = nessun dato)
+ *   - trainingPct: % di allenamenti completati in cui il giocatore risulta
+ *     presente, sul totale delle sedute completate.
  */
 export function getPlayerQuickStats(player, sessions = [], matches = []) {
   const pid = player?.id;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString();
+  const now = new Date();
+  const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const isFriendlyMatch = (match) => {
     if (match?.isFriendly === true || match?.friendly === true) return true;
     const fields = [match?.matchKind, match?.match_kind, match?.competition, match?.category, match?.kind, match?.title, match?.notes];
@@ -1403,23 +1405,63 @@ export function getPlayerQuickStats(player, sessions = [], matches = []) {
 
   const friendlyMatches = matches.filter(isFriendlyMatch);
 
-  // Sedute di allenamento passate + amichevoli, trattate come allenamento.
-  const pastTrainings = [...sessions, ...friendlyMatches].filter(
-    (s) => ((s.type || "Allenamento") === "Allenamento" || isFriendlyMatch(s)) && s.date && s.date < today
-  );
+  const completedTrainings = [...sessions, ...friendlyMatches]
+    .filter((s) => ((s.type || "Allenamento") === "Allenamento" || isFriendlyMatch(s)))
+    .map((s) => ({ ...s, date: normalizeStatsDate(s.date) }))
+    .filter((s) => isCompletedTrainingSession(s, today, nowTime));
 
-  let registered = 0;
   let present = 0;
-  pastTrainings.forEach((session) => {
+  completedTrainings.forEach((session) => {
     const data = session?.attendance?.[pid] ?? session?.attendance?.[String(pid)];
-    if (!data) return;
-    registered += 1;
-    if (data.status === "Presente" || data.status === "Recupero") present += 1;
+    const status = data?.status || getTrainingDefaultStatus(player, session.date);
+    if (status === "Presente" || status === "Recupero") present += 1;
   });
 
-  const trainingPct = registered > 0 ? Math.round((present / registered) * 100) : null;
+  const trainingPct = completedTrainings.length > 0
+    ? Math.round((present / completedTrainings.length) * 100)
+    : null;
 
   return { appearances, trainingPct };
+}
+
+function normalizeStatsDate(value) {
+  if (!value) return "";
+  const raw = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return localDateString(parsed);
+}
+
+function normalizeStatsTime(value) {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return "";
+  const hours = Math.min(23, Number(match[1]));
+  const minutes = Math.min(59, Number(match[2]));
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function getTrainingTime(session) {
+  return normalizeStatsTime(session.time || session.startTime || session.start_time) || "20:00";
+}
+
+function isCompletedTrainingSession(session, today, nowTime) {
+  if (!session.date) return false;
+  if (session.date < today) return true;
+  if (session.date > today) return false;
+  return getTrainingTime(session) <= nowTime;
+}
+
+function getTrainingDefaultStatus(player, dateStr) {
+  if (player?.status === "Infortunato") return "Infortunato";
+  if (player?.status === "Squalificato") return "Squalificato";
+  const unavailability = getPlayerUnavailabilityOnDate(player, dateStr);
+  if (unavailability?.type === "injury") return "Infortunato";
+  if (unavailability?.type === "absence") return "Permesso";
+  if (player?.status === "Recupero" || player?.status === "Differenziato") return "Recupero";
+  if ((player?.gruppo || "prima") === "juniores") return "Assente";
+  return "Presente";
 }
 
 export function getCoachAlerts({ players = [], matches = [], physicalTests = [], sessions = [], playerStatsMap = {}, teamWellnessToday = [], t } = {}){
