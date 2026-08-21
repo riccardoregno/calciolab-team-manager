@@ -527,11 +527,15 @@ const plannerStyles = {
   fieldWrap: {
     display: "flex",
     justifyContent: "center",
+    width: "100%",
+    minWidth: 0,
   },
   field: {
     width: "100%",
     maxWidth: 320,
+    aspectRatio: "300 / 430",
     height: "auto",
+    minHeight: 430,
     borderRadius: 8,
     overflow: "hidden",
     display: "block",
