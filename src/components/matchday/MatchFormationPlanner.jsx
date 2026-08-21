@@ -225,7 +225,7 @@ export default function MatchFormationPlanner({
     const hasSecondHalf = Object.values(plans.secondHalf.slots || {}).some(Boolean);
     const printHalfKeys = hasSecondHalf ? ["firstHalf", "secondHalf"] : ["firstHalf"];
     const isSingleField = printHalfKeys.length === 1;
-    const pageSize = isSingleField ? "A4 portrait" : "A4 landscape";
+    const pageSize = "A4 landscape";
     const sheetClass = isSingleField ? "sheet single" : "sheet";
     const renderField = (halfKey) => {
       const plan = plans[halfKey];
@@ -278,17 +278,22 @@ export default function MatchFormationPlanner({
       h1{margin:0 0 4px;font-size:20px}
       .meta{margin:0 0 14px;color:#64748b;font-size:12px}
       .sheet{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
-      .sheet.single{display:block;max-width:150mm;margin:0 auto}
+      .sheet.single{display:block}
       .team-card{break-inside:avoid}
+      .single .team-card{display:grid;grid-template-columns:minmax(0,160mm) minmax(0,1fr);grid-template-areas:"title title" "field bench" "field notes";gap:10px 16px;align-items:start}
       h2{margin:0 0 8px;font-size:16px}
+      .single h2{grid-area:title;margin-bottom:2px}
       svg{display:block;width:100%;height:auto;max-height:520px;border-radius:8px}
-      .single svg{max-height:225mm}
+      .single svg{grid-area:field;max-height:165mm}
       .bench{margin-top:8px;padding:8px 10px;border:1px solid #dbe3ef;border-radius:8px;background:white;display:flex;flex-wrap:wrap;gap:6px 10px;font-size:11px;line-height:1.25}
+      .single .bench{grid-area:bench;margin-top:0;display:grid;grid-template-columns:1fr;gap:5px;font-size:12px;align-content:start}
       .bench strong{width:100%;font-size:11px;text-transform:uppercase;color:#475569}
       .bench span{white-space:nowrap}
+      .single .bench span{white-space:normal}
       .bench b{font-size:10px;color:#2563eb}
       .notes{margin:8px 0 0;padding:8px 10px;border:1px solid #dbe3ef;border-radius:8px;background:white;font-size:12px}
-      @media print{body{padding:0}button{display:none}.sheet{gap:12px}h1{font-size:18px}h2{font-size:14px}.bench{font-size:10px}.sheet.single{max-width:155mm}}
+      .single .notes{grid-area:notes;margin-top:0}
+      @media print{body{padding:0}button{display:none}.sheet{gap:12px}h1{font-size:18px}h2{font-size:14px}.bench{font-size:10px}.single .team-card{grid-template-columns:minmax(0,158mm) minmax(0,1fr)}.single svg{max-height:166mm}}
     </style></head>
       <body><h1>${escapeHtml(title)}</h1><p class="meta">${escapeHtml(meta)}</p><div class="${sheetClass}">${printHalfKeys.map(renderField).join("")}</div>
       <br><button onclick="window.print()">Stampa</button></body></html>`);
