@@ -2115,9 +2115,7 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
       return;
     }
     const intensityLabel = block.intensity >= 8 ? "Alta" : block.intensity >= 5 ? "Media" : "Bassa";
-    // Usa l'URL immagine solo se è permanente (non blob: e non in upload)
-    const imageUrl = block.image?.url || "";
-    const isPermanentUrl = imageUrl && !imageUrl.startsWith("blob:") && !block.image?.uploading;
+    const imageUrl = getSavableBlockImageUrl(block.image);
     const newExercise = {
       ...emptyExercise(),
       id: createId("ex"),
@@ -2126,7 +2124,7 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
       description: block.description || block.notes || "",
       duration: String(block.duration || ""),
       intensity: intensityLabel,
-      image: isPermanentUrl ? imageUrl : "",
+      image: imageUrl,
     };
     setExercises?.((prev) => [newExercise, ...prev]);
     setSavedToLib((s) => ({ ...s, [block.id]: "saved" }));
@@ -2142,7 +2140,7 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
       previewUrl = URL.createObjectURL(file);
     }
     onChange((currentBlocks) =>
-      currentBlocks.map((b) => b.id === blockId ? { ...b, image: { url: previewUrl, uploading: Boolean(teamId) } } : b)
+      currentBlocks.map((b) => b.id === blockId ? { ...b, image: { url: previewUrl, previewUrl, uploading: Boolean(teamId) } } : b)
     );
 
     if (teamId) {
@@ -2150,11 +2148,11 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
       try {
         const att = await uploadTeamAttachment({ teamId, folder: "session-blocks", file });
         onChange((currentBlocks) =>
-          currentBlocks.map((b) => b.id === blockId ? { ...b, image: { url: att.url, path: att.path } } : b)
+          currentBlocks.map((b) => b.id === blockId ? { ...b, image: { url: att.url, previewUrl, path: att.path } } : b)
         );
       } catch {
         onChange((currentBlocks) =>
-          currentBlocks.map((b) => b.id === blockId ? { ...b, image: { url: previewUrl, uploadFailed: true } } : b)
+          currentBlocks.map((b) => b.id === blockId ? { ...b, image: { url: previewUrl, previewUrl, uploadFailed: true } } : b)
         );
       } finally {
         setUploading((u) => ({ ...u, [blockId]: false }));
@@ -2292,7 +2290,11 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
                 {/* Foto */}
                 {getBlockImageUrl(block.image) ? (
                   <div style={{ position: "relative", display: "block", width: "min(100%, 520px)" }}>
-                    <BlockImagePreview key={getBlockImageUrl(block.image)} src={getBlockImageUrl(block.image)} />
+                    <BlockImagePreview
+                      key={`${getBlockImageUrl(block.image)}:${getBlockFallbackImageUrl(block.image)}`}
+                      src={getBlockImageUrl(block.image)}
+                      fallbackSrc={getBlockFallbackImageUrl(block.image)}
+                    />
                     <button
                       onClick={() => updateBlock(block.id, "image", null)}
                       style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.65)", border: "none", borderRadius: 999, color: "#f87171", cursor: "pointer", width: 26, height: 26, fontSize: 13, lineHeight: "26px", textAlign: "center" }}
@@ -2347,6 +2349,21 @@ function getBlockImageUrl(image) {
   return image.url || image.publicUrl || image.src || "";
 }
 
+function getBlockFallbackImageUrl(image) {
+  if (!image || typeof image === "string") return "";
+  const primary = getBlockImageUrl(image);
+  const fallback = image.previewUrl || image.localUrl || image.dataUrl || "";
+  return fallback && fallback !== primary ? fallback : "";
+}
+
+function getSavableBlockImageUrl(image) {
+  const primary = getBlockImageUrl(image);
+  const fallback = getBlockFallbackImageUrl(image);
+  if (fallback && fallback.startsWith("data:image/")) return fallback;
+  if (primary && !primary.startsWith("blob:") && !image?.uploading) return primary;
+  return fallback && !fallback.startsWith("blob:") ? fallback : "";
+}
+
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -2356,7 +2373,8 @@ function readFileAsDataUrl(file) {
   });
 }
 
-function BlockImagePreview({ src }) {
+function BlockImagePreview({ src, fallbackSrc = "" }) {
+  const [currentSrc, setCurrentSrc] = useState(src);
   const [failed, setFailed] = useState(false);
 
   if (failed) {
@@ -2370,9 +2388,15 @@ function BlockImagePreview({ src }) {
 
   return (
     <img
-      src={src}
+      src={currentSrc}
       alt="Anteprima esercizio"
-      onError={() => setFailed(true)}
+      onError={() => {
+        if (fallbackSrc && currentSrc !== fallbackSrc) {
+          setCurrentSrc(fallbackSrc);
+          return;
+        }
+        setFailed(true);
+      }}
       style={trainingStyles.blockImagePreview}
     />
   );

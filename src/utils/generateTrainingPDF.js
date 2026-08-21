@@ -82,8 +82,14 @@ export async function generateTrainingPDF({ session, exercises = [], appSettings
     const imgDataMap = {};
     await Promise.all(
       structuredBlocks.map(async (b) => {
-        const url = b.image?.url || b.imageUrl || "";
-        if (url) imgDataMap[b.id] = await urlToBase64(url);
+        const urls = [b.image?.url, b.image?.previewUrl, b.imageUrl].filter(Boolean);
+        for (const url of urls) {
+          const data = await urlToBase64(url);
+          if (data) {
+            imgDataMap[b.id] = data;
+            break;
+          }
+        }
       })
     );
 
