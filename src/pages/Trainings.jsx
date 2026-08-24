@@ -3312,6 +3312,7 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
   const torelloFinesWeekly = useMemo(() => appSettings.torelloFinesWeekly || {}, [appSettings.torelloFinesWeekly]); // per-settimana (struttura definitiva)
   const [sortMode, setSortMode] = useState("alpha");
   const [selectedWeek, setSelectedWeek] = useState("totale");
+  const [groupFilter, setGroupFilter] = useState("prima");
 
   // Settimane con partitelle, ordinate cronologicamente
   const weeks = useMemo(() => {
@@ -3372,6 +3373,7 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
     };
 
     return players
+      .filter((p) => groupFilter === "tutti" || (p.gruppo || "prima") === groupFilter)
       .map((p) => {
         const s = stats[String(p.id)] || { wins: 0, losses: 0, draws: 0, fine: 0 };
         const torello = getRowTorello(p.id);
@@ -3383,7 +3385,7 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
         if (sortMode === "fineAsc")  return a.totalFine - b.totalFine || lastName(a.p).localeCompare(lastName(b.p), "it");
         return lastName(a.p).localeCompare(lastName(b.p), "it");
       });
-  }, [players, stats, sortMode, selectedWeek, torelloFinesWeekly, torelloFines]);
+  }, [players, stats, sortMode, selectedWeek, torelloFinesWeekly, torelloFines, groupFilter]);
 
   if (!rows.length && weeks.length <= 1) return null;
 
@@ -3405,6 +3407,12 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
     background: selectedWeek === w ? "rgba(167,139,250,0.15)" : "transparent",
     color: selectedWeek === w ? "#a78bfa" : "#64748b",
   });
+  const groupBtnStyle = (group) => ({
+    padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+    border: `1px solid ${groupFilter === group ? "#38bdf8" : "rgba(255,255,255,0.1)"}`,
+    background: groupFilter === group ? "rgba(56,189,248,0.12)" : "transparent",
+    color: groupFilter === group ? "#38bdf8" : "#64748b",
+  });
 
   return (
     <AppCard style={{ marginTop: 12 }}>
@@ -3419,13 +3427,18 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
           <button style={sortBtnStyle("fineAsc")}  onClick={() => setSortMode("fineAsc")}>Multa ↑</button>
         </div>
       </div>
-      {/* Filtro settimana */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-        {weeks.map((w) => (
-          <button key={w} style={weekBtnStyle(w)} onClick={() => setSelectedWeek(w)}>
-            {w === "totale" ? "Totale" : formatWeekLabel(w)}
-          </button>
-        ))}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {weeks.map((w) => (
+            <button key={w} style={weekBtnStyle(w)} onClick={() => setSelectedWeek(w)}>
+              {w === "totale" ? "Totale" : formatWeekLabel(w)}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <button style={groupBtnStyle("prima")} onClick={() => setGroupFilter("prima")}>Prima squadra</button>
+          <button style={groupBtnStyle("tutti")} onClick={() => setGroupFilter("tutti")}>Tutti</button>
+        </div>
       </div>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
