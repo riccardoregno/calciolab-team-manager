@@ -84,6 +84,19 @@ function getShirtNumber(player = {}, lineup = {}) {
   return String(matchNumber || player.shirtNumber || player.number || "").trim();
 }
 
+function getPhotoCrop(player = {}, diameter = 38) {
+  const size = Math.min(180, Math.max(60, Number(player.photoSize || 100)));
+  const offsetX = Math.min(50, Math.max(-50, Number(player.photoOffsetX || 0)));
+  const offsetY = Math.min(50, Math.max(-50, Number(player.photoOffsetY || 0)));
+  const imageSize = diameter * (size / 100);
+
+  return {
+    size: imageSize,
+    offsetX: (offsetX / 100) * imageSize,
+    offsetY: (offsetY / 100) * imageSize,
+  };
+}
+
 function escapeHtml(value = "") {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -447,6 +460,7 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
           const shirtNumber = player ? getShirtNumber(player, lineup) : "";
           const marker = player ? shirtNumber || slot.role : slot.role;
           const photoClipId = `formation-player-photo-${index}`;
+          const photoCrop = player ? getPhotoCrop(player) : null;
           return (
             <g
               key={index}
@@ -472,10 +486,10 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
                   {player.photo ? (
                     <image
                       href={player.photo}
-                      x={cx - 19}
-                      y={cy - 19}
-                      width="38"
-                      height="38"
+                      x={cx - (photoCrop.size / 2) + photoCrop.offsetX}
+                      y={cy - (photoCrop.size / 2) + photoCrop.offsetY}
+                      width={photoCrop.size}
+                      height={photoCrop.size}
                       preserveAspectRatio="xMidYMid slice"
                       clipPath={`url(#${photoClipId})`}
                     />
