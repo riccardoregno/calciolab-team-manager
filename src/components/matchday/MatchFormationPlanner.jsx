@@ -256,8 +256,10 @@ export default function MatchFormationPlanner({
     const H = 464;
     const title = `${clubName} vs ${match?.opponent || "Avversario"}`;
     const meta = [match?.date, match?.time, match?.competition, match?.matchday].filter(Boolean).join(" · ");
-    const hasSecondHalf = Object.values(plans.secondHalf.slots || {}).some(Boolean);
-    const printHalfKeys = hasSecondHalf ? ["firstHalf", "secondHalf"] : ["firstHalf"];
+    const filledHalfKeys = ["firstHalf", "secondHalf"].filter((halfKey) =>
+      Object.values(plans[halfKey]?.slots || {}).some(Boolean)
+    );
+    const printHalfKeys = filledHalfKeys.length ? filledHalfKeys : ["firstHalf"];
     const isSingleField = printHalfKeys.length === 1;
     const pageSize = "A4 landscape";
     const sheetClass = isSingleField ? "sheet single" : "sheet";
