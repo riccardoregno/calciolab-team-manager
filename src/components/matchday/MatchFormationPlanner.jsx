@@ -258,10 +258,22 @@ export default function MatchFormationPlanner({
         const color = ROLE_COLORS[slot.role] || "#64748b";
         const shirtNumber = player ? getShirtNumber(player, lineup) : "";
         const marker = shirtNumber || slot.role;
+        const photoSize = 34;
+        const photoTransform = player ? getPhotoTransform(player) : "";
+        const photoNode = player?.photo
+          ? `<foreignObject x="${cx - (photoSize / 2)}" y="${cy - (photoSize / 2)}" width="${photoSize}" height="${photoSize}">
+              <div xmlns="http://www.w3.org/1999/xhtml" style="width:${photoSize}px;height:${photoSize}px;border-radius:50%;overflow:hidden">
+                <img src="${escapeHtml(player.photo)}" alt="${escapeHtml(playerName(player))}" style="width:100%;height:100%;object-fit:cover;transform:${escapeHtml(photoTransform)}"/>
+              </div>
+            </foreignObject>`
+          : `<circle cx="${cx}" cy="${cy}" r="${photoSize / 2}" fill="${player ? color : "rgba(255,255,255,0.10)"}"/>`;
         return `<g>
-          <circle cx="${cx}" cy="${cy}" r="16" fill="${player ? color : "rgba(255,255,255,0.10)"}" stroke="rgba(255,255,255,0.45)" stroke-width="1.2"/>
-          <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="9" font-weight="900" fill="white" font-family="sans-serif">${escapeHtml(marker)}</text>
-          <text x="${cx}" y="${cy + 8}" text-anchor="middle" font-size="7" fill="white" font-family="sans-serif">${escapeHtml(player ? shortName(player) : "")}</text>
+          <circle cx="${cx}" cy="${cy}" r="${(photoSize / 2) + 2}" fill="${player ? color : "rgba(255,255,255,0.10)"}" stroke="rgba(255,255,255,0.55)" stroke-width="1.2"/>
+          ${photoNode}
+          <circle cx="${cx + 14}" cy="${cy - 14}" r="7.5" fill="#0f172a" stroke="rgba(255,255,255,0.75)" stroke-width="1"/>
+          <text x="${cx + 14}" y="${cy - 11.5}" text-anchor="middle" font-size="7" font-weight="900" fill="white" font-family="sans-serif">${escapeHtml(marker)}</text>
+          <rect x="${cx - 25}" y="${cy + 20}" width="50" height="13" rx="6.5" fill="#0f172a" stroke="rgba(255,255,255,0.18)" stroke-width="0.7"/>
+          <text x="${cx}" y="${cy + 29}" text-anchor="middle" font-size="6.5" font-weight="800" fill="white" font-family="sans-serif">${escapeHtml(player ? shortName(player) : "")}</text>
         </g>`;
       }).join("");
       const benchHtml = bench.length
