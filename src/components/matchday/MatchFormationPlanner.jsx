@@ -84,20 +84,14 @@ function getShirtNumber(player = {}, lineup = {}) {
   return String(matchNumber || player.shirtNumber || player.number || "").trim();
 }
 
-function getPhotoCrop(player = {}, diameter = 38) {
+function getPhotoTransform(player = {}) {
   const sizeValue = player.photoSize ?? 100;
   const offsetXValue = player.photoOffsetX ?? 0;
   const offsetYValue = player.photoOffsetY ?? 0;
   const size = Math.min(180, Math.max(60, Number(sizeValue)));
   const offsetX = Math.min(50, Math.max(-50, Number(offsetXValue)));
   const offsetY = Math.min(50, Math.max(-50, Number(offsetYValue)));
-  const imageSize = diameter * (size / 100);
-
-  return {
-    size: imageSize,
-    offsetX: (offsetX / 100) * imageSize,
-    offsetY: (offsetY / 100) * imageSize,
-  };
+  return `scale(${size / 100}) translate(${offsetX}%, ${offsetY}%)`;
 }
 
 function escapeHtml(value = "") {
@@ -463,7 +457,7 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
           const shirtNumber = player ? getShirtNumber(player, lineup) : "";
           const marker = player ? shirtNumber || slot.role : slot.role;
           const photoClipId = `formation-player-photo-${index}`;
-          const photoCrop = player ? getPhotoCrop(player) : null;
+          const photoTransform = player ? getPhotoTransform(player) : "";
           return (
             <g
               key={index}
@@ -487,15 +481,23 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
                     strokeWidth={selected ? 2.5 : 1.5}
                   />
                   {player.photo ? (
-                    <image
-                      href={player.photo}
-                      x={cx - (photoCrop.size / 2) + photoCrop.offsetX}
-                      y={cy - (photoCrop.size / 2) + photoCrop.offsetY}
-                      width={photoCrop.size}
-                      height={photoCrop.size}
-                      preserveAspectRatio="xMidYMid slice"
-                      clipPath={`url(#${photoClipId})`}
-                    />
+                    <foreignObject x={cx - 19} y={cy - 19} width="38" height="38" clipPath={`url(#${photoClipId})`}>
+                      <div
+                        xmlns="http://www.w3.org/1999/xhtml"
+                        style={{ width: 38, height: 38, borderRadius: "50%", overflow: "hidden" }}
+                      >
+                        <img
+                          src={player.photo}
+                          alt={playerName(player)}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            transform: photoTransform,
+                          }}
+                        />
+                      </div>
+                    </foreignObject>
                   ) : (
                     <>
                       <circle cx={cx} cy={cy} r="19" fill={color} />
