@@ -30,6 +30,7 @@ import {
   getSeasonRecord,
   getSetupProgress,
   getSubscriptionPlan,
+  localDateString,
   normalizeAppSettings,
 } from "../utils/helpers";
 
@@ -2431,7 +2432,7 @@ function NextMatchCard({ match, navigate, clubName, rsvpSummary }) {
   const lineupReady  = match.lineup?.ready;
   const checklistProgress = getMatchChecklistProgress(match);
 
-  const daysUntil = Math.ceil((new Date(match.date) - new Date(new Date().toDateString())) / 86400000);
+  const daysUntil = diffLocalDateDays(localDateString(), match.date);
   const countdownLabel = daysUntil === 0 ? "OGGI" : daysUntil === 1 ? "DOMANI" : `${daysUntil} giorni`;
   const countdownColor = daysUntil === 0 ? "#f87171" : daysUntil <= 2 ? "#fb923c" : "#38bdf8";
 
@@ -2566,6 +2567,17 @@ function todayStart() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return today;
+}
+
+function diffLocalDateDays(fromDateKey, toDateKey) {
+  const [fromYear, fromMonth, fromDay] = String(fromDateKey || "").split("-").map(Number);
+  const [toYear, toMonth, toDay] = String(toDateKey || "").split("-").map(Number);
+
+  if (![fromYear, fromMonth, fromDay, toYear, toMonth, toDay].every(Number.isFinite)) return 0;
+
+  const fromUtc = Date.UTC(fromYear, fromMonth - 1, fromDay);
+  const toUtc = Date.UTC(toYear, toMonth - 1, toDay);
+  return Math.round((toUtc - fromUtc) / 86400000);
 }
 
 export default Dashboard;
