@@ -88,7 +88,7 @@ function getPhotoTransform(player = {}) {
   const sizeValue = player.photoSize ?? 100;
   const offsetXValue = player.photoOffsetX ?? 0;
   const offsetYValue = player.photoOffsetY ?? 0;
-  const size = Math.min(180, Math.max(60, Number(sizeValue)));
+  const size = Math.min(180, Math.max(112, Number(sizeValue)));
   const offsetX = Math.min(50, Math.max(-50, Number(offsetXValue)));
   const offsetY = Math.min(50, Math.max(-50, Number(offsetYValue)));
   return `scale(${size / 100}) translate(${offsetX}%, ${offsetY}%)`;
@@ -479,7 +479,6 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
           const marker = player ? shirtNumber || slot.role : slot.role;
           const photoTransform = player ? getPhotoTransform(player) : "";
           const photoSize = 38;
-          const photoRadius = 8;
           return (
             <g
               key={index}
@@ -489,12 +488,10 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
               <title>{player ? `${playerName(player)} - clic per rimuovere` : "Clic per selezionare lo slot"}</title>
               {player ? (
                 <>
-                  <rect
-                    x={cx - (photoSize / 2) - 2}
-                    y={cy - (photoSize / 2) - 2}
-                    width={photoSize + 4}
-                    height={photoSize + 4}
-                    rx={photoRadius + 2}
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={(photoSize / 2) + 2}
                     fill={selected ? "#facc15" : color}
                     stroke={selected ? "#fef08a" : "rgba(255,255,255,0.65)"}
                     strokeWidth={selected ? 2.5 : 1.5}
@@ -503,7 +500,7 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
                     <foreignObject x={cx - (photoSize / 2)} y={cy - (photoSize / 2)} width={photoSize} height={photoSize}>
                       <div
                         xmlns="http://www.w3.org/1999/xhtml"
-                        style={{ width: photoSize, height: photoSize, borderRadius: photoRadius, overflow: "hidden" }}
+                        style={{ width: photoSize, height: photoSize, borderRadius: "50%", overflow: "hidden" }}
                       >
                         <img
                           src={player.photo}
@@ -519,7 +516,7 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
                     </foreignObject>
                   ) : (
                     <>
-                      <rect x={cx - (photoSize / 2)} y={cy - (photoSize / 2)} width={photoSize} height={photoSize} rx={photoRadius} fill={color} />
+                      <circle cx={cx} cy={cy} r={photoSize / 2} fill={color} />
                       <text x={cx} y={cy + 4} textAnchor="middle" fontSize="11" fontWeight="950" fill="white" fontFamily="sans-serif">{playerInitials(player)}</text>
                     </>
                   )}
