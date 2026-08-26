@@ -88,7 +88,7 @@ function getPhotoTransform(player = {}) {
   const sizeValue = player.photoSize ?? 100;
   const offsetXValue = player.photoOffsetX ?? 0;
   const offsetYValue = player.photoOffsetY ?? 0;
-  const size = Math.min(180, Math.max(135, Number(sizeValue)));
+  const size = Math.min(180, Math.max(125, Number(sizeValue)));
   const offsetX = Math.min(50, Math.max(-50, Number(offsetXValue)));
   const offsetY = Math.min(50, Math.max(-50, Number(offsetYValue)));
   return `scale(${size / 100}) translate(${offsetX}%, ${offsetY}%)`;
