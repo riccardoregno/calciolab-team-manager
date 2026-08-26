@@ -2237,6 +2237,7 @@ export const en = {
       callAction: "Call up",
       benchAction: "Bench",
       starterAction: "Starter",
+      removeAction: "Remove",
       gamePlanTitle: "Match plan",
       gamePlanReady: "✓ Ready",
       gamePlanDraft: "Staff",

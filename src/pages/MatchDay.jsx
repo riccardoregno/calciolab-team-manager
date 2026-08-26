@@ -200,13 +200,7 @@ function MatchDay({
 
   function toggleCalled(player) {
     if (lineup.calledUpIds.includes(player.id)) {
-      updateSelectedMatch({
-        lineup: {
-          calledUpIds: lineup.calledUpIds.filter((id) => id !== player.id),
-          starterIds: lineup.starterIds.filter((id) => id !== player.id),
-          benchIds: lineup.benchIds.filter((id) => id !== player.id),
-        },
-      });
+      removeFromLineup(player);
       return;
     }
 
@@ -214,6 +208,23 @@ function MatchDay({
       lineup: {
         calledUpIds: [...lineup.calledUpIds, player.id],
         benchIds: [...lineup.benchIds, player.id],
+      },
+    });
+  }
+
+  function removeFromLineup(player) {
+    const playerId = String(player.id);
+    const nextRoles = { ...lineup.roles };
+    delete nextRoles[player.id];
+    delete nextRoles[playerId];
+
+    updateSelectedMatch({
+      lineup: {
+        calledUpIds: lineup.calledUpIds.filter((id) => String(id) !== playerId),
+        starterIds: lineup.starterIds.filter((id) => String(id) !== playerId),
+        benchIds: lineup.benchIds.filter((id) => String(id) !== playerId),
+        captainId: String(lineup.captainId) === playerId ? "" : lineup.captainId,
+        roles: nextRoles,
       },
     });
   }
@@ -810,6 +821,8 @@ function MatchDay({
               onMove={movePlayer}
               onCaptain={setCaptain}
               onRoleChange={updatePlayerRole}
+              onRemove={removeFromLineup}
+              removeLabel={t("pages.matchDay.removeAction")}
               isMobile={isMobile}
             />
           </AppCard>
@@ -827,6 +840,8 @@ function MatchDay({
               onMove={movePlayer}
               onCaptain={setCaptain}
               onRoleChange={updatePlayerRole}
+              onRemove={removeFromLineup}
+              removeLabel={t("pages.matchDay.removeAction")}
               isMobile={isMobile}
             />
           </AppCard>

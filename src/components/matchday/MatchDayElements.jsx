@@ -15,6 +15,8 @@ export function PlayerList({
   onMove,
   onCaptain,
   onRoleChange,
+  onRemove,
+  removeLabel,
   isMobile = false,
 }) {
   const { t } = useTranslation();
@@ -71,13 +73,24 @@ export function PlayerList({
               C
             </Button>
           )}
-          <Button
-            variant="ghost"
-            onClick={() => onAction(player)}
-            disabled={disableAction}
-          >
-            {actionLabel}
-          </Button>
+          <div style={matchDayStyles.playerActions}>
+            <Button
+              variant="ghost"
+              onClick={() => onAction(player)}
+              disabled={disableAction}
+            >
+              {actionLabel}
+            </Button>
+            {onRemove && (
+              <Button
+                variant="danger"
+                onClick={() => onRemove(player)}
+                aria-label={removeLabel || t("pages.matchDay.removeAction")}
+              >
+                {removeLabel || t("pages.matchDay.removeAction")}
+              </Button>
+            )}
+          </div>
         </div>
       ))}
     </div>

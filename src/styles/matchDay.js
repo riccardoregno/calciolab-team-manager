@@ -381,6 +381,12 @@ export const matchDayStyles = {
     display: "flex",
     gap: 4,
   },
+  playerActions: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+  },
   scoutingGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",

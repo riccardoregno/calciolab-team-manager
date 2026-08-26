@@ -2237,6 +2237,7 @@ export const it = {
       callAction: "Convoca",
       benchAction: "Panchina",
       starterAction: "Titolare",
+      removeAction: "Rimuovi",
       gamePlanTitle: "Piano di gara",
       gamePlanReady: "✓ Pronta",
       gamePlanDraft: "Staff",

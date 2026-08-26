@@ -67,7 +67,16 @@ function playerName(player = {}) {
 
 function shortName(player = {}) {
   const label = player.lastName || player.name || player.firstName || "-";
-  return String(label).slice(0, 12);
+  return String(label).slice(0, 10);
+}
+
+function playerInitials(player = {}) {
+  const name = playerName(player);
+  const parts = name.split(" ").filter(Boolean);
+  const initials = parts.length > 1
+    ? `${parts[0][0] || ""}${parts.at(-1)?.[0] || ""}`
+    : String(name).slice(0, 2);
+  return initials.toUpperCase();
 }
 
 function getShirtNumber(player = {}, lineup = {}) {
@@ -437,6 +446,7 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
           const color = ROLE_COLORS[slot.role] || "#64748b";
           const shirtNumber = player ? getShirtNumber(player, lineup) : "";
           const marker = player ? shirtNumber || slot.role : slot.role;
+          const photoClipId = `formation-player-photo-${index}`;
           return (
             <g
               key={index}
@@ -444,17 +454,56 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
               style={{ cursor: "pointer" }}
             >
               <title>{player ? `${playerName(player)} - clic per rimuovere` : "Clic per selezionare lo slot"}</title>
-              <circle
-                cx={cx}
-                cy={cy}
-                r="18"
-                fill={selected ? "#facc15" : player ? color : "rgba(255,255,255,0.08)"}
-                stroke={selected ? "#fbbf24" : player ? "rgba(255,255,255,0.45)" : color}
-                strokeWidth={selected ? 2.5 : 1.5}
-                strokeDasharray={player ? "" : "4 3"}
-              />
-              <text x={cx} y={cy - 4} textAnchor="middle" fontSize="10" fontWeight="900" fill="white" fontFamily="sans-serif">{marker}</text>
-              <text x={cx} y={cy + 8} textAnchor="middle" fontSize="7.5" fontWeight="700" fill="white" fontFamily="sans-serif">{player ? shortName(player) : ""}</text>
+              {player ? (
+                <>
+                  <defs>
+                    <clipPath id={photoClipId}>
+                      <circle cx={cx} cy={cy} r="19" />
+                    </clipPath>
+                  </defs>
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r="21"
+                    fill={selected ? "#facc15" : color}
+                    stroke={selected ? "#fef08a" : "rgba(255,255,255,0.65)"}
+                    strokeWidth={selected ? 2.5 : 1.5}
+                  />
+                  {player.photo ? (
+                    <image
+                      href={player.photo}
+                      x={cx - 19}
+                      y={cy - 19}
+                      width="38"
+                      height="38"
+                      preserveAspectRatio="xMidYMid slice"
+                      clipPath={`url(#${photoClipId})`}
+                    />
+                  ) : (
+                    <>
+                      <circle cx={cx} cy={cy} r="19" fill={color} />
+                      <text x={cx} y={cy + 4} textAnchor="middle" fontSize="11" fontWeight="950" fill="white" fontFamily="sans-serif">{playerInitials(player)}</text>
+                    </>
+                  )}
+                  <circle cx={cx + 15} cy={cy - 16} r="8.5" fill="#0f172a" stroke="rgba(255,255,255,0.75)" strokeWidth="1" />
+                  <text x={cx + 15} y={cy - 13} textAnchor="middle" fontSize="8" fontWeight="950" fill="white" fontFamily="sans-serif">{marker}</text>
+                  <rect x={cx - 28} y={cy + 23} width="56" height="15" rx="7.5" fill="rgba(15,23,42,0.88)" stroke="rgba(255,255,255,0.22)" strokeWidth="0.8" />
+                  <text x={cx} y={cy + 34} textAnchor="middle" fontSize="7.5" fontWeight="850" fill="white" fontFamily="sans-serif">{shortName(player)}</text>
+                </>
+              ) : (
+                <>
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r="18"
+                    fill={selected ? "#facc15" : "rgba(255,255,255,0.08)"}
+                    stroke={selected ? "#fbbf24" : color}
+                    strokeWidth={selected ? 2.5 : 1.5}
+                    strokeDasharray="4 3"
+                  />
+                  <text x={cx} y={cy + 4} textAnchor="middle" fontSize="10" fontWeight="900" fill="white" fontFamily="sans-serif">{slot.role}</text>
+                </>
+              )}
             </g>
           );
         })}
