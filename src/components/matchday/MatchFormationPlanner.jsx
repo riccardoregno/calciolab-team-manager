@@ -67,7 +67,15 @@ function playerName(player = {}) {
 
 function shortName(player = {}) {
   const label = player.lastName || player.name || player.firstName || "-";
-  return String(label).slice(0, 10);
+  return String(label);
+}
+
+function nameLabelMetrics(label = "", baseWidth = 56) {
+  const length = String(label || "").length;
+  return {
+    width: Math.max(baseWidth, Math.min(78, length * 6.1 + 12)),
+    fontSize: length > 11 ? 6.8 : length > 9 ? 7.1 : 7.5,
+  };
 }
 
 function playerInitials(player = {}) {
@@ -260,6 +268,8 @@ export default function MatchFormationPlanner({
         const marker = shirtNumber || slot.role;
         const photoSize = 34;
         const photoTransform = player ? getPhotoTransform(player) : "";
+        const label = player ? shortName(player) : "";
+        const labelMetrics = nameLabelMetrics(label, 50);
         const photoNode = player?.photo
           ? `<foreignObject x="${cx - (photoSize / 2)}" y="${cy - (photoSize / 2)}" width="${photoSize}" height="${photoSize}">
               <div xmlns="http://www.w3.org/1999/xhtml" style="width:${photoSize}px;height:${photoSize}px;border-radius:50%;overflow:hidden">
@@ -272,8 +282,8 @@ export default function MatchFormationPlanner({
           ${photoNode}
           <circle cx="${cx + 14}" cy="${cy - 14}" r="7.5" fill="#0f172a" stroke="rgba(255,255,255,0.75)" stroke-width="1"/>
           <text x="${cx + 14}" y="${cy - 11.5}" text-anchor="middle" font-size="7" font-weight="900" fill="white" font-family="sans-serif">${escapeHtml(marker)}</text>
-          <rect x="${cx - 25}" y="${cy + 20}" width="50" height="13" rx="6.5" fill="#0f172a" stroke="rgba(255,255,255,0.18)" stroke-width="0.7"/>
-          <text x="${cx}" y="${cy + 29}" text-anchor="middle" font-size="6.5" font-weight="800" fill="white" font-family="sans-serif">${escapeHtml(player ? shortName(player) : "")}</text>
+          <rect x="${cx - (labelMetrics.width / 2)}" y="${cy + 20}" width="${labelMetrics.width}" height="13" rx="6.5" fill="#0f172a" stroke="rgba(255,255,255,0.18)" stroke-width="0.7"/>
+          <text x="${cx}" y="${cy + 29}" text-anchor="middle" font-size="${labelMetrics.fontSize}" font-weight="800" fill="white" font-family="sans-serif">${escapeHtml(label)}</text>
         </g>`;
       }).join("");
       const benchHtml = bench.length
@@ -491,6 +501,8 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
           const marker = player ? shirtNumber || slot.role : slot.role;
           const photoTransform = player ? getPhotoTransform(player) : "";
           const photoSize = 38;
+          const label = player ? shortName(player) : "";
+          const labelMetrics = nameLabelMetrics(label);
           return (
             <g
               key={index}
@@ -534,8 +546,8 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
                   )}
                   <circle cx={cx + 16} cy={cy - 16} r="8.5" fill="#0f172a" stroke="rgba(255,255,255,0.75)" strokeWidth="1" />
                   <text x={cx + 16} y={cy - 13} textAnchor="middle" fontSize="8" fontWeight="950" fill="white" fontFamily="sans-serif">{marker}</text>
-                  <rect x={cx - 28} y={cy + 23} width="56" height="15" rx="7.5" fill="rgba(15,23,42,0.88)" stroke="rgba(255,255,255,0.22)" strokeWidth="0.8" />
-                  <text x={cx} y={cy + 34} textAnchor="middle" fontSize="7.5" fontWeight="850" fill="white" fontFamily="sans-serif">{shortName(player)}</text>
+                  <rect x={cx - (labelMetrics.width / 2)} y={cy + 23} width={labelMetrics.width} height="15" rx="7.5" fill="rgba(15,23,42,0.88)" stroke="rgba(255,255,255,0.22)" strokeWidth="0.8" />
+                  <text x={cx} y={cy + 34} textAnchor="middle" fontSize={labelMetrics.fontSize} fontWeight="850" fill="white" fontFamily="sans-serif">{label}</text>
                 </>
               ) : (
                 <>
