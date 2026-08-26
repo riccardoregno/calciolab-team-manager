@@ -434,20 +434,41 @@ export default function MatchFormationPlanner({
 function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotClick, onClearSlot }) {
   const W = 300;
   const H = 430;
+  const line = "rgba(255,255,255,0.32)";
+  const pitchX = 14;
+  const pitchY = 14;
+  const pitchW = W - 28;
+  const pitchH = H - 28;
+  const penaltyW = 130;
+  const penaltyH = 64;
+  const goalAreaW = 66;
+  const goalAreaH = 24;
+  const goalW = 48;
 
   return (
     <div style={plannerStyles.fieldWrap}>
       <svg viewBox={`0 0 ${W} ${H}`} style={plannerStyles.field}>
         <rect width={W} height={H} fill="#15803d" rx="8" />
-        <rect x="14" y="14" width={W - 28} height={H - 28} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
-        <line x1="14" y1={H / 2} x2={W - 14} y2={H / 2} stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
-        <circle cx={W / 2} cy={H / 2} r="36" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
-        <circle cx={W / 2} cy={H / 2} r="3" fill="rgba(255,255,255,0.4)" />
-        <rect x={W / 2 - 40} y="14" width="80" height="52" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
-        <rect x={W / 2 - 40} y={H - 66} width="80" height="52" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
         {[0, 1, 2, 3, 4, 5].map((index) => (
-          <rect key={index} x="14" y={14 + index * ((H - 28) / 6)} width={W - 28} height={(H - 28) / 6} fill={index % 2 === 0 ? "rgba(0,0,0,0.04)" : "transparent"} />
+          <rect key={index} x={pitchX} y={pitchY + index * (pitchH / 6)} width={pitchW} height={pitchH / 6} fill={index % 2 === 0 ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.015)"} />
         ))}
+        <rect x={pitchX} y={pitchY} width={pitchW} height={pitchH} fill="none" stroke={line} strokeWidth="1.5" />
+        <line x1={pitchX} y1={H / 2} x2={W - pitchX} y2={H / 2} stroke={line} strokeWidth="1" />
+        <circle cx={W / 2} cy={H / 2} r="36" fill="none" stroke={line} strokeWidth="1" />
+        <circle cx={W / 2} cy={H / 2} r="3" fill="rgba(255,255,255,0.45)" />
+
+        <rect x={W / 2 - penaltyW / 2} y={pitchY} width={penaltyW} height={penaltyH} fill="none" stroke={line} strokeWidth="1" />
+        <rect x={W / 2 - goalAreaW / 2} y={pitchY} width={goalAreaW} height={goalAreaH} fill="none" stroke={line} strokeWidth="1" />
+        <rect x={W / 2 - goalW / 2} y={pitchY - 6} width={goalW} height="6" rx="1.5" fill="none" stroke={line} strokeWidth="1" />
+        <circle cx={W / 2} cy={pitchY + 46} r="2.2" fill="rgba(255,255,255,0.48)" />
+        <path d={`M ${W / 2 - 22} ${pitchY + penaltyH} A 28 28 0 0 0 ${W / 2 + 22} ${pitchY + penaltyH}`} fill="none" stroke={line} strokeWidth="1" />
+
+        <rect x={W / 2 - penaltyW / 2} y={H - pitchY - penaltyH} width={penaltyW} height={penaltyH} fill="none" stroke={line} strokeWidth="1" />
+        <rect x={W / 2 - goalAreaW / 2} y={H - pitchY - goalAreaH} width={goalAreaW} height={goalAreaH} fill="none" stroke={line} strokeWidth="1" />
+        <rect x={W / 2 - goalW / 2} y={H - pitchY} width={goalW} height="6" rx="1.5" fill="none" stroke={line} strokeWidth="1" />
+        <circle cx={W / 2} cy={H - pitchY - 46} r="2.2" fill="rgba(255,255,255,0.48)" />
+        <path d={`M ${W / 2 - 22} ${H - pitchY - penaltyH} A 28 28 0 0 1 ${W / 2 + 22} ${H - pitchY - penaltyH}`} fill="none" stroke={line} strokeWidth="1" />
+
         {slots.map((slot, index) => {
           const player = playerMap.get(String(plan.slots?.[index] || ""));
           const cx = (slot.x / 100) * W;
