@@ -51,9 +51,6 @@ const HALF_META = {
 
 const ROLE_ORDER = { P: 0, D: 1, C: 2, A: 3 };
 const ROLE_COLORS = { P: "#f59e0b", D: "#2563eb", C: "#16a34a", A: "#dc2626" };
-const FORMATION_PHOTO_FALLBACKS = [
-  { match: /jammeh/i, photoSize: 118, photoOffsetX: -28, photoOffsetY: 0 },
-];
 
 function getRoleTag(role = "") {
   const value = String(role || "").toLowerCase();
@@ -88,10 +85,9 @@ function getShirtNumber(player = {}, lineup = {}) {
 }
 
 function getPhotoCrop(player = {}, diameter = 38) {
-  const fallback = FORMATION_PHOTO_FALLBACKS.find((item) => item.match.test(playerName(player))) || {};
-  const sizeValue = player.photoSize ?? fallback.photoSize ?? 100;
-  const offsetXValue = player.photoOffsetX ?? fallback.photoOffsetX ?? 0;
-  const offsetYValue = player.photoOffsetY ?? fallback.photoOffsetY ?? 0;
+  const sizeValue = player.photoSize ?? 100;
+  const offsetXValue = player.photoOffsetX ?? 0;
+  const offsetYValue = player.photoOffsetY ?? 0;
   const size = Math.min(180, Math.max(60, Number(sizeValue)));
   const offsetX = Math.min(50, Math.max(-50, Number(offsetXValue)));
   const offsetY = Math.min(50, Math.max(-50, Number(offsetYValue)));
