@@ -455,275 +455,36 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit,minmax(320px,1fr))",
-            gap: isMobile ? 12 : 18,
+            gap: 14,
           }}
         >
           {matches.map((match) => (
-            <AppCard key={match.id}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: isMobile ? "minmax(0,1fr) auto minmax(0,1fr)" : "1fr auto 1fr",
-                  gap: isMobile ? 8 : 14,
-                  alignItems: "center",
-                  marginBottom: isMobile ? 14 : 20,
-                }}
-              >
-                <TeamBox
-                  logo={match.homeLogo}
-                  logoSize={clubLogoSize}
-                  name={clubName}
-                  fallback={clubName.slice(0, 2).toUpperCase()}
-                  gradient="linear-gradient(135deg,#2563eb,#38bdf8)"
-                />
-
-                <div style={{ textAlign: "center" }}>
-                  {resultEditId === match.id ? (
-                    /* ── Inline result editor ── */
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", marginBottom: 6 }}>
-                      <input
-                        type="number"
-                        min="0"
-                        value={resultDraft.home}
-                        onChange={(e) => setResultDraft((d) => ({ ...d, home: e.target.value }))}
-                        style={{
-                          width: 44, textAlign: "center",
-                          fontSize: isMobile ? 22 : 28, fontWeight: 900,
-                          background: "rgba(255,255,255,0.08)",
-                          border: "1px solid rgba(255,255,255,0.2)",
-                          borderRadius: 8, color: "#f1f5f9",
-                          padding: "4px 2px",
-                        }}
-                      />
-                      <span style={{ fontSize: isMobile ? 20 : 26, fontWeight: 900, color: "#64748b" }}>-</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={resultDraft.away}
-                        onChange={(e) => setResultDraft((d) => ({ ...d, away: e.target.value }))}
-                        style={{
-                          width: 44, textAlign: "center",
-                          fontSize: isMobile ? 22 : 28, fontWeight: 900,
-                          background: "rgba(255,255,255,0.08)",
-                          border: "1px solid rgba(255,255,255,0.2)",
-                          borderRadius: 8, color: "#f1f5f9",
-                          padding: "4px 2px",
-                        }}
-                      />
-                      <button
-                        onClick={() => saveResult(match.id)}
-                        style={{
-                          background: "#22c55e", border: "none", borderRadius: 8,
-                          color: "white", fontSize: 16, padding: "4px 8px", cursor: "pointer",
-                        }}
-                      >✓</button>
-                      <button
-                        onClick={() => setResultEditId(null)}
-                        aria-label="Chiudi"
-                        style={{
-                          background: "rgba(255,255,255,0.08)", border: "none", borderRadius: 8,
-                          color: "#94a3b8", fontSize: 16, padding: "4px 8px", cursor: "pointer",
-                        }}
-                      >✕</button>
-                    </div>
-                  ) : (
-                    <div
-                      onClick={canManage ? () => openResultEdit(match) : undefined}
-                      style={{
-                        fontSize: isMobile ? 24 : 32,
-                        fontWeight: 900,
-                        lineHeight: 1,
-                        marginBottom: 6,
-                        cursor: canManage ? "pointer" : "default",
-                        userSelect: "none",
-                      }}
-                      title={canManage ? t("pages.matches.editResult") : undefined}
-                    >
-                      {match.result || (canManage ? <span style={{ fontSize: isMobile ? 18 : 22, color: "#475569" }}>＋ {t("pages.matches.addResult")}</span> : "-")}
-                    </div>
-                  )}
-
-                  <p style={{ color: "#94a3b8", margin: 0 }}>
-                    {formatDate(match.date)}
-                  </p>
-                  <div style={{ marginTop: 8 }}>
-                    <Badge tone={getMatchStatusTone(getMatchStatus(match))}>
-                      {getMatchStatusLabel(getMatchStatus(match), t)}
-                    </Badge>
-                  </div>
-                </div>
-
-                <TeamBox
-                  logo={match.awayLogo}
-                  name={match.opponent}
-                  fallback={match.opponent?.[0] || "A"}
-                  gradient="linear-gradient(135deg,#7c3aed,#c084fc)"
-                />
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3, 1fr)",
-                  gap: isMobile ? 8 : 12,
-                  marginBottom: isMobile ? 12 : 18,
-                }}
-              >
-                  <MiniInfo label={t("pages.matches.field")} value={formatMatchVenue(match, t)} />
-                  <MiniInfo label={t("pages.matches.formation")} value={match.formation || "-"} />
-                  <MiniInfo
-                  label={t("pages.matches.calledUp")}
-                  value={`${match.lineup?.calledUpIds?.length || 0}/${players.length}`}
-                />
-              </div>
-
-              <div
-                style={{
-                  borderRadius: 12,
-                  padding: 16,
-                  background: "rgba(255,255,255,0.045)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  minHeight: 90,
-                }}
-              >
-                <div
-                  style={{
-                    color: "#94a3b8",
-                    fontSize: 12,
-                    fontWeight: 800,
-                    textTransform: "uppercase",
-                    letterSpacing: 0,
-                    marginBottom: 8,
-                  }}
-                >
-                  {t("pages.matches.matchNotes")}
-                </div>
-
-                <p style={{ margin: 0, color: "#cbd5e1", lineHeight: 1.5 }}>
-                  {match.notes || t("pages.matches.noNotes")}
-                </p>
-              </div>
-
-              {/* Badge convocazione */}
-              {match.convocazione?.published && (
-                <div style={{ marginBottom: 10, marginTop: 14 }}>
-                  <Badge tone="green">
-                    ✓ {t("pages.matches.convocationPublished")} · {match.convocazione.playerIds?.length || 0} {t("common.players")}
-                  </Badge>
-                </div>
-              )}
-              {match.convocazione && !match.convocazione.published && match.convocazione.playerIds?.length > 0 && (
-                <div style={{ marginBottom: 10 }}>
-                  <Badge tone="orange">
-                    {t("pages.matches.convocationDraft")} · {match.convocazione.playerIds.length} {t("pages.matches.selected")}
-                  </Badge>
-                </div>
-              )}
-
-              {/* ── Quick stats panel ── */}
-              {canManage && match.result && quickStatsMatchId === match.id && (
-                <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "rgba(56,189,248,0.06)", border: "1px solid rgba(56,189,248,0.15)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      ⚡ Stats veloci
-                    </span>
-                    <button onClick={() => setQuickStatsMatchId(null)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16 }} aria-label="Chiudi">✕</button>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 44px 44px 56px", gap: 6, marginBottom: 6 }}>
-                    <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Giocatore</span>
-                    <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", textAlign: "center" }}>⚽</span>
-                    <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", textAlign: "center" }}>🎯</span>
-                    <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", textAlign: "center" }}>Min</span>
-                  </div>
-                  {(match.lineup?.calledUpIds || match.convocazione?.playerIds || []).map((pid) => {
-                    const p = players.find((pl) => String(pl.id) === String(pid));
-                    if (!p) return null;
-                    const d = quickStatsDraft[String(pid)] || {};
-                    return (
-                      <div key={pid} style={{ display: "grid", gridTemplateColumns: "1fr 44px 44px 56px", gap: 6, alignItems: "center", marginBottom: 4 }} className="no-mobile-override">
-                        <span style={{ fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-                        {["goals", "assists", "minutes_played"].map((field) => (
-                          <input
-                            key={field}
-                            type="number"
-                            min="0"
-                            value={d[field] ?? ""}
-                            onChange={(e) => setQuickStatsDraft((prev) => ({ ...prev, [String(pid)]: { ...prev[String(pid)], [field]: e.target.value } }))}
-                            style={{ width: "100%", textAlign: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 6, color: "#f1f5f9", fontSize: 16, padding: "4px 2px" }}
-                          />
-                        ))}
-                      </div>
-                    );
-                  })}
-                  <Button onClick={() => saveQuickStats(match)} disabled={quickStatsSaving} style={{ width: "100%", marginTop: 8 }}>
-                    {quickStatsSaving ? "Salvataggio…" : "Salva statistiche"}
-                  </Button>
-                </div>
-              )}
-
-              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fit, minmax(90px, 1fr))", gap: isMobile ? 8 : 10, marginTop: 14 }}>
-                <Link
-                  to={`/match-convocation/${match.id}`}
-                  style={{ textDecoration: "none", minWidth: 0 }}
-                >
-                  <Button
-                    variant={match.convocazione?.published ? "ghost" : "primary"}
-                    style={{ width: "100%" }}
-                  >
-                    {match.convocazione?.published ? `✓ ${t("pages.matches.convocation")}` : t("pages.matches.callUp")}
-                  </Button>
-                </Link>
-
-                <Link
-                  to={`/match-day/${match.id}`}
-                  style={{ textDecoration: "none", minWidth: 0 }}
-                >
-                  <Button variant="ghost" style={{ width: "100%" }}>
-                    {t("pages.matches.matchSheet")}
-                  </Button>
-                </Link>
-
-                <Link
-                  to={`/match-stats/${match.id}`}
-                  style={{ textDecoration: "none", minWidth: 0 }}
-                >
-                  <Button variant="ghost" style={{ width: "100%" }}>
-                    {t("pages.matches.statistics")}
-                  </Button>
-                </Link>
-
-                {canManage && match.result && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => quickStatsMatchId === match.id ? setQuickStatsMatchId(null) : openQuickStats(match)}
-                    style={{ minWidth: 0 }}
-                  >
-                    ⚡ Stats
-                  </Button>
-                )}
-
-                {canManage && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      onClick={() => editMatch(match)}
-                      style={{ minWidth: 0 }}
-                    >
-                      {t("common.edit")}
-                    </Button>
-
-                    <Button
-                      variant="danger"
-                      onClick={() => deleteMatch(match.id)}
-                      style={{ minWidth: 0 }}
-                    >
-                      {t("common.delete")}
-                    </Button>
-                  </>
-                )}
-              </div>
-            </AppCard>
+            <MatchCard
+              key={match.id}
+              match={match}
+              clubName={clubName}
+              clubLogo={match.homeLogo}
+              clubLogoSize={clubLogoSize}
+              players={players}
+              t={t}
+              isMobile={isMobile}
+              canManage={canManage}
+              resultEditId={resultEditId}
+              resultDraft={resultDraft}
+              setResultDraft={setResultDraft}
+              openResultEdit={openResultEdit}
+              saveResult={saveResult}
+              closeResultEdit={() => setResultEditId(null)}
+              quickStatsMatchId={quickStatsMatchId}
+              quickStatsDraft={quickStatsDraft}
+              setQuickStatsDraft={setQuickStatsDraft}
+              quickStatsSaving={quickStatsSaving}
+              openQuickStats={openQuickStats}
+              closeQuickStats={() => setQuickStatsMatchId(null)}
+              saveQuickStats={saveQuickStats}
+              editMatch={editMatch}
+              deleteMatch={deleteMatch}
+            />
           ))}
         </div>
       )}
@@ -990,75 +751,302 @@ function PreviewStat({ label, value, tone = "#e2e8f0" }) {
   );
 }
 
-function TeamBox({ logo, logoSize = 100, name, fallback, gradient }) {
+function MatchCard({
+  match,
+  clubName,
+  clubLogo,
+  clubLogoSize,
+  players,
+  t,
+  isMobile,
+  canManage,
+  resultEditId,
+  resultDraft,
+  setResultDraft,
+  openResultEdit,
+  saveResult,
+  closeResultEdit,
+  quickStatsMatchId,
+  quickStatsDraft,
+  setQuickStatsDraft,
+  quickStatsSaving,
+  openQuickStats,
+  closeQuickStats,
+  saveQuickStats,
+  editMatch,
+  deleteMatch,
+}) {
+  const status = getMatchStatus(match);
+  const calledUpCount = match.lineup?.calledUpIds?.length || 0;
+  const convocationCount = match.convocazione?.playerIds?.length || 0;
+  const opponentInitial = match.opponent?.slice(0, 2).toUpperCase() || "AV";
+  const competitionLine = [match.competition, match.matchday].filter(Boolean).join(" · ");
+
+  return (
+    <AppCard>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "minmax(0,1fr) auto",
+          gap: 18,
+          alignItems: "start",
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
+            <MatchLogo
+              logo={clubLogo}
+              logoSize={clubLogoSize}
+              name={clubName}
+              fallback={clubName.slice(0, 2).toUpperCase()}
+              color="#38bdf8"
+            />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                <h3 style={{ margin: 0, fontSize: isMobile ? 18 : 21, lineHeight: 1.15, color: "#f8fafc" }}>
+                  {clubName} <span style={{ color: "#64748b" }}>vs</span> {match.opponent}
+                </h3>
+                <Badge tone={getMatchStatusTone(status)}>{getMatchStatusLabel(status, t)}</Badge>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", color: "#94a3b8", fontSize: 13 }}>
+                <span>{formatDate(match.date)}</span>
+                {match.time && <span>{match.time}</span>}
+                {competitionLine && <span>{competitionLine}</span>}
+              </div>
+            </div>
+            <MatchLogo
+              logo={match.awayLogo}
+              name={match.opponent}
+              fallback={opponentInitial}
+              color="#a78bfa"
+            />
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,minmax(0,1fr))",
+              gap: 10,
+              marginTop: 18,
+            }}
+          >
+            <MatchDetail label={t("pages.matches.field")} value={formatMatchVenue(match, t)} wide={!isMobile} />
+            <MatchDetail label={t("pages.matches.formation")} value={match.formation || "-"} />
+            <MatchDetail label={t("pages.matches.calledUp")} value={`${calledUpCount}/${players.length}`} />
+            <MatchDetail label={t("pages.matches.matchNotes")} value={match.notes || t("pages.matches.noNotes")} wide />
+          </div>
+
+          {(match.convocazione?.published || (match.convocazione && !match.convocazione.published && convocationCount > 0)) && (
+            <div style={{ marginTop: 12 }}>
+              <Badge tone={match.convocazione?.published ? "green" : "orange"}>
+                {match.convocazione?.published
+                  ? `✓ ${t("pages.matches.convocationPublished")} · ${convocationCount} ${t("common.players")}`
+                  : `${t("pages.matches.convocationDraft")} · ${convocationCount} ${t("pages.matches.selected")}`}
+              </Badge>
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            minWidth: isMobile ? "100%" : 260,
+            display: "grid",
+            gap: 12,
+            justifyItems: isMobile ? "stretch" : "end",
+          }}
+        >
+          <div
+            style={{
+              width: isMobile ? "100%" : 220,
+              borderRadius: 12,
+              padding: "14px 16px",
+              background: "rgba(15,23,42,0.72)",
+              border: "1px solid rgba(148,163,184,0.18)",
+              textAlign: "center",
+            }}
+          >
+            {resultEditId === match.id ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 7, justifyContent: "center" }}>
+                <input
+                  type="number"
+                  min="0"
+                  value={resultDraft.home}
+                  onChange={(e) => setResultDraft((draft) => ({ ...draft, home: e.target.value }))}
+                  style={matchStyles.scoreInput}
+                />
+                <span style={{ fontSize: 24, fontWeight: 900, color: "#64748b" }}>-</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={resultDraft.away}
+                  onChange={(e) => setResultDraft((draft) => ({ ...draft, away: e.target.value }))}
+                  style={matchStyles.scoreInput}
+                />
+                <button onClick={() => saveResult(match.id)} style={matchStyles.iconSave} aria-label="Salva risultato">✓</button>
+                <button onClick={closeResultEdit} style={matchStyles.iconClose} aria-label="Chiudi">×</button>
+              </div>
+            ) : (
+              <button
+                onClick={canManage ? () => openResultEdit(match) : undefined}
+                style={{
+                  width: "100%",
+                  background: "transparent",
+                  border: "none",
+                  color: match.result ? "#f8fafc" : "#94a3b8",
+                  cursor: canManage ? "pointer" : "default",
+                  fontSize: match.result ? 31 : 16,
+                  fontWeight: 900,
+                  lineHeight: 1.1,
+                  padding: 0,
+                }}
+                title={canManage ? t("pages.matches.editResult") : undefined}
+              >
+                {match.result || (canManage ? `+ ${t("pages.matches.addResult")}` : "-")}
+              </button>
+            )}
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr",
+              gap: 8,
+              width: isMobile ? "100%" : 220,
+            }}
+          >
+            <Link to={`/match-convocation/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
+              <Button variant={match.convocazione?.published ? "ghost" : "primary"} style={{ width: "100%" }}>
+                {match.convocazione?.published ? `✓ ${t("pages.matches.convocation")}` : t("pages.matches.callUp")}
+              </Button>
+            </Link>
+            <Link to={`/match-day/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
+              <Button variant="ghost" style={{ width: "100%" }}>{t("pages.matches.matchSheet")}</Button>
+            </Link>
+            <Link to={`/match-stats/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
+              <Button variant="ghost" style={{ width: "100%" }}>{t("pages.matches.statistics")}</Button>
+            </Link>
+            {canManage && match.result && (
+              <Button
+                variant="ghost"
+                onClick={() => quickStatsMatchId === match.id ? closeQuickStats() : openQuickStats(match)}
+                style={{ minWidth: 0 }}
+              >
+                Stats veloci
+              </Button>
+            )}
+            {canManage && (
+              <>
+                <Button variant="ghost" onClick={() => editMatch(match)} style={{ minWidth: 0 }}>
+                  {t("common.edit")}
+                </Button>
+                <Button variant="danger" onClick={() => deleteMatch(match.id)} style={{ minWidth: 0 }}>
+                  {t("common.delete")}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {canManage && match.result && quickStatsMatchId === match.id && (
+        <QuickStatsPanel
+          match={match}
+          players={players}
+          quickStatsDraft={quickStatsDraft}
+          setQuickStatsDraft={setQuickStatsDraft}
+          quickStatsSaving={quickStatsSaving}
+          onClose={closeQuickStats}
+          onSave={() => saveQuickStats(match)}
+        />
+      )}
+    </AppCard>
+  );
+}
+
+function MatchLogo({ logo, logoSize = 100, name, fallback, color }) {
   return (
     <div
       style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        textAlign: "center",
-        minWidth: 0,
-        width: "100%",
+        width: 48,
+        height: 48,
+        borderRadius: 10,
         overflow: "hidden",
+        display: "grid",
+        placeItems: "center",
+        flexShrink: 0,
+        background: `linear-gradient(135deg,${color},rgba(255,255,255,0.08))`,
+        border: "1px solid rgba(255,255,255,0.14)",
+        color: "#f8fafc",
+        fontSize: 16,
+        fontWeight: 900,
       }}
+      title={name}
     >
       {logo ? (
-        <div
+        <img
+          src={logo}
+          alt={name}
           style={{
-            width: 68,
-            height: 68,
-            borderRadius: 16,
-            marginBottom: 10,
-            overflow: "hidden",
-            display: "grid",
-            placeItems: "center",
-            border: "1px solid rgba(255,255,255,0.12)",
+            width: `${Number(logoSize || 100)}%`,
+            height: `${Number(logoSize || 100)}%`,
+            objectFit: "contain",
+            maxWidth: "160%",
+            maxHeight: "160%",
           }}
-        >
-          <img
-            src={logo}
-            alt={name}
-            style={{
-              width: `${Number(logoSize || 100)}%`,
-              height: `${Number(logoSize || 100)}%`,
-              objectFit: "contain",
-              maxWidth: "160%",
-              maxHeight: "160%",
-            }}
-          />
-        </div>
-      ) : (
-        <div
-          style={{
-            width: 68,
-            height: 68,
-            borderRadius: 16,
-            background: gradient,
-            display: "grid",
-            placeItems: "center",
-            marginBottom: 10,
-            fontSize: 24,
-            fontWeight: 900,
-          }}
-        >
-          {fallback}
-        </div>
-      )}
+        />
+      ) : fallback}
+    </div>
+  );
+}
 
-      <strong
-        style={{
-          display: "block",
-          maxWidth: "100%",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          lineHeight: 1.2,
-        }}
-        title={name}
-      >
-        {name}
-      </strong>
+function MatchDetail({ label, value, wide = false }) {
+  return (
+    <div style={{ minWidth: 0, gridColumn: wide ? "span 2" : undefined }}>
+      <span style={matchStyles.detailLabel}>{label}</span>
+      <strong style={matchStyles.detailValue} title={String(value || "")}>{value}</strong>
+    </div>
+  );
+}
+
+function QuickStatsPanel({ match, players, quickStatsDraft, setQuickStatsDraft, quickStatsSaving, onClose, onSave }) {
+  return (
+    <div style={matchStyles.quickStatsPanel}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <span style={matchStyles.quickStatsTitle}>Stats veloci</span>
+        <button onClick={onClose} style={matchStyles.iconClose} aria-label="Chiudi">×</button>
+      </div>
+      <div style={matchStyles.quickStatsGrid}>
+        <span style={matchStyles.quickStatsHead}>Giocatore</span>
+        <span style={matchStyles.quickStatsHeadCenter}>Gol</span>
+        <span style={matchStyles.quickStatsHeadCenter}>Assist</span>
+        <span style={matchStyles.quickStatsHeadCenter}>Min</span>
+      </div>
+      {(match.lineup?.calledUpIds || match.convocazione?.playerIds || []).map((pid) => {
+        const player = players.find((item) => String(item.id) === String(pid));
+        if (!player) return null;
+        const draft = quickStatsDraft[String(pid)] || {};
+        return (
+          <div key={pid} style={matchStyles.quickStatsGrid} className="no-mobile-override">
+            <span style={matchStyles.quickStatsPlayer}>{player.name}</span>
+            {["goals", "assists", "minutes_played"].map((field) => (
+              <input
+                key={field}
+                type="number"
+                min="0"
+                value={draft[field] ?? ""}
+                onChange={(event) => setQuickStatsDraft((prev) => ({
+                  ...prev,
+                  [String(pid)]: { ...prev[String(pid)], [field]: event.target.value },
+                }))}
+                style={matchStyles.quickStatsInput}
+              />
+            ))}
+          </div>
+        );
+      })}
+      <Button onClick={onSave} disabled={quickStatsSaving} style={{ width: "100%", marginTop: 8 }}>
+        {quickStatsSaving ? "Salvataggio..." : "Salva statistiche"}
+      </Button>
     </div>
   );
 }
@@ -1099,34 +1087,6 @@ function LogoUploader({ label, value, onChange }) {
           }}
         />
       )}
-    </div>
-  );
-}
-
-function MiniInfo({ label, value }) {
-  return (
-    <div
-      style={{
-        borderRadius: 12,
-        padding: 12,
-        background: "rgba(255,255,255,0.055)",
-        border: "1px solid rgba(255,255,255,0.08)",
-      }}
-    >
-      <div
-        style={{
-          color: "#94a3b8",
-          fontSize: 11,
-          fontWeight: 800,
-          textTransform: "uppercase",
-          letterSpacing: 0,
-          marginBottom: 6,
-        }}
-      >
-        {label}
-      </div>
-
-      <strong style={{ lineHeight: 1.2 }}>{value}</strong>
     </div>
   );
 }
@@ -1358,6 +1318,105 @@ function formatMatchVenue(match, t) {
 const matchStyles = {
   inputError: { border: "1px solid #f87171", boxShadow: "0 0 0 2px rgba(248,113,113,0.15)" },
   errorMsg:   { display: "block", marginTop: 4, fontSize: 11, fontWeight: 700, color: "#f87171" },
+  scoreInput: {
+    width: 46,
+    textAlign: "center",
+    fontSize: 24,
+    fontWeight: 900,
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.2)",
+    borderRadius: 8,
+    color: "#f1f5f9",
+    padding: "5px 2px",
+  },
+  iconSave: {
+    background: "#22c55e",
+    border: "none",
+    borderRadius: 8,
+    color: "white",
+    fontSize: 16,
+    padding: "6px 9px",
+    cursor: "pointer",
+  },
+  iconClose: {
+    background: "rgba(255,255,255,0.08)",
+    border: "none",
+    borderRadius: 8,
+    color: "#94a3b8",
+    fontSize: 16,
+    padding: "6px 9px",
+    cursor: "pointer",
+  },
+  detailLabel: {
+    display: "block",
+    color: "#94a3b8",
+    fontSize: 10,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+    marginBottom: 4,
+  },
+  detailValue: {
+    display: "block",
+    minHeight: 18,
+    color: "#e2e8f0",
+    fontSize: 14,
+    lineHeight: 1.28,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  quickStatsPanel: {
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 12,
+    background: "rgba(56,189,248,0.06)",
+    border: "1px solid rgba(56,189,248,0.15)",
+  },
+  quickStatsTitle: {
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#38bdf8",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  quickStatsGrid: {
+    display: "grid",
+    gridTemplateColumns: "minmax(120px,1fr) 54px 54px 62px",
+    gap: 7,
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  quickStatsHead: {
+    fontSize: 10,
+    color: "#64748b",
+    fontWeight: 800,
+    textTransform: "uppercase",
+  },
+  quickStatsHeadCenter: {
+    fontSize: 10,
+    color: "#64748b",
+    fontWeight: 800,
+    textTransform: "uppercase",
+    textAlign: "center",
+  },
+  quickStatsPlayer: {
+    fontSize: 12,
+    color: "#cbd5e1",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  quickStatsInput: {
+    width: "100%",
+    textAlign: "center",
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 6,
+    color: "#f1f5f9",
+    fontSize: 15,
+    padding: "4px 2px",
+  },
 };
 
 const previewStyles = {
