@@ -350,7 +350,7 @@ export default function MatchFormationPlanner({
       </div>`;
       return `<section class="team-card">
         <h2>${HALF_META[halfKey].label} · ${escapeHtml(plan.formation)}</h2>
-        <div class="field-wrap"><svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+        <div class="field-wrap"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
           <rect width="${W}" height="${H}" fill="#15803d" rx="8"/>
           <rect x="16" y="16" width="${W - 32}" height="${H - 32}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.4"/>
           <line x1="16" y1="${H / 2}" x2="${W - 16}" y2="${H / 2}" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
@@ -371,27 +371,28 @@ export default function MatchFormationPlanner({
       @page{size:${pageSize};margin:8mm}
       *{box-sizing:border-box}
       body{margin:0;padding:12px 18px;font-family:sans-serif;background:#f8fafc;color:#0f172a}
-      .page-head{display:flex;align-items:center;gap:10px;margin:0 auto 8px;width:100%;max-width:178mm}
+      .print-page{width:100%;max-width:178mm;margin:0 auto;break-inside:avoid;page-break-inside:avoid}
+      .page-head{display:flex;align-items:center;gap:10px;margin:0 0 6px;width:100%}
       .club-logo{width:${Math.max(32, Math.min(56, Number(clubLogoSize) * 0.45))}px;height:${Math.max(32, Math.min(56, Number(clubLogoSize) * 0.45))}px;object-fit:contain}
       h1{margin:0 0 2px;font-size:18px;line-height:1.12}
       .meta{margin:0;color:#64748b;font-size:11px}
       .sheet{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
       .sheet.single{display:flex;justify-content:center;width:100%}
       .team-card{break-inside:avoid}
-      .single .team-card{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "field" "leaders" "bench" "notes";gap:7px;align-items:start;justify-items:center;width:100%;max-width:178mm;margin:0 auto}
+      .single .team-card{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "field" "leaders" "bench" "notes";gap:6px;align-items:start;justify-items:center;width:100%;margin:0 auto;break-inside:auto;page-break-inside:auto}
       h2{margin:0 0 8px;font-size:16px}
-      .single h2{grid-area:title;margin-bottom:2px;width:158mm}
+      .single h2{grid-area:title;margin:0;width:150mm}
       .field-wrap{width:100%}
-      .single .field-wrap{grid-area:field;width:158mm;margin:0 auto}
+      .single .field-wrap{grid-area:field;width:150mm;margin:0 auto}
       svg{display:block;width:100%;height:auto;max-height:520px;border-radius:8px}
       .single svg{width:100%;max-height:none;margin:0 auto}
       .leaders{margin-top:8px;padding:9px 10px;border:1px solid #dbe3ef;border-radius:8px;background:white;display:grid;gap:4px;font-size:12px}
-      .single .leaders{grid-area:leaders;margin:0;width:158mm;grid-template-columns:1fr 1fr;gap:10px;padding:7px 10px}
+      .single .leaders{grid-area:leaders;margin:0;width:150mm;grid-template-columns:1fr 1fr;gap:10px;padding:6px 9px}
       .leaders span{display:grid;grid-template-columns:max-content 1fr;gap:8px;align-items:baseline}
       .leaders b{color:#0f172a}
       .leaders em{font-style:normal}
       .bench{margin-top:8px;padding:8px 10px;border:1px solid #dbe3ef;border-radius:8px;background:white;display:flex;flex-wrap:wrap;gap:6px 10px;font-size:11px;line-height:1.25}
-      .single .bench{grid-area:bench;margin:0;width:158mm;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 14px;font-size:11.5px;align-content:start;padding:8px 10px}
+      .single .bench{grid-area:bench;margin:0;width:150mm;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 12px;font-size:10.5px;align-content:start;padding:7px 9px}
       .bench strong{width:100%;font-size:11px;text-transform:uppercase;color:#475569}
       .single .bench strong{grid-column:1 / -1}
       .bench span{white-space:nowrap}
@@ -399,9 +400,9 @@ export default function MatchFormationPlanner({
       .bench b{font-size:10px;color:#2563eb}
       .notes{margin:8px 0 0;padding:8px 10px;border:1px solid #dbe3ef;border-radius:8px;background:white;font-size:12px}
       .single .notes{grid-area:notes;margin:0}
-      @media print{body{padding:0}button{display:none}.sheet{gap:12px}h1{font-size:17px}h2{font-size:13px}.bench{font-size:10px}.single .team-card,.page-head{max-width:178mm}.single h2,.single .field-wrap,.single .leaders,.single .bench{width:158mm}.single svg{width:100%;max-height:none}}
+      @media print{body{padding:0}button{display:none}.print-page{max-width:178mm}.sheet{gap:12px}h1{font-size:16px}h2{font-size:12px}.bench{font-size:10px}.single h2,.single .field-wrap,.single .leaders,.single .bench{width:150mm}.single svg{width:150mm;height:auto;max-height:none}}
     </style></head>
-      <body><div class="page-head">${logoHtml}<div><h1>${escapeHtml(title)}</h1><p class="meta">${escapeHtml(meta)}</p></div></div><div class="${sheetClass}">${printHalfKeys.map(renderField).join("")}</div>
+      <body><main class="print-page"><div class="page-head">${logoHtml}<div><h1>${escapeHtml(title)}</h1><p class="meta">${escapeHtml(meta)}</p></div></div><div class="${sheetClass}">${printHalfKeys.map(renderField).join("")}</div></main>
       <br><button onclick="window.print()">Stampa</button></body></html>`);
     win.document.close();
   }
