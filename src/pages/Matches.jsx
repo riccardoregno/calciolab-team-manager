@@ -153,7 +153,8 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
       const match = matches.find((item) => String(item.id) === String(modalEditId));
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditingId(modalEditId);
-      setForm(loadMatchDraft(draftKey, match ? matchToForm(match) : emptyMatch(clubLogo)));
+      clearMatchDraft(modalEditId);
+      setForm(match ? matchToForm(match) : emptyMatch(clubLogo));
       return;
     }
 
@@ -182,13 +183,13 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   }, [clubLogo, matches, modalEditId, openModal, showToast, t]);
 
   useEffect(() => {
-    if (!openModal || !modalKeyRef.current) return;
+    if (!openModal || !modalKeyRef.current || modalEditId) return;
     try {
       localStorage.setItem(modalKeyRef.current, JSON.stringify(form));
     } catch {
       /* localStorage can be unavailable in restricted browsers */
     }
-  }, [form, openModal]);
+  }, [form, modalEditId, openModal]);
 
   function handleLogoUpload(field, file) {
     if (!canManage) return;
