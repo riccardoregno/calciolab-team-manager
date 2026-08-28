@@ -62,16 +62,23 @@ const ROLE_SHORT = {
   "Seconda punta":    "ATT",
 };
 
-const ROLE_ORDER = ["Portiere", "DIF", "CEN", "ATT"];
-
 function getRoleShort(role = "") {
   return ROLE_SHORT[role] || role.slice(0, 3).toUpperCase() || "—";
 }
 
-function getRoleSortOrder(role = "") {
-  const s = getRoleShort(role);
-  const idx = ROLE_ORDER.indexOf(s === "POR" ? "Portiere" : s);
-  return idx >= 0 ? idx : 99;
+function getMatchShirtNumber(player = {}, lineup = {}) {
+  const playerId = String(player.id || "");
+  const matchNumber = lineup?.shirtNumbers?.[playerId];
+  return String(matchNumber || player.shirtNumber || player.number || "").trim();
+}
+
+function compareByMatchShirtNumber(a, b, lineup = {}) {
+  const aNumber = Number(getMatchShirtNumber(a, lineup));
+  const bNumber = Number(getMatchShirtNumber(b, lineup));
+  const aRank = Number.isFinite(aNumber) && aNumber > 0 ? aNumber : 999;
+  const bRank = Number.isFinite(bNumber) && bNumber > 0 ? bNumber : 999;
+  if (aRank !== bRank) return aRank - bRank;
+  return String(a.name || "").localeCompare(String(b.name || ""), "it");
 }
 
 // ─── Principale ───────────────────────────────────────────────────────────
@@ -110,19 +117,14 @@ export function generateDistintaPDF(match, allPlayers, profile = {}, staffList =
       ...p,
       isStarter: starterIds.has(String(p.id)),
     }))
-    .sort((a, b) => {
-      // Prima per ruolo, poi per numero maglia
-      const roleDiff = getRoleSortOrder(a.role) - getRoleSortOrder(b.role);
-      if (roleDiff !== 0) return roleDiff;
-      return Number(a.shirtNumber || 99) - Number(b.shirtNumber || 99);
-    });
+    .sort((a, b) => compareByMatchShirtNumber(a, b, match.lineup));
 
   // Se non c'è nessuno convocato ma la rosa esiste, usiamo tutta la rosa (fallback)
   const playersToList = calledPlayers.length > 0
     ? calledPlayers
     : allPlayers
         .filter((p) => (p.status || "Disponibile") === "Disponibile")
-        .sort((a, b) => Number(a.shirtNumber || 99) - Number(b.shirtNumber || 99));
+        .sort((a, b) => compareByMatchShirtNumber(a, b, match.lineup));
 
   // ── Logo ──────────────────────────────────────────────────────────────────
   let logoY = 14;
@@ -190,7 +192,7 @@ export function generateDistintaPDF(match, allPlayers, profile = {}, staffList =
     const cap   = String(p.id) === captainId ? " (C)" : "";
 
     return [
-      p.shirtNumber || "—",
+      getMatchShirtNumber(p, match.lineup) || "—",
       `${cognome.toUpperCase()}${cap}`,
       nome,
       fmtDate(p.birthDate),

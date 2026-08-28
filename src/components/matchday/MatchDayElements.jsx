@@ -157,6 +157,8 @@ export function PlayerPrintTable({ players, lineup, empty, t }) {
     );
   }
 
+  const sortedPlayers = [...players].sort((a, b) => compareByShirtNumber(a, b, lineup));
+
   return (
     <table>
       <thead>
@@ -169,15 +171,16 @@ export function PlayerPrintTable({ players, lineup, empty, t }) {
         </tr>
       </thead>
       <tbody>
-        {players.map((player, index) => {
+        {sortedPlayers.map((player, index) => {
           const displayName = [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "-";
           const role = lineup?.roles?.[player.id] || player.role || "-";
-          const isCaptain = lineup?.captainId === player.id;
+          const shirtNumber = getShirtNumber(player, lineup);
+          const isCaptain = String(lineup?.captainId || "") === String(player.id);
 
           return (
             <tr key={player.id}>
               <td>{index + 1}</td>
-              <td>#{player.shirtNumber || "-"}</td>
+              <td>#{shirtNumber || "-"}</td>
               <td>{displayName}</td>
               <td>{role}</td>
               <td>{isCaptain ? t("pages.matchDay.playerTableCaptain") : player.status || "-"}</td>
@@ -187,6 +190,21 @@ export function PlayerPrintTable({ players, lineup, empty, t }) {
       </tbody>
     </table>
   );
+}
+
+function getShirtNumber(player = {}, lineup = {}) {
+  const playerId = String(player.id || "");
+  const matchNumber = lineup?.shirtNumbers?.[playerId];
+  return String(matchNumber || player.shirtNumber || player.number || "").trim();
+}
+
+function compareByShirtNumber(a, b, lineup = {}) {
+  const aNumber = Number(getShirtNumber(a, lineup));
+  const bNumber = Number(getShirtNumber(b, lineup));
+  const aRank = Number.isFinite(aNumber) && aNumber > 0 ? aNumber : 999;
+  const bRank = Number.isFinite(bNumber) && bNumber > 0 ? bNumber : 999;
+  if (aRank !== bRank) return aRank - bRank;
+  return String(a.name || "").localeCompare(String(b.name || ""), "it");
 }
 
 export function SectionHeader({ title, badge }) {

@@ -14,12 +14,30 @@ function findPlayer(players, id) {
   return players.find((player) => String(player.id) === String(id));
 }
 
-function playerLine(player, roles = {}, captainId = null) {
+function playerLine(player, lineup = {}, captainId = null) {
   if (!player) return "-";
-  const shirt = player.shirtNumber ? `${player.shirtNumber}. ` : "";
-  const role = roles?.[player.id] || player.role || "-";
+  const shirtNumber = getShirtNumber(player, lineup);
+  const shirt = shirtNumber ? `${shirtNumber}. ` : "";
+  const role = lineup.roles?.[player.id] || player.role || "-";
   const captain = captainId && String(captainId) === String(player.id) ? " (C)" : "";
   return `${shirt}${player.name}${captain} - ${role}`;
+}
+
+function getShirtNumber(player = {}, lineup = {}) {
+  const playerId = String(player.id || "");
+  const matchNumber = lineup.shirtNumbers?.[playerId];
+  return String(matchNumber || player.shirtNumber || player.number || "").trim();
+}
+
+function sortByShirtNumber(players = [], lineup = {}) {
+  return [...players].sort((a, b) => {
+    const aNumber = Number(getShirtNumber(a, lineup));
+    const bNumber = Number(getShirtNumber(b, lineup));
+    const aRank = Number.isFinite(aNumber) && aNumber > 0 ? aNumber : 999;
+    const bRank = Number.isFinite(bNumber) && bNumber > 0 ? bNumber : 999;
+    if (aRank !== bRank) return aRank - bRank;
+    return String(a.name || "").localeCompare(String(b.name || ""), "it");
+  });
 }
 
 export async function generateMatchDayPDF({ match, players = [], appSettings = {}, save = true }) {
@@ -47,8 +65,8 @@ export async function generateMatchDayPDF({ match, players = [], appSettings = {
   y += 8;
 
   const lineup = getLineup(match);
-  const starters = (lineup.starterIds || []).map((id) => findPlayer(players, id)).filter(Boolean);
-  const bench = (lineup.benchIds || []).map((id) => findPlayer(players, id)).filter(Boolean);
+  const starters = sortByShirtNumber((lineup.starterIds || []).map((id) => findPlayer(players, id)).filter(Boolean), lineup);
+  const bench = sortByShirtNumber((lineup.benchIds || []).map((id) => findPlayer(players, id)).filter(Boolean), lineup);
   const calledUp = (lineup.calledUpIds || []).map((id) => findPlayer(players, id)).filter(Boolean);
   const totalCalled = calledUp.length || starters.length + bench.length;
 
@@ -61,8 +79,8 @@ export async function generateMatchDayPDF({ match, players = [], appSettings = {
 
   y = sectionTitle(doc, "Formazione", y);
   const rows = Array.from({ length: Math.max(starters.length, bench.length, 1) }).map((_, index) => [
-    playerLine(starters[index], lineup.roles, lineup.captainId),
-    playerLine(bench[index], lineup.roles, null),
+    playerLine(starters[index], lineup, lineup.captainId),
+    playerLine(bench[index], lineup, null),
   ]);
   y = defaultTable(doc, {
     startY: y,

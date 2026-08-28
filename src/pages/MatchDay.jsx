@@ -67,7 +67,7 @@ function MatchDay({
           : match
       )
     );
-  }, [selectedMatch?.id, selectedMatch?.convocazione?.playerIds, lineup.calledUpIds.length, setMatches]);
+  }, [selectedMatch, lineup.calledUpIds.length, setMatches]);
 
   function updateSelectedMatch(patch) {
     if (!selectedMatch) return;
