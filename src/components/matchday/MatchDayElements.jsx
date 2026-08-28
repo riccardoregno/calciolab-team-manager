@@ -161,6 +161,11 @@ export function PlayerPrintTable({ players, lineup, empty, t }) {
 
   return (
     <table>
+      <colgroup>
+        <col style={{ width: "20%" }} />
+        <col style={{ width: "46%" }} />
+        <col style={{ width: "34%" }} />
+      </colgroup>
       <thead>
         <tr>
           <th>{t("pages.matchDay.printTableShirt")}</th>
