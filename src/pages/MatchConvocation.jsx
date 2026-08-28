@@ -42,7 +42,7 @@ function groupByRole(players) {
   // ordina i gruppi per ruolo
   const ordered = {};
   [...ROLE_ORDER, "Altro"].forEach((r) => {
-    if (groups[r]?.length) ordered[r] = groups[r];
+    if (groups[r]?.length) ordered[r] = sortPlayersByName(groups[r]);
   });
   return ordered;
 }
@@ -120,9 +120,16 @@ function getPlayerDisplayName(player = {}) {
   return [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "-";
 }
 
+function sortPlayersByName(players = []) {
+  return [...players].sort((a, b) =>
+    getPlayerDisplayName(a).localeCompare(getPlayerDisplayName(b), "it", { sensitivity: "base" })
+  );
+}
+
 function buildConvocationText({ clubName, match, details, meetingInfo, fieldInfo, notes, convocati, isHomeMatch, t }) {
   const matchContext = [match.competition, match.matchday].filter(Boolean).join(" · ");
   const opponent = match.opponent || t("pages.matchConvocation.defaultOpponent");
+  const orderedConvocati = sortPlayersByName(convocati);
 
   if (!isHomeMatch) {
     return [
@@ -130,6 +137,12 @@ function buildConvocationText({ clubName, match, details, meetingInfo, fieldInfo
       t("pages.matchConvocation.convTextDate", { value: formatDate(match.date) }),
       t("pages.matchConvocation.convTextMeeting", { value: meetingInfo || "" }),
       t("pages.matchConvocation.convTextField", { value: fieldInfo || "" }),
+      "",
+      `Convocati: ${orderedConvocati.length}`,
+      ...orderedConvocati.map((player, index) => {
+        const shirt = player.shirtNumber ? ` #${player.shirtNumber}` : "";
+        return `${index + 1}. ${getPlayerDisplayName(player)}${shirt}`;
+      }),
     ].join("\n");
   }
 
@@ -146,7 +159,8 @@ function buildConvocationText({ clubName, match, details, meetingInfo, fieldInfo
     details.staffContact ? t("pages.matchConvocation.convTextStaffContact", { value: details.staffContact }) : "",
     "",
     t("pages.matchConvocation.convTextRosterHeader"),
-    ...convocati.map((player, index) => {
+    `Convocati: ${orderedConvocati.length}`,
+    ...orderedConvocati.map((player, index) => {
       const shirt = player.shirtNumber ? ` #${player.shirtNumber}` : "";
       return `${index + 1}. ${getPlayerDisplayName(player)}${shirt}`;
     }),
@@ -158,7 +172,7 @@ function buildConvocationText({ clubName, match, details, meetingInfo, fieldInfo
 }
 
 function buildConvocationRosterText(convocati) {
-  return convocati
+  return sortPlayersByName(convocati)
     .map((player, index) => {
       const shirt = player.shirtNumber ? ` #${player.shirtNumber}` : "";
       return `${index + 1}. ${getPlayerDisplayName(player)}${shirt}`;
@@ -214,7 +228,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   );
   const [communicationText, setCommunicationText] = useState(existing.communicationText || "");
   const [communicationEdited, setCommunicationEdited] = useState(
-    Boolean(existing.communicationEdited ?? existing.communicationText)
+    Boolean(existing.communicationEdited)
   );
   const [published, setPublished] = useState(Boolean(existing.published));
   const [saved, setSaved]       = useState(false);
@@ -235,7 +249,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
     setNotes(c.notes || defaultNotes);
     setDetails(normalizeConvocationDetails(c.details, nextDefaults));
     setCommunicationText(c.communicationText || "");
-    setCommunicationEdited(Boolean(c.communicationEdited ?? c.communicationText));
+    setCommunicationEdited(Boolean(c.communicationEdited));
     setPublished(Boolean(c.published));
     setCopiedLabel("");
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -289,7 +303,6 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
     );
   }
 
-  const groups = groupByRole(players);
   const count  = selectedIds.length;
   const full   = count >= MAX_PLAYERS;
 
@@ -329,7 +342,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
       playerIds:   selectedIds,
       notes:       notes.trim(),
       details:     cleanDetails,
-      communicationText: communicationText.trim(),
+      communicationText: fullMessage.trim(),
       communicationEdited,
       published:   pub,
       publishedAt: pub ? (existing.publishedAt || new Date().toISOString()) : (existing.publishedAt || null),
@@ -475,7 +488,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
       playerIds: selectedIds,
       notes: notes.trim(),
       details: cleanDetails,
-      communicationText: communicationText.trim(),
+      communicationText: fullMessage.trim(),
       communicationEdited,
       published,
       publishedAt: published ? (existing.publishedAt || sentAt) : (existing.publishedAt || null),
@@ -503,6 +516,9 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   const convocati = selectedIds
     .map((pid) => players.find((p) => String(p.id) === pid))
     .filter(Boolean);
+  const orderedConvocati = sortPlayersByName(convocati);
+  const availablePlayers = players.filter((player) => !selectedIds.includes(String(player.id)));
+  const groups = groupByRole(availablePlayers);
   const rsvpMap = new Map(rsvps.map((rsvp) => [String(rsvp.player_id), rsvp]));
   const emailTargets = convocati.filter((p) => String(p.email || "").trim());
   const emailMissing = convocati.filter((p) => !String(p.email || "").trim());
@@ -541,12 +557,12 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
     meetingInfo,
     fieldInfo,
     notes,
-    convocati,
+    convocati: orderedConvocati,
     isHomeMatch,
     t,
   });
-  const fullMessage = communicationEdited ? communicationText : (communicationText || generatedMessage);
-  const rosterMessage = buildConvocationRosterText(convocati);
+  const fullMessage = communicationEdited ? communicationText : generatedMessage;
+  const rosterMessage = buildConvocationRosterText(orderedConvocati);
 
   function restoreGeneratedMessage() {
     if (!canManage) return;
@@ -820,14 +836,52 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
 
       {/* ── Selezione giocatori ── */}
       <AppCard>
-        <h3 style={{ margin: "0 0 4px", lineHeight: 1.2 }}>{t("pages.matchConvocation.selectPlayersTitle")}</h3>
-        <p style={s.muted}>
-          {t("pages.matchConvocation.selectPlayersHint", { max: MAX_PLAYERS })}
-          {full && <span style={{ color: "#f87171", marginLeft: 6 }}>{t("pages.matchConvocation.limitReached")}</span>}
-        </p>
+        <div style={s.selectionHeader}>
+          <div>
+            <h3 style={{ margin: "0 0 4px", lineHeight: 1.2 }}>{t("pages.matchConvocation.selectPlayersTitle")}</h3>
+            <p style={s.muted}>
+              {t("pages.matchConvocation.selectPlayersHint", { max: MAX_PLAYERS })}
+              {full && <span style={{ color: "#f87171", marginLeft: 6 }}>{t("pages.matchConvocation.limitReached")}</span>}
+            </p>
+          </div>
+          <Badge tone={full ? "red" : count > 0 ? "blue" : "orange"}>
+            {count} convocati su {MAX_PLAYERS}
+          </Badge>
+        </div>
+
+        <div style={s.selectedPanel}>
+          <div style={s.selectedPanelHeader}>
+            <strong>Convocati selezionati</strong>
+            <span>{orderedConvocati.length} giocatori</span>
+          </div>
+          {orderedConvocati.length > 0 ? (
+            <div style={s.selectedGrid}>
+              {orderedConvocati.map((player) => (
+                <button
+                  key={player.id}
+                  onClick={() => toggle(player.id)}
+                  disabled={!canManage}
+                  style={{
+                    ...s.selectedChip,
+                    ...(!canManage ? s.playerBtnDisabled : {}),
+                  }}
+                  title="Rimuovi dai convocati"
+                >
+                  <span style={s.shirtNum}>{player.shirtNumber || "-"}</span>
+                  <span style={s.playerBtnName}>{getPlayerDisplayName(player)}</span>
+                  <span style={s.removeMark}>×</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p style={s.emptySelected}>Nessun convocato selezionato.</p>
+          )}
+        </div>
 
         <div style={s.groups}>
-          {Object.entries(groups).map(([role, rolePlayers]) => {
+          {availablePlayers.length === 0 ? (
+            <p style={s.emptySelected}>Tutti i giocatori disponibili sono gia' nella convocazione.</p>
+          ) : Object.entries(groups).map(([role, rolePlayers]) => {
             const meta = ROLE_LABEL[role] || { short: "?", tone: "blue" };
             return (
               <div key={role} style={s.roleGroup}>
@@ -835,7 +889,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
                   <Badge tone={meta.tone}>{meta.short}</Badge>
                   <span style={s.roleLabel}>{ROLE_I18N_KEY[role] ? t(ROLE_I18N_KEY[role]) : role}</span>
                   <span style={s.roleCount}>
-                    {rolePlayers.filter((p) => selectedIds.includes(String(p.id))).length}/{rolePlayers.length}
+                    {rolePlayers.length} disponibili
                   </span>
                 </div>
 
@@ -1381,6 +1435,58 @@ const s = {
     fontWeight: 800,
   },
   sentInfo: {
+    color: "#94a3b8",
+    fontSize: 13,
+    fontWeight: 700,
+  },
+
+  selectionHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+  selectedPanel: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    background: "rgba(59,130,246,0.08)",
+    border: "1px solid rgba(59,130,246,0.18)",
+  },
+  selectedPanelHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 10,
+    color: "#dbeafe",
+    fontSize: 13,
+    flexWrap: "wrap",
+  },
+  selectedGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+    gap: 8,
+  },
+  selectedChip: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "9px 11px",
+    borderRadius: 12,
+    border: "1px solid rgba(96,165,250,0.32)",
+    background: "rgba(15,23,42,0.56)",
+    color: "#f8fafc",
+    cursor: "pointer",
+    textAlign: "left",
+  },
+  removeMark: {
+    color: "#fca5a5",
+    fontSize: 16,
+    fontWeight: 900,
+  },
+  emptySelected: {
+    margin: 0,
     color: "#94a3b8",
     fontSize: 13,
     fontWeight: 700,
