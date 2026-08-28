@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "../i18n";
 
@@ -78,6 +78,10 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   const [importPreview, setImportPreview] = useState(null);
   const savingRef = useRef(false);
   const importFileRef = useRef(null);
+  const sortedMatches = useMemo(
+    () => [...matches].sort((a, b) => compareMatchesByEncounterOrder(a, b, localDateString())),
+    [matches]
+  );
 
   function openResultEdit(match) {
     const parts = String(match.result || "").match(/(\d+)\s*[-:]\s*(\d+)/);
@@ -458,7 +462,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
             gap: 14,
           }}
         >
-          {matches.map((match) => (
+          {sortedMatches.map((match) => (
             <MatchCard
               key={match.id}
               match={match}
@@ -1291,6 +1295,30 @@ function sortMatchesByDate(a, b) {
   const aKey = `${a.date || ""}T${a.time || "00:00"}`;
   const bKey = `${b.date || ""}T${b.time || "00:00"}`;
   return new Date(aKey) - new Date(bKey);
+}
+
+function compareMatchesByEncounterOrder(a, b, todayKey) {
+  const aDate = String(a.date || "");
+  const bDate = String(b.date || "");
+  const aUpcoming = aDate >= todayKey;
+  const bUpcoming = bDate >= todayKey;
+
+  if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
+
+  const direction = aUpcoming ? 1 : -1;
+  return direction * compareMatchDateTime(a, b);
+}
+
+function compareMatchDateTime(a, b) {
+  const aKey = `${a.date || "9999-12-31"}T${normalizeSortTime(a.time)}`;
+  const bKey = `${b.date || "9999-12-31"}T${normalizeSortTime(b.time)}`;
+  return aKey.localeCompare(bKey);
+}
+
+function normalizeSortTime(value) {
+  const match = String(value || "").match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return "00:00";
+  return `${match[1].padStart(2, "0")}:${match[2]}`;
 }
 
 function getMatchStatus(match) {
