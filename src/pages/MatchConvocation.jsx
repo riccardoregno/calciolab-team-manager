@@ -117,13 +117,23 @@ function formatMeeting(details = {}) {
 }
 
 function getPlayerDisplayName(player = {}) {
-  return [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "-";
+  const firstName = String(player.firstName || "").trim();
+  const lastName = String(player.lastName || "").trim();
+  return [lastName, firstName].filter(Boolean).join(" ") || player.name || "-";
 }
 
 function sortPlayersByName(players = []) {
-  return [...players].sort((a, b) =>
-    getPlayerDisplayName(a).localeCompare(getPlayerDisplayName(b), "it", { sensitivity: "base" })
-  );
+  return [...players].sort((a, b) => {
+    const aKey = getPlayerSortKey(a);
+    const bKey = getPlayerSortKey(b);
+    return aKey.localeCompare(bKey, "it", { sensitivity: "base" });
+  });
+}
+
+function getPlayerSortKey(player = {}) {
+  const firstName = String(player.firstName || "").trim();
+  const lastName = String(player.lastName || "").trim();
+  return [lastName, firstName, player.name || ""].filter(Boolean).join(" ");
 }
 
 function getMatchTitleTeams({ clubName, match, t }) {
