@@ -249,6 +249,7 @@ function MatchDay({
         starterIds: lineup.starterIds.filter((id) => String(id) !== playerId),
         benchIds: lineup.benchIds.filter((id) => String(id) !== playerId),
         captainId: String(lineup.captainId) === playerId ? "" : lineup.captainId,
+        viceCaptainId: String(lineup.viceCaptainId) === playerId ? "" : lineup.viceCaptainId,
         roles: nextRoles,
       },
     });
@@ -393,7 +394,10 @@ function MatchDay({
   }
 
   function setCaptain(playerId) {
-    updateLineup({ captainId: lineup.captainId === playerId ? "" : playerId });
+    updateLineup({
+      captainId: lineup.captainId === playerId ? "" : playerId,
+      viceCaptainId: String(lineup.viceCaptainId || "") === String(playerId) ? "" : lineup.viceCaptainId,
+    });
   }
 
   function updatePlayerRole(playerId, value) {

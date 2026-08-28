@@ -110,6 +110,7 @@ export function generateDistintaPDF(match, allPlayers, profile = {}, staffList =
   ].map(String));
   const starterIds = new Set((match.lineup?.starterIds || []).map(String));
   const captainId  = String(match.lineup?.captainId || "");
+  const viceCaptainId = String(match.lineup?.viceCaptainId || "");
 
   const calledPlayers = allPlayers
     .filter((p) => calledIds.has(String(p.id)))
@@ -189,7 +190,11 @@ export function generateDistintaPDF(match, allPlayers, profile = {}, staffList =
     const tp    = calledPlayers.length > 0
       ? (p.isStarter ? "T" : "P")
       : "";
-    const cap   = String(p.id) === captainId ? " (C)" : "";
+    const cap = String(p.id) === captainId
+      ? " (C)"
+      : String(p.id) === viceCaptainId
+        ? " (VC)"
+        : "";
 
     return [
       getMatchShirtNumber(p, match.lineup) || "—",

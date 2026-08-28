@@ -99,6 +99,12 @@ function getShirtNumber(player = {}, lineup = {}) {
   return String(matchNumber || player.shirtNumber || player.number || "").trim();
 }
 
+function formatLeader(player, lineup = {}) {
+  if (!player) return "Da definire";
+  const shirtNumber = getShirtNumber(player, lineup);
+  return `${shirtNumber ? `#${shirtNumber} ` : ""}${playerName(player)}`;
+}
+
 function getPhotoTransform(player = {}) {
   const sizeValue = player.photoSize ?? 100;
   const offsetXValue = player.photoOffsetX ?? 0;
@@ -187,6 +193,8 @@ export default function MatchFormationPlanner({
   const calledPlayers = sortPlayers(calledIds.map((id) => playerMap.get(id)).filter(Boolean));
   const assignedIds = new Set(Object.values(activePlan.slots || {}).map(String).filter(Boolean));
   const availablePlayers = calledPlayers.filter((player) => !assignedIds.has(String(player.id)));
+  const captain = playerMap.get(String(lineup.captainId || ""));
+  const viceCaptain = playerMap.get(String(lineup.viceCaptainId || ""));
 
   function updatePlan(half, patch) {
     const current = plans[half] || emptyPlan(fallbackFormation);
@@ -251,6 +259,18 @@ export default function MatchFormationPlanner({
     onChange({ shirtNumbers: nextNumbers });
   }
 
+  function updateLeader(field, playerId) {
+    const value = String(playerId || "");
+    const patch = { [field]: value };
+    if (field === "captainId" && value && value === String(lineup.viceCaptainId || "")) {
+      patch.viceCaptainId = "";
+    }
+    if (field === "viceCaptainId" && value && value === String(lineup.captainId || "")) {
+      patch.captainId = "";
+    }
+    onChange(patch);
+  }
+
   function printPlans() {
     const W = 320;
     const H = 464;
@@ -302,6 +322,11 @@ export default function MatchFormationPlanner({
             return `<span><b>${escapeHtml(marker)}</b> ${escapeHtml(playerName(player))}</span>`;
           }).join("")
         : "<span>Nessuno</span>";
+      const leadersHtml = `<div class="leaders">
+        <strong>Leadership</strong>
+        <span><b>Capitano</b> ${escapeHtml(formatLeader(captain, lineup))}</span>
+        <span><b>Vice</b> ${escapeHtml(formatLeader(viceCaptain, lineup))}</span>
+      </div>`;
 
       return `<section class="team-card">
         <h2>${HALF_META[halfKey].label} · ${escapeHtml(plan.formation)}</h2>
@@ -314,6 +339,7 @@ export default function MatchFormationPlanner({
           <rect x="${W / 2 - 44}" y="${H - 68}" width="88" height="52" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
           ${nodes}
         </svg>
+        ${leadersHtml}
         <div class="bench"><strong>A disposizione</strong>${benchHtml}</div>
         ${plan.notes ? `<p class="notes">${escapeHtml(plan.notes)}</p>` : ""}
       </section>`;
@@ -335,14 +361,18 @@ export default function MatchFormationPlanner({
       .single h2{grid-area:title;margin-bottom:2px}
       svg{display:block;width:100%;height:auto;max-height:520px;border-radius:8px}
       .single svg{grid-area:field;max-height:165mm}
+      .leaders{margin-top:8px;padding:9px 10px;border:1px solid #dbe3ef;border-radius:8px;background:white;display:grid;gap:4px;font-size:12px}
+      .single .leaders{grid-area:bench;margin-top:0}
+      .leaders strong{font-size:11px;text-transform:uppercase;color:#475569}
+      .leaders span{display:flex;justify-content:space-between;gap:12px}
+      .leaders b{color:#0f172a}
       .bench{margin-top:8px;padding:8px 10px;border:1px solid #dbe3ef;border-radius:8px;background:white;display:flex;flex-wrap:wrap;gap:6px 10px;font-size:11px;line-height:1.25}
-      .single .bench{grid-area:bench;margin-top:0;display:grid;grid-template-columns:1fr;gap:5px;font-size:12px;align-content:start}
+      .single .bench{grid-area:notes;margin-top:0;display:grid;grid-template-columns:1fr;gap:5px;font-size:12px;align-content:start}
       .bench strong{width:100%;font-size:11px;text-transform:uppercase;color:#475569}
       .bench span{white-space:nowrap}
       .single .bench span{white-space:normal}
       .bench b{font-size:10px;color:#2563eb}
       .notes{margin:8px 0 0;padding:8px 10px;border:1px solid #dbe3ef;border-radius:8px;background:white;font-size:12px}
-      .single .notes{grid-area:notes;margin-top:0}
       @media print{body{padding:0}button{display:none}.sheet{gap:12px}h1{font-size:18px}h2{font-size:14px}.bench{font-size:10px}.single .team-card{grid-template-columns:minmax(0,158mm) minmax(0,1fr)}.single svg{max-height:166mm}}
     </style></head>
       <body><h1>${escapeHtml(title)}</h1><p class="meta">${escapeHtml(meta)}</p><div class="${sheetClass}">${printHalfKeys.map(renderField).join("")}</div>
@@ -410,6 +440,34 @@ export default function MatchFormationPlanner({
           <p style={plannerStyles.hint}>
             Seleziona uno slot sul campo, poi scegli un convocato. Clic su uno slot pieno per liberarlo.
           </p>
+          <div style={plannerStyles.leaderGrid}>
+            <label style={plannerStyles.leaderField}>
+              <span>Capitano</span>
+              <select
+                value={lineup.captainId || ""}
+                onChange={(event) => updateLeader("captainId", event.target.value)}
+                style={plannerStyles.leaderSelect}
+              >
+                <option value="">Da definire</option>
+                {calledPlayers.map((player) => (
+                  <option key={player.id} value={player.id}>{formatLeader(player, lineup)}</option>
+                ))}
+              </select>
+            </label>
+            <label style={plannerStyles.leaderField}>
+              <span>Vice capitano</span>
+              <select
+                value={lineup.viceCaptainId || ""}
+                onChange={(event) => updateLeader("viceCaptainId", event.target.value)}
+                style={plannerStyles.leaderSelect}
+              >
+                <option value="">Da definire</option>
+                {calledPlayers.map((player) => (
+                  <option key={player.id} value={player.id}>{formatLeader(player, lineup)}</option>
+                ))}
+              </select>
+            </label>
+          </div>
           <div style={plannerStyles.numberGrid}>
             {calledPlayers.map((player) => (
               <label key={player.id} style={plannerStyles.numberRow}>
@@ -680,6 +738,28 @@ const plannerStyles = {
     color: "#94a3b8",
     fontSize: 12,
     lineHeight: 1.45,
+  },
+  leaderGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))",
+    gap: 8,
+  },
+  leaderField: {
+    display: "grid",
+    gap: 5,
+    color: "#cbd5e1",
+    fontSize: 12,
+    fontWeight: 850,
+  },
+  leaderSelect: {
+    minHeight: 36,
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(15,23,42,0.9)",
+    color: "#e2e8f0",
+    padding: "0 10px",
+    fontWeight: 800,
+    minWidth: 0,
   },
   playerGrid: {
     display: "grid",

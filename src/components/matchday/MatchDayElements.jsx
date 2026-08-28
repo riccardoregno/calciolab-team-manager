@@ -176,6 +176,12 @@ export function PlayerPrintTable({ players, lineup, empty, t }) {
           const role = lineup?.roles?.[player.id] || player.role || "-";
           const shirtNumber = getShirtNumber(player, lineup);
           const isCaptain = String(lineup?.captainId || "") === String(player.id);
+          const isViceCaptain = String(lineup?.viceCaptainId || "") === String(player.id);
+          const note = isCaptain
+            ? t("pages.matchDay.playerTableCaptain")
+            : isViceCaptain
+              ? "Vice capitano"
+              : player.status || "-";
 
           return (
             <tr key={player.id}>
@@ -183,7 +189,7 @@ export function PlayerPrintTable({ players, lineup, empty, t }) {
               <td>#{shirtNumber || "-"}</td>
               <td>{displayName}</td>
               <td>{role}</td>
-              <td>{isCaptain ? t("pages.matchDay.playerTableCaptain") : player.status || "-"}</td>
+              <td>{note}</td>
             </tr>
           );
         })}
