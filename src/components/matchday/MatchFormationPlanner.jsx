@@ -172,6 +172,8 @@ export default function MatchFormationPlanner({
   players = [],
   onChange,
   clubName = "CalcioLab",
+  clubLogo = "",
+  clubLogoSize = 100,
   isMobile = false,
 }) {
   const [activeHalf, setActiveHalf] = useState("firstHalf");
@@ -195,6 +197,10 @@ export default function MatchFormationPlanner({
   const availablePlayers = calledPlayers.filter((player) => !assignedIds.has(String(player.id)));
   const captain = playerMap.get(String(lineup.captainId || ""));
   const viceCaptain = playerMap.get(String(lineup.viceCaptainId || ""));
+  const isAwayMatch = match?.location === "Trasferta";
+  const homeTeam = isAwayMatch ? match?.opponent || "Avversario" : clubName;
+  const awayTeam = isAwayMatch ? clubName : match?.opponent || "Avversario";
+  const title = `${homeTeam} vs ${awayTeam}`;
 
   function updatePlan(half, patch) {
     const current = plans[half] || emptyPlan(fallbackFormation);
@@ -274,7 +280,6 @@ export default function MatchFormationPlanner({
   function printPlans() {
     const W = 320;
     const H = 464;
-    const title = `${clubName} vs ${match?.opponent || "Avversario"}`;
     const meta = [match?.date, match?.time, match?.competition, match?.matchday].filter(Boolean).join(" · ");
     const filledHalfKeys = ["firstHalf", "secondHalf"].filter((halfKey) =>
       Object.values(plans[halfKey]?.slots || {}).some(Boolean)
@@ -283,6 +288,9 @@ export default function MatchFormationPlanner({
     const isSingleField = printHalfKeys.length === 1;
     const pageSize = "A4 landscape";
     const sheetClass = isSingleField ? "sheet single" : "sheet";
+    const logoHtml = clubLogo
+      ? `<img class="club-logo" src="${escapeHtml(clubLogo)}" alt="${escapeHtml(clubName)}" />`
+      : "";
     const renderField = (halfKey) => {
       const plan = plans[halfKey];
       const planSlots = FORMATIONS_DEF[plan.formation] || [];
@@ -323,11 +331,9 @@ export default function MatchFormationPlanner({
           }).join("")
         : "<span>Nessuno</span>";
       const leadersHtml = `<div class="leaders">
-        <strong>Leadership</strong>
-        <span><b>Capitano</b> ${escapeHtml(formatLeader(captain, lineup))}</span>
-        <span><b>Vice</b> ${escapeHtml(formatLeader(viceCaptain, lineup))}</span>
+        <span><b>Capitano</b><em>${escapeHtml(formatLeader(captain, lineup))}</em></span>
+        <span><b>Vice</b><em>${escapeHtml(formatLeader(viceCaptain, lineup))}</em></span>
       </div>`;
-
       return `<section class="team-card">
         <h2>${HALF_META[halfKey].label} · ${escapeHtml(plan.formation)}</h2>
         <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
@@ -351,6 +357,8 @@ export default function MatchFormationPlanner({
       @page{size:${pageSize};margin:10mm}
       *{box-sizing:border-box}
       body{margin:0;padding:18px;font-family:sans-serif;background:#f8fafc;color:#0f172a}
+      .page-head{display:flex;align-items:center;gap:12px;margin:0 0 12px}
+      .club-logo{width:${Math.max(34, Math.min(70, Number(clubLogoSize) * 0.5))}px;height:${Math.max(34, Math.min(70, Number(clubLogoSize) * 0.5))}px;object-fit:contain}
       h1{margin:0 0 4px;font-size:20px}
       .meta{margin:0 0 14px;color:#64748b;font-size:12px}
       .sheet{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
@@ -363,9 +371,9 @@ export default function MatchFormationPlanner({
       .single svg{grid-area:field;max-height:165mm}
       .leaders{margin-top:8px;padding:9px 10px;border:1px solid #dbe3ef;border-radius:8px;background:white;display:grid;gap:4px;font-size:12px}
       .single .leaders{grid-area:bench;margin-top:0}
-      .leaders strong{font-size:11px;text-transform:uppercase;color:#475569}
-      .leaders span{display:flex;justify-content:space-between;gap:12px}
+      .leaders span{display:grid;grid-template-columns:max-content 1fr;gap:8px;align-items:baseline}
       .leaders b{color:#0f172a}
+      .leaders em{font-style:normal}
       .bench{margin-top:8px;padding:8px 10px;border:1px solid #dbe3ef;border-radius:8px;background:white;display:flex;flex-wrap:wrap;gap:6px 10px;font-size:11px;line-height:1.25}
       .single .bench{grid-area:notes;margin-top:0;display:grid;grid-template-columns:1fr;gap:5px;font-size:12px;align-content:start}
       .bench strong{width:100%;font-size:11px;text-transform:uppercase;color:#475569}
@@ -375,7 +383,7 @@ export default function MatchFormationPlanner({
       .notes{margin:8px 0 0;padding:8px 10px;border:1px solid #dbe3ef;border-radius:8px;background:white;font-size:12px}
       @media print{body{padding:0}button{display:none}.sheet{gap:12px}h1{font-size:18px}h2{font-size:14px}.bench{font-size:10px}.single .team-card{grid-template-columns:minmax(0,158mm) minmax(0,1fr)}.single svg{max-height:166mm}}
     </style></head>
-      <body><h1>${escapeHtml(title)}</h1><p class="meta">${escapeHtml(meta)}</p><div class="${sheetClass}">${printHalfKeys.map(renderField).join("")}</div>
+      <body><div class="page-head">${logoHtml}<div><h1>${escapeHtml(title)}</h1><p class="meta">${escapeHtml(meta)}</p></div></div><div class="${sheetClass}">${printHalfKeys.map(renderField).join("")}</div>
       <br><button onclick="window.print()">Stampa</button></body></html>`);
     win.document.close();
   }

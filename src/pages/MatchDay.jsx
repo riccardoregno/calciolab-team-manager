@@ -136,6 +136,7 @@ function MatchDay({
     )
     .sort((a, b) => new Date(b.date) - new Date(a.date));
   const matchVenue = getMatchVenue(selectedMatch, workspaceProfile);
+  const matchTeams = getMatchTeams(selectedMatch, { clubName, clubLogo });
   const convocationDetails = selectedMatch.convocazione?.details || {};
   const convocationCount = selectedMatch.convocazione?.playerIds?.length || 0;
   const preMatchChecklist = getPreMatchChecklist(selectedMatch);
@@ -574,16 +575,16 @@ function MatchDay({
             <header className="print-header">
               <div style={matchDayStyles.printBrand}>
                 <TeamMark
-                  logo={selectedMatch.homeLogo || clubLogo}
+                  logo={matchTeams.home.logo}
                   logoSize={clubLogoSize}
-                  name={clubName}
-                  fallback={clubName.slice(0, 2).toUpperCase()}
+                  name={matchTeams.home.name}
+                  fallback={matchTeams.home.fallback}
                 />
                 <div>
                   <p>{t("pages.matchDay.printDocType")}</p>
                   <h1>
-                    {clubName} <span style={{ color: "#64748b" }}>vs</span>{" "}
-                    {selectedMatch.opponent || t("pages.matchDay.opponentUndefined")}
+                    {matchTeams.home.name} <span style={{ color: "#64748b" }}>vs</span>{" "}
+                    {matchTeams.away.name}
                   </h1>
                 </div>
               </div>
@@ -667,15 +668,15 @@ function MatchDay({
         <AppCard>
           <div style={{ ...matchDayStyles.matchHeader, gridTemplateColumns: isMobile ? "1fr" : "160px 1fr 160px" }}>
             <TeamMark
-              logo={selectedMatch.homeLogo || clubLogo}
+              logo={matchTeams.home.logo}
               logoSize={clubLogoSize}
-              name={clubName}
-              fallback={clubName.slice(0, 2).toUpperCase()}
+              name={matchTeams.home.name}
+              fallback={matchTeams.home.fallback}
             />
             <div style={matchDayStyles.scoreBox}>
               <Badge tone="orange">Match Day</Badge>
               <h2 style={matchDayStyles.matchTitle}>
-                {selectedMatch.title || `CalcioLab - ${selectedMatch.opponent}`}
+                {matchTeams.title}
               </h2>
               <p style={{ ...matchDayStyles.muted, marginTop: 6 }}>
                 {matchMeta.join(" · ")}
@@ -691,9 +692,10 @@ function MatchDay({
               </div>
             </div>
             <TeamMark
-              logo={selectedMatch.awayLogo}
-              name={selectedMatch.opponent}
-              fallback={selectedMatch.opponent?.[0] || "A"}
+              logo={matchTeams.away.logo}
+              logoSize={matchTeams.away.isClub ? clubLogoSize : undefined}
+              name={matchTeams.away.name}
+              fallback={matchTeams.away.fallback}
             />
           </div>
 
@@ -882,6 +884,8 @@ function MatchDay({
           players={players}
           onChange={updateLineup}
           clubName={clubName}
+          clubLogo={clubLogo}
+          clubLogoSize={clubLogoSize}
           isMobile={isMobile}
         />
 
@@ -1143,4 +1147,29 @@ function compareMatchDayOrder(a, b, todayKey) {
 
   const direction = aUpcoming ? 1 : -1;
   return direction * compareMatchDateTime(a, b);
+}
+
+function getMatchTeams(match = {}, { clubName, clubLogo }) {
+  const opponentName = match.opponent || "Avversario";
+  const isAway = match.location === "Trasferta";
+  const club = {
+    name: clubName,
+    logo: clubLogo,
+    fallback: clubName.slice(0, 2).toUpperCase(),
+    isClub: true,
+  };
+  const opponent = {
+    name: opponentName,
+    logo: isAway ? match.homeLogo || match.awayLogo || "" : match.awayLogo || "",
+    fallback: opponentName.slice(0, 2).toUpperCase(),
+    isClub: false,
+  };
+  const home = isAway ? opponent : { ...club, logo: match.homeLogo || clubLogo };
+  const away = isAway ? club : opponent;
+
+  return {
+    home,
+    away,
+    title: `${home.name} vs ${away.name}`,
+  };
 }
