@@ -18,13 +18,12 @@ function playerLine(player, lineup = {}, captainId = null) {
   if (!player) return "-";
   const shirtNumber = getShirtNumber(player, lineup);
   const shirt = shirtNumber ? `${shirtNumber}. ` : "";
-  const role = lineup.roles?.[player.id] || player.role || "-";
   const leader = captainId && String(captainId) === String(player.id)
     ? " (C)"
     : String(lineup.viceCaptainId || "") === String(player.id)
       ? " (VC)"
       : "";
-  return `${shirt}${player.name}${leader} - ${role}`;
+  return `${shirt}${player.name}${leader}`;
 }
 
 function getShirtNumber(player = {}, lineup = {}) {

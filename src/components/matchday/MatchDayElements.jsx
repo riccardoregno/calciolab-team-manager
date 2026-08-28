@@ -166,14 +166,12 @@ export function PlayerPrintTable({ players, lineup, empty, t }) {
           <th>{t("pages.matchDay.printTableNumber")}</th>
           <th>{t("pages.matchDay.printTableShirt")}</th>
           <th>{t("pages.matchDay.printTablePlayer")}</th>
-          <th>{t("pages.matchDay.printTableRole")}</th>
           <th>{t("pages.matchDay.printTableNotes")}</th>
         </tr>
       </thead>
       <tbody>
         {sortedPlayers.map((player, index) => {
           const displayName = [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "-";
-          const role = lineup?.roles?.[player.id] || player.role || "-";
           const shirtNumber = getShirtNumber(player, lineup);
           const isCaptain = String(lineup?.captainId || "") === String(player.id);
           const isViceCaptain = String(lineup?.viceCaptainId || "") === String(player.id);
@@ -181,14 +179,13 @@ export function PlayerPrintTable({ players, lineup, empty, t }) {
             ? t("pages.matchDay.playerTableCaptain")
             : isViceCaptain
               ? "Vice capitano"
-              : player.status || "-";
+              : "";
 
           return (
             <tr key={player.id}>
               <td>{index + 1}</td>
               <td>#{shirtNumber || "-"}</td>
               <td>{displayName}</td>
-              <td>{role}</td>
               <td>{note}</td>
             </tr>
           );

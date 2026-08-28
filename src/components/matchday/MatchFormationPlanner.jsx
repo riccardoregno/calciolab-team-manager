@@ -741,8 +741,9 @@ const plannerStyles = {
   },
   leaderGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))",
+    gridTemplateColumns: "1fr",
     gap: 8,
+    minWidth: 0,
   },
   leaderField: {
     display: "grid",
