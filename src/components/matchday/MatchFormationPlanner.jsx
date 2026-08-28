@@ -144,6 +144,17 @@ function sortPlayers(players = []) {
   });
 }
 
+function sortPlayersByShirtNumber(players = [], lineup = {}) {
+  return [...players].sort((a, b) => {
+    const aNumber = Number(getShirtNumber(a, lineup));
+    const bNumber = Number(getShirtNumber(b, lineup));
+    const aRank = Number.isFinite(aNumber) && aNumber > 0 ? aNumber : 999;
+    const bRank = Number.isFinite(bNumber) && bNumber > 0 ? bNumber : 999;
+    if (aRank !== bRank) return aRank - bRank;
+    return playerName(a).localeCompare(playerName(b), "it");
+  });
+}
+
 function autoAssign(players, formation) {
   const slots = FORMATIONS_DEF[formation] || [];
   const pools = { P: [], D: [], C: [], A: [], other: [] };
@@ -295,7 +306,10 @@ export default function MatchFormationPlanner({
       const plan = plans[halfKey];
       const planSlots = FORMATIONS_DEF[plan.formation] || [];
       const assigned = new Set(Object.values(plan.slots || {}).map(String).filter(Boolean));
-      const bench = calledPlayers.filter((player) => !assigned.has(String(player.id)));
+      const bench = sortPlayersByShirtNumber(
+        calledPlayers.filter((player) => !assigned.has(String(player.id))),
+        lineup
+      );
       const nodes = planSlots.map((slot, index) => {
         const player = playerMap.get(String(plan.slots?.[index] || ""));
         const cx = (slot.x / 100) * W;
