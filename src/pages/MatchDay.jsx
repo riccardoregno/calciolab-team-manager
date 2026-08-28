@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import AppCard from "../components/ui/AppCard";
@@ -10,7 +10,7 @@ import MatchTabBar from "../components/match/MatchTabBar";
 import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { styles } from "../styles/index.js";
-import { createId, formatDate, getLineup, normalizeAppSettings, uniqueIds } from "../utils/helpers";
+import { compareMatchDateTime, createId, formatDate, getLineup, localDateString, normalizeAppSettings, uniqueIds } from "../utils/helpers";
 import { deleteTeamAttachment, uploadTeamAttachment } from "../services/attachments";
 import { useAuth } from "../hooks/useAuth";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -40,8 +40,12 @@ function MatchDay({
   const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
   const clubLogo = workspaceProfile.logo || "";
   const clubLogoSize = Number(workspaceProfile.logoSize || 100);
+  const sortedMatches = useMemo(
+    () => [...matches].sort((a, b) => compareMatchDayOrder(a, b, localDateString())),
+    [matches]
+  );
   const selectedMatch =
-    matches.find((match) => String(match.id) === String(id)) || matches[0];
+    matches.find((match) => String(match.id) === String(id)) || sortedMatches[0];
 
   function updateSelectedMatch(patch) {
     if (!selectedMatch) return;
@@ -513,7 +517,7 @@ function MatchDay({
           onChange={(event) => selectMatch(event.target.value)}
           style={{ ...styles.input, maxWidth: 360, marginTop: 0 }}
         >
-          {matches.map((match) => (
+          {sortedMatches.map((match) => (
             <option key={match.id} value={match.id}>
               {match.title} - {match.date}
             </option>
@@ -1103,3 +1107,15 @@ function MatchDay({
 
 
 export default MatchDay;
+
+function compareMatchDayOrder(a, b, todayKey) {
+  const aDate = String(a.date || "");
+  const bDate = String(b.date || "");
+  const aUpcoming = aDate >= todayKey;
+  const bUpcoming = bDate >= todayKey;
+
+  if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
+
+  const direction = aUpcoming ? 1 : -1;
+  return direction * compareMatchDateTime(a, b);
+}

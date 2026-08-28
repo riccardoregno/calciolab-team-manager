@@ -328,6 +328,18 @@ export function normalizeMatch(match){
   };
 }
 
+export function compareMatchDateTime(a, b) {
+  const aKey = `${a.date || "9999-12-31"}T${normalizeSortTime(a.time)}`;
+  const bKey = `${b.date || "9999-12-31"}T${normalizeSortTime(b.time)}`;
+  return aKey.localeCompare(bKey);
+}
+
+function normalizeSortTime(value) {
+  const match = String(value || "").match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return "00:00";
+  return `${match[1].padStart(2, "0")}:${match[2]}`;
+}
+
 function normalizeAttachment(attachment) {
   if (!attachment) return null;
   return {
@@ -512,7 +524,7 @@ export function normalizeAppState(state = {}){
     players: (state.players || []).map(normalizePlayer),
     exercises: (state.exercises || []).map(normalizeExercise),
     sessions: (state.sessions || []).map(normalizeSession),
-    matches: (state.matches || []).map(normalizeMatch),
+    matches: (state.matches || []).map(normalizeMatch).sort(compareMatchDateTime),
     physicalTests: (state.physicalTests || []).map(normalizePhysicalTest),
     gpsSessions: (state.gpsSessions || []).map(normalizeGpsSession),
     staffTasks: (state.staffTasks || []).map(normalizeStaffTask),
