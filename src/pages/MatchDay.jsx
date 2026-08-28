@@ -161,7 +161,7 @@ function MatchDay({
       detail: t("pages.matchDay.commandDistintaDetail", { starters: starterPlayers.length, bench: benchPlayers.length }),
       done: lineup.ready,
       action: lineup.ready ? t("pages.matchDay.commandDistintaReview") : t("pages.matchDay.commandDistintaComplete"),
-      onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }),
+      onClick: () => document.getElementById("match-lineup-distinta")?.scrollIntoView({ behavior: "smooth", block: "start" }),
     },
     {
       key: "scouting",
@@ -808,7 +808,7 @@ function MatchDay({
           </div>
         )}
 
-        <div style={{ ...matchDayStyles.mainGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
+        <div id="match-lineup-distinta" style={{ ...matchDayStyles.mainGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
           <AppCard>
             <SectionHeader title={t("pages.matchDay.startersTitle")} badge={`${starterPlayers.length}/11`} />
             <PlayerList
