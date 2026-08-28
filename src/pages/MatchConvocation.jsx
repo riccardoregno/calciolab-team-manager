@@ -126,14 +126,22 @@ function sortPlayersByName(players = []) {
   );
 }
 
+function getMatchTitleTeams({ clubName, match, t }) {
+  const opponent = match.opponent || t("pages.matchConvocation.defaultOpponent");
+  if (match.location === "Trasferta") {
+    return { homeTeam: opponent, awayTeam: clubName };
+  }
+  return { homeTeam: clubName, awayTeam: opponent };
+}
+
 function buildConvocationText({ clubName, match, details, meetingInfo, fieldInfo, notes, convocati, isHomeMatch, t }) {
   const matchContext = [match.competition, match.matchday].filter(Boolean).join(" · ");
-  const opponent = match.opponent || t("pages.matchConvocation.defaultOpponent");
+  const { homeTeam, awayTeam } = getMatchTitleTeams({ clubName, match, t });
   const orderedConvocati = sortPlayersByName(convocati);
 
   if (!isHomeMatch) {
     return [
-      t("pages.matchConvocation.convTextTitle", { club: clubName, opponent }),
+      t("pages.matchConvocation.convTextTitle", { club: homeTeam, opponent: awayTeam }),
       t("pages.matchConvocation.convTextDate", { value: formatDate(match.date) }),
       t("pages.matchConvocation.convTextMeeting", { value: meetingInfo || "" }),
       t("pages.matchConvocation.convTextField", { value: fieldInfo || "" }),
@@ -147,7 +155,7 @@ function buildConvocationText({ clubName, match, details, meetingInfo, fieldInfo
   }
 
   const lines = [
-    t("pages.matchConvocation.convTextTitle", { club: clubName, opponent }),
+    t("pages.matchConvocation.convTextTitle", { club: homeTeam, opponent: awayTeam }),
     matchContext ? t("pages.matchConvocation.convTextCompetition", { value: matchContext }) : "",
     t("pages.matchConvocation.convTextDate", { value: formatDate(match.date) }),
     match.location ? t("pages.matchConvocation.convTextLocation", { value: match.location }) : "",
