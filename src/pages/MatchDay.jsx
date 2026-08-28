@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import AppCard from "../components/ui/AppCard";
@@ -46,6 +46,28 @@ function MatchDay({
   );
   const selectedMatch =
     matches.find((match) => String(match.id) === String(id)) || sortedMatches[0];
+  const lineup = getLineup(selectedMatch);
+
+  useEffect(() => {
+    const convIds = (selectedMatch?.convocazione?.playerIds || []).map(String);
+    if (!selectedMatch || !convIds.length || lineup.calledUpIds.length) return;
+
+    setMatches((prevMatches) =>
+      prevMatches.map((match) =>
+        String(match.id) === String(selectedMatch.id)
+          ? {
+              ...match,
+              lineup: {
+                ...getLineup(match),
+                calledUpIds: convIds,
+                benchIds: convIds,
+                starterIds: [],
+              },
+            }
+          : match
+      )
+    );
+  }, [selectedMatch?.id, selectedMatch?.convocazione?.playerIds, lineup.calledUpIds.length, setMatches]);
 
   function updateSelectedMatch(patch) {
     if (!selectedMatch) return;
@@ -93,7 +115,6 @@ function MatchDay({
     );
   }
 
-  const lineup = getLineup(selectedMatch);
   const starterPlayers = players.filter((player) =>
     lineup.starterIds.includes(player.id)
   );
