@@ -819,12 +819,6 @@ function MatchCard({
                 {competitionLine && <span>{competitionLine}</span>}
               </div>
             </div>
-            <MatchLogo
-              logo={match.awayLogo}
-              name={match.opponent}
-              fallback={opponentInitial}
-              color="#a78bfa"
-            />
           </div>
 
           <div
@@ -860,6 +854,15 @@ function MatchCard({
             justifyItems: isMobile ? "stretch" : "end",
           }}
         >
+          <div style={{ justifySelf: "center" }}>
+            <MatchLogo
+              logo={match.awayLogo}
+              name={match.opponent}
+              fallback={opponentInitial}
+              color="#a78bfa"
+            />
+          </div>
+
           <div
             style={{
               width: isMobile ? "100%" : 220,
