@@ -268,6 +268,39 @@ export default function MatchFormationPlanner({
     updatePlan(activeHalf, { slots: {} });
   }
 
+  function removeCalledPlayer(playerId) {
+    const value = String(playerId || "");
+    const nextRoles = { ...(lineup.roles || {}) };
+    const nextShirtNumbers = { ...(lineup.shirtNumbers || {}) };
+    delete nextRoles[value];
+    delete nextRoles[playerId];
+    delete nextShirtNumbers[value];
+    delete nextShirtNumbers[playerId];
+
+    const nextFormationPlans = Object.fromEntries(
+      Object.entries(lineup.formationPlans || {}).map(([halfKey, plan]) => [
+        halfKey,
+        {
+          ...plan,
+          slots: Object.fromEntries(
+            Object.entries(plan?.slots || {}).filter(([, assignedId]) => String(assignedId) !== value)
+          ),
+        },
+      ])
+    );
+
+    onChange({
+      calledUpIds: (lineup.calledUpIds || []).filter((id) => String(id) !== value),
+      starterIds: (lineup.starterIds || []).filter((id) => String(id) !== value),
+      benchIds: (lineup.benchIds || []).filter((id) => String(id) !== value),
+      captainId: String(lineup.captainId || "") === value ? "" : lineup.captainId,
+      viceCaptainId: String(lineup.viceCaptainId || "") === value ? "" : lineup.viceCaptainId,
+      roles: nextRoles,
+      shirtNumbers: nextShirtNumbers,
+      formationPlans: nextFormationPlans,
+    });
+  }
+
   function updateShirtNumber(playerId, value) {
     const cleanValue = String(value || "").replace(/\D/g, "").slice(0, 2);
     const nextNumbers = { ...(lineup.shirtNumbers || {}) };
@@ -516,19 +549,29 @@ export default function MatchFormationPlanner({
               const shirtNumber = getShirtNumber(player, lineup);
               const marker = shirtNumber ? `#${shirtNumber}` : role || "-";
               return (
-                <button
-                  key={player.id}
-                  type="button"
-                  onClick={() => assignPlayer(player.id)}
-                  disabled={selectedSlot == null}
-                  style={{
-                    ...plannerStyles.playerButton,
-                    opacity: selectedSlot == null ? 0.55 : 1,
-                  }}
-                >
-                  <span style={{ ...plannerStyles.roleBadge, color: ROLE_COLORS[role] || "#94a3b8" }}>{marker}</span>
-                  {playerName(player)}
-                </button>
+                <div key={player.id} style={plannerStyles.playerChip}>
+                  <button
+                    type="button"
+                    onClick={() => assignPlayer(player.id)}
+                    disabled={selectedSlot == null}
+                    style={{
+                      ...plannerStyles.playerButton,
+                      opacity: selectedSlot == null ? 0.55 : 1,
+                    }}
+                  >
+                    <span style={{ ...plannerStyles.roleBadge, color: ROLE_COLORS[role] || "#94a3b8" }}>{marker}</span>
+                    {playerName(player)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeCalledPlayer(player.id)}
+                    style={plannerStyles.removeBenchButton}
+                    aria-label={`Rimuovi ${playerName(player)} dalla panchina`}
+                    title="Rimuovi dalla panchina"
+                  >
+                    X
+                  </button>
+                </div>
               );
             })}
             {!availablePlayers.length && (
@@ -794,6 +837,12 @@ const plannerStyles = {
     gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))",
     gap: 8,
   },
+  playerChip: {
+    display: "grid",
+    gridTemplateColumns: "1fr 34px",
+    gap: 6,
+    minWidth: 0,
+  },
   numberGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
@@ -836,6 +885,17 @@ const plannerStyles = {
     padding: "7px 10px",
     textAlign: "left",
     fontWeight: 750,
+    cursor: "pointer",
+    minWidth: 0,
+  },
+  removeBenchButton: {
+    minHeight: 38,
+    borderRadius: 10,
+    border: "1px solid rgba(248,113,113,0.28)",
+    background: "rgba(127,29,29,0.24)",
+    color: "#fecaca",
+    fontSize: 12,
+    fontWeight: 950,
     cursor: "pointer",
   },
   roleBadge: {
