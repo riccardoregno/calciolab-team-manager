@@ -370,11 +370,19 @@ export default function MatchFormationPlanner({
           <text x="${cx}" y="${cy + 29}" text-anchor="middle" font-size="${labelMetrics.fontSize}" font-weight="800" fill="white" font-family="sans-serif">${escapeHtml(label)}</text>
         </g>`;
       }).join("");
+      const benchColumnCount = Math.min(3, Math.max(1, Math.ceil(bench.length / 3)));
+      const benchRowsPerColumn = Math.ceil(bench.length / benchColumnCount);
       const benchHtml = bench.length
-        ? bench.map((player) => {
-            const shirtNumber = getShirtNumber(player, lineup);
-            const marker = shirtNumber ? `#${shirtNumber}` : getRoleTag(player.role) || "-";
-            return `<span><b>${escapeHtml(marker)}</b> ${escapeHtml(playerName(player))}</span>`;
+        ? Array.from({ length: benchColumnCount }, (_, columnIndex) => {
+            const columnPlayers = bench.slice(
+              columnIndex * benchRowsPerColumn,
+              (columnIndex + 1) * benchRowsPerColumn
+            );
+            return `<div class="bench-column">${columnPlayers.map((player) => {
+              const shirtNumber = getShirtNumber(player, lineup);
+              const marker = shirtNumber ? `#${shirtNumber}` : getRoleTag(player.role) || "-";
+              return `<span><b>${escapeHtml(marker)}</b> ${escapeHtml(playerName(player))}</span>`;
+            }).join("")}</div>`;
           }).join("")
         : "<span>Nessuno</span>";
       const leadersHtml = `<div class="leaders">
@@ -428,6 +436,7 @@ export default function MatchFormationPlanner({
       .single .bench{grid-area:bench;margin:0;width:150mm;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 12px;font-size:10.5px;align-content:start;padding:7px 9px}
       .bench strong{width:100%;font-size:11px;text-transform:uppercase;color:#475569}
       .single .bench strong{grid-column:1 / -1}
+      .bench-column{display:grid;gap:3px;align-content:start}
       .bench span{white-space:nowrap}
       .single .bench span{white-space:normal}
       .bench b{font-size:10px;color:#2563eb}
