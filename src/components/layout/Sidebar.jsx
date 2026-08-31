@@ -57,7 +57,6 @@ const toolboxGroups = [
     titleKey: "navigation.groups.team",
     items: [
       { to: "/player-compare", labelKey: "navigation.items.playerCompare", icon: "⚡", featureKey: "statistics", roles: coachRoles },
-      { to: "/player-portal", labelKey: "navigation.items.playerPortal", icon: "🎽", featureKey: "playerPortal", roles: ["owner", "headCoach", "director", "player"] },
       { to: "/season-goals", labelKey: "navigation.items.seasonGoals", icon: "🎯", roles: coachRoles },
       { to: "/physical-tests", labelKey: "navigation.items.physicalTests", icon: "⏱️", featureKey: "physicalTests", roles: physicalRoles },
       { to: "/physical-workouts", labelKey: "navigation.items.physicalWorkouts", icon: "🏃", featureKey: "physicalWorkouts", roles: physicalRoles },
@@ -81,13 +80,11 @@ const toolboxGroups = [
       { to: "/staff-chat", labelKey: "navigation.items.staffChat", icon: "💬", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
       { to: "/exports", labelKey: "navigation.items.exports", icon: "🖨️", featureKey: "exports", roles: managementRoles },
       { to: "/premium", labelKey: "navigation.items.premium", icon: "💎", roles: managementRoles },
-      { to: "/coach-settings", labelKey: "navigation.items.coach", icon: "🎛️", roles: physicalRoles },
     ],
   },
   {
     titleKey: "navigation.groups.club",
     items: [
-      { to: "/settings?tab=club", labelKey: "navigation.items.clubProfile", icon: "🏢", roles: managementRoles },
       { to: "/sponsors", labelKey: "navigation.items.sponsors", icon: "🤝", featureKey: "sponsors", roles: ["owner", "director", "sponsor"] },
     ],
   },

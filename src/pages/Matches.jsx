@@ -955,13 +955,21 @@ function MatchCard({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "minmax(0,1fr) auto",
-          gap: 18,
+          gridTemplateColumns: "1fr",
+          gap: 16,
           alignItems: "start",
         }}
       >
         <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "48px minmax(0,1fr) 48px" : "56px minmax(0,1fr) 56px",
+              gap: 12,
+              alignItems: "center",
+              minWidth: 0,
+            }}
+          >
             <MatchLogo
               logo={matchTeams.home.logo}
               logoSize={clubLogoSize}
@@ -982,12 +990,20 @@ function MatchCard({
                 {competitionLine && <span>{competitionLine}</span>}
               </div>
             </div>
+
+            <MatchLogo
+              logo={matchTeams.away.logo}
+              logoSize={matchTeams.away.isClub ? clubLogoSize : undefined}
+              name={matchTeams.away.name}
+              fallback={matchTeams.away.fallback}
+              color={matchTeams.away.isClub ? "#38bdf8" : "#a78bfa"}
+            />
           </div>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,minmax(0,1fr))",
+              gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,minmax(0,1fr))",
               gap: 10,
               marginTop: 18,
             }}
@@ -995,7 +1011,7 @@ function MatchCard({
             <MatchDetail label={t("pages.matches.field")} value={formatMatchVenue(match, t)} wide={!isMobile} />
             <MatchDetail label={t("pages.matches.formation")} value={match.formation || "-"} />
             <MatchDetail label={t("pages.matches.calledUp")} value={`${calledUpCount}/${players.length}`} />
-            <MatchDetail label={t("pages.matches.matchNotes")} value={match.notes || t("pages.matches.noNotes")} wide />
+            {match.notes && <MatchDetail label={t("pages.matches.matchNotes")} value={match.notes} wide />}
           </div>
 
           {(match.convocazione?.published || (match.convocazione && !match.convocazione.published && convocationCount > 0)) && (
@@ -1011,27 +1027,16 @@ function MatchCard({
 
         <div
           style={{
-            minWidth: isMobile ? "100%" : 260,
             display: "grid",
-            gap: 12,
-            justifyItems: isMobile ? "stretch" : "end",
+            gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fit,minmax(170px,1fr))",
+            gap: 8,
+            alignItems: "stretch",
           }}
         >
-          <div style={{ justifySelf: "center" }}>
-            <MatchLogo
-              logo={matchTeams.away.logo}
-              logoSize={matchTeams.away.isClub ? clubLogoSize : undefined}
-              name={matchTeams.away.name}
-              fallback={matchTeams.away.fallback}
-              color={matchTeams.away.isClub ? "#38bdf8" : "#a78bfa"}
-            />
-          </div>
-
           <div
             style={{
-              width: isMobile ? "100%" : 220,
               borderRadius: 12,
-              padding: "14px 16px",
+              padding: "10px 12px",
               background: "rgba(15,23,42,0.72)",
               border: "1px solid rgba(148,163,184,0.18)",
               textAlign: "center",
@@ -1058,18 +1063,19 @@ function MatchCard({
                 <button onClick={closeResultEdit} style={matchStyles.iconClose} aria-label="Chiudi">×</button>
               </div>
             ) : (
-              <button
-                onClick={canManage ? () => openResultEdit(match) : undefined}
-                style={{
-                  width: "100%",
-                  background: "transparent",
-                  border: "none",
-                  color: match.result ? "#f8fafc" : "#94a3b8",
-                  cursor: canManage ? "pointer" : "default",
-                  fontSize: match.result ? 31 : 16,
-                  fontWeight: 900,
-                  lineHeight: 1.1,
-                  padding: 0,
+                <button
+                  onClick={canManage ? () => openResultEdit(match) : undefined}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    background: "transparent",
+                    border: "none",
+                    color: match.result ? "#f8fafc" : "#94a3b8",
+                    cursor: canManage ? "pointer" : "default",
+                    fontSize: match.result ? 18 : 15,
+                    fontWeight: 900,
+                    lineHeight: 1.1,
+                    padding: 0,
                 }}
                 title={canManage ? t("pages.matches.editResult") : undefined}
               >
@@ -1078,45 +1084,36 @@ function MatchCard({
             )}
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr",
-              gap: 8,
-              width: isMobile ? "100%" : 220,
-            }}
-          >
-            <Link to={`/match-convocation/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
-              <Button variant={match.convocazione?.published ? "ghost" : "primary"} style={{ width: "100%" }}>
-                {match.convocazione?.published ? `✓ ${t("pages.matches.convocation")}` : t("pages.matches.callUp")}
+          <Link to={`/match-convocation/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
+            <Button variant={match.convocazione?.published ? "ghost" : "primary"} style={{ width: "100%" }}>
+              {match.convocazione?.published ? `✓ ${t("pages.matches.convocation")}` : t("pages.matches.callUp")}
+            </Button>
+          </Link>
+          <Link to={`/match-day/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
+            <Button variant="ghost" style={{ width: "100%" }}>{t("pages.matches.matchSheet")}</Button>
+          </Link>
+          <Link to={`/match-stats/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
+            <Button variant="ghost" style={{ width: "100%" }}>{t("pages.matches.statistics")}</Button>
+          </Link>
+          {canManage && match.result && (
+            <Button
+              variant="ghost"
+              onClick={() => quickStatsMatchId === match.id ? closeQuickStats() : openQuickStats(match)}
+              style={{ minWidth: 0 }}
+            >
+              Stats veloci
+            </Button>
+          )}
+          {canManage && (
+            <>
+              <Button variant="ghost" onClick={() => editMatch(match)} style={{ minWidth: 0 }}>
+                {t("common.edit")}
               </Button>
-            </Link>
-            <Link to={`/match-day/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
-              <Button variant="ghost" style={{ width: "100%" }}>{t("pages.matches.matchSheet")}</Button>
-            </Link>
-            <Link to={`/match-stats/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
-              <Button variant="ghost" style={{ width: "100%" }}>{t("pages.matches.statistics")}</Button>
-            </Link>
-            {canManage && match.result && (
-              <Button
-                variant="ghost"
-                onClick={() => quickStatsMatchId === match.id ? closeQuickStats() : openQuickStats(match)}
-                style={{ minWidth: 0 }}
-              >
-                Stats veloci
+              <Button variant="danger" onClick={() => deleteMatch(match.id)} style={{ minWidth: 0 }}>
+                {t("common.delete")}
               </Button>
-            )}
-            {canManage && (
-              <>
-                <Button variant="ghost" onClick={() => editMatch(match)} style={{ minWidth: 0 }}>
-                  {t("common.edit")}
-                </Button>
-                <Button variant="danger" onClick={() => deleteMatch(match.id)} style={{ minWidth: 0 }}>
-                  {t("common.delete")}
-                </Button>
-              </>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
 
