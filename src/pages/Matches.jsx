@@ -245,7 +245,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
       result: computedResult,
       id: editingId || createId("match"),
       type: "Partita",
-      title: `${clubName} - ${form.opponent}`,
+      title: getMatchTitle(form, clubName).plain,
       homeLogo: form.homeLogo || clubLogo,
     };
 
@@ -799,7 +799,6 @@ function MatchFocusCard({
   clubName,
   players,
   t,
-  isMobile,
   canManage,
   resultEditId,
   resultDraft,
@@ -819,6 +818,7 @@ function MatchFocusCard({
   const playerCount = getMatchPlayerIds(match).length;
   const isPast = String(match.date || "") <= localDateString();
   const actionTitle = isPast ? "Ultima partita" : "Prossima partita";
+  const matchTitle = getMatchTitle(match, clubName);
   const detail = [
     formatDate(match.date),
     match.time,
@@ -831,13 +831,13 @@ function MatchFocusCard({
       <div
         style={{
           ...matchStyles.focusLayout,
-          gridTemplateColumns: isMobile ? "1fr" : "minmax(0,1fr) minmax(220px,280px)",
+          gridTemplateColumns: "1fr",
         }}
       >
         <div style={{ minWidth: 0 }}>
           <Badge tone={isPast ? "orange" : "blue"}>{actionTitle}</Badge>
           <h2 style={matchStyles.focusTitle}>
-            {clubName} <span style={{ color: "#64748b" }}>vs</span> {match.opponent || "Avversario"}
+            {matchTitle.home} <span style={{ color: "#64748b" }}>vs</span> {matchTitle.away}
           </h2>
           <p style={matchStyles.focusMeta}>{detail || "-"}</p>
           <div style={matchStyles.focusBadges}>
@@ -876,17 +876,17 @@ function MatchFocusCard({
               </Button>
             )}
           </div>
-          <Link to={`/match-stats/${match.id}`} style={{ textDecoration: "none" }}>
+          <Link to={`/match-stats/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
             <Button style={{ width: "100%" }}>
               Inserisci dati giocatori
             </Button>
           </Link>
-          <Link to={`/match-day/${match.id}`} style={{ textDecoration: "none" }}>
+          <Link to={`/match-day/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
             <Button variant="ghost" style={{ width: "100%" }}>
               Distinta e modulo
             </Button>
           </Link>
-          <Link to={`/match-convocation/${match.id}`} style={{ textDecoration: "none" }}>
+          <Link to={`/match-convocation/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
             <Button variant="ghost" style={{ width: "100%" }}>
               Convocazione
             </Button>
@@ -947,7 +947,7 @@ function MatchCard({
   const status = getMatchStatus(match);
   const calledUpCount = getMatchPlayerIds(match).length;
   const convocationCount = match.convocazione?.playerIds?.length || 0;
-  const opponentInitial = match.opponent?.slice(0, 2).toUpperCase() || "AV";
+  const matchTeams = getMatchTeams(match, clubName, clubLogo);
   const competitionLine = [match.competition, match.matchday].filter(Boolean).join(" · ");
 
   return (
@@ -963,16 +963,16 @@ function MatchCard({
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
             <MatchLogo
-              logo={clubLogo}
+              logo={matchTeams.home.logo}
               logoSize={clubLogoSize}
-              name={clubName}
-              fallback={clubName.slice(0, 2).toUpperCase()}
-              color="#38bdf8"
+              name={matchTeams.home.name}
+              fallback={matchTeams.home.fallback}
+              color={matchTeams.home.isClub ? "#38bdf8" : "#a78bfa"}
             />
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
                 <h3 style={{ margin: 0, fontSize: isMobile ? 18 : 21, lineHeight: 1.15, color: "#f8fafc" }}>
-                  {clubName} <span style={{ color: "#64748b" }}>vs</span> {match.opponent}
+                  {matchTeams.titleParts.home} <span style={{ color: "#64748b" }}>vs</span> {matchTeams.titleParts.away}
                 </h3>
                 <Badge tone={getMatchStatusTone(status)}>{getMatchStatusLabel(status, t)}</Badge>
               </div>
@@ -1019,10 +1019,11 @@ function MatchCard({
         >
           <div style={{ justifySelf: "center" }}>
             <MatchLogo
-              logo={match.awayLogo}
-              name={match.opponent}
-              fallback={opponentInitial}
-              color="#a78bfa"
+              logo={matchTeams.away.logo}
+              logoSize={matchTeams.away.isClub ? clubLogoSize : undefined}
+              name={matchTeams.away.name}
+              fallback={matchTeams.away.fallback}
+              color={matchTeams.away.isClub ? "#38bdf8" : "#a78bfa"}
             />
           </div>
 
@@ -1509,8 +1510,11 @@ function getMatchStatus(match) {
 
   const homeGoals = Number(score[1]);
   const awayGoals = Number(score[2]);
-  if (homeGoals > awayGoals) return "Vinta";
-  if (homeGoals < awayGoals) return "Persa";
+  const isAway = match.location === "Trasferta";
+  const clubGoals = isAway ? awayGoals : homeGoals;
+  const opponentGoals = isAway ? homeGoals : awayGoals;
+  if (clubGoals > opponentGoals) return "Vinta";
+  if (clubGoals < opponentGoals) return "Persa";
   return "Pareggio";
 }
 
@@ -1522,6 +1526,43 @@ function formatMatchVenue(match, t) {
   ].filter(Boolean).join(" · ") || "-";
 }
 
+function getMatchTitle(match, clubName) {
+  const teams = getMatchTeams(match, clubName);
+  return {
+    home: teams.home.name,
+    away: teams.away.name,
+    plain: `${teams.home.name} vs ${teams.away.name}`,
+  };
+}
+
+function getMatchTeams(match, clubName, clubLogo = "") {
+  const opponentName = match.opponent || "Avversario";
+  const isAway = match.location === "Trasferta";
+  const club = {
+    name: clubName,
+    logo: match.homeLogo || clubLogo,
+    fallback: clubName.slice(0, 2).toUpperCase(),
+    isClub: true,
+  };
+  const opponent = {
+    name: opponentName,
+    logo: isAway ? match.homeLogo || match.awayLogo || "" : match.awayLogo || "",
+    fallback: opponentName.slice(0, 2).toUpperCase(),
+    isClub: false,
+  };
+  const home = isAway ? opponent : club;
+  const away = isAway ? club : opponent;
+
+  return {
+    home,
+    away,
+    titleParts: {
+      home: home.name,
+      away: away.name,
+    },
+  };
+}
+
 const matchStyles = {
   inputError: { border: "1px solid #f87171", boxShadow: "0 0 0 2px rgba(248,113,113,0.15)" },
   errorMsg:   { display: "block", marginTop: 4, fontSize: 11, fontWeight: 700, color: "#f87171" },
@@ -1531,8 +1572,8 @@ const matchStyles = {
   },
   focusLayout: {
     display: "grid",
-    gridTemplateColumns: "minmax(0,1fr) minmax(220px,280px)",
-    gap: 18,
+    gridTemplateColumns: "1fr",
+    gap: 16,
     alignItems: "center",
   },
   focusTitle: {
@@ -1555,7 +1596,9 @@ const matchStyles = {
   },
   focusActions: {
     display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
     gap: 8,
+    alignItems: "center",
   },
   focusScoreBox: {
     minHeight: 42,

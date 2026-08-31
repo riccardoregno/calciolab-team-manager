@@ -208,7 +208,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
                 </span>
                 {!collapsed && (
                   <span style={sidebarStyles.toolboxMeta}>
-                    {visibleToolboxCount}
+                    {toolsOpen ? "Chiudi" : `${visibleToolboxCount} voci`}
                     <span style={{ transform: toolsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>⌄</span>
                   </span>
                 )}
@@ -258,13 +258,13 @@ function SidebarToolbox({ groups, appSettings, chatUnread, t }) {
       {groups.map((group) => (
         <div key={group.titleKey} style={sidebarStyles.toolboxGroup}>
           <div style={sidebarStyles.toolboxTitle}>{t(group.titleKey)}</div>
-          <div style={sidebarStyles.toolboxGrid}>
+          <div style={sidebarStyles.toolboxList}>
             {group.items.map((item) => (
               <SidebarLink
                 key={item.to}
                 item={item}
                 collapsed={false}
-                compact
+                compact={false}
                 locked={Boolean(item.featureKey && !isFeatureUnlocked(item.featureKey, appSettings))}
                 label={t(item.labelKey)}
                 badge={item.to === "/staff-chat" && chatUnread > 0 ? chatUnread : 0}
@@ -424,7 +424,7 @@ const sidebarStyles = {
   },
   toolboxPanel: {
     display: "grid",
-    gap: 12,
+    gap: 14,
     padding: "12px",
     borderRadius: 16,
     border: "1px solid rgba(148,163,184,0.12)",
@@ -432,7 +432,7 @@ const sidebarStyles = {
   },
   toolboxGroup: {
     display: "grid",
-    gap: 7,
+    gap: 8,
   },
   toolboxTitle: {
     color: "#64748b",
@@ -441,10 +441,10 @@ const sidebarStyles = {
     textTransform: "uppercase",
     letterSpacing: 0.4,
   },
-  toolboxGrid: {
+  toolboxList: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 7,
+    gridTemplateColumns: "1fr",
+    gap: 6,
   },
   footer: {
     background: "rgba(255,255,255,0.035)",
