@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -62,6 +62,15 @@ function rowToStats(row) {
   };
 }
 
+function getMatchPlayerIds(match) {
+  return [...new Set([
+    ...(match?.lineup?.starterIds || []),
+    ...(match?.lineup?.benchIds || []),
+    ...(match?.lineup?.calledUpIds || []),
+    ...(match?.convocazione?.playerIds || []),
+  ].map(String).filter(Boolean))];
+}
+
 export default function MatchStats({ players = [], matches = [], appSettings = {} }) {
   const { t } = useTranslation();
   const { id } = useParams();
@@ -71,20 +80,13 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
 
   const match = matches.find((m) => String(m.id) === String(id));
 
-  // convocati = starterIds + benchIds (senza duplicati)
-  const convocatiIds = match
-    ? [...new Set([
-        ...(match.lineup?.starterIds || []),
-        ...(match.lineup?.benchIds   || []),
-      ])]
-    : [];
-
-  const convocati = convocatiIds
-    .map((pid) => players.find((p) => String(p.id) === String(pid)))
-    .filter(Boolean);
+  // Usa tutti i giocatori disponibili per la gara: distinta, panchina,
+  // calledUpIds legacy e convocazione pubblicata.
+  const convocatiIds = useMemo(() => match ? getMatchPlayerIds(match) : [], [match]);
 
   // rows: { [playerId]: { ...EMPTY_ROW } }
   const [rows, setRows] = useState({});
+  const [statsPlayerIds, setStatsPlayerIds] = useState([]);
   // savedStats: { [playerId]: riga player_matches già in DB (o null) }
   const savedRef = useRef({});
   const [loading, setLoading] = useState(true);
@@ -92,6 +94,13 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   const [saveResult, setSaveResult] = useState(null); // "ok" | "error"
   const [validationErrors, setValidationErrors] = useState({}); // { [pid]: string[] }
   const [quickMode, setQuickMode] = useState(false);
+
+  const convocati = useMemo(() => {
+    const ids = [...new Set([...convocatiIds, ...statsPlayerIds].map(String))];
+    return ids
+      .map((pid) => players.find((p) => String(p.id) === String(pid)))
+      .filter(Boolean);
+  }, [convocatiIds, players, statsPlayerIds]);
 
   useEffect(() => {
     if (!auth.team?.id || !id) {
@@ -107,11 +116,13 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         byPlayer[String(row.player_id)] = row;
       });
       savedRef.current = byPlayer;
+      const savedPlayerIds = Object.keys(byPlayer);
+      setStatsPlayerIds(savedPlayerIds);
 
       // Precompila i rows con i valori già salvati
       const initial = {};
-      convocati.forEach((p) => {
-        const pid = String(p.id);
+      const rowPlayerIds = [...new Set([...convocatiIds, ...savedPlayerIds].map(String))];
+      rowPlayerIds.forEach((pid) => {
         const saved = byPlayer[pid];
         initial[pid] = saved
           ? {

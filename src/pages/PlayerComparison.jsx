@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import { styles } from "../styles/index.js";
 import { useTranslation } from "../i18n";
-import { getPlayerSummary } from "../utils/helpers";
+import { getPlayerSummary, normalizeAppSettings } from "../utils/helpers";
+import { loadAllPlayerStats, loadTeamPlayerMatches } from "../services/playerProfile";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function age(birthDate) {
@@ -21,28 +22,141 @@ function statusTone(status) {
   return "blue";
 }
 
+function buildComparableStats(localStats, dbStats, matchRows = []) {
+  const fromRows = matchRows.reduce((acc, row) => ({
+    appearances: acc.appearances + (hasMatchContribution(row) ? 1 : 0),
+    minutes: acc.minutes + Number(row.minutes_played || 0),
+    goals: acc.goals + Number(row.goals || 0),
+    assists: acc.assists + Number(row.assists || 0),
+  }), { appearances: 0, minutes: 0, goals: 0, assists: 0 });
+
+  if (matchRows.length > 0) {
+    return {
+      ...localStats,
+      presences: fromRows.appearances,
+      minutes: fromRows.minutes,
+      goals: fromRows.goals,
+      assists: fromRows.assists,
+    };
+  }
+
+  if (!dbStats) return localStats;
+
+  return {
+    ...localStats,
+    minutes:   Number(dbStats.minutes_played ?? localStats.minutes ?? 0),
+    goals:     Number(dbStats.goals ?? localStats.goals ?? 0),
+    assists:   Number(dbStats.assists ?? localStats.assists ?? 0),
+  };
+}
+
+function hasMatchContribution(row) {
+  return [
+    row.minutes_played,
+    row.goals,
+    row.assists,
+    row.yellow_cards,
+    row.red_cards,
+    row.rating,
+  ].some((value) => Number(value || 0) > 0);
+}
+
+function isFriendlyMatch(match) {
+  if (match?.isFriendly === true || match?.friendly === true) return true;
+  const fields = [match?.matchKind, match?.match_kind, match?.competition, match?.category, match?.kind, match?.title, match?.notes];
+  return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
+}
+
+function normalizeStatus(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isPresentStatus(value) {
+  const status = normalizeStatus(value);
+  return status === "presente" || status === "recupero" || status === "titolare" || status === "entrato";
+}
+
+function isAbsentStatus(value) {
+  const status = normalizeStatus(value);
+  return status === "assente" || status === "infortunato" || status === "squalificato" || status === "permesso";
+}
+
+function getMatchPlayerIds(match) {
+  return [...new Set([
+    ...(match?.lineup?.starterIds || []),
+    ...(match?.lineup?.benchIds || []),
+    ...(match?.lineup?.calledUpIds || []),
+  ].map(String).filter(Boolean))];
+}
+
+function getLineupAppearances(player, matches) {
+  if (!player) return 0;
+  const pid = String(player.id);
+  return matches.filter((match) => {
+    if (isFriendlyMatch(match)) return false;
+    const attendance = match?.attendance?.[pid] ?? match?.attendance?.[player.id];
+    if (isAbsentStatus(attendance?.status)) return false;
+    if (isPresentStatus(attendance?.status)) return true;
+    return getMatchPlayerIds(match).includes(pid);
+  }).length;
+}
+
+function normalizeDate(value) {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return String(value);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
+function getTrainingPct(player, sessions, matches) {
+  if (!player) return null;
+  const pid = String(player.id);
+  const today = new Date().toISOString().slice(0, 10);
+  const isJunior = (player.gruppo || "prima") === "juniores";
+  const trainings = [...sessions, ...matches.filter(isFriendlyMatch)]
+    .filter((event) => ((event.type || "Allenamento") === "Allenamento" || isFriendlyMatch(event)))
+    .map((event) => ({ ...event, date: normalizeDate(event.date) }))
+    .filter((event) => event.date && event.date <= today);
+
+  let present = 0;
+  let total = 0;
+  trainings.forEach((event) => {
+    const entry = event.attendance?.[pid] ?? event.attendance?.[player.id];
+    const status = entry?.status;
+    if (isJunior && !status) return;
+    total += 1;
+    if (status ? isPresentStatus(status) : true) present += 1;
+  });
+
+  return total > 0 ? Math.round((present / total) * 100) : null;
+}
+
 // ─── Confronta una singola metrica ───────────────────────────────────────────
 function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) => v, icon }) {
-  const numA = Number(valueA ?? 0);
-  const numB = Number(valueB ?? 0);
+  const hasA = valueA !== null && valueA !== undefined && valueA !== "";
+  const hasB = valueB !== null && valueB !== undefined && valueB !== "";
+  const numA = hasA ? Number(valueA) : 0;
+  const numB = hasB ? Number(valueB) : 0;
 
   let winA = false;
   let winB = false;
-  if (numA !== numB) {
+  if (hasA && hasB && numA !== numB) {
     if (higherIsBetter) { winA = numA > numB; winB = numB > numA; }
     else                { winA = numA < numB; winB = numB < numA; }
   }
 
   const maxVal = Math.max(numA, numB, 1);
-  const barA = Math.round((numA / maxVal) * 100);
-  const barB = Math.round((numB / maxVal) * 100);
+  const barA = hasA ? Math.round((numA / maxVal) * 100) : 0;
+  const barB = hasB ? Math.round((numB / maxVal) * 100) : 0;
+  const display = (value, hasValue) => hasValue ? format(value) : "—";
 
   return (
     <div style={cmp.metricRow} className="no-mobile-override">
       {/* Valore A */}
       <div style={{ ...cmp.metricVal, justifyContent: "flex-end" }}>
         <span style={{ ...cmp.metricNum, color: winA ? "#22c55e" : "#e2e8f0" }}>
-          {format(valueA)}
+          {display(valueA, hasA)}
         </span>
         {winA && <span style={cmp.winBadge}>▲</span>}
       </div>
@@ -59,6 +173,7 @@ function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) 
                 ? "linear-gradient(90deg, #16a34a, #22c55e)"
                 : "linear-gradient(90deg, #1d4ed8, #2563eb)",
               marginLeft: "auto",
+              minWidth: hasA ? 2 : 0,
             }}
           />
         </div>
@@ -77,6 +192,7 @@ function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) 
               background: winB
                 ? "linear-gradient(90deg, #22c55e, #16a34a)"
                 : "linear-gradient(90deg, #2563eb, #1d4ed8)",
+              minWidth: hasB ? 2 : 0,
             }}
           />
         </div>
@@ -86,7 +202,7 @@ function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) 
       <div style={{ ...cmp.metricVal, justifyContent: "flex-start" }}>
         {winB && <span style={cmp.winBadge}>▲</span>}
         <span style={{ ...cmp.metricNum, color: winB ? "#22c55e" : "#e2e8f0" }}>
-          {format(valueB)}
+          {display(valueB, hasB)}
         </span>
       </div>
     </div>
@@ -132,13 +248,16 @@ function PlayerHeader({ player, side }) {
 }
 
 // ─── Pagina principale ────────────────────────────────────────────────────────
-export default function PlayerComparison({ players = [], sessions = [], matches = [], physicalTests = [] }) {
+export default function PlayerComparison({ players = [], sessions = [], matches = [], physicalTests = [], teamId = null, appSettings = {} }) {
   const { t } = useTranslation();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
+  const activeSeason = normalizeAppSettings(appSettings).workspaceProfile.currentSeason;
 
   const [idA, setIdA] = useState(params.get("a") || players[0]?.id || "");
   const [idB, setIdB] = useState(params.get("b") || players[1]?.id || "");
+  const [seasonStats, setSeasonStats] = useState({});
+  const [playerMatchRows, setPlayerMatchRows] = useState([]);
 
   const playerA = useMemo(() => players.find((p) => String(p.id) === String(idA)), [players, idA]);
   const playerB = useMemo(() => players.find((p) => String(p.id) === String(idB)), [players, idB]);
@@ -152,16 +271,29 @@ export default function PlayerComparison({ players = [], sessions = [], matches 
     [playerB, sessions, matches, physicalTests]
   );
 
-  // Calcola presenze % allenamenti
-  const sessionsWithAtt = sessions.filter((s) => s.attendance && Object.keys(s.attendance).length > 0);
-  function attPct(player) {
-    if (!player || !sessionsWithAtt.length) return 0;
-    const present = sessionsWithAtt.filter((s) => s.attendance?.[player.id]?.status === "Presente").length;
-    return Math.round((present / sessionsWithAtt.length) * 100);
-  }
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      teamId ? loadAllPlayerStats(teamId, activeSeason) : Promise.resolve({ data: {} }),
+      teamId ? loadTeamPlayerMatches(teamId) : Promise.resolve({ data: [] }),
+    ]).then(([statsResult, matchesResult]) => {
+      if (!active) return;
+      setSeasonStats(statsResult.data || {});
+      setPlayerMatchRows(matchesResult.data || []);
+    });
 
-  const pctA = attPct(playerA);
-  const pctB = attPct(playerB);
+    return () => { active = false; };
+  }, [activeSeason, teamId]);
+
+  const rowsA = playerMatchRows.filter((row) => String(row.player_id) === String(playerA?.id || ""));
+  const rowsB = playerMatchRows.filter((row) => String(row.player_id) === String(playerB?.id || ""));
+  const statsA = buildComparableStats(summaryA.stats, seasonStats[String(playerA?.id || "")], rowsA);
+  const statsB = buildComparableStats(summaryB.stats, seasonStats[String(playerB?.id || "")], rowsB);
+
+  const appearancesA = rowsA.length > 0 ? statsA.presences : getLineupAppearances(playerA, matches);
+  const appearancesB = rowsB.length > 0 ? statsB.presences : getLineupAppearances(playerB, matches);
+  const pctA = getTrainingPct(playerA, sessions, matches);
+  const pctB = getTrainingPct(playerB, sessions, matches);
 
   // Test fisici: ultimi per tipo
   function latestTest(player, type) {
@@ -177,17 +309,19 @@ export default function PlayerComparison({ players = [], sessions = [], matches 
 
   // Punteggio globale (chi vince di più)
   const metrics = [
-    { a: summaryA.stats.presences,  b: summaryB.stats.presences,  higher: true },
-    { a: pctA,                       b: pctB,                       higher: true },
-    { a: summaryA.stats.goals,       b: summaryB.stats.goals,       higher: true },
-    { a: summaryA.stats.assists,     b: summaryB.stats.assists,     higher: true },
-    { a: summaryA.stats.minutes,     b: summaryB.stats.minutes,     higher: true },
+    { a: appearancesA,              b: appearancesB,              higher: true },
+    { a: pctA,                       b: pctB,                       higher: true, requireBoth: true },
+    { a: statsA.goals,              b: statsB.goals,              higher: true },
+    { a: statsA.assists,            b: statsB.assists,            higher: true },
+    { a: statsA.minutes,            b: statsB.minutes,            higher: true },
     { a: summaryA.stats.avgRpe,      b: summaryB.stats.avgRpe,      higher: false },
   ];
   const scoreA = metrics.filter((m) => {
+    if (m.requireBoth && (m.a === null || m.b === null)) return false;
     return m.higher ? Number(m.a) > Number(m.b) : Number(m.a) < Number(m.b);
   }).length;
   const scoreB = metrics.filter((m) => {
+    if (m.requireBoth && (m.a === null || m.b === null)) return false;
     return m.higher ? Number(m.b) > Number(m.a) : Number(m.b) < Number(m.a);
   }).length;
 
@@ -269,8 +403,8 @@ export default function PlayerComparison({ players = [], sessions = [], matches 
             <MetricRow
               label={t("pages.playerComparison.metricMatchPresences")}
               icon="⚽"
-              valueA={summaryA.stats.presences}
-              valueB={summaryB.stats.presences}
+              valueA={appearancesA}
+              valueB={appearancesB}
             />
             <MetricRow
               label={t("pages.playerComparison.metricTrainingPct")}
@@ -282,20 +416,20 @@ export default function PlayerComparison({ players = [], sessions = [], matches 
             <MetricRow
               label={t("pages.playerComparison.metricGoals")}
               icon="🥅"
-              valueA={summaryA.stats.goals}
-              valueB={summaryB.stats.goals}
+              valueA={statsA.goals}
+              valueB={statsB.goals}
             />
             <MetricRow
               label={t("pages.playerComparison.metricAssists")}
               icon="🎯"
-              valueA={summaryA.stats.assists}
-              valueB={summaryB.stats.assists}
+              valueA={statsA.assists}
+              valueB={statsB.assists}
             />
             <MetricRow
               label={t("pages.playerComparison.metricMinutes")}
               icon="⏱️"
-              valueA={summaryA.stats.minutes}
-              valueB={summaryB.stats.minutes}
+              valueA={statsA.minutes}
+              valueB={statsB.minutes}
               format={(v) => `${v}'`}
             />
             <MetricRow
@@ -326,8 +460,8 @@ export default function PlayerComparison({ players = [], sessions = [], matches 
                     key={type}
                     label={type}
                     icon="🏃"
-                    valueA={tA?.value ?? tA?.result ?? 0}
-                    valueB={tB?.value ?? tB?.result ?? 0}
+                    valueA={tA?.value ?? tA?.result ?? null}
+                    valueB={tB?.value ?? tB?.result ?? null}
                     format={(v) => Number(v) ? Number(v).toFixed(1) : "—"}
                   />
                 );

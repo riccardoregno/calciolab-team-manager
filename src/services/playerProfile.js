@@ -196,6 +196,21 @@ export async function loadPlayerMatchesForPeriod(teamId, matchIds) {
 }
 
 /** @param {string} teamId
+ * @returns {Promise<{data: any[], error: any}>} */
+export async function loadTeamPlayerMatches(teamId) {
+  if (!isSupabaseConfigured || !teamId) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("player_matches")
+    .select("player_id, match_id, goals, assists, minutes_played, yellow_cards, red_cards, rating")
+    .eq("team_id", teamId)
+    .limit(1000);
+
+  if (error && import.meta.env.DEV) console.error("[playerProfile] loadTeamPlayerMatches:", error.message);
+  return { data: data || [], error };
+}
+
+/** @param {string} teamId
  * @param {string} playerId
  * @returns {Promise<{data: any[], error: any}>} */
 export async function loadPlayerMatches(teamId, playerId) {

@@ -752,6 +752,8 @@ function App() {
                       sessions={sessions}
                       matches={matches}
                       physicalTests={physicalTests}
+                      teamId={auth.team?.id}
+                      appSettings={previewAppSettings}
                     />
                   </FeatureGate>, "statistics")
                 }

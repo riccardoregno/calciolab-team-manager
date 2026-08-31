@@ -33,8 +33,6 @@ const SECONDARY = [
   { to: "/exercises",         labelKey: "navigation.items.exercises",        icon: "📚", roles: technicalRoles,    cat: "campo" },
   { to: "/microcycle",        labelKey: "navigation.items.microcycle",       icon: "🗓️", roles: technicalRoles,    cat: "campo" },
   { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾", roles: technicalRoles, cat: "campo" },
-  { to: "/match-day",         labelKey: "navigation.items.matchDay",         icon: "📋", roles: technicalRoles,    cat: "campo" },
-  { to: "/post-match",        labelKey: "navigation.items.postMatch",        icon: "📝", roles: technicalRoles,    cat: "campo" },
   { to: "/set-plays",         labelKey: "navigation.items.setPlays",         icon: "📐", roles: technicalRoles,    cat: "campo" },
   { to: "/ai-session-builder",labelKey: "navigation.items.aiBuilder",        icon: "🤖", roles: technicalRoles,    cat: "campo" },
   { to: "/team-generator",   labelKey: "navigation.items.teamGenerator",    icon: "⚖️", roles: technicalRoles,    cat: "campo" },
