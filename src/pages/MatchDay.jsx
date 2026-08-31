@@ -31,6 +31,7 @@ function MatchDay({
   const auth = useAuth();
   const { showToast, ToastContainer } = useToast();
   const [confirmState, setConfirmState] = useState(null);
+  const [showOpponentLineupEditor, setShowOpponentLineupEditor] = useState(false);
 
   const isMobile = useIsMobile();
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
@@ -625,6 +626,14 @@ function MatchDay({
                   >
                     {opponentScouting.attachment.name || t("pages.matchDay.openAttachment")}
                   </a>
+                  <a
+                    href={opponentScouting.attachment.url || opponentScouting.attachment.dataUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={matchDayStyles.openAttachmentButton}
+                  >
+                    Visualizza distinta
+                  </a>
                   <Button variant="ghost" onClick={removeOpponentAttachment}>{t("pages.matchDay.removeAttachment")}</Button>
                 </>
               ) : (
@@ -641,87 +650,102 @@ function MatchDay({
             </div>
           </div>
 
+          {opponentScouting.attachment && (
+            <AttachmentPreview attachment={opponentScouting.attachment} />
+          )}
+
           <div style={matchDayStyles.opponentHeader}>
-            <h4 style={{ margin: 0, lineHeight: 1.2 }}>{t("pages.matchDay.opponentLineupTitle")}</h4>
-            <Button variant="ghost" onClick={addOpponentPlayer}>
-              {t("pages.matchDay.addPlayer")}
+            <h4 style={{ margin: 0, lineHeight: 1.2 }}>
+              {opponentScouting.attachment ? "Trascrizione giocatori" : t("pages.matchDay.opponentLineupTitle")}
+            </h4>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowOpponentLineupEditor(true);
+                addOpponentPlayer();
+              }}
+            >
+              {opponentScouting.attachment ? "Aggiungi manualmente" : t("pages.matchDay.addPlayer")}
             </Button>
           </div>
 
-          {/* Scroll orizzontale su mobile per la distinta avversaria (7 colonne) */}
-          <div style={{ overflowX: "auto" }}>
-          <div style={{ ...matchDayStyles.opponentList, minWidth: 560 }}>
-            {opponentScouting.lineup.length === 0 ? (
-              <p style={matchDayStyles.muted}>
-                {t("pages.matchDay.opponentEmptyText")}
-              </p>
-            ) : (
-              opponentScouting.lineup.map((player) => (
-                <div key={player.id} style={matchDayStyles.opponentRow}>
-                  <input
-                    placeholder="#"
-                    value={player.number}
-                    onChange={(event) =>
-                      updateOpponentPlayer(player.id, "number", event.target.value)
-                    }
-                    style={matchDayStyles.compactInput}
-                  />
-                  <input
-                    placeholder={t("pages.matchDay.namePlaceholder")}
-                    value={player.name}
-                    onChange={(event) =>
-                      updateOpponentPlayer(player.id, "name", event.target.value)
-                    }
-                    style={matchDayStyles.compactInput}
-                  />
-                  <input
-                    placeholder={t("pages.matchDay.birthYearPlaceholder")}
-                    inputMode="numeric"
-                    maxLength={4}
-                    value={player.birthYear || ""}
-                    onChange={(event) =>
-                      updateOpponentPlayer(player.id, "birthYear", event.target.value.replace(/\D/g, "").slice(0, 4))
-                    }
-                    style={matchDayStyles.compactInput}
-                  />
-                  <input
-                    placeholder={t("pages.matchDay.rolePlaceholder")}
-                    value={player.role}
-                    onChange={(event) =>
-                      updateOpponentPlayer(player.id, "role", event.target.value)
-                    }
-                    style={matchDayStyles.compactInput}
-                  />
-                  <select
-                    value={player.status}
-                    onChange={(event) =>
-                      updateOpponentPlayer(player.id, "status", event.target.value)
-                    }
-                    style={matchDayStyles.compactInput}
-                  >
-                    <option value="Titolare">{t("pages.matchDay.opponentStatusStarter")}</option>
-                    <option value="Panchina">{t("pages.matchDay.opponentStatusBench")}</option>
-                    <option value="Chiave">{t("pages.matchDay.opponentStatusKey")}</option>
-                  </select>
-                  <input
-                    placeholder={t("pages.matchDay.notesPlaceholder")}
-                    value={player.notes}
-                    onChange={(event) =>
-                      updateOpponentPlayer(player.id, "notes", event.target.value)
-                    }
-                    style={matchDayStyles.compactInput}
-                  />
-                  <Button
-                    variant="danger"
-                    onClick={() => deleteOpponentPlayer(player.id)}
-                  >
-                    X
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-          </div>
+          {(showOpponentLineupEditor || opponentScouting.lineup.length > 0 || !opponentScouting.attachment) && (
+            <div style={{ overflowX: "auto" }}>
+              <div style={{ ...matchDayStyles.opponentList, minWidth: 560 }}>
+                {opponentScouting.lineup.length === 0 ? (
+                  <p style={matchDayStyles.muted}>
+                    {opponentScouting.attachment
+                      ? "La distinta allegata è già visibile sopra. Aggiungi giocatori solo se vuoi salvarli come testo."
+                      : t("pages.matchDay.opponentEmptyText")}
+                  </p>
+                ) : (
+                  opponentScouting.lineup.map((player) => (
+                    <div key={player.id} style={matchDayStyles.opponentRow}>
+                      <input
+                        placeholder="#"
+                        value={player.number}
+                        onChange={(event) =>
+                          updateOpponentPlayer(player.id, "number", event.target.value)
+                        }
+                        style={matchDayStyles.compactInput}
+                      />
+                      <input
+                        placeholder={t("pages.matchDay.namePlaceholder")}
+                        value={player.name}
+                        onChange={(event) =>
+                          updateOpponentPlayer(player.id, "name", event.target.value)
+                        }
+                        style={matchDayStyles.compactInput}
+                      />
+                      <input
+                        placeholder={t("pages.matchDay.birthYearPlaceholder")}
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={player.birthYear || ""}
+                        onChange={(event) =>
+                          updateOpponentPlayer(player.id, "birthYear", event.target.value.replace(/\D/g, "").slice(0, 4))
+                        }
+                        style={matchDayStyles.compactInput}
+                      />
+                      <input
+                        placeholder={t("pages.matchDay.rolePlaceholder")}
+                        value={player.role}
+                        onChange={(event) =>
+                          updateOpponentPlayer(player.id, "role", event.target.value)
+                        }
+                        style={matchDayStyles.compactInput}
+                      />
+                      <select
+                        value={player.status}
+                        onChange={(event) =>
+                          updateOpponentPlayer(player.id, "status", event.target.value)
+                        }
+                        style={matchDayStyles.compactInput}
+                      >
+                        <option value="Titolare">{t("pages.matchDay.opponentStatusStarter")}</option>
+                        <option value="Panchina">{t("pages.matchDay.opponentStatusBench")}</option>
+                        <option value="Chiave">{t("pages.matchDay.opponentStatusKey")}</option>
+                      </select>
+                      <input
+                        placeholder={t("pages.matchDay.notesPlaceholder")}
+                        value={player.notes}
+                        onChange={(event) =>
+                          updateOpponentPlayer(player.id, "notes", event.target.value)
+                        }
+                        style={matchDayStyles.compactInput}
+                      />
+                      <Button
+                        variant="danger"
+                        onClick={() => deleteOpponentPlayer(player.id)}
+                      >
+                        X
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
           {previousOpponentMatches.length > 0 && (
             <div style={matchDayStyles.previousBox}>
@@ -779,4 +803,41 @@ function getMatchTeams(match = {}, { clubName, clubLogo }) {
     away,
     title: `${home.name} vs ${away.name}`,
   };
+}
+
+function AttachmentPreview({ attachment }) {
+  const src = attachment.url || attachment.dataUrl || "";
+  const name = attachment.name || "Distinta avversaria";
+  const type = String(attachment.type || "").toLowerCase();
+  const isImage = type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp)$/i.test(name);
+  const isPdf = type.includes("pdf") || /\.pdf$/i.test(name);
+
+  if (!src) return null;
+
+  return (
+    <div style={matchDayStyles.attachmentPreview}>
+      <div style={matchDayStyles.attachmentPreviewHeader}>
+        <strong>Distinta caricata</strong>
+        <a href={src} target="_blank" rel="noreferrer" style={matchDayStyles.openAttachmentButton}>
+          Apri a schermo intero
+        </a>
+      </div>
+
+      {isImage ? (
+        <a href={src} target="_blank" rel="noreferrer" style={matchDayStyles.imagePreviewLink}>
+          <img src={src} alt={name} style={matchDayStyles.attachmentImage} />
+        </a>
+      ) : isPdf ? (
+        <iframe
+          title={name}
+          src={src}
+          style={matchDayStyles.attachmentFrame}
+        />
+      ) : (
+        <a href={src} target="_blank" rel="noreferrer" style={matchDayStyles.attachmentFallback}>
+          Visualizza {name}
+        </a>
+      )}
+    </div>
+  );
 }
