@@ -10,21 +10,18 @@ import MatchTabBar from "../components/match/MatchTabBar";
 import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { styles } from "../styles/index.js";
-import { compareMatchDateTime, createId, formatDate, getLineup, localDateString, normalizeAppSettings, uniqueIds } from "../utils/helpers";
+import { compareMatchDateTime, createId, formatDate, getLineup, localDateString, normalizeAppSettings } from "../utils/helpers";
 import { deleteTeamAttachment, uploadTeamAttachment } from "../services/attachments";
 import { useAuth } from "../hooks/useAuth";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
 import { matchDayStyles } from "../styles/matchDay";
 import {
-  PlayerList, TeamMark, MiniStat, PrintKpi, PrintBox, PlayerPrintTable,
+  TeamMark, MiniStat, PrintKpi, PrintBox, PlayerPrintTable,
   SectionHeader, MatchCommandCenter,
 } from "../components/matchday/MatchDayElements";
 import MatchFormationPlanner from "../components/matchday/MatchFormationPlanner";
-import {
-  getOpponentScouting, getPreMatchChecklist, getChecklistItems, hasText,
-  getMatchVenue, buildMatchPlanPrefill, buildStaffNotesPrefill,
-} from "../utils/matchDayHelpers";
+import { getOpponentScouting, getMatchVenue } from "../utils/matchDayHelpers";
 
 function MatchDay({
   matches = [], setMatches, players = [], appSettings = {} }) {
@@ -119,12 +116,6 @@ function MatchDay({
     lineup.starterIds.includes(player.id)
   );
   const benchPlayers = players.filter((player) => lineup.benchIds.includes(player.id));
-  const calledPlayers = players.filter((player) =>
-    lineup.calledUpIds.includes(player.id)
-  );
-  const availablePlayers = players.filter(
-    (player) => !lineup.calledUpIds.includes(player.id)
-  );
   const opponentScouting = getOpponentScouting(selectedMatch);
   const previousOpponentMatches = matches
     .filter(
@@ -137,11 +128,6 @@ function MatchDay({
     .sort((a, b) => new Date(b.date) - new Date(a.date));
   const matchVenue = getMatchVenue(selectedMatch, workspaceProfile);
   const matchTeams = getMatchTeams(selectedMatch, { clubName, clubLogo });
-  const convocationDetails = selectedMatch.convocazione?.details || {};
-  const convocationCount = selectedMatch.convocazione?.playerIds?.length || 0;
-  const preMatchChecklist = getPreMatchChecklist(selectedMatch);
-  const checklistItems = getChecklistItems({ match: selectedMatch, venue: matchVenue, t });
-  const completedChecklist = checklistItems.filter((item) => preMatchChecklist.items[item.key]).length;
   const matchMeta = [
     formatDate(selectedMatch.date),
     selectedMatch.time ? t("pages.matchDay.timePrefix", { time: selectedMatch.time }) : "",
@@ -150,12 +136,6 @@ function MatchDay({
     matchVenue || selectedMatch.location,
     selectedMatch.formation,
   ].filter(Boolean);
-  const canPrefillMatchDay =
-    Boolean(selectedMatch) &&
-    (!hasText(selectedMatch.matchPlan) ||
-      !hasText(selectedMatch.staffNotes) ||
-      (!lineup.calledUpIds.length && convocationCount > 0));
-
   const postMatchFilled = Object.values(selectedMatch.postMatch || {}).some(
     (value) => typeof value === "string" && value.trim().length > 0
   );
@@ -169,18 +149,6 @@ function MatchDay({
   ];
   const scoutingCount = scoutingFields.filter((value) => String(value || "").trim()).length;
   const commandSteps = [
-    {
-      key: "convocazione",
-      title: t("pages.matchDay.commandConvocazione"),
-      detail: selectedMatch.convocazione?.published
-        ? t("pages.matchDay.commandConvocazionePublished", { count: selectedMatch.convocazione.playerIds?.length || 0 })
-        : selectedMatch.convocazione?.playerIds?.length
-          ? t("pages.matchDay.commandConvocazioneDraft", { count: selectedMatch.convocazione.playerIds.length })
-          : t("pages.matchDay.commandConvocazioneTodo"),
-      done: Boolean(selectedMatch.convocazione?.published),
-      action: t("pages.matchDay.commandOpenAction"),
-      onClick: () => navigate(`/match-convocation/${selectedMatch.id}`),
-    },
     {
       key: "distinta",
       title: t("pages.matchDay.commandDistinta"),
@@ -196,14 +164,6 @@ function MatchDay({
       done: scoutingCount >= 3,
       action: t("pages.matchDay.commandScoutingAction"),
       onClick: () => document.getElementById("match-opponent-scouting")?.scrollIntoView({ behavior: "smooth", block: "start" }),
-    },
-    {
-      key: "logistica",
-      title: t("pages.matchDay.commandLogistica"),
-      detail: t("pages.matchDay.commandLogisticaDetail", { done: completedChecklist, total: checklistItems.length }),
-      done: completedChecklist === checklistItems.length,
-      action: t("pages.matchDay.commandLogisticaAction"),
-      onClick: () => document.getElementById("match-pre-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" }),
     },
     {
       key: "stats",
@@ -224,68 +184,8 @@ function MatchDay({
   ];
   const completedSteps = commandSteps.filter((step) => step.done).length;
 
-  function toggleCalled(player) {
-    if (lineup.calledUpIds.includes(player.id)) {
-      removeFromLineup(player);
-      return;
-    }
-
-    updateSelectedMatch({
-      lineup: {
-        calledUpIds: [...lineup.calledUpIds, player.id],
-        benchIds: [...lineup.benchIds, player.id],
-      },
-    });
-  }
-
-  function removeFromLineup(player) {
-    const playerId = String(player.id);
-    const nextRoles = { ...lineup.roles };
-    delete nextRoles[player.id];
-    delete nextRoles[playerId];
-
-    updateSelectedMatch({
-      lineup: {
-        calledUpIds: lineup.calledUpIds.filter((id) => String(id) !== playerId),
-        starterIds: lineup.starterIds.filter((id) => String(id) !== playerId),
-        benchIds: lineup.benchIds.filter((id) => String(id) !== playerId),
-        captainId: String(lineup.captainId) === playerId ? "" : lineup.captainId,
-        viceCaptainId: String(lineup.viceCaptainId) === playerId ? "" : lineup.viceCaptainId,
-        roles: nextRoles,
-      },
-    });
-  }
-
   // Numero massimo di sostituzioni per partita (regole FIFA moderne: 5)
   const MAX_SUBSTITUTIONS = 5;
-
-  function moveToStarter(player) {
-    if (lineup.starterIds.includes(player.id) || lineup.starterIds.length >= 11) {
-      return;
-    }
-
-    // Conta la sostituzione solo a distinta già pronta (gara in corso)
-    const newSubsMade = lineup.ready ? lineup.subsMade + 1 : lineup.subsMade;
-
-    updateSelectedMatch({
-      lineup: {
-        calledUpIds: uniqueIds([...lineup.calledUpIds, player.id]),
-        starterIds: [...lineup.starterIds, player.id],
-        benchIds: lineup.benchIds.filter((id) => id !== player.id),
-        subsMade: newSubsMade,
-      },
-    });
-  }
-
-  function moveToBench(player) {
-    updateSelectedMatch({
-      lineup: {
-        calledUpIds: uniqueIds([...lineup.calledUpIds, player.id]),
-        starterIds: lineup.starterIds.filter((id) => id !== player.id),
-        benchIds: uniqueIds([...lineup.benchIds, player.id]),
-      },
-    });
-  }
 
   function updateNote(field, value) {
     updateSelectedMatch({ [field]: value });
@@ -296,27 +196,6 @@ function MatchDay({
       opponentScouting: {
         ...opponentScouting,
         ...patch,
-      },
-    });
-  }
-
-  function updatePreMatchChecklist(patch) {
-    updateSelectedMatch({
-      preMatchChecklist: {
-        ...preMatchChecklist,
-        ...patch,
-        items: {
-          ...preMatchChecklist.items,
-          ...(patch.items || {}),
-        },
-      },
-    });
-  }
-
-  function toggleChecklistItem(key) {
-    updatePreMatchChecklist({
-      items: {
-        [key]: !preMatchChecklist.items[key],
       },
     });
   }
@@ -394,85 +273,6 @@ function MatchDay({
     });
   }
 
-  function setCaptain(playerId) {
-    updateLineup({
-      captainId: lineup.captainId === playerId ? "" : playerId,
-      viceCaptainId: String(lineup.viceCaptainId || "") === String(playerId) ? "" : lineup.viceCaptainId,
-    });
-  }
-
-  function updatePlayerRole(playerId, value) {
-    updateLineup({
-      roles: {
-        ...lineup.roles,
-        [playerId]: value,
-      },
-    });
-  }
-
-  function movePlayer(playerId, listKey, direction) {
-    const list = [...lineup[listKey]];
-    const index = list.indexOf(playerId);
-    const target = direction === "up" ? index - 1 : index + 1;
-
-    if (index < 0 || target < 0 || target >= list.length) return;
-
-    const [moved] = list.splice(index, 1);
-    list.splice(target, 0, moved);
-    updateLineup({ [listKey]: list });
-  }
-
-  function importConvocazione() {
-    const convIds = (selectedMatch.convocazione?.playerIds || []).map(String);
-    if (!convIds.length) return;
-    // Importa tutti i convocati come panchina — il mister li sposta a titolare manualmente
-    updateLineup({
-      calledUpIds: convIds,
-      benchIds:    convIds,
-      starterIds:  [],
-    });
-    showToast(t("pages.matchDay.importConvocazioneSuccess", { count: convIds.length }), "success");
-  }
-
-  function prefillMatchDayFromSchedule() {
-    const convIds = (selectedMatch.convocazione?.playerIds || []).map(String);
-    const patch = {};
-
-    if (!hasText(selectedMatch.matchPlan)) {
-      patch.matchPlan = buildMatchPlanPrefill({
-        match: selectedMatch,
-        venue: matchVenue,
-        convocationCount: convIds.length,
-        t,
-      });
-    }
-
-    if (!hasText(selectedMatch.staffNotes)) {
-      patch.staffNotes = buildStaffNotesPrefill({
-        match: selectedMatch,
-        venue: matchVenue,
-        details: convocationDetails,
-        t,
-      });
-    }
-
-    if (!lineup.calledUpIds.length && convIds.length) {
-      patch.lineup = {
-        calledUpIds: convIds,
-        benchIds: convIds,
-        starterIds: [],
-      };
-    }
-
-    if (Object.keys(patch).length === 0) {
-      showToast(t("pages.matchDay.alreadyFilled"), "info");
-      return;
-    }
-
-    updateSelectedMatch(patch);
-    showToast(t("pages.matchDay.prefillDone"), "success");
-  }
-
   function copyPreviousLineup() {
     const previous = [...matches]
       .filter(
@@ -523,21 +323,7 @@ function MatchDay({
         onOpponents={() => navigate("/opponents")}
       />
 
-      {/* ── Banner convocazione non pubblicata ── */}
-      {selectedMatch && !selectedMatch.convocazione?.published && (
-        <div style={matchDayStyles.convoBanner}>
-          <span style={matchDayStyles.convoBannerText}>
-            {selectedMatch.convocazione?.playerIds?.length > 0
-              ? t("pages.matchDay.convoDraft", { count: selectedMatch.convocazione.playerIds.length })
-              : t("pages.matchDay.convoEmpty")}
-          </span>
-          <Button variant="ghost" onClick={() => navigate(`/match-convocation/${selectedMatch.id}`)}>
-            {t("pages.matchDay.goToConvocation")}
-          </Button>
-        </div>
-      )}
-
-        <div style={matchDayStyles.selectorRow}>
+      <div style={matchDayStyles.selectorRow}>
         <select
           value={selectedMatch.id}
           onChange={(event) => selectMatch(event.target.value)}
@@ -598,7 +384,6 @@ function MatchDay({
             </header>
 
             <section className="print-kpis">
-              <PrintKpi label={t("pages.matchDay.statCalled")} value={calledPlayers.length} />
               <PrintKpi label={t("pages.matchDay.statStarters")} value={`${starterPlayers.length}/11`} />
               <PrintKpi label={t("pages.matchDay.statBench")} value={benchPlayers.length} />
               <PrintKpi label={t("pages.matchDay.statFormation")} value={selectedMatch.formation || "-"} />
@@ -606,9 +391,7 @@ function MatchDay({
 
             <section className="print-grid two">
               <PrintBox title={t("pages.matchDay.printBoxField")} value={matchVenue || t("pages.matchDay.fieldUndefined")} />
-              <PrintBox title={t("pages.matchDay.printBoxMeetingPoint")} value={[convocationDetails.meetingTime, convocationDetails.meetingPlace].filter(Boolean).join(" · ") || t("pages.matchDay.checklistToBeDefined")} />
-              <PrintBox title={t("pages.matchDay.printBoxLockerRoom")} value={convocationDetails.lockerRoom || t("pages.matchDay.checklistToBeDefined")} />
-              <PrintBox title={t("pages.matchDay.printBoxKit")} value={convocationDetails.kit || t("pages.matchDay.checklistToBeDefined")} />
+              <PrintBox title={t("pages.matchDay.statTime")} value={selectedMatch.time || t("pages.matchDay.timeUndefined")} />
             </section>
 
             <section className="print-section">
@@ -653,7 +436,6 @@ function MatchDay({
               <PrintBox title={t("pages.matchDay.gamePlanLabel")} value={selectedMatch.matchPlan || t("pages.matchDay.checklistToBeDefined")} />
               <PrintBox title={t("pages.matchDay.staffNotesLabel")} value={selectedMatch.staffNotes || t("pages.matchDay.checklistToBeDefined")} />
               <PrintBox title={t("pages.matchDay.scoutingQuick")} value={selectedMatch.opponentNotes || t("pages.matchDay.checklistToBeDefined")} />
-              <PrintBox title={t("pages.matchDay.checklistSummaryTitle")} value={t("pages.matchDay.checklistCompleted", { done: completedChecklist, total: checklistItems.length })} />
             </section>
 
             <section className="print-grid two">
@@ -700,7 +482,6 @@ function MatchDay({
           </div>
 
           <div style={matchDayStyles.kpiGrid}>
-            <MiniStat label={t("pages.matchDay.statCalled")} value={calledPlayers.length} />
             <MiniStat label={t("pages.matchDay.statStarters")} value={`${starterPlayers.length}/11`} />
             <MiniStat label={t("pages.matchDay.statBench")} value={benchPlayers.length} />
             <MiniStat label={t("pages.matchDay.statTime")} value={selectedMatch.time || "-"} />
@@ -716,168 +497,6 @@ function MatchDay({
           </div>
         </AppCard>
 
-        <div style={matchDayStyles.prefillBanner}>
-          <div>
-            <strong style={{ color: "#bfdbfe", fontSize: 14 }}>{t("pages.matchDay.scheduleTitle")}</strong>
-            <div style={matchDayStyles.prefillMeta}>
-              <span>{selectedMatch.opponent ? `vs ${selectedMatch.opponent}` : t("pages.matchDay.opponentUndefined")}</span>
-              <span>{selectedMatch.time ? t("pages.matchDay.timePrefix", { time: selectedMatch.time }) : t("pages.matchDay.timeUndefined")}</span>
-              <span>{matchVenue || t("pages.matchDay.fieldUndefined")}</span>
-              <span>{convocationCount ? t("pages.matchDay.convocatiCount", { count: convocationCount }) : t("pages.matchDay.convoEmpty2")}</span>
-            </div>
-          </div>
-          <Button onClick={prefillMatchDayFromSchedule} disabled={!canPrefillMatchDay}>
-            {t("pages.matchDay.prefillFromCalendar")}
-          </Button>
-        </div>
-
-        <AppCard>
-          <SectionHeader
-            title={t("pages.matchDay.checklistTitle")}
-            badge={`${completedChecklist}/${checklistItems.length}`}
-          />
-          <div id="match-pre-checklist" />
-          <div style={matchDayStyles.checklistMetaGrid}>
-            <label style={matchDayStyles.smallField}>
-              {t("pages.matchDay.checklistStaffArrival")}
-              <input
-                type="time"
-                value={preMatchChecklist.staffArrivalTime}
-                onChange={(event) => updatePreMatchChecklist({ staffArrivalTime: event.target.value })}
-                style={matchDayStyles.smallInput}
-              />
-            </label>
-            <label style={matchDayStyles.smallField}>
-              {t("pages.matchDay.checklistResponsible")}
-              <input
-                value={preMatchChecklist.staffResponsible}
-                onChange={(event) => updatePreMatchChecklist({ staffResponsible: event.target.value })}
-                placeholder={t("pages.matchDay.checklistStaffPlaceholder")}
-                style={matchDayStyles.smallInput}
-              />
-            </label>
-            <label style={matchDayStyles.smallField}>
-              {t("pages.matchDay.checklistReferee")}
-              <input
-                value={preMatchChecklist.refereeInfo}
-                onChange={(event) => updatePreMatchChecklist({ refereeInfo: event.target.value })}
-                placeholder={t("pages.matchDay.checklistRefereePlaceholder")}
-                style={matchDayStyles.smallInput}
-              />
-            </label>
-          </div>
-          <div style={matchDayStyles.checklistGrid}>
-            {checklistItems.map((item) => {
-              const checked = Boolean(preMatchChecklist.items[item.key]);
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => toggleChecklistItem(item.key)}
-                  style={{
-                    ...matchDayStyles.checklistItem,
-                    ...(checked ? matchDayStyles.checklistItemDone : {}),
-                  }}
-                >
-                  <span style={checked ? matchDayStyles.checkIconDone : matchDayStyles.checkIconTodo}>
-                    {checked ? "✓" : ""}
-                  </span>
-                  <span>
-                    <strong>{item.label}</strong>
-                    <small>{item.detail}</small>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <textarea
-            value={preMatchChecklist.logisticsNotes}
-            onChange={(event) => updatePreMatchChecklist({ logisticsNotes: event.target.value })}
-            placeholder={t("pages.matchDay.checklistNotesPlaceholder")}
-            style={{ ...styles.input, marginTop: 12, minHeight: 80, resize: "vertical" }}
-          />
-          <div style={matchDayStyles.printChecklistSummary}>
-            <div style={matchDayStyles.printChecklistHeader}>
-              <strong>{t("pages.matchDay.checklistSummaryTitle")}</strong>
-              <span>{t("pages.matchDay.checklistCompleted", { done: completedChecklist, total: checklistItems.length })}</span>
-            </div>
-            <div style={matchDayStyles.printChecklistInfo}>
-              <span>{t("pages.matchDay.checklistStaffArrivalLabel", { value: preMatchChecklist.staffArrivalTime || t("pages.matchDay.checklistToBeDefined") })}</span>
-              <span>{t("pages.matchDay.checklistResponsibleLabel", { value: preMatchChecklist.staffResponsible || t("pages.matchDay.checklistToBeDefined") })}</span>
-              <span>{t("pages.matchDay.checklistRefereeLabel", { value: preMatchChecklist.refereeInfo || t("pages.matchDay.checklistToBeDefined") })}</span>
-            </div>
-            <div style={matchDayStyles.printChecklistRows}>
-              {checklistItems.map((item) => {
-                const checked = Boolean(preMatchChecklist.items[item.key]);
-                return (
-                  <div key={`print-${item.key}`} style={matchDayStyles.printChecklistRow}>
-                    <span style={checked ? matchDayStyles.printStatusDone : matchDayStyles.printStatusTodo}>
-                      {checked ? t("pages.matchDay.checklistOk") : t("pages.matchDay.checklistTodo")}
-                    </span>
-                    <strong>{item.label}</strong>
-                    <small>{item.detail}</small>
-                  </div>
-                );
-              })}
-            </div>
-            {preMatchChecklist.logisticsNotes && (
-              <p style={matchDayStyles.printChecklistNotes}>{preMatchChecklist.logisticsNotes}</p>
-            )}
-          </div>
-        </AppCard>
-
-        {/* ── Banner import dalla Convocazione ── */}
-        {lineup.calledUpIds.length === 0 && (selectedMatch.convocazione?.playerIds?.length > 0) && (
-          <div style={matchDayStyles.importBanner}>
-            <div>
-              <strong style={{ color: "#93c5fd", fontSize: 14 }}>{t("pages.matchDay.importConvocazioneTitle")}</strong>
-              <p style={{ ...matchDayStyles.muted, marginTop: 4 }}>
-                {t("pages.matchDay.importConvocazioneText", { count: selectedMatch.convocazione.playerIds.length })}
-              </p>
-            </div>
-            <Button onClick={importConvocazione}>{t("pages.matchDay.importConvocazioneAction")}</Button>
-          </div>
-        )}
-
-        <div id="match-lineup-distinta" style={{ ...matchDayStyles.mainGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
-          <AppCard>
-            <SectionHeader title={t("pages.matchDay.startersTitle")} badge={`${starterPlayers.length}/11`} />
-            <PlayerList
-              players={starterPlayers}
-              empty={t("pages.matchDay.noStarters")}
-              actionLabel={t("pages.matchDay.benchAction")}
-              onAction={moveToBench}
-              lineup={lineup}
-              listKey="starterIds"
-              onMove={movePlayer}
-              onCaptain={setCaptain}
-              onRoleChange={updatePlayerRole}
-              onRemove={removeFromLineup}
-              removeLabel={t("pages.matchDay.removeAction")}
-              isMobile={isMobile}
-            />
-          </AppCard>
-
-          <AppCard>
-            <SectionHeader title={t("pages.matchDay.benchTitle")} badge={benchPlayers.length} />
-            <PlayerList
-              players={benchPlayers}
-              empty={t("pages.matchDay.noBench")}
-              actionLabel={t("pages.matchDay.starterAction")}
-              onAction={moveToStarter}
-              disableAction={lineup.starterIds.length >= 11}
-              lineup={lineup}
-              listKey="benchIds"
-              onMove={movePlayer}
-              onCaptain={setCaptain}
-              onRoleChange={updatePlayerRole}
-              onRemove={removeFromLineup}
-              removeLabel={t("pages.matchDay.removeAction")}
-              isMobile={isMobile}
-            />
-          </AppCard>
-        </div>
-
         <MatchFormationPlanner
           match={selectedMatch}
           lineup={lineup}
@@ -889,19 +508,7 @@ function MatchDay({
           isMobile={isMobile}
         />
 
-        <div style={{ ...matchDayStyles.mainGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
-          <AppCard>
-            <SectionHeader title={t("pages.matchDay.callableTitle")} badge={availablePlayers.length} />
-            <PlayerList
-              players={availablePlayers}
-              empty={t("pages.matchDay.allCalled")}
-              actionLabel={t("pages.matchDay.callAction")}
-              onAction={toggleCalled}
-              lineup={lineup}
-              isMobile={isMobile}
-            />
-          </AppCard>
-
+        <div style={{ ...matchDayStyles.mainGrid, gridTemplateColumns: "1fr" }}>
           <AppCard>
             <SectionHeader title={t("pages.matchDay.gamePlanTitle")} badge={lineup.ready ? t("pages.matchDay.gamePlanReady") : t("pages.matchDay.gamePlanDraft")} />
             <div style={{ display: "grid", gap: 14 }}>
