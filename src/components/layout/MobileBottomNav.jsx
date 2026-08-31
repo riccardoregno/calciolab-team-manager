@@ -20,40 +20,40 @@ const PRIMARY = [
   { to: "/calendar",  labelKey: "navigation.mobile.calendar", icon: "📅", roles: playerCalendarRoles },
 ];
 
-// ── Voci nel drawer "Altro" con categorie ────────────────────────
-const SECONDARY = [
-  // Squadra
-  { to: "/player-compare",    labelKey: "navigation.items.playerCompare",    icon: "⚡", roles: coachRoles,         cat: "squadra" },
-  { to: "/availability",      labelKey: "navigation.items.availability",     icon: "🩺", roles: ["owner","headCoach","assistantCoach","athleticTrainer","player"], cat: "squadra" },
-  { to: "/player-portal",     labelKey: "navigation.items.playerPortal",     icon: "🎽", roles: coachRoles,         cat: "squadra" },
-  { to: "/season-goals",      labelKey: "navigation.items.seasonGoals",      icon: "🎯", roles: coachRoles,         cat: "squadra" },
-  { to: "/staff-tasks",       labelKey: "navigation.items.staffTasks",       icon: "✅", roles: ["owner","headCoach","assistantCoach","athleticTrainer","director"], cat: "squadra" },
-  { to: "/staff-chat",        labelKey: "navigation.items.staffChat",        icon: "💬", roles: coachRoles,         cat: "squadra", badge: "chat" },
-  // Campo
-  { to: "/exercises",         labelKey: "navigation.items.exercises",        icon: "📚", roles: technicalRoles,    cat: "campo" },
-  { to: "/microcycle",        labelKey: "navigation.items.microcycle",       icon: "🗓️", roles: technicalRoles,    cat: "campo" },
-  { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾", roles: technicalRoles, cat: "campo" },
-  { to: "/set-plays",         labelKey: "navigation.items.setPlays",         icon: "📐", roles: technicalRoles,    cat: "campo" },
-  { to: "/ai-session-builder",labelKey: "navigation.items.aiBuilder",        icon: "🤖", roles: technicalRoles,    cat: "campo" },
-  { to: "/team-generator",   labelKey: "navigation.items.teamGenerator",    icon: "⚖️", roles: technicalRoles,    cat: "campo" },
-  // Fisico & Dati
-  { to: "/physical-tests",    labelKey: "navigation.items.physicalTests",    icon: "⏱️", roles: physicalRoles,     cat: "fisico" },
-  { to: "/physical-workouts", labelKey: "navigation.items.physicalWorkouts", icon: "🏃", roles: physicalRoles,     cat: "fisico" },
-  { to: "/gps-load",          labelKey: "navigation.items.gpsLoad",          icon: "📡", roles: physicalRoles,     cat: "fisico" },
-  { to: "/statistics",        labelKey: "navigation.items.statistics",       icon: "📊", roles: coachRoles,         cat: "fisico" },
-  { to: "/tactical-board",    labelKey: "navigation.items.tacticalBoard",    icon: "🧠", roles: technicalRoles,    cat: "fisico" },
-  { to: "/opponents",         labelKey: "navigation.items.opponents",        icon: "🕵️", roles: technicalRoles,    cat: "fisico" },
-  // Gestione
-  { to: "/exports",           labelKey: "navigation.items.exports",          icon: "🖨️", roles: managementRoles,   cat: "gestione" },
-  { to: "/sponsors",          labelKey: "navigation.items.sponsors",         icon: "🤝", roles: ["owner","director","sponsor"], cat: "gestione" },
-  { to: "/settings",          labelKey: "navigation.items.settings",         icon: "⚙️", roles: allRoles,           cat: "gestione" },
-  { to: "/premium",           labelKey: "navigation.items.premium",          icon: "💎", roles: managementRoles,   cat: "gestione" },
+// ── Drawer "Altro": poche scorciatoie operative, il resto sotto avanzate ──
+const CORE_SECONDARY = [
+  { to: "/availability",        labelKey: "navigation.items.availability",        icon: "🩺", roles: ["owner","headCoach","assistantCoach","athleticTrainer","player"], cat: "squadra" },
+  { to: "/staff-chat",          labelKey: "navigation.items.staffChat",           icon: "💬", roles: coachRoles, cat: "squadra", badge: "chat" },
+  { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister",  icon: "🧾", roles: technicalRoles, cat: "campo" },
+  { to: "/statistics",          labelKey: "navigation.items.statistics",          icon: "📊", roles: coachRoles, cat: "analisi" },
+  { to: "/exports",             labelKey: "navigation.items.exports",             icon: "🖨️", roles: managementRoles, cat: "gestione" },
+  { to: "/settings",            labelKey: "navigation.items.settings",            icon: "⚙️", roles: allRoles, cat: "gestione" },
+];
+
+const ADVANCED_SECONDARY = [
+  { to: "/player-compare",      labelKey: "navigation.items.playerCompare",       icon: "⚡", roles: coachRoles, cat: "analisi" },
+  { to: "/season-goals",        labelKey: "navigation.items.seasonGoals",         icon: "🎯", roles: coachRoles, cat: "analisi" },
+  { to: "/physical-tests",      labelKey: "navigation.items.physicalTests",       icon: "⏱️", roles: physicalRoles, cat: "analisi" },
+  { to: "/physical-workouts",   labelKey: "navigation.items.physicalWorkouts",    icon: "🏃", roles: physicalRoles, cat: "analisi" },
+  { to: "/gps-load",            labelKey: "navigation.items.gpsLoad",             icon: "📡", roles: physicalRoles, cat: "analisi" },
+  { to: "/exercises",           labelKey: "navigation.items.exercises",           icon: "📚", roles: technicalRoles, cat: "campo" },
+  { to: "/microcycle",          labelKey: "navigation.items.microcycle",          icon: "🗓️", roles: technicalRoles, cat: "campo" },
+  { to: "/set-plays",           labelKey: "navigation.items.setPlays",            icon: "📐", roles: technicalRoles, cat: "campo" },
+  { to: "/tactical-board",      labelKey: "navigation.items.tacticalBoard",       icon: "🧠", roles: technicalRoles, cat: "campo" },
+  { to: "/ai-session-builder",  labelKey: "navigation.items.aiBuilder",           icon: "🤖", roles: technicalRoles, cat: "campo" },
+  { to: "/team-generator",      labelKey: "navigation.items.teamGenerator",       icon: "⚖️", roles: technicalRoles, cat: "campo" },
+  { to: "/opponents",           labelKey: "navigation.items.opponents",           icon: "🕵️", roles: technicalRoles, cat: "gara" },
+  { to: "/player-portal",       labelKey: "navigation.items.playerPortal",        icon: "🎽", roles: coachRoles, cat: "gestione" },
+  { to: "/staff-tasks",         labelKey: "navigation.items.staffTasks",          icon: "✅", roles: ["owner","headCoach","assistantCoach","athleticTrainer","director"], cat: "gestione" },
+  { to: "/sponsors",            labelKey: "navigation.items.sponsors",            icon: "🤝", roles: ["owner","director","sponsor"], cat: "gestione" },
+  { to: "/premium",             labelKey: "navigation.items.premium",             icon: "💎", roles: managementRoles, cat: "gestione" },
 ];
 
 const CATEGORIES = [
   { id: "squadra", label: "👥 Squadra" },
   { id: "campo",   label: "⚽ Campo" },
-  { id: "fisico",  label: "📊 Analisi & Fisico" },
+  { id: "gara",    label: "🏟️ Gara" },
+  { id: "analisi", label: "📊 Analisi" },
   { id: "gestione",label: "⚙️ Gestione" },
 ];
 
@@ -61,31 +61,44 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const navigate = useNavigate();
   const effectiveRole = currentRole || "headCoach";
   const primaryItems = PRIMARY.filter((item) => isRoleAllowed(effectiveRole, item.roles));
-  const secondaryItems = SECONDARY.filter((item) => isRoleAllowed(effectiveRole, item.roles));
+  const coreItems = useMemo(
+    () => CORE_SECONDARY.filter((item) => isRoleAllowed(effectiveRole, item.roles)),
+    [effectiveRole],
+  );
+  const advancedItems = useMemo(
+    () => ADVANCED_SECONDARY.filter((item) => isRoleAllowed(effectiveRole, item.roles)),
+    [effectiveRole],
+  );
   const showSyncDot = Boolean(storageSource && storageSource !== "supabase");
   const syncDotColor = storageSource === "partial" || storageSource === "pending-upload" ? "#fb923c" : "#f87171";
   const showAltroDot = showSyncDot || chatUnread > 0;
   const altroDotColor = chatUnread > 0 ? "#3b82f6" : syncDotColor;
 
   const q = search.trim().toLowerCase();
-  const filteredItems = useMemo(() =>
-    q
-      ? secondaryItems.filter((item) => t(item.labelKey).toLowerCase().includes(q))
-      : secondaryItems,
-  [q, secondaryItems, t]);
+  const filteredItems = useMemo(() => {
+    const visibleItems = showAdvanced ? [...coreItems, ...advancedItems] : coreItems;
+    const allItems = [...coreItems, ...advancedItems];
+
+    return q
+      ? allItems.filter((item) => t(item.labelKey).toLowerCase().includes(q))
+      : visibleItems;
+  }, [advancedItems, coreItems, q, showAdvanced, t]);
 
   function goTo(path) {
     navigate(path);
     setOpen(false);
     setSearch("");
+    setShowAdvanced(false);
   }
 
   function closeDrawer() {
     setOpen(false);
     setSearch("");
+    setShowAdvanced(false);
   }
 
   async function handleLogout() {
@@ -216,24 +229,51 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
               )
             ) : (
               /* ── vista per categorie ── */
-              CATEGORIES.map((cat) => {
-                const items = filteredItems.filter((i) => i.cat === cat.id);
-                if (items.length === 0) return null;
-                return (
-                  <div key={cat.id} style={{ marginBottom: 16 }}>
-                    <p style={{
-                      margin: "0 0 8px",
-                      fontSize: 11, fontWeight: 700,
-                      color: "#64748b", textTransform: "uppercase", letterSpacing: 0.6,
-                    }}>
-                      {cat.label}
-                    </p>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                      {items.map(renderItem)}
+              <>
+                {CATEGORIES.map((cat) => {
+                  const items = filteredItems.filter((i) => i.cat === cat.id);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={cat.id} style={{ marginBottom: 16 }}>
+                      <p style={{
+                        margin: "0 0 8px",
+                        fontSize: 11, fontWeight: 700,
+                        color: "#64748b", textTransform: "uppercase", letterSpacing: 0.6,
+                      }}>
+                        {cat.label}
+                      </p>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                        {items.map(renderItem)}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+
+                {advancedItems.length > 0 && (
+                  <button
+                    onClick={() => setShowAdvanced((value) => !value)}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      margin: "2px 0 12px",
+                      padding: "12px 14px",
+                      borderRadius: 12,
+                      background: "rgba(59,130,246,0.08)",
+                      border: "1px solid rgba(96,165,250,0.18)",
+                      color: "#bfdbfe",
+                      fontSize: 13,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span>{showAdvanced ? "Nascondi strumenti avanzati" : "Mostra strumenti avanzati"}</span>
+                    <span>{showAdvanced ? "⌃" : `${advancedItems.length} +`}</span>
+                  </button>
+                )}
+              </>
             )}
 
             {/* Logout — solo per giocatori */}

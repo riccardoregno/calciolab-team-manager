@@ -9,12 +9,11 @@ const physicalRoles = ["owner", "headCoach", "athleticTrainer"];
 const managementRoles = ["owner", "headCoach", "director"];
 const onboardingRoles = ["owner", "headCoach"];
 
-const menuGroups = [
+const primaryMenuGroups = [
   {
     titleKey: "navigation.groups.home",
     items: [
       { to: "/", labelKey: "navigation.items.dashboard", icon: "🏠", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
-      { to: "/onboarding", labelKey: "navigation.items.onboarding", icon: "🚀", roles: onboardingRoles },
       { to: "/calendar", labelKey: "navigation.items.calendar", icon: "📅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"] },
     ],
   },
@@ -22,8 +21,44 @@ const menuGroups = [
     titleKey: "navigation.groups.team",
     items: [
       { to: "/players", labelKey: "navigation.items.roster", icon: "👥", roles: coachRoles },
-      { to: "/player-compare", labelKey: "navigation.items.playerCompare", icon: "⚡", featureKey: "statistics", roles: coachRoles },
       { to: "/availability", labelKey: "navigation.items.availability", icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
+    ],
+  },
+  {
+    titleKey: "navigation.groups.field",
+    items: [
+      { to: "/trainings", labelKey: "navigation.items.trainings", icon: "📋", roles: technicalRoles },
+      { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾", roles: technicalRoles },
+    ],
+  },
+  {
+    titleKey: "navigation.groups.match",
+    items: [
+      { to: "/matches", labelKey: "navigation.items.matches", icon: "⚽", roles: coachRoles },
+    ],
+  },
+  {
+    titleKey: "navigation.groups.system",
+    items: [
+      { to: "/statistics", labelKey: "navigation.items.statistics", icon: "📊", roles: coachRoles },
+      { to: "/settings", labelKey: "navigation.items.settings", icon: "⚙️", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
+    ],
+  },
+];
+
+const toolboxGroups = [
+  {
+    titleKey: "navigation.groups.home",
+    items: [
+      { to: "/onboarding", labelKey: "navigation.items.onboarding", icon: "🚀", roles: onboardingRoles },
+    ],
+  },
+  {
+    titleKey: "navigation.groups.team",
+    items: [
+      { to: "/player-compare", labelKey: "navigation.items.playerCompare", icon: "⚡", featureKey: "statistics", roles: coachRoles },
+      { to: "/player-portal", labelKey: "navigation.items.playerPortal", icon: "🎽", featureKey: "playerPortal", roles: ["owner", "headCoach", "director", "player"] },
+      { to: "/season-goals", labelKey: "navigation.items.seasonGoals", icon: "🎯", roles: coachRoles },
       { to: "/physical-tests", labelKey: "navigation.items.physicalTests", icon: "⏱️", featureKey: "physicalTests", roles: physicalRoles },
       { to: "/physical-workouts", labelKey: "navigation.items.physicalWorkouts", icon: "🏃", featureKey: "physicalWorkouts", roles: physicalRoles },
       { to: "/gps-load", labelKey: "navigation.items.gpsLoad", icon: "📡", featureKey: "physicalTests", roles: physicalRoles },
@@ -33,16 +68,8 @@ const menuGroups = [
     titleKey: "navigation.groups.field",
     items: [
       { to: "/exercises", labelKey: "navigation.items.exercises", icon: "📚", roles: technicalRoles },
-      { to: "/trainings", labelKey: "navigation.items.trainings", icon: "📋", roles: technicalRoles },
-      { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾", roles: technicalRoles },
       { to: "/microcycle", labelKey: "navigation.items.microcycle", icon: "🗓️", roles: technicalRoles },
       { to: "/tactical-board", labelKey: "navigation.items.tacticalBoard", icon: "🧠", roles: technicalRoles },
-    ],
-  },
-  {
-    titleKey: "navigation.groups.match",
-    items: [
-      { to: "/matches", labelKey: "navigation.items.matches", icon: "⚽", roles: coachRoles },
       { to: "/set-plays", labelKey: "navigation.items.setPlays", icon: "📐", roles: technicalRoles },
       { to: "/opponents", labelKey: "navigation.items.opponents", icon: "🕵️", featureKey: "opponents", roles: technicalRoles },
     ],
@@ -50,21 +77,17 @@ const menuGroups = [
   {
     titleKey: "navigation.groups.system",
     items: [
-      { to: "/statistics", labelKey: "navigation.items.statistics", icon: "📊", roles: coachRoles },
-      { to: "/season-goals", labelKey: "navigation.items.seasonGoals", icon: "🎯", roles: coachRoles },
       { to: "/staff-tasks", labelKey: "navigation.items.staffTasks", icon: "✅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
       { to: "/staff-chat", labelKey: "navigation.items.staffChat", icon: "💬", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
       { to: "/exports", labelKey: "navigation.items.exports", icon: "🖨️", featureKey: "exports", roles: managementRoles },
       { to: "/premium", labelKey: "navigation.items.premium", icon: "💎", roles: managementRoles },
       { to: "/coach-settings", labelKey: "navigation.items.coach", icon: "🎛️", roles: physicalRoles },
-      { to: "/settings", labelKey: "navigation.items.settings", icon: "⚙️", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
     ],
   },
   {
     titleKey: "navigation.groups.club",
     items: [
       { to: "/settings?tab=club", labelKey: "navigation.items.clubProfile", icon: "🏢", roles: managementRoles },
-      { to: "/player-portal", labelKey: "navigation.items.playerPortal", icon: "🎽", featureKey: "playerPortal", roles: ["owner", "headCoach", "director", "player"] },
       { to: "/sponsors", labelKey: "navigation.items.sponsors", icon: "🤝", featureKey: "sponsors", roles: ["owner", "director", "sponsor"] },
     ],
   },
@@ -73,6 +96,7 @@ const menuGroups = [
 export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp = null, chatUnread = 0, onboardingCompleted = null }) {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const currentRole = currentRoleProp || getCurrentUserRole(appSettings);
   const normalizedSettings = normalizeAppSettings(appSettings);
   const profile = normalizedSettings.workspaceProfile;
@@ -87,17 +111,9 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
     ],
   }] : [];
 
-  const allGroups = [...menuGroups, ...junioresiGroup];
-
-  const visibleGroups = allGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => {
-        if (item.to === "/onboarding" && shouldHideCompletedOnboarding) return false;
-        return isRoleAllowed(currentRole, item.roles);
-      }),
-    }))
-    .filter((group) => group.items.length > 0);
+  const visiblePrimaryGroups = getVisibleGroups(primaryMenuGroups, currentRole, shouldHideCompletedOnboarding);
+  const visibleToolboxGroups = getVisibleGroups([...toolboxGroups, ...junioresiGroup], currentRole, shouldHideCompletedOnboarding);
+  const visibleToolboxCount = visibleToolboxGroups.reduce((total, group) => total + group.items.length, 0);
 
   return (
     <aside
@@ -131,7 +147,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
         >
           {!collapsed && (
             <div>
-              <h2 style={{ margin: 0, fontSize: 26, letterSpacing: -0.5 }}>
+              <h2 style={{ margin: 0, fontSize: 26, letterSpacing: 0 }}>
                 ⚽ CalcioLab
               </h2>
               <p style={{ color: "#94a3b8", marginTop: 6, marginBottom: 0 }}>
@@ -156,7 +172,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
         </div>
 
         <nav className="sidebar-nav" style={sidebarStyles.nav}>
-          {visibleGroups.map((group) => (
+          {visiblePrimaryGroups.map((group) => (
             <div key={group.titleKey} className="sidebar-group" style={sidebarStyles.group}>
               {!collapsed && <div style={sidebarStyles.groupTitle}>{t(group.titleKey)}</div>}
 
@@ -174,6 +190,40 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
               </div>
             </div>
           ))}
+
+          {visibleToolboxCount > 0 && (
+            <div style={sidebarStyles.toolboxWrap}>
+              <button
+                onClick={() => setToolsOpen((value) => !value)}
+                style={{
+                  ...sidebarStyles.toolboxButton,
+                  justifyContent: collapsed ? "center" : "space-between",
+                  padding: collapsed ? "12px 0" : "11px 13px",
+                }}
+                title={collapsed ? "Altri strumenti" : undefined}
+              >
+                <span style={sidebarStyles.toolboxButtonLabel}>
+                  <span style={{ fontSize: 18 }}>🧰</span>
+                  {!collapsed && <span>Altri strumenti</span>}
+                </span>
+                {!collapsed && (
+                  <span style={sidebarStyles.toolboxMeta}>
+                    {visibleToolboxCount}
+                    <span style={{ transform: toolsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>⌄</span>
+                  </span>
+                )}
+              </button>
+
+              {!collapsed && toolsOpen && (
+                <SidebarToolbox
+                  groups={visibleToolboxGroups}
+                  appSettings={appSettings}
+                  chatUnread={chatUnread}
+                  t={t}
+                />
+              )}
+            </div>
+          )}
         </nav>
       </div>
 
@@ -190,22 +240,62 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
   );
 }
 
+function getVisibleGroups(groups, currentRole, shouldHideCompletedOnboarding) {
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (item.to === "/onboarding" && shouldHideCompletedOnboarding) return false;
+        return isRoleAllowed(currentRole, item.roles);
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
+}
+
+function SidebarToolbox({ groups, appSettings, chatUnread, t }) {
+  return (
+    <div style={sidebarStyles.toolboxPanel}>
+      {groups.map((group) => (
+        <div key={group.titleKey} style={sidebarStyles.toolboxGroup}>
+          <div style={sidebarStyles.toolboxTitle}>{t(group.titleKey)}</div>
+          <div style={sidebarStyles.toolboxGrid}>
+            {group.items.map((item) => (
+              <SidebarLink
+                key={item.to}
+                item={item}
+                collapsed={false}
+                compact
+                locked={Boolean(item.featureKey && !isFeatureUnlocked(item.featureKey, appSettings))}
+                label={t(item.labelKey)}
+                badge={item.to === "/staff-chat" && chatUnread > 0 ? chatUnread : 0}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const ROUTE_PREFETCH_MAP = {
   "/":                  () => import("../../pages/Dashboard"),
   "/players":           () => import("../../pages/Players"),
+  "/player-compare":    () => import("../../pages/PlayerComparison"),
+  "/availability":      () => import("../../pages/Availability"),
   "/trainings":         () => import("../../pages/Trainings"),
   "/attendance-register": () => import("../../pages/AttendanceRegister"),
   "/matches":           () => import("../../pages/Matches"),
   "/calendar":          () => import("../../pages/Calendar"),
+  "/statistics":        () => import("../../pages/Statistics"),
   "/physical-tests":    () => import("../../pages/PhysicalTests"),
   "/physical-workouts": () => import("../../pages/PhysicalWorkouts"),
   "/settings":          () => import("../../pages/Settings"),
   "/staff-chat":        () => import("../../pages/StaffChat"),
 };
 
-function SidebarLink({ item, collapsed, locked, label, badge = 0 }) {
+function SidebarLink({ item, collapsed, locked, label, badge = 0, compact = false }) {
   const prefetch = useCallback(() => {
-    const loader = ROUTE_PREFETCH_MAP[item.to];
+    const loader = ROUTE_PREFETCH_MAP[item.to.split("?")[0]];
     if (loader) loader().catch(() => {});
   }, [item.to]);
 
@@ -224,19 +314,21 @@ function SidebarLink({ item, collapsed, locked, label, badge = 0 }) {
         border: isActive
           ? "1px solid rgba(147,197,253,0.6)"
           : "1px solid rgba(255,255,255,0.07)",
-        padding: collapsed ? "12px 0" : "11px 13px",
+        padding: collapsed ? "12px 0" : compact ? "9px 10px" : "11px 13px",
         justifyContent: collapsed ? "center" : "flex-start",
         boxShadow: isActive ? "0 10px 25px rgba(37,99,235,0.35)" : "none",
         position: "relative",
+        minWidth: 0,
+        borderRadius: compact ? 10 : 14,
       })}
     >
-      <span style={{ fontSize: 18, position: "relative" }}>
+      <span style={{ fontSize: compact ? 15 : 18, position: "relative", flexShrink: 0 }}>
         {item.icon}
         {badge > 0 && collapsed && (
           <span style={sidebarStyles.badgeDot} />
         )}
       </span>
-      {!collapsed && <span style={sidebarStyles.linkLabel}>{label}</span>}
+      {!collapsed && <span style={{ ...sidebarStyles.linkLabel, fontSize: compact ? 12 : 13 }}>{label}</span>}
       {!collapsed && locked && <span style={sidebarStyles.lockPill}>🔒</span>}
       {!collapsed && badge > 0 && (
         <span style={sidebarStyles.badge}>{badge > 99 ? "99+" : badge}</span>
@@ -259,7 +351,7 @@ const sidebarStyles = {
   nav: {
     display: "flex",
     flexDirection: "column",
-    gap: 18,
+    gap: 16,
     maxHeight: "calc(100vh - 190px)",
     overflowY: "auto",
     paddingRight: 4,
@@ -291,10 +383,68 @@ const sidebarStyles = {
   },
   linkLabel: {
     flex: 1,
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
   },
   lockPill: {
     fontSize: 12,
     opacity: 0.82,
+  },
+  toolboxWrap: {
+    display: "grid",
+    gap: 10,
+    paddingTop: 2,
+  },
+  toolboxButton: {
+    width: "100%",
+    borderRadius: 14,
+    border: "1px solid rgba(148,163,184,0.16)",
+    background: "rgba(15,23,42,0.72)",
+    color: "#cbd5e1",
+    cursor: "pointer",
+    fontWeight: 900,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+  toolboxButtonLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: 11,
+    minWidth: 0,
+  },
+  toolboxMeta: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    color: "#94a3b8",
+    fontSize: 12,
+  },
+  toolboxPanel: {
+    display: "grid",
+    gap: 12,
+    padding: "12px",
+    borderRadius: 16,
+    border: "1px solid rgba(148,163,184,0.12)",
+    background: "rgba(2,6,23,0.32)",
+  },
+  toolboxGroup: {
+    display: "grid",
+    gap: 7,
+  },
+  toolboxTitle: {
+    color: "#64748b",
+    fontSize: 10,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  toolboxGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 7,
   },
   footer: {
     background: "rgba(255,255,255,0.035)",
