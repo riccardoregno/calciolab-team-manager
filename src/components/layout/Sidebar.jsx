@@ -89,6 +89,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [juniorsOpen, setJuniorsOpen] = useState(false);
   const currentRole = currentRoleProp || getCurrentUserRole(appSettings);
   const normalizedSettings = normalizeAppSettings(appSettings);
   const profile = normalizedSettings.workspaceProfile;
@@ -96,7 +97,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
   const shouldHideCompletedOnboarding =
     onboardingCompleted ?? normalizedSettings.onboarding.completed;
 
-  const junioresiGroup = managesJuniores ? [{
+  const juniorGroups = managesJuniores ? [{
     titleKey: "navigation.groups.juniors",
     items: [
       { to: "/players?gruppo=juniores", labelKey: "navigation.items.juniorRoster", icon: "⚡", roles: coachRoles },
@@ -104,8 +105,10 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
   }] : [];
 
   const visiblePrimaryGroups = getVisibleGroups(primaryMenuGroups, currentRole, shouldHideCompletedOnboarding);
-  const visibleToolboxGroups = getVisibleGroups([...toolboxGroups, ...junioresiGroup], currentRole, shouldHideCompletedOnboarding);
+  const visibleToolboxGroups = getVisibleGroups(toolboxGroups, currentRole, shouldHideCompletedOnboarding);
+  const visibleJuniorGroups = getVisibleGroups(juniorGroups, currentRole, shouldHideCompletedOnboarding);
   const visibleToolboxCount = visibleToolboxGroups.reduce((total, group) => total + group.items.length, 0);
+  const visibleJuniorCount = visibleJuniorGroups.reduce((total, group) => total + group.items.length, 0);
 
   return (
     <aside
@@ -209,6 +212,41 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
               {!collapsed && toolsOpen && (
                 <SidebarToolbox
                   groups={visibleToolboxGroups}
+                  appSettings={appSettings}
+                  chatUnread={chatUnread}
+                  t={t}
+                />
+              )}
+            </div>
+          )}
+
+          {visibleJuniorCount > 0 && (
+            <div style={sidebarStyles.toolboxWrap}>
+              <button
+                onClick={() => setJuniorsOpen((value) => !value)}
+                style={{
+                  ...sidebarStyles.toolboxButton,
+                  ...sidebarStyles.juniorsButton,
+                  justifyContent: collapsed ? "center" : "space-between",
+                  padding: collapsed ? "12px 0" : "11px 13px",
+                }}
+                title={collapsed ? "Juniores" : undefined}
+              >
+                <span style={sidebarStyles.toolboxButtonLabel}>
+                  <span style={{ fontSize: 18 }}>⚡</span>
+                  {!collapsed && <span>Juniores</span>}
+                </span>
+                {!collapsed && (
+                  <span style={sidebarStyles.toolboxMeta}>
+                    {juniorsOpen ? "Chiudi" : "Apri"}
+                    <span style={{ transform: juniorsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>⌄</span>
+                  </span>
+                )}
+              </button>
+
+              {!collapsed && juniorsOpen && (
+                <SidebarToolbox
+                  groups={visibleJuniorGroups}
                   appSettings={appSettings}
                   chatUnread={chatUnread}
                   t={t}
@@ -400,6 +438,11 @@ const sidebarStyles = {
     display: "flex",
     alignItems: "center",
     gap: 10,
+  },
+  juniorsButton: {
+    border: "1px solid rgba(245,158,11,0.18)",
+    background: "rgba(245,158,11,0.07)",
+    color: "#fde68a",
   },
   toolboxButtonLabel: {
     display: "flex",
