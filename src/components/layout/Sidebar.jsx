@@ -89,7 +89,6 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [juniorsOpen, setJuniorsOpen] = useState(false);
   const currentRole = currentRoleProp || getCurrentUserRole(appSettings);
   const normalizedSettings = normalizeAppSettings(appSettings);
   const profile = normalizedSettings.workspaceProfile;
@@ -105,10 +104,9 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
   }] : [];
 
   const visiblePrimaryGroups = getVisibleGroups(primaryMenuGroups, currentRole, shouldHideCompletedOnboarding);
-  const visibleToolboxGroups = getVisibleGroups(toolboxGroups, currentRole, shouldHideCompletedOnboarding);
-  const visibleJuniorGroups = getVisibleGroups(juniorGroups, currentRole, shouldHideCompletedOnboarding);
+  const visibleToolboxGroups = getVisibleGroups([...toolboxGroups, ...juniorGroups], currentRole, shouldHideCompletedOnboarding);
   const visibleToolboxCount = visibleToolboxGroups.reduce((total, group) => total + group.items.length, 0);
-  const visibleJuniorCount = visibleJuniorGroups.reduce((total, group) => total + group.items.length, 0);
+  const visibleToolboxAreas = visibleToolboxGroups.length;
 
   return (
     <aside
@@ -203,7 +201,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
                 </span>
                 {!collapsed && (
                   <span style={sidebarStyles.toolboxMeta}>
-                    {toolsOpen ? "Chiudi" : `${visibleToolboxCount} voci`}
+                    {toolsOpen ? "Chiudi" : `${visibleToolboxAreas} aree`}
                     <span style={{ transform: toolsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>⌄</span>
                   </span>
                 )}
@@ -212,41 +210,6 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
               {!collapsed && toolsOpen && (
                 <SidebarToolbox
                   groups={visibleToolboxGroups}
-                  appSettings={appSettings}
-                  chatUnread={chatUnread}
-                  t={t}
-                />
-              )}
-            </div>
-          )}
-
-          {visibleJuniorCount > 0 && (
-            <div style={sidebarStyles.toolboxWrap}>
-              <button
-                onClick={() => setJuniorsOpen((value) => !value)}
-                style={{
-                  ...sidebarStyles.toolboxButton,
-                  ...sidebarStyles.juniorsButton,
-                  justifyContent: collapsed ? "center" : "space-between",
-                  padding: collapsed ? "12px 0" : "11px 13px",
-                }}
-                title={collapsed ? "Juniores" : undefined}
-              >
-                <span style={sidebarStyles.toolboxButtonLabel}>
-                  <span style={{ fontSize: 18 }}>⚡</span>
-                  {!collapsed && <span>Juniores</span>}
-                </span>
-                {!collapsed && (
-                  <span style={sidebarStyles.toolboxMeta}>
-                    {juniorsOpen ? "Chiudi" : "Apri"}
-                    <span style={{ transform: juniorsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>⌄</span>
-                  </span>
-                )}
-              </button>
-
-              {!collapsed && juniorsOpen && (
-                <SidebarToolbox
-                  groups={visibleJuniorGroups}
                   appSettings={appSettings}
                   chatUnread={chatUnread}
                   t={t}
@@ -283,24 +246,39 @@ function getVisibleGroups(groups, currentRole, shouldHideCompletedOnboarding) {
 }
 
 function SidebarToolbox({ groups, appSettings, chatUnread, t }) {
+  const [openGroups, setOpenGroups] = useState({});
+
   return (
     <div style={sidebarStyles.toolboxPanel}>
       {groups.map((group) => (
         <div key={group.titleKey} style={sidebarStyles.toolboxGroup}>
-          <div style={sidebarStyles.toolboxTitle}>{t(group.titleKey)}</div>
-          <div style={sidebarStyles.toolboxList}>
-            {group.items.map((item) => (
-              <SidebarLink
-                key={item.to}
-                item={item}
-                collapsed={false}
-                compact={false}
-                locked={Boolean(item.featureKey && !isFeatureUnlocked(item.featureKey, appSettings))}
-                label={item.label || t(item.labelKey)}
-                badge={item.to === "/staff-chat" && chatUnread > 0 ? chatUnread : 0}
-              />
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => setOpenGroups((prev) => ({ ...prev, [group.titleKey]: !prev[group.titleKey] }))}
+            style={sidebarStyles.toolboxGroupButton}
+          >
+            <span>{t(group.titleKey)}</span>
+            <span style={sidebarStyles.toolboxGroupMeta}>
+              {group.items.length}
+              <span style={{ transform: openGroups[group.titleKey] ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>⌄</span>
+            </span>
+          </button>
+
+          {openGroups[group.titleKey] && (
+            <div style={sidebarStyles.toolboxList}>
+              {group.items.map((item) => (
+                <SidebarLink
+                  key={item.to}
+                  item={item}
+                  collapsed={false}
+                  compact={false}
+                  locked={Boolean(item.featureKey && !isFeatureUnlocked(item.featureKey, appSettings))}
+                  label={item.label || t(item.labelKey)}
+                  badge={item.to === "/staff-chat" && chatUnread > 0 ? chatUnread : 0}
+                />
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -439,11 +417,6 @@ const sidebarStyles = {
     alignItems: "center",
     gap: 10,
   },
-  juniorsButton: {
-    border: "1px solid rgba(245,158,11,0.18)",
-    background: "rgba(245,158,11,0.07)",
-    color: "#fde68a",
-  },
   toolboxButtonLabel: {
     display: "flex",
     alignItems: "center",
@@ -459,7 +432,7 @@ const sidebarStyles = {
   },
   toolboxPanel: {
     display: "grid",
-    gap: 14,
+    gap: 8,
     padding: "12px",
     borderRadius: 16,
     border: "1px solid rgba(148,163,184,0.12)",
@@ -467,14 +440,32 @@ const sidebarStyles = {
   },
   toolboxGroup: {
     display: "grid",
-    gap: 8,
+    gap: 6,
   },
-  toolboxTitle: {
-    color: "#64748b",
-    fontSize: 10,
+  toolboxGroupButton: {
+    width: "100%",
+    minHeight: 38,
+    borderRadius: 12,
+    border: "1px solid rgba(148,163,184,0.12)",
+    background: "rgba(255,255,255,0.035)",
+    color: "#cbd5e1",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    padding: "0 10px",
+    fontSize: 12,
     fontWeight: 900,
     textTransform: "uppercase",
-    letterSpacing: 0.4,
+    letterSpacing: 0,
+  },
+  toolboxGroupMeta: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    color: "#94a3b8",
+    fontSize: 11,
   },
   toolboxList: {
     display: "grid",
