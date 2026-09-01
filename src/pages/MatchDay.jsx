@@ -828,11 +828,16 @@ function AttachmentPreview({ attachment }) {
           <img src={src} alt={name} style={matchDayStyles.attachmentImage} />
         </a>
       ) : isPdf ? (
-        <iframe
-          title={name}
-          src={src}
-          style={matchDayStyles.attachmentFrame}
-        />
+        <div style={matchDayStyles.pdfPreviewFallback}>
+          <div style={matchDayStyles.pdfIcon}>PDF</div>
+          <div>
+            <strong>{name}</strong>
+            <p>Il PDF non puo' essere mostrato dentro la pagina, ma si apre correttamente a schermo intero.</p>
+          </div>
+          <a href={src} target="_blank" rel="noreferrer" style={matchDayStyles.openAttachmentButton}>
+            Apri distinta
+          </a>
+        </div>
       ) : (
         <a href={src} target="_blank" rel="noreferrer" style={matchDayStyles.attachmentFallback}>
           Visualizza {name}
