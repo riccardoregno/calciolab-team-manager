@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
@@ -142,6 +142,10 @@ function comparePlayersByRoleAndSurname(a, b) {
   return comparePlayersByName(a, b);
 }
 
+function isFirstTeamPlayer(player) {
+  return normalizeText(player?.gruppo || "prima") !== "juniores";
+}
+
 export default function MatchStats({ players = [], matches = [], appSettings = {} }) {
   const { t } = useTranslation();
   const { id } = useParams();
@@ -168,6 +172,8 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   // savedStats: { [`${matchId}:${playerId}`]: riga player_matches già in DB (o null) }
   const savedRef = useRef({});
   const matrixWrapRef = useRef(null);
+  const [scrollMax, setScrollMax] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState(null); // "ok" | "error"
@@ -175,8 +181,13 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   const [playerFilter, setPlayerFilter] = useState("all");
 
   const matrixPlayers = useMemo(() => {
-    const rosterIds = players.map((player) => String(player.id)).filter(Boolean);
-    const ids = [...new Set([...rosterIds, ...statsPlayerIds].map(String))];
+    const firstTeamIds = new Set(
+      players
+        .filter(isFirstTeamPlayer)
+        .map((player) => String(player.id))
+        .filter(Boolean),
+    );
+    const ids = [...new Set([...firstTeamIds, ...statsPlayerIds.filter((pid) => firstTeamIds.has(String(pid)))].map(String))];
     return ids
       .map((pid) => players.find((p) => String(p.id) === String(pid)))
       .filter(Boolean)
@@ -274,6 +285,26 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       behavior: "smooth",
     });
   }
+
+  const syncScrollState = useCallback(() => {
+    const el = matrixWrapRef.current;
+    if (!el) return;
+    setScrollLeft(Math.round(el.scrollLeft));
+    setScrollMax(Math.max(0, el.scrollWidth - el.clientWidth));
+  }, []);
+
+  function setMatrixScroll(value) {
+    const next = Number(value) || 0;
+    if (matrixWrapRef.current) matrixWrapRef.current.scrollLeft = next;
+    setScrollLeft(next);
+  }
+
+  useEffect(() => {
+    syncScrollState();
+    const onResize = () => syncScrollState();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [matrixMatches.length, syncScrollState, visibleMatrixPlayers.length]);
 
   async function handleSave() {
     if (!auth.team?.id) return;
@@ -427,9 +458,25 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         <AppCard>
           <div style={s.matrixHint}>
             <span>Scorri orizzontalmente per vedere le altre partite</span>
-            <span style={s.matrixHintArrow}>→</span>
+            <div style={s.matrixScrollControls}>
+              <button type="button" style={s.inlineScrollButton} onClick={() => scrollMatrix(-1)} title="Scorri a sinistra">
+                ‹
+              </button>
+              <input
+                type="range"
+                min="0"
+                max={scrollMax}
+                value={Math.min(scrollLeft, scrollMax)}
+                onChange={(event) => setMatrixScroll(event.target.value)}
+                style={s.scrollRange}
+                aria-label="Scorrimento partite"
+              />
+              <button type="button" style={s.inlineScrollButton} onClick={() => scrollMatrix(1)} title="Scorri a destra">
+                ›
+              </button>
+            </div>
           </div>
-          <div ref={matrixWrapRef} className="match-stats-matrix-scroll" style={s.matrixWrap}>
+          <div ref={matrixWrapRef} className="match-stats-matrix-scroll" style={s.matrixWrap} onScroll={syncScrollState}>
             <div
               style={{
                 ...s.matrix,
@@ -628,11 +675,35 @@ const s = {
     color: "#93c5fd",
     fontSize: 12,
     fontWeight: 800,
+    flexWrap: "wrap",
   },
-  matrixHintArrow: {
-    color: "#60a5fa",
-    fontSize: 18,
+  matrixScrollControls: {
+    display: "grid",
+    gridTemplateColumns: "34px minmax(220px, 420px) 34px",
+    alignItems: "center",
+    gap: 8,
+    flex: "1 1 360px",
+    maxWidth: 520,
+  },
+  inlineScrollButton: {
+    width: 34,
+    height: 30,
+    minHeight: 30,
+    borderRadius: 10,
+    border: "1px solid rgba(96,165,250,0.28)",
+    background: "rgba(37,99,235,0.18)",
+    color: "#dbeafe",
+    cursor: "pointer",
+    fontSize: 22,
     fontWeight: 900,
+    lineHeight: 1,
+    padding: 0,
+  },
+  scrollRange: {
+    width: "100%",
+    minHeight: 30,
+    accentColor: "#60a5fa",
+    cursor: "pointer",
   },
   matrixWrap: {
     overflow: "auto",
