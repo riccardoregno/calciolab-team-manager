@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
-import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
-import { loadMatchStats, savePlayerMatchStats } from "../services/playerProfile";
+import { loadMatchStatsMatrix, savePlayerMatchStats } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
-import { normalizeAppSettings } from "../utils/helpers";
+import { compareMatchDateTime, formatDate, normalizeAppSettings } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
 const EMPTY_ROW = {
@@ -79,95 +78,110 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   const activeSeason = normalizeAppSettings(appSettings).workspaceProfile.currentSeason;
 
   const match = matches.find((m) => String(m.id) === String(id));
+  const matrixMatches = useMemo(
+    () => [...matches].filter((item) => item?.id).sort(compareMatchDateTime),
+    [matches],
+  );
+  const matchIds = useMemo(() => matrixMatches.map((item) => String(item.id)), [matrixMatches]);
 
-  // Usa tutti i giocatori disponibili per la gara: distinta, panchina,
-  // calledUpIds legacy e convocazione pubblicata.
-  const convocatiIds = useMemo(() => match ? getMatchPlayerIds(match) : [], [match]);
-
-  // rows: { [playerId]: { ...EMPTY_ROW } }
+  // rows: { [matchId]: { [playerId]: { ...EMPTY_ROW } } }
   const [rows, setRows] = useState({});
   const [statsPlayerIds, setStatsPlayerIds] = useState([]);
-  // savedStats: { [playerId]: riga player_matches già in DB (o null) }
+  // savedStats: { [`${matchId}:${playerId}`]: riga player_matches già in DB (o null) }
   const savedRef = useRef({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState(null); // "ok" | "error"
-  const [validationErrors, setValidationErrors] = useState({}); // { [pid]: string[] }
-  const [quickMode, setQuickMode] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({}); // { [`${matchId}:${pid}`]: string[] }
 
-  const convocati = useMemo(() => {
-    const ids = [...new Set([...convocatiIds, ...statsPlayerIds].map(String))];
+  const matrixPlayers = useMemo(() => {
+    const rosterIds = players.map((player) => String(player.id)).filter(Boolean);
+    const ids = [...new Set([...rosterIds, ...statsPlayerIds].map(String))];
     return ids
       .map((pid) => players.find((p) => String(p.id) === String(pid)))
       .filter(Boolean);
-  }, [convocatiIds, players, statsPlayerIds]);
+  }, [players, statsPlayerIds]);
 
   useEffect(() => {
-    if (!auth.team?.id || !id) {
+    if (!auth.team?.id || matchIds.length === 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    loadMatchStats(auth.team.id, id).then(({ data }) => {
-      const byPlayer = {};
-      (data || []).forEach((row) => {
-        byPlayer[String(row.player_id)] = row;
-      });
-      savedRef.current = byPlayer;
-      const savedPlayerIds = Object.keys(byPlayer);
-      setStatsPlayerIds(savedPlayerIds);
-
-      // Precompila i rows con i valori già salvati
+    loadMatchStatsMatrix(auth.team.id, matchIds).then(({ data }) => {
+      const savedByCell = {};
+      const savedPlayers = new Set();
       const initial = {};
-      const rowPlayerIds = [...new Set([...convocatiIds, ...savedPlayerIds].map(String))];
-      rowPlayerIds.forEach((pid) => {
-        const saved = byPlayer[pid];
-        initial[pid] = saved
-          ? {
-              minutes_played: saved.minutes_played ?? "",
-              goals:          saved.goals          ?? "",
-              assists:        saved.assists         ?? "",
-              yellow_cards:   saved.yellow_cards    ?? "",
-              red_cards:      saved.red_cards       ?? "",
-              rating:         saved.rating          ?? "",
-              notes:          saved.notes           ?? "",
-            }
-          : { ...EMPTY_ROW };
+
+      (data || []).forEach((row) => {
+        const mid = String(row.match_id);
+        const pid = String(row.player_id);
+        savedByCell[`${mid}:${pid}`] = row;
+        savedPlayers.add(pid);
+        initial[mid] = {
+          ...(initial[mid] || {}),
+          [pid]: {
+            minutes_played: row.minutes_played ?? "",
+            goals:          row.goals          ?? "",
+            assists:        row.assists         ?? "",
+            yellow_cards:   row.yellow_cards    ?? "",
+            red_cards:      row.red_cards       ?? "",
+            rating:         row.rating          ?? "",
+            notes:          row.notes           ?? "",
+          },
+        };
       });
+
+      savedRef.current = savedByCell;
+      setStatsPlayerIds([...savedPlayers]);
       setRows(initial);
       setLoading(false);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.team?.id, id]);
+  }, [auth.team?.id, matchIds]);
 
-  function updateCell(playerId, field, value) {
+  function updateCell(matchId, playerId, field, value) {
+    const mid = String(matchId);
+    const pid = String(playerId);
     setRows((prev) => ({
       ...prev,
-      [playerId]: { ...(prev[playerId] || EMPTY_ROW), [field]: value },
+      [mid]: {
+        ...(prev[mid] || {}),
+        [pid]: { ...((prev[mid] || {})[pid] || EMPTY_ROW), [field]: value },
+      },
     }));
     setSaveResult(null);
-    // Rimuove eventuali errori di validazione per questo giocatore quando modifica
+    // Rimuove eventuali errori di validazione per questa cella quando modifica
     setValidationErrors((prev) => {
-      if (!prev[playerId]) return prev;
+      const key = `${mid}:${pid}`;
+      if (!prev[key]) return prev;
       const next = { ...prev };
-      delete next[playerId];
+      delete next[key];
       return next;
     });
   }
 
+  function bumpCellNumber(matchId, playerId, field, delta) {
+    const current = rows[String(matchId)]?.[String(playerId)]?.[field];
+    const next = Math.max(0, parseNum(current) + delta);
+    updateCell(matchId, playerId, field, next ? String(next) : "");
+  }
+
   async function handleSave() {
-    if (!auth.team?.id || !id) return;
+    if (!auth.team?.id) return;
 
     // Validazione preventiva
     const errors = {};
-    for (const player of convocati) {
+    for (const matchItem of matrixMatches) {
+      const mid = String(matchItem.id);
+      for (const player of matrixPlayers) {
       const pid = String(player.id);
-      const row = rows[pid];
+      const row = rows[mid]?.[pid];
       if (!row) continue;
       const rowErrors = validateRow(row, t);
-      if (rowErrors.length > 0) errors[pid] = rowErrors;
+        if (rowErrors.length > 0) errors[`${mid}:${pid}`] = rowErrors;
+      }
     }
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
@@ -179,9 +193,11 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     setValidationErrors({});
 
     let hasError = false;
-    for (const player of convocati) {
+    for (const matchItem of matrixMatches) {
+      const mid = String(matchItem.id);
+      for (const player of matrixPlayers) {
       const pid = String(player.id);
-      const row = rows[pid];
+      const row = rows[mid]?.[pid];
       if (!row) continue;
 
       // Salta righe completamente vuote (nessun dato inserito)
@@ -191,17 +207,18 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       if (!hasData) continue;
 
       const newStats = rowToStats(row);
-      const oldStats = savedRef.current[pid] || null;
+        const oldStats = savedRef.current[`${mid}:${pid}`] || null;
 
       const { error } = await savePlayerMatchStats(
-        auth.team.id, pid, String(id), newStats, oldStats, activeSeason
+          auth.team.id, pid, mid, newStats, oldStats, activeSeason
       );
 
       if (error) {
         hasError = true;
       } else {
         // Aggiorna savedRef con i nuovi valori per eventuali salvataggi successivi
-        savedRef.current[pid] = { ...newStats, player_id: pid, match_id: String(id) };
+          savedRef.current[`${mid}:${pid}`] = { ...newStats, player_id: pid, match_id: mid };
+      }
       }
     }
 
@@ -225,9 +242,9 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   return (
     <div style={s.page}>
       <PageHeader
-        title={`${t("pages.matchStats.title")} — ${match.opponent || t("pages.matchStats.defaultOpponent")}`}
-        subtitle={subtitle}
-        badge={t("pages.matchStats.badge", { count: convocati.length })}
+        title="Griglia statistiche partita"
+        subtitle={`${subtitle} · minuti nella cella, gol e assist con i comandi rapidi`}
+        badge={`${matrixPlayers.length} giocatori · ${matrixMatches.length} partite`}
       />
 
       <MatchTabBar
@@ -240,17 +257,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       <AppCard>
         <div style={s.topBar}>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <span style={s.muted}>{t("pages.matchStats.topBarHint")}</span>
-            <button
-              onClick={() => setQuickMode((v) => !v)}
-              style={{
-                padding: "4px 10px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)",
-                background: quickMode ? "rgba(56,189,248,0.18)" : "rgba(255,255,255,0.05)",
-                color: quickMode ? "#38bdf8" : "#64748b", fontSize: 12, fontWeight: 700, cursor: "pointer",
-              }}
-            >
-              {quickMode ? "📋 Schede" : "⚡ Vista rapida"}
-            </button>
+            <span style={s.muted}>Inserisci i minuti nell'intersezione. Usa G/A per gol e assist.</span>
           </div>
           <div style={s.topActions}>
             <Button variant="ghost" onClick={() => navigate("/matches")}>{t("pages.matchStats.btnBack")}</Button>
@@ -270,181 +277,102 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
 
       {loading ? (
         <AppCard><p style={s.muted}>{t("pages.matchStats.loading")}</p></AppCard>
-      ) : convocati.length === 0 ? (
+      ) : matrixPlayers.length === 0 ? (
         <AppCard>
           <p style={s.muted}>
-            {t("pages.matchStats.noPlayersMsg")}{" "}
-            {match?.convocazione?.playerIds?.length > 0 ? (
-              <>
-                {t("pages.matchStats.noPlayersConvocatiPre", { count: match.convocazione.playerIds.length })}{" "}
-                <button style={s.link} onClick={() => navigate(`/match-day/${id}`)}>
-                  {t("pages.matchStats.matchSheetLink")}
-                </button>{" "}
-                {t("pages.matchStats.noPlayersConvocatiPost")}
-              </>
-            ) : (
-              <>
-                {t("pages.matchStats.noPlayersLineupPre")}{" "}
-                <button style={s.link} onClick={() => navigate(`/match-day/${id}`)}>
-                  {t("pages.matchStats.matchSheetLink")}
-                </button>
-                {t("pages.matchStats.noPlayersLineupPost")}
-              </>
-            )}
+            Nessun giocatore disponibile in rosa.
           </p>
         </AppCard>
-      ) : quickMode ? (
-        <AppCard>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr>
-                  {["Giocatore","Min","Gol","Ass","🟨","🟥","Voto"].map((h) => (
-                    <th key={h} style={{ padding: "6px 8px", textAlign: "left", fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", whiteSpace: "nowrap", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {convocati.map((player) => {
-                  const pid = String(player.id);
-                  const row = rows[pid] || EMPTY_ROW;
-                  const isStarter = (match.lineup?.starterIds || []).map(String).includes(pid);
-                  const name = [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "—";
-                  const qi = { width: "52px", padding: "4px 6px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "#f8fafc", fontSize: 13, textAlign: "center" };
-                  return (
-                    <tr key={pid} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                      <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
-                        <span style={{ fontWeight: 700 }}>{name}</span>
-                        <span style={{ marginLeft: 6, fontSize: 10, color: isStarter ? "#4ade80" : "#38bdf8", fontWeight: 800 }}>{isStarter ? "T" : "P"}</span>
-                      </td>
-                      <td style={{ padding: "4px 6px" }}><input style={{ ...qi, width: 48 }} type="number" min="0" max="120" placeholder="—" value={row.minutes_played} onChange={(e) => updateCell(pid, "minutes_played", e.target.value)} /></td>
-                      <td style={{ padding: "4px 6px" }}><input style={qi} type="number" min="0" placeholder="—" value={row.goals} onChange={(e) => updateCell(pid, "goals", e.target.value)} /></td>
-                      <td style={{ padding: "4px 6px" }}><input style={qi} type="number" min="0" placeholder="—" value={row.assists} onChange={(e) => updateCell(pid, "assists", e.target.value)} /></td>
-                      <td style={{ padding: "4px 6px" }}><input style={qi} type="number" min="0" max="2" placeholder="—" value={row.yellow_cards} onChange={(e) => updateCell(pid, "yellow_cards", e.target.value)} /></td>
-                      <td style={{ padding: "4px 6px" }}><input style={qi} type="number" min="0" max="1" placeholder="—" value={row.red_cards} onChange={(e) => updateCell(pid, "red_cards", e.target.value)} /></td>
-                      <td style={{ padding: "4px 6px" }}><input style={{ ...qi, width: 56 }} type="number" min="0" max="10" step="0.5" placeholder="—" value={row.rating} onChange={(e) => updateCell(pid, "rating", e.target.value)} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </AppCard>
+      ) : matrixMatches.length === 0 ? (
+        <AppCard><p style={s.muted}>Nessuna partita disponibile.</p></AppCard>
       ) : (
         <AppCard>
-          <div style={s.playerStatsList}>
-          {convocati.map((player) => {
-            const pid  = String(player.id);
-            const row  = rows[pid] || EMPTY_ROW;
-            const isStarter = (match.lineup?.starterIds || []).map(String).includes(pid);
-            const displayName =
-              [player.firstName, player.lastName].filter(Boolean).join(" ") ||
-              player.name || "—";
-
-            const rowErrors = validationErrors[pid] || [];
-
-            return (
-              <div key={pid} style={{
-                ...s.playerStatsCard,
-                borderColor: rowErrors.length > 0 ? "rgba(248,113,113,0.5)" : "rgba(255,255,255,0.04)",
-              }}>
-                <div style={s.playerStatsHeader}>
-                  <div style={s.playerIdentity}>
-                    <span style={s.playerName}>{displayName}</span>
-                    <Badge tone={isStarter ? "green" : "blue"}>
-                      {isStarter ? t("pages.matchStats.badgeStarter") : t("pages.matchStats.badgeBench")}
-                    </Badge>
+          <div style={s.matrixWrap}>
+            <div
+              style={{
+                ...s.matrix,
+                gridTemplateColumns: `220px repeat(${matrixMatches.length}, 132px)`,
+              }}
+            >
+              <div style={{ ...s.cornerCell, ...s.stickyLeft }}>Giocatore</div>
+              {matrixMatches.map((matchItem) => {
+                const active = String(matchItem.id) === String(id);
+                return (
+                  <div
+                    key={matchItem.id}
+                    style={{
+                      ...s.matchHeaderCell,
+                      ...(active ? s.matchHeaderActive : {}),
+                    }}
+                    title={[matchItem.opponent, formatDate(matchItem.date), matchItem.result].filter(Boolean).join(" · ")}
+                  >
+                    <strong>{matchItem.opponent || t("pages.matchStats.defaultOpponent")}</strong>
+                    <span>{formatDate(matchItem.date)}</span>
+                    {matchItem.result && <em>{matchItem.result}</em>}
                   </div>
-                </div>
+                );
+              })}
 
-                <div style={s.statGrid}>
-                  <StatInput label={t("pages.matchStats.labelMinutes")} hint={t("pages.matchStats.hintMinutes")} value={row.minutes_played}>
-                    <input
-                      style={s.input}
-                      type="number"
-                      min="0"
-                      max="120"
-                      placeholder="—"
-                      value={row.minutes_played}
-                      onChange={(e) => updateCell(pid, "minutes_played", e.target.value)}
-                    />
-                  </StatInput>
-                  <StatInput label={t("pages.matchStats.labelGoals")} value={row.goals}>
-                    <input
-                      style={s.input}
-                      type="number"
-                      min="0"
-                      placeholder="—"
-                      value={row.goals}
-                      onChange={(e) => updateCell(pid, "goals", e.target.value)}
-                    />
-                  </StatInput>
-                  <StatInput label={t("pages.matchStats.labelAssists")} value={row.assists}>
-                    <input
-                      style={s.input}
-                      type="number"
-                      min="0"
-                      placeholder="—"
-                      value={row.assists}
-                      onChange={(e) => updateCell(pid, "assists", e.target.value)}
-                    />
-                  </StatInput>
-                  <StatInput label={t("pages.matchStats.labelYellows")} hint={t("pages.matchStats.hintYellows")} value={row.yellow_cards}>
-                    <input
-                      style={s.input}
-                      type="number"
-                      min="0"
-                      max="2"
-                      placeholder="—"
-                      value={row.yellow_cards}
-                      onChange={(e) => updateCell(pid, "yellow_cards", e.target.value)}
-                    />
-                  </StatInput>
-                  <StatInput label={t("pages.matchStats.labelReds")} hint={t("pages.matchStats.hintReds")} value={row.red_cards}>
-                    <input
-                      style={s.input}
-                      type="number"
-                      min="0"
-                      max="1"
-                      placeholder="—"
-                      value={row.red_cards}
-                      onChange={(e) => updateCell(pid, "red_cards", e.target.value)}
-                    />
-                  </StatInput>
-                  <StatInput label={t("pages.matchStats.labelRating")} hint={t("pages.matchStats.hintRating")} value={row.rating}>
-                    <input
-                      style={{ ...s.input, ...s.inputRating }}
-                      type="number"
-                      min="0"
-                      max="10"
-                      step="0.5"
-                      placeholder="—"
-                      value={row.rating}
-                      onChange={(e) => updateCell(pid, "rating", e.target.value)}
-                    />
-                  </StatInput>
-                </div>
+              {matrixPlayers.map((player) => {
+                const pid = String(player.id);
+                const displayName = [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "-";
 
-                <label style={s.notesField}>
-                  <span style={s.fieldLabel}>{t("pages.matchStats.labelNotes")}</span>
-                  <input
-                    style={{ ...s.input, ...s.inputNotes }}
-                    type="text"
-                    placeholder={t("pages.matchStats.notesPlaceholder")}
-                    value={row.notes}
-                    onChange={(e) => updateCell(pid, "notes", e.target.value)}
-                  />
-                </label>
-                {rowErrors.length > 0 && (
-                  <div style={s.rowErrors}>
-                    {rowErrors.map((err) => (
-                      <span key={err} style={s.rowError}>{err}</span>
-                    ))}
+                return (
+                  <div key={pid} style={{ display: "contents" }}>
+                    <div style={{ ...s.playerCell, ...s.stickyLeft }} title={displayName}>
+                      <strong>{displayName}</strong>
+                      {player.position && <span>{player.position}</span>}
+                    </div>
+                    {matrixMatches.map((matchItem) => {
+                      const mid = String(matchItem.id);
+                      const row = rows[mid]?.[pid] || EMPTY_ROW;
+                      const cellKey = `${mid}:${pid}`;
+                      const hasError = Boolean(validationErrors[cellKey]?.length);
+                      const isInMatch = getMatchPlayerIds(matchItem).includes(pid);
+                      const isActiveMatch = mid === String(id);
+
+                      return (
+                        <div
+                          key={cellKey}
+                          style={{
+                            ...s.statCell,
+                            ...(isInMatch ? s.statCellInMatch : {}),
+                            ...(isActiveMatch ? s.statCellActiveMatch : {}),
+                            ...(hasError ? s.statCellError : {}),
+                          }}
+                        >
+                          <input
+                            style={s.minutesInput}
+                            type="number"
+                            min="0"
+                            max="120"
+                            placeholder="-"
+                            value={row.minutes_played}
+                            onChange={(event) => updateCell(mid, pid, "minutes_played", event.target.value)}
+                            aria-label={`${displayName} minuti ${matchItem.opponent || ""}`}
+                          />
+                          <div style={s.cellCounters}>
+                            <Counter
+                              label="G"
+                              value={row.goals}
+                              onMinus={() => bumpCellNumber(mid, pid, "goals", -1)}
+                              onPlus={() => bumpCellNumber(mid, pid, "goals", 1)}
+                            />
+                            <Counter
+                              label="A"
+                              value={row.assists}
+                              onMinus={() => bumpCellNumber(mid, pid, "assists", -1)}
+                              onPlus={() => bumpCellNumber(mid, pid, "assists", 1)}
+                            />
+                          </div>
+                          {hasError && <span style={s.cellErrorMark}>!</span>}
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
           </div>
         </AppCard>
       )}
@@ -452,13 +380,14 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   );
 }
 
-function StatInput({ label, hint, children }) {
+function Counter({ label, value, onMinus, onPlus }) {
   return (
-    <label style={s.statField}>
-      <span style={s.fieldLabel}>{label}</span>
-      {children}
-      {hint && <span style={s.fieldHint}>{hint}</span>}
-    </label>
+    <div style={s.counter}>
+      <span style={s.counterLabel}>{label}</span>
+      <button type="button" onClick={onMinus} style={s.counterButton}>-</button>
+      <strong style={s.counterValue}>{value || 0}</strong>
+      <button type="button" onClick={onPlus} style={s.counterButton}>+</button>
+    </div>
   );
 }
 
@@ -470,6 +399,153 @@ const s = {
   successMsg: { margin: "12px 0 0", color: "#22c55e", fontSize: 14, lineHeight: 1.4 },
   errorMsg:   { margin: "12px 0 0", color: "#f87171", fontSize: 14, lineHeight: 1.4 },
   link:       { background: "none", border: "none", color: "#38bdf8", cursor: "pointer", padding: 0, fontSize: "inherit" },
+
+  matrixWrap: {
+    overflow: "auto",
+    maxHeight: "calc(100vh - 270px)",
+    borderRadius: 14,
+    border: "1px solid rgba(148,163,184,0.14)",
+    background: "rgba(2,6,23,0.2)",
+  },
+  matrix: {
+    display: "grid",
+    minWidth: "max-content",
+    alignItems: "stretch",
+  },
+  stickyLeft: {
+    position: "sticky",
+    left: 0,
+    zIndex: 2,
+  },
+  cornerCell: {
+    position: "sticky",
+    top: 0,
+    zIndex: 4,
+    minHeight: 74,
+    padding: "12px 14px",
+    display: "flex",
+    alignItems: "center",
+    background: "#111827",
+    borderRight: "1px solid rgba(148,163,184,0.18)",
+    borderBottom: "1px solid rgba(148,163,184,0.18)",
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 0,
+  },
+  matchHeaderCell: {
+    position: "sticky",
+    top: 0,
+    zIndex: 3,
+    minHeight: 74,
+    padding: "10px 10px",
+    display: "grid",
+    alignContent: "center",
+    gap: 4,
+    background: "#111827",
+    borderRight: "1px solid rgba(148,163,184,0.12)",
+    borderBottom: "1px solid rgba(148,163,184,0.18)",
+    color: "#e2e8f0",
+  },
+  matchHeaderActive: {
+    background: "linear-gradient(180deg, rgba(37,99,235,0.28), #111827)",
+    boxShadow: "inset 0 2px 0 #60a5fa",
+  },
+  playerCell: {
+    minHeight: 92,
+    padding: "12px 14px",
+    display: "grid",
+    alignContent: "center",
+    gap: 4,
+    background: "#0f172a",
+    borderRight: "1px solid rgba(148,163,184,0.18)",
+    borderBottom: "1px solid rgba(148,163,184,0.1)",
+    color: "#e2e8f0",
+  },
+  statCell: {
+    position: "relative",
+    minHeight: 92,
+    padding: 8,
+    display: "grid",
+    alignContent: "center",
+    gap: 7,
+    background: "rgba(255,255,255,0.018)",
+    borderRight: "1px solid rgba(148,163,184,0.08)",
+    borderBottom: "1px solid rgba(148,163,184,0.08)",
+  },
+  statCellInMatch: {
+    background: "rgba(59,130,246,0.045)",
+  },
+  statCellActiveMatch: {
+    boxShadow: "inset 0 0 0 1px rgba(96,165,250,0.18)",
+  },
+  statCellError: {
+    background: "rgba(248,113,113,0.08)",
+  },
+  minutesInput: {
+    width: "100%",
+    height: 38,
+    borderRadius: 10,
+    border: "1px solid rgba(148,163,184,0.18)",
+    background: "rgba(15,23,42,0.82)",
+    color: "#f8fafc",
+    fontSize: 17,
+    fontWeight: 900,
+    textAlign: "center",
+    outline: "none",
+    boxSizing: "border-box",
+  },
+  cellCounters: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 5,
+  },
+  counter: {
+    display: "grid",
+    gridTemplateColumns: "14px 18px 18px 18px",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    minWidth: 0,
+    color: "#cbd5e1",
+  },
+  counterLabel: {
+    color: "#94a3b8",
+    fontSize: 10,
+    fontWeight: 900,
+  },
+  counterButton: {
+    width: 18,
+    height: 18,
+    borderRadius: 6,
+    border: "1px solid rgba(148,163,184,0.16)",
+    background: "rgba(255,255,255,0.04)",
+    color: "#e2e8f0",
+    cursor: "pointer",
+    fontSize: 12,
+    lineHeight: 1,
+    padding: 0,
+  },
+  counterValue: {
+    color: "#f8fafc",
+    fontSize: 11,
+    textAlign: "center",
+  },
+  cellErrorMark: {
+    position: "absolute",
+    top: 5,
+    right: 6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    display: "grid",
+    placeItems: "center",
+    background: "#ef4444",
+    color: "white",
+    fontSize: 10,
+    fontWeight: 900,
+  },
 
   playerStatsList: {
     display: "grid",

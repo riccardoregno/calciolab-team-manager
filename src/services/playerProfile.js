@@ -243,6 +243,23 @@ export async function loadMatchStats(teamId, matchId) {
   return { data: data || [], error };
 }
 
+/** @param {string} teamId
+ * @param {string[]} matchIds
+ * @returns {Promise<{data: any[], error: any}>} */
+export async function loadMatchStatsMatrix(teamId, matchIds = []) {
+  const ids = [...new Set(matchIds.map(String).filter(Boolean))];
+  if (!isSupabaseConfigured || !teamId || ids.length === 0) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("player_matches")
+    .select("player_id, match_id, goals, assists, minutes_played, yellow_cards, red_cards, rating")
+    .eq("team_id", teamId)
+    .in("match_id", ids);
+
+  if (error && import.meta.env.DEV) console.error("[playerProfile] loadMatchStatsMatrix:", error.message);
+  return { data: data || [], error };
+}
+
 // FIX #4: savePlayerMatchStats ora usa la DB function increment_player_stats se disponibile,
 // con fallback al read-modify-write originale (per ambienti senza la funzione SQL creata).
 /** @param {string} teamId
