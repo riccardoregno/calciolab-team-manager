@@ -18,6 +18,7 @@ const EMPTY_ROW = {
   rating: "",
   notes: "",
 };
+const MATRIX_DRAFT_PREFIX = "calciolab_match_stats_matrix_draft_v1";
 
 function parseNum(val) {
   const n = parseInt(val, 10);
@@ -59,6 +60,13 @@ function rowToStats(row) {
     rating:         parseRating(row.rating),
     notes:          (row.notes || "").trim(),
   };
+}
+
+function rowHasData(row) {
+  if (!row) return false;
+  return Object.entries(row).some(([key, value]) => (
+    key !== "notes" ? value !== "" && value !== 0 : value !== ""
+  ));
 }
 
 function getMatchPlayerIds(match) {
@@ -146,6 +154,48 @@ function isFirstTeamPlayer(player) {
   return normalizeText(player?.gruppo || "prima") !== "juniores";
 }
 
+function loadDraftRows(key) {
+  if (!key) return {};
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed?.rows && typeof parsed.rows === "object" ? parsed.rows : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveDraftRows(key, rows) {
+  if (!key) return;
+  try {
+    localStorage.setItem(key, JSON.stringify({ rows, updatedAt: new Date().toISOString() }));
+  } catch {
+    /* localStorage may be unavailable in restricted browsers */
+  }
+}
+
+function clearDraftRows(key) {
+  if (!key) return;
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* noop */
+  }
+}
+
+function mergeRows(baseRows, draftRows) {
+  const merged = { ...baseRows };
+  Object.entries(draftRows || {}).forEach(([matchId, playerRows]) => {
+    if (!playerRows || typeof playerRows !== "object") return;
+    merged[matchId] = {
+      ...(merged[matchId] || {}),
+      ...playerRows,
+    };
+  });
+  return merged;
+}
+
 export default function MatchStats({ players = [], matches = [], appSettings = {} }) {
   const { t } = useTranslation();
   const { id } = useParams();
@@ -154,6 +204,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
   const activeSeason = workspaceProfile.currentSeason;
   const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
+  const teamId = auth.team?.id || "";
 
   const match = matches.find((m) => String(m.id) === String(id));
   const matrixMatches = useMemo(
@@ -172,6 +223,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   // savedStats: { [`${matchId}:${playerId}`]: riga player_matches già in DB (o null) }
   const savedRef = useRef({});
   const matrixWrapRef = useRef(null);
+  const rowsHydratedRef = useRef(false);
   const [scrollMax, setScrollMax] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -179,6 +231,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   const [saveResult, setSaveResult] = useState(null); // "ok" | "error"
   const [validationErrors, setValidationErrors] = useState({}); // { [`${matchId}:${pid}`]: string[] }
   const [playerFilter, setPlayerFilter] = useState("all");
+  const draftKey = teamId ? `${MATRIX_DRAFT_PREFIX}:${teamId}:${activeSeason}` : "";
 
   const matrixPlayers = useMemo(() => {
     const firstTeamIds = new Set(
@@ -219,6 +272,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       return;
     }
 
+    rowsHydratedRef.current = false;
     setLoading(true);
     loadMatchStatsMatrix(auth.team.id, matchIds).then(({ data }) => {
       const savedByCell = {};
@@ -246,10 +300,16 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
 
       savedRef.current = savedByCell;
       setStatsPlayerIds([...savedPlayers]);
-      setRows(initial);
+      rowsHydratedRef.current = true;
+      setRows(mergeRows(initial, loadDraftRows(draftKey)));
       setLoading(false);
     });
-  }, [auth.team?.id, matchIds]);
+  }, [auth.team?.id, draftKey, matchIds]);
+
+  useEffect(() => {
+    if (!draftKey || !rowsHydratedRef.current) return;
+    saveDraftRows(draftKey, rows);
+  }, [draftKey, rows]);
 
   function updateCell(matchId, playerId, field, value) {
     const mid = String(matchId);
@@ -339,10 +399,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       if (!row) continue;
 
       // Salta righe completamente vuote (nessun dato inserito)
-      const hasData = Object.entries(row).some(([k, v]) =>
-        k !== "notes" ? v !== "" && v !== 0 : v !== ""
-      );
-      if (!hasData) continue;
+      if (!rowHasData(row)) continue;
 
       const newStats = rowToStats(row);
         const oldStats = savedRef.current[`${mid}:${pid}`] || null;
@@ -362,6 +419,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
 
     setSaving(false);
     setSaveResult(hasError ? "error" : "ok");
+    if (!hasError) clearDraftRows(draftKey);
   }
 
   if (!match) {
@@ -391,6 +449,14 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         matchLabel={match.opponent ? `vs ${match.opponent}` : undefined}
         matchData={match}
       />
+      <div style={s.floatingSave}>
+        <span style={s.floatingSaveText}>
+          I dati restano in bozza anche se cambi pagina
+        </span>
+        <Button onClick={handleSave} disabled={saving || loading} style={s.floatingSaveButton}>
+          {saving ? "Salvataggio..." : "Salva dati"}
+        </Button>
+      </div>
 
       <AppCard style={s.commandCard}>
         <div style={s.topBar}>
@@ -601,8 +667,33 @@ function Counter({ label, value, onMinus, onPlus }) {
 }
 
 const s = {
-  page:       { display: "grid", gap: 18 },
+  page:       { display: "grid", gap: 18, paddingBottom: 86 },
   muted:      { color: "#94a3b8", margin: 0, lineHeight: 1.45 },
+  floatingSave: {
+    position: "fixed",
+    right: 28,
+    bottom: 22,
+    zIndex: 60,
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: "10px 12px",
+    borderRadius: 16,
+    border: "1px solid rgba(96,165,250,0.28)",
+    background: "rgba(15,23,42,0.94)",
+    boxShadow: "0 18px 45px rgba(0,0,0,0.38)",
+    backdropFilter: "blur(14px)",
+  },
+  floatingSaveText: {
+    color: "#bfdbfe",
+    fontSize: 12,
+    fontWeight: 800,
+    lineHeight: 1.25,
+  },
+  floatingSaveButton: {
+    minWidth: 140,
+    boxShadow: "0 12px 30px rgba(37,99,235,0.42)",
+  },
   commandCard: {
     position: "sticky",
     top: 12,
