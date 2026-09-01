@@ -70,19 +70,60 @@ function getMatchPlayerIds(match) {
   ].map(String).filter(Boolean))];
 }
 
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isLeagueMatch(match) {
+  const searchable = normalizeText([
+    match?.matchKind,
+    match?.type,
+    match?.competition,
+    match?.title,
+  ].filter(Boolean).join(" "));
+
+  if (/\b(coppa|cup|amichevole|friendly|torneo)\b/.test(searchable)) return false;
+  if (!normalizeText(match?.matchKind || match?.type)) return true;
+
+  return /\b(campionato|girone|league|eccellenza|promozione|serie)\b/.test(searchable);
+}
+
+function getMatchHeaderInfo(match, clubName) {
+  const opponent = match?.opponent || "Avversario";
+  const isAway = normalizeText(match?.location).includes("trasferta");
+  const homeTeam = isAway ? opponent : clubName;
+  const awayTeam = isAway ? clubName : opponent;
+
+  return {
+    homeTeam,
+    awayTeam,
+    venue: isAway ? "Trasferta" : "Casa",
+    isAway,
+  };
+}
+
 export default function MatchStats({ players = [], matches = [], appSettings = {} }) {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const auth = useAuth();
-  const activeSeason = normalizeAppSettings(appSettings).workspaceProfile.currentSeason;
+  const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
+  const activeSeason = workspaceProfile.currentSeason;
+  const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
 
   const match = matches.find((m) => String(m.id) === String(id));
   const matrixMatches = useMemo(
-    () => [...matches].filter((item) => item?.id).sort(compareMatchDateTime),
+    () => [...matches].filter((item) => item?.id && isLeagueMatch(item)).sort(compareMatchDateTime),
     [matches],
   );
   const matchIds = useMemo(() => matrixMatches.map((item) => String(item.id)), [matrixMatches]);
+  const matchPlayerIdSets = useMemo(
+    () => Object.fromEntries(matrixMatches.map((item) => [String(item.id), new Set(getMatchPlayerIds(item))])),
+    [matrixMatches],
+  );
 
   // rows: { [matchId]: { [playerId]: { ...EMPTY_ROW } } }
   const [rows, setRows] = useState({});
@@ -243,8 +284,8 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     <div style={s.page}>
       <PageHeader
         title="Griglia statistiche partita"
-        subtitle={`${subtitle} · minuti nella cella, gol e assist con i comandi rapidi`}
-        badge={`${matrixPlayers.length} giocatori · ${matrixMatches.length} partite`}
+        subtitle={`${subtitle} · solo campionato, minuti nella cella, gol e assist con i comandi rapidi`}
+        badge={`${matrixPlayers.length} giocatori · ${matrixMatches.length} campionato`}
       />
 
       <MatchTabBar
@@ -257,7 +298,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       <AppCard>
         <div style={s.topBar}>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <span style={s.muted}>Inserisci i minuti nell'intersezione. Usa G/A per gol e assist.</span>
+            <span style={s.muted}>Inserisci i minuti nell'intersezione. La riga in alto mostra casa/trasferta e ordine delle squadre.</span>
           </div>
           <div style={s.topActions}>
             <Button variant="ghost" onClick={() => navigate("/matches")}>{t("pages.matchStats.btnBack")}</Button>
@@ -284,19 +325,20 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
           </p>
         </AppCard>
       ) : matrixMatches.length === 0 ? (
-        <AppCard><p style={s.muted}>Nessuna partita disponibile.</p></AppCard>
+        <AppCard><p style={s.muted}>Nessuna partita di campionato disponibile.</p></AppCard>
       ) : (
         <AppCard>
           <div style={s.matrixWrap}>
             <div
               style={{
                 ...s.matrix,
-                gridTemplateColumns: `220px repeat(${matrixMatches.length}, 132px)`,
+                gridTemplateColumns: `220px repeat(${matrixMatches.length}, 168px)`,
               }}
             >
               <div style={{ ...s.cornerCell, ...s.stickyLeft }}>Giocatore</div>
               {matrixMatches.map((matchItem) => {
                 const active = String(matchItem.id) === String(id);
+                const headerInfo = getMatchHeaderInfo(matchItem, clubName);
                 return (
                   <div
                     key={matchItem.id}
@@ -304,11 +346,18 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                       ...s.matchHeaderCell,
                       ...(active ? s.matchHeaderActive : {}),
                     }}
-                    title={[matchItem.opponent, formatDate(matchItem.date), matchItem.result].filter(Boolean).join(" · ")}
+                    title={[headerInfo.homeTeam, "vs", headerInfo.awayTeam, formatDate(matchItem.date), matchItem.result].filter(Boolean).join(" · ")}
                   >
-                    <strong>{matchItem.opponent || t("pages.matchStats.defaultOpponent")}</strong>
-                    <span>{formatDate(matchItem.date)}</span>
-                    {matchItem.result && <em>{matchItem.result}</em>}
+                    <span style={{ ...s.venuePill, ...(headerInfo.isAway ? s.venueAway : s.venueHome) }}>
+                      {headerInfo.venue}
+                    </span>
+                    <strong style={s.matchTeams}>
+                      <span>{headerInfo.homeTeam || t("pages.matchStats.defaultOpponent")}</span>
+                      <small style={s.matchVs}>vs</small>
+                      <span>{headerInfo.awayTeam || t("pages.matchStats.defaultOpponent")}</span>
+                    </strong>
+                    <span style={s.matchDate}>{formatDate(matchItem.date)}</span>
+                    {matchItem.result && <em style={s.matchResult}>{matchItem.result}</em>}
                   </div>
                 );
               })}
@@ -328,7 +377,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                       const row = rows[mid]?.[pid] || EMPTY_ROW;
                       const cellKey = `${mid}:${pid}`;
                       const hasError = Boolean(validationErrors[cellKey]?.length);
-                      const isInMatch = getMatchPlayerIds(matchItem).includes(pid);
+                      const isInMatch = Boolean(matchPlayerIdSets[mid]?.has(pid));
                       const isActiveMatch = mid === String(id);
 
                       return (
@@ -421,7 +470,7 @@ const s = {
     position: "sticky",
     top: 0,
     zIndex: 4,
-    minHeight: 74,
+    minHeight: 112,
     padding: "12px 14px",
     display: "flex",
     alignItems: "center",
@@ -438,11 +487,11 @@ const s = {
     position: "sticky",
     top: 0,
     zIndex: 3,
-    minHeight: 74,
-    padding: "10px 10px",
+    minHeight: 112,
+    padding: "10px 12px",
     display: "grid",
     alignContent: "center",
-    gap: 4,
+    gap: 7,
     background: "#111827",
     borderRight: "1px solid rgba(148,163,184,0.12)",
     borderBottom: "1px solid rgba(148,163,184,0.18)",
@@ -451,6 +500,50 @@ const s = {
   matchHeaderActive: {
     background: "linear-gradient(180deg, rgba(37,99,235,0.28), #111827)",
     boxShadow: "inset 0 2px 0 #60a5fa",
+  },
+  venuePill: {
+    justifySelf: "start",
+    borderRadius: 999,
+    padding: "3px 8px",
+    fontSize: 10,
+    fontWeight: 900,
+    lineHeight: 1,
+  },
+  venueHome: {
+    color: "#86efac",
+    background: "rgba(34,197,94,0.13)",
+    border: "1px solid rgba(34,197,94,0.25)",
+  },
+  venueAway: {
+    color: "#fbbf24",
+    background: "rgba(245,158,11,0.13)",
+    border: "1px solid rgba(245,158,11,0.25)",
+  },
+  matchTeams: {
+    display: "grid",
+    gap: 2,
+    minWidth: 0,
+    color: "#f8fafc",
+    fontSize: 13,
+    lineHeight: 1.15,
+  },
+  matchVs: {
+    color: "#64748b",
+    fontSize: 10,
+    fontWeight: 900,
+    textTransform: "uppercase",
+  },
+  matchDate: {
+    color: "#94a3b8",
+    fontSize: 11,
+    lineHeight: 1.2,
+  },
+  matchResult: {
+    justifySelf: "start",
+    color: "#cbd5e1",
+    fontSize: 12,
+    fontStyle: "normal",
+    fontWeight: 900,
   },
   playerCell: {
     minHeight: 92,
