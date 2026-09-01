@@ -167,6 +167,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   const [statsPlayerIds, setStatsPlayerIds] = useState([]);
   // savedStats: { [`${matchId}:${playerId}`]: riga player_matches già in DB (o null) }
   const savedRef = useRef({});
+  const matrixWrapRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState(null); // "ok" | "error"
@@ -265,6 +266,13 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     const rawNext = Math.max(0, parseNum(current) + delta);
     const next = max === null ? rawNext : Math.min(max, rawNext);
     updateCell(matchId, playerId, field, next ? String(next) : "");
+  }
+
+  function scrollMatrix(direction) {
+    matrixWrapRef.current?.scrollBy({
+      left: direction * 520,
+      behavior: "smooth",
+    });
   }
 
   async function handleSave() {
@@ -378,9 +386,17 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
             </div>
           </div>
           <div style={s.topActions}>
+            <div style={s.scrollActions} aria-label="Scorri partite">
+              <button type="button" style={s.scrollButton} onClick={() => scrollMatrix(-1)} title="Scorri a sinistra">
+                ‹
+              </button>
+              <button type="button" style={s.scrollButton} onClick={() => scrollMatrix(1)} title="Scorri a destra">
+                ›
+              </button>
+            </div>
             <Button variant="ghost" onClick={() => navigate("/matches")}>{t("pages.matchStats.btnBack")}</Button>
-            <Button onClick={handleSave} disabled={saving || loading}>
-              {saving ? t("pages.matchStats.btnSaving") : t("pages.matchStats.btnSave")}
+            <Button onClick={handleSave} disabled={saving || loading} style={s.saveButton}>
+              {saving ? "Salvataggio..." : "Salva dati"}
             </Button>
           </div>
         </div>
@@ -409,7 +425,11 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         <AppCard><p style={s.muted}>Nessuna partita di campionato disponibile.</p></AppCard>
       ) : (
         <AppCard>
-          <div style={s.matrixWrap}>
+          <div style={s.matrixHint}>
+            <span>Scorri orizzontalmente per vedere le altre partite</span>
+            <span style={s.matrixHintArrow}>→</span>
+          </div>
+          <div ref={matrixWrapRef} className="match-stats-matrix-scroll" style={s.matrixWrap}>
             <div
               style={{
                 ...s.matrix,
@@ -542,7 +562,33 @@ const s = {
     zIndex: 8,
   },
   topBar:     { display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 },
-  topActions: { display: "flex", gap: 10, flexWrap: "wrap" },
+  topActions: { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" },
+  scrollActions: {
+    display: "flex",
+    gap: 6,
+    padding: 3,
+    borderRadius: 12,
+    background: "rgba(15,23,42,0.82)",
+    border: "1px solid rgba(148,163,184,0.14)",
+  },
+  scrollButton: {
+    width: 34,
+    height: 34,
+    minHeight: 34,
+    borderRadius: 10,
+    border: "1px solid rgba(148,163,184,0.16)",
+    background: "rgba(255,255,255,0.05)",
+    color: "#e2e8f0",
+    cursor: "pointer",
+    fontSize: 24,
+    fontWeight: 900,
+    lineHeight: 1,
+    padding: 0,
+  },
+  saveButton: {
+    minWidth: 132,
+    boxShadow: "0 12px 26px rgba(37,99,235,0.34)",
+  },
   quickGuide: {
     display: "grid",
     gap: 10,
@@ -573,12 +619,30 @@ const s = {
   errorMsg:   { margin: "12px 0 0", color: "#f87171", fontSize: 14, lineHeight: 1.4 },
   link:       { background: "none", border: "none", color: "#38bdf8", cursor: "pointer", padding: 0, fontSize: "inherit" },
 
+  matrixHint: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 10,
+    color: "#93c5fd",
+    fontSize: 12,
+    fontWeight: 800,
+  },
+  matrixHintArrow: {
+    color: "#60a5fa",
+    fontSize: 18,
+    fontWeight: 900,
+  },
   matrixWrap: {
     overflow: "auto",
     maxHeight: "calc(100vh - 270px)",
+    paddingBottom: 10,
     borderRadius: 14,
     border: "1px solid rgba(148,163,184,0.14)",
     background: "rgba(2,6,23,0.2)",
+    scrollbarWidth: "thin",
+    scrollbarColor: "#60a5fa rgba(15,23,42,0.82)",
   },
   matrix: {
     display: "grid",
