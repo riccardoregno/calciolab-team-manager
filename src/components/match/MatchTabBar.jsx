@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 const TABS = [
   {
     key: "convocazione",
-    label: "Convocazione",
+    label: "Prima",
     path: (id) => `/match-convocation/${id}`,
     getStatus(d) {
       if (!d) return null;
@@ -18,7 +18,7 @@ const TABS = [
   },
   {
     key: "scheda",
-    label: "Scheda Gara",
+    label: "Durante",
     path: (id) => `/match-day/${id}`,
     getStatus(d) {
       if (!d) return null;
@@ -32,28 +32,8 @@ const TABS = [
     },
   },
   {
-    key: "live",
-    label: "⚡ Live",
-    path: (id) => `/match-live/${id}`,
-    getStatus(d) {
-      if (!d) return null;
-      return Array.isArray(d.liveEvents) && d.liveEvents.length > 0 ? "draft" : null;
-    },
-    getCount(d) {
-      const n = Array.isArray(d?.liveEvents) ? d.liveEvents.length : 0;
-      return n > 0 ? String(n) : null;
-    },
-  },
-  {
-    key: "statistiche",
-    label: "Statistiche",
-    path: (id) => `/match-stats/${id}`,
-    getStatus: () => null,
-    getCount:  () => null,
-  },
-  {
     key: "postgara",
-    label: "Post Gara",
+    label: "Dopo",
     path: (id) => `/post-match/${id}`,
     getStatus(d) {
       if (!d) return null;
@@ -65,10 +45,18 @@ const TABS = [
     },
     getCount: () => null,
   },
+  {
+    key: "statistiche",
+    label: "Analisi",
+    path: (id) => `/match-stats/${id}`,
+    getStatus: () => null,
+    getCount:  () => null,
+  },
 ];
 
 export default function MatchTabBar({ matchId, active, matchLabel, matchData }) {
   const navigate = useNavigate();
+  const normalizedActive = active === "live" ? "scheda" : active;
 
   if (!matchId) return null;
 
@@ -78,7 +66,7 @@ export default function MatchTabBar({ matchId, active, matchLabel, matchData }) 
 
       <div style={s.tabRow}>
         {TABS.map((tab) => {
-          const isActive = active === tab.key;
+          const isActive = normalizedActive === tab.key;
           const status   = tab.getStatus(matchData);
           const count    = tab.getCount(matchData);
           return (

@@ -14,34 +14,24 @@ const primaryMenuGroups = [
     titleKey: "navigation.groups.home",
     items: [
       { to: "/", labelKey: "navigation.items.dashboard", icon: "🏠", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
-      { to: "/calendar", labelKey: "navigation.items.calendar", icon: "📅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"] },
     ],
   },
   {
     titleKey: "navigation.groups.team",
     items: [
-      { to: "/players", labelKey: "navigation.items.roster", icon: "👥", roles: coachRoles },
-      { to: "/availability", labelKey: "navigation.items.availability", icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
+      { to: "/players", label: "Squadra", icon: "👥", roles: coachRoles },
     ],
   },
   {
     titleKey: "navigation.groups.field",
     items: [
-      { to: "/trainings", labelKey: "navigation.items.trainings", icon: "📋", roles: technicalRoles },
-      { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾", roles: technicalRoles },
+      { to: "/trainings", label: "Allenamenti", icon: "📋", roles: technicalRoles },
     ],
   },
   {
     titleKey: "navigation.groups.match",
     items: [
-      { to: "/matches", labelKey: "navigation.items.matches", icon: "⚽", roles: coachRoles },
-    ],
-  },
-  {
-    titleKey: "navigation.groups.system",
-    items: [
-      { to: "/statistics", labelKey: "navigation.items.statistics", icon: "📊", roles: coachRoles },
-      { to: "/settings", labelKey: "navigation.items.settings", icon: "⚙️", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
+      { to: "/matches", label: "Centro partite", icon: "⚽", roles: coachRoles },
     ],
   },
 ];
@@ -50,12 +40,14 @@ const toolboxGroups = [
   {
     titleKey: "navigation.groups.home",
     items: [
+      { to: "/calendar", labelKey: "navigation.items.calendar", icon: "📅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"] },
       { to: "/onboarding", labelKey: "navigation.items.onboarding", icon: "🚀", roles: onboardingRoles },
     ],
   },
   {
     titleKey: "navigation.groups.team",
     items: [
+      { to: "/availability", labelKey: "navigation.items.availability", icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
       { to: "/player-compare", labelKey: "navigation.items.playerCompare", icon: "⚡", featureKey: "statistics", roles: coachRoles },
       { to: "/season-goals", labelKey: "navigation.items.seasonGoals", icon: "🎯", roles: coachRoles },
       { to: "/physical-tests", labelKey: "navigation.items.physicalTests", icon: "⏱️", featureKey: "physicalTests", roles: physicalRoles },
@@ -66,6 +58,7 @@ const toolboxGroups = [
   {
     titleKey: "navigation.groups.field",
     items: [
+      { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾", roles: technicalRoles },
       { to: "/exercises", labelKey: "navigation.items.exercises", icon: "📚", roles: technicalRoles },
       { to: "/microcycle", labelKey: "navigation.items.microcycle", icon: "🗓️", roles: technicalRoles },
       { to: "/tactical-board", labelKey: "navigation.items.tacticalBoard", icon: "🧠", roles: technicalRoles },
@@ -76,10 +69,12 @@ const toolboxGroups = [
   {
     titleKey: "navigation.groups.system",
     items: [
+      { to: "/statistics", labelKey: "navigation.items.statistics", icon: "📊", roles: coachRoles },
       { to: "/staff-tasks", labelKey: "navigation.items.staffTasks", icon: "✅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
       { to: "/staff-chat", labelKey: "navigation.items.staffChat", icon: "💬", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
       { to: "/exports", labelKey: "navigation.items.exports", icon: "🖨️", featureKey: "exports", roles: managementRoles },
       { to: "/premium", labelKey: "navigation.items.premium", icon: "💎", roles: managementRoles },
+      { to: "/settings", labelKey: "navigation.items.settings", icon: "⚙️", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
     ],
   },
   {
@@ -180,7 +175,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
                     item={item}
                     collapsed={collapsed}
                     locked={Boolean(item.featureKey && !isFeatureUnlocked(item.featureKey, appSettings))}
-                    label={t(item.labelKey)}
+                    label={item.label || t(item.labelKey)}
                     badge={item.to === "/staff-chat" && chatUnread > 0 ? chatUnread : 0}
                   />
                 ))}
@@ -263,7 +258,7 @@ function SidebarToolbox({ groups, appSettings, chatUnread, t }) {
                 collapsed={false}
                 compact={false}
                 locked={Boolean(item.featureKey && !isFeatureUnlocked(item.featureKey, appSettings))}
-                label={t(item.labelKey)}
+                label={item.label || t(item.labelKey)}
                 badge={item.to === "/staff-chat" && chatUnread > 0 ? chatUnread : 0}
               />
             ))}

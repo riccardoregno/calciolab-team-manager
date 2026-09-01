@@ -171,6 +171,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState(null); // "ok" | "error"
   const [validationErrors, setValidationErrors] = useState({}); // { [`${matchId}:${pid}`]: string[] }
+  const [playerFilter, setPlayerFilter] = useState("all");
 
   const matrixPlayers = useMemo(() => {
     const rosterIds = players.map((player) => String(player.id)).filter(Boolean);
@@ -180,6 +181,24 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       .filter(Boolean)
       .sort(comparePlayersByRoleAndSurname);
   }, [players, statsPlayerIds]);
+  const currentMatchId = String(id);
+  const currentCalledUpIds = useMemo(
+    () => matchPlayerIdSets[currentMatchId] || new Set(),
+    [currentMatchId, matchPlayerIdSets],
+  );
+  const currentStarterIds = useMemo(
+    () => new Set((match?.lineup?.starterIds || []).map(String).filter(Boolean)),
+    [match?.lineup?.starterIds],
+  );
+  const visibleMatrixPlayers = useMemo(() => {
+    if (playerFilter === "called") {
+      return matrixPlayers.filter((player) => currentCalledUpIds.has(String(player.id)));
+    }
+    if (playerFilter === "starters") {
+      return matrixPlayers.filter((player) => currentStarterIds.has(String(player.id)));
+    }
+    return matrixPlayers;
+  }, [currentCalledUpIds, currentStarterIds, matrixPlayers, playerFilter]);
 
   useEffect(() => {
     if (!auth.team?.id || matchIds.length === 0) {
@@ -241,9 +260,10 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     });
   }
 
-  function bumpCellNumber(matchId, playerId, field, delta) {
+  function bumpCellNumber(matchId, playerId, field, delta, max = null) {
     const current = rows[String(matchId)]?.[String(playerId)]?.[field];
-    const next = Math.max(0, parseNum(current) + delta);
+    const rawNext = Math.max(0, parseNum(current) + delta);
+    const next = max === null ? rawNext : Math.min(max, rawNext);
     updateCell(matchId, playerId, field, next ? String(next) : "");
   }
 
@@ -323,7 +343,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       <PageHeader
         title="Griglia statistiche partita"
         subtitle={`${subtitle} · solo campionato, minuti nella cella, gol e assist con i comandi rapidi`}
-        badge={`${matrixPlayers.length} giocatori · ${matrixMatches.length} campionato`}
+        badge={`${visibleMatrixPlayers.length}/${matrixPlayers.length} giocatori · ${matrixMatches.length} campionato`}
       />
 
       <MatchTabBar
@@ -333,10 +353,29 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         matchData={match}
       />
 
-      <AppCard>
+      <AppCard style={s.commandCard}>
         <div style={s.topBar}>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={s.quickGuide}>
             <span style={s.muted}>Inserisci i minuti nell'intersezione. La riga in alto mostra casa/trasferta e ordine delle squadre.</span>
+            <div style={s.filterBar} aria-label="Filtro giocatori">
+              {[
+                ["all", "Tutti"],
+                ["called", "Convocati"],
+                ["starters", "Titolari"],
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setPlayerFilter(key)}
+                  style={{
+                    ...s.filterButton,
+                    ...(playerFilter === key ? s.filterButtonActive : {}),
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           <div style={s.topActions}>
             <Button variant="ghost" onClick={() => navigate("/matches")}>{t("pages.matchStats.btnBack")}</Button>
@@ -361,6 +400,10 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
           <p style={s.muted}>
             Nessun giocatore disponibile in rosa.
           </p>
+        </AppCard>
+      ) : visibleMatrixPlayers.length === 0 ? (
+        <AppCard>
+          <p style={s.muted}>Nessun giocatore in questo filtro per la partita selezionata.</p>
         </AppCard>
       ) : matrixMatches.length === 0 ? (
         <AppCard><p style={s.muted}>Nessuna partita di campionato disponibile.</p></AppCard>
@@ -400,7 +443,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                 );
               })}
 
-              {matrixPlayers.map((player) => {
+              {visibleMatrixPlayers.map((player) => {
                 const pid = String(player.id);
                 const displayName = [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "-";
 
@@ -451,6 +494,18 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                               onMinus={() => bumpCellNumber(mid, pid, "assists", -1)}
                               onPlus={() => bumpCellNumber(mid, pid, "assists", 1)}
                             />
+                            <Counter
+                              label="🟨"
+                              value={row.yellow_cards}
+                              onMinus={() => bumpCellNumber(mid, pid, "yellow_cards", -1, 2)}
+                              onPlus={() => bumpCellNumber(mid, pid, "yellow_cards", 1, 2)}
+                            />
+                            <Counter
+                              label="🟥"
+                              value={row.red_cards}
+                              onMinus={() => bumpCellNumber(mid, pid, "red_cards", -1, 1)}
+                              onPlus={() => bumpCellNumber(mid, pid, "red_cards", 1, 1)}
+                            />
                           </div>
                           {hasError && <span style={s.cellErrorMark}>!</span>}
                         </div>
@@ -481,8 +536,39 @@ function Counter({ label, value, onMinus, onPlus }) {
 const s = {
   page:       { display: "grid", gap: 18 },
   muted:      { color: "#94a3b8", margin: 0, lineHeight: 1.45 },
+  commandCard: {
+    position: "sticky",
+    top: 12,
+    zIndex: 8,
+  },
   topBar:     { display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 },
   topActions: { display: "flex", gap: 10, flexWrap: "wrap" },
+  quickGuide: {
+    display: "grid",
+    gap: 10,
+    minWidth: 240,
+  },
+  filterBar: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  filterButton: {
+    minHeight: 32,
+    borderRadius: 10,
+    border: "1px solid rgba(148,163,184,0.16)",
+    background: "rgba(15,23,42,0.82)",
+    color: "#94a3b8",
+    cursor: "pointer",
+    fontSize: 12,
+    fontWeight: 900,
+    padding: "0 12px",
+  },
+  filterButtonActive: {
+    border: "1px solid rgba(96,165,250,0.48)",
+    background: "rgba(37,99,235,0.2)",
+    color: "#bfdbfe",
+  },
   successMsg: { margin: "12px 0 0", color: "#22c55e", fontSize: 14, lineHeight: 1.4 },
   errorMsg:   { margin: "12px 0 0", color: "#f87171", fontSize: 14, lineHeight: 1.4 },
   link:       { background: "none", border: "none", color: "#38bdf8", cursor: "pointer", padding: 0, fontSize: "inherit" },
