@@ -6,7 +6,7 @@ import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
 import { loadMatchStatsMatrix, savePlayerMatchStats } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
-import { compareMatchDateTime, formatDate, normalizeAppSettings } from "../utils/helpers";
+import { compareMatchDateTime, comparePlayersByName, formatDate, normalizeAppSettings } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
 const EMPTY_ROW = {
@@ -105,6 +105,43 @@ function getMatchHeaderInfo(match, clubName) {
   };
 }
 
+function getRoleSortOrder(player) {
+  const role = normalizeText(player?.role || player?.position);
+
+  if (role.includes("portiere") || role === "por" || role === "gk") return 0;
+  if (
+    role.includes("difensore") ||
+    role.includes("terzino") ||
+    role.includes("centrale") ||
+    role.includes("libero") ||
+    role.includes("stopper") ||
+    ["cb", "lb", "rb", "wb"].includes(role)
+  ) return 1;
+  if (
+    role.includes("centrocampista") ||
+    role.includes("mediano") ||
+    role.includes("mezzala") ||
+    role.includes("regista") ||
+    role.includes("trequartista") ||
+    ["cm", "cdm", "cam"].includes(role)
+  ) return 2;
+  if (
+    role.includes("attaccante") ||
+    role.includes("punta") ||
+    role.includes("ala") ||
+    role.includes("esterno") ||
+    ["cf", "st", "lw", "rw"].includes(role)
+  ) return 3;
+
+  return 99;
+}
+
+function comparePlayersByRoleAndSurname(a, b) {
+  const roleDiff = getRoleSortOrder(a) - getRoleSortOrder(b);
+  if (roleDiff !== 0) return roleDiff;
+  return comparePlayersByName(a, b);
+}
+
 export default function MatchStats({ players = [], matches = [], appSettings = {} }) {
   const { t } = useTranslation();
   const { id } = useParams();
@@ -140,7 +177,8 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     const ids = [...new Set([...rosterIds, ...statsPlayerIds].map(String))];
     return ids
       .map((pid) => players.find((p) => String(p.id) === String(pid)))
-      .filter(Boolean);
+      .filter(Boolean)
+      .sort(comparePlayersByRoleAndSurname);
   }, [players, statsPlayerIds]);
 
   useEffect(() => {
