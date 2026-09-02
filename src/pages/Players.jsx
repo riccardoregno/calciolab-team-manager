@@ -21,7 +21,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
-import { createUuid, isBirthdayToday, getTeamAverageAge, calcPlayerAge, getPlayerQuickStats, comparePlayersByName } from "../utils/helpers";
+import { createUuid, isBirthdayToday, getTeamAverageAge, getPlayerQuickStats, comparePlayersByName, normalizeAppSettings } from "../utils/helpers";
 import { loadAllPlayerStats, loadAllPlayerAvgRatings, loadTeamRecentRatings } from "../services/playerProfile";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
@@ -59,6 +59,22 @@ function loadNewPlayerDraft(fallback) {
 
 const SUSPENSION_THRESHOLD = 5;
 
+function numberStat(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeMatchStats(stats = {}) {
+  return {
+    appearances: numberStat(stats.appearances),
+    minutes: numberStat(stats.minutes_played ?? stats.minutes),
+    goals: numberStat(stats.goals),
+    assists: numberStat(stats.assists),
+    yellowCards: numberStat(stats.yellow_cards ?? stats.yellowCards),
+    redCards: numberStat(stats.red_cards ?? stats.redCards),
+  };
+}
+
 function exportPlayersCSV(players, gruppo) {
   const headers = ["Nome", "Ruolo", "Ruolo secondario", "Piede", "Stato", "Data di nascita", "Altezza", "Peso", "Nazionalità", "Email", "Numero maglia", "Gruppo", "Note"];
   const rows = players.map((p) => [
@@ -90,7 +106,7 @@ function exportPlayersCSV(players, gruppo) {
   URL.revokeObjectURL(url);
 }
 
-function Players({ players, setPlayers, sessions = [], matches = [], loading = false, teamId = null }) {
+function Players({ players, setPlayers, sessions = [], matches = [], loading = false, teamId = null, appSettings = {} }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const GROUP_LABELS = {
@@ -111,13 +127,14 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   const [playerStatsMap, setPlayerStatsMap] = useState({});
   const [playerRatingsMap, setPlayerRatingsMap] = useState({});
   const [playerRecentRatings, setPlayerRecentRatings] = useState({});
+  const activeSeason = normalizeAppSettings(appSettings).workspaceProfile.currentSeason;
 
   useEffect(() => {
     if (!teamId) return;
-    loadAllPlayerStats(teamId).then(({ data }) => setPlayerStatsMap(data || {}));
+    loadAllPlayerStats(teamId, activeSeason).then(({ data }) => setPlayerStatsMap(data || {}));
     loadAllPlayerAvgRatings(teamId).then(({ data }) => setPlayerRatingsMap(data || {}));
     loadTeamRecentRatings(teamId).then(({ data }) => setPlayerRecentRatings(data || {}));
-  }, [teamId]);
+  }, [activeSeason, teamId]);
   const [showImport, setShowImport] = useState(false);
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -850,17 +867,21 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
         />
       ) : viewMode === "list" ? (
         <div style={{ display: "grid", gap: 8 }}>
-          {filteredPlayers.map((player) => (
-            <PlayerListRow
-              key={player.id}
-              player={player}
-              sessions={sessions}
-              matches={matches}
-              onDelete={canManage ? () => deletePlayer(player.id) : null}
-              yellowCards={Number(playerStatsMap[String(player.id)]?.yellow_cards || 0)}
-              avgRating={playerRatingsMap[String(player.id)] || null}
-            />
-          ))}
+          {filteredPlayers.map((player) => {
+            const matchStats = normalizeMatchStats(playerStatsMap[String(player.id)] || {});
+            return (
+              <PlayerListRow
+                key={player.id}
+                player={player}
+                sessions={sessions}
+                matches={matches}
+                onDelete={canManage ? () => deletePlayer(player.id) : null}
+                matchStats={matchStats}
+                yellowCards={matchStats.yellowCards}
+                avgRating={playerRatingsMap[String(player.id)] || null}
+              />
+            );
+          })}
         </div>
       ) : (
         <div
@@ -870,18 +891,22 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
             gap: isMobile ? 12 : 18,
           }}
         >
-          {filteredPlayers.map((player) => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              sessions={sessions}
-              matches={matches}
-              onDelete={canManage ? () => deletePlayer(player.id) : null}
-              yellowCards={Number(playerStatsMap[String(player.id)]?.yellow_cards || 0)}
-              avgRating={playerRatingsMap[String(player.id)] || null}
-              recentRatings={playerRecentRatings[String(player.id)] || null}
-            />
-          ))}
+          {filteredPlayers.map((player) => {
+            const matchStats = normalizeMatchStats(playerStatsMap[String(player.id)] || {});
+            return (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                sessions={sessions}
+                matches={matches}
+                onDelete={canManage ? () => deletePlayer(player.id) : null}
+                matchStats={matchStats}
+                yellowCards={matchStats.yellowCards}
+                avgRating={playerRatingsMap[String(player.id)] || null}
+                recentRatings={playerRecentRatings[String(player.id)] || null}
+              />
+            );
+          })}
         </div>
       )}
       </div>
@@ -1042,12 +1067,13 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   );
 }
 
-function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCards = 0, avgRating = null }) {
+function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchStats = {}, yellowCards = 0, avgRating = null }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const age = calcPlayerAge(player.birthDate) ?? player.age ?? "-";
-  const { appearances, trainingPct } = getPlayerQuickStats(player, sessions, matches);
+  const { trainingPct } = getPlayerQuickStats(player, sessions, matches);
   const trainingPctValue = trainingPct === null ? "-" : `${trainingPct}%`;
+  const cardsValue = `${matchStats.yellowCards || 0}/${matchStats.redCards || 0}`;
+  const suspensionYellowCards = yellowCards || matchStats.yellowCards || 0;
 
   const statusTone =
     player.status === "Infortunato"  ? "red"    :
@@ -1118,33 +1144,27 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCa
       </div>
 
       {/* Statistiche inline */}
-      <div style={{ display: "flex", gap: 14, alignItems: "center", flexShrink: 0 }}>
-        <div style={{ textAlign: "center", minWidth: 32 }}>
-          <div style={{ fontSize: 10, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.age")}</div>
-          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{age}</div>
-        </div>
-        <div style={{ textAlign: "center", minWidth: 36 }}>
-          <div style={{ fontSize: 10, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.appearances")}</div>
-          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{appearances}</div>
-        </div>
-        <div style={{ textAlign: "center", minWidth: 36 }}>
-          <div style={{ fontSize: 10, color: "#475569", fontWeight: 800, textTransform: "uppercase", lineHeight: 1 }}>{t("components.playerCard.trainingPct")}</div>
-          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{trainingPctValue}</div>
-        </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(46px, auto))", gap: 10, alignItems: "center", flexShrink: 0 }}>
+        <InlineStat label="Pres" value={matchStats.appearances || 0} />
+        <InlineStat label="Min" value={matchStats.minutes || 0} />
+        <InlineStat label="Gol" value={matchStats.goals || 0} />
+        <InlineStat label="Ass" value={matchStats.assists || 0} />
+        <InlineStat label="G/R" value={cardsValue} />
+        <InlineStat label="% All." value={trainingPctValue} tone={trainingPct === 100 ? "#22c55e" : undefined} />
       </div>
 
       {/* Badge stato + alert */}
       <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
         <Badge tone={statusTone}>{player.status || "Disponibile"}</Badge>
-        {yellowCards >= SUSPENSION_THRESHOLD - 1 && (
+        {suspensionYellowCards >= SUSPENSION_THRESHOLD - 1 && (
           <span style={{
             fontSize: 10, fontWeight: 900, padding: "2px 6px", borderRadius: 6,
-            background: yellowCards >= SUSPENSION_THRESHOLD ? "rgba(248,113,113,0.18)" : "rgba(251,191,36,0.18)",
-            border: `1px solid ${yellowCards >= SUSPENSION_THRESHOLD ? "rgba(248,113,113,0.4)" : "rgba(251,191,36,0.4)"}`,
-            color: yellowCards >= SUSPENSION_THRESHOLD ? "#f87171" : "#fbbf24",
+            background: suspensionYellowCards >= SUSPENSION_THRESHOLD ? "rgba(248,113,113,0.18)" : "rgba(251,191,36,0.18)",
+            border: `1px solid ${suspensionYellowCards >= SUSPENSION_THRESHOLD ? "rgba(248,113,113,0.4)" : "rgba(251,191,36,0.4)"}`,
+            color: suspensionYellowCards >= SUSPENSION_THRESHOLD ? "#f87171" : "#fbbf24",
             whiteSpace: "nowrap",
           }}>
-            🟨 {yellowCards}
+            🟨 {suspensionYellowCards}
           </span>
         )}
         {avgRating !== null && (
@@ -1171,6 +1191,15 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, yellowCa
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+function InlineStat({ label, value, tone = "white" }) {
+  return (
+    <div style={{ textAlign: "center", minWidth: 42 }}>
+      <div style={{ fontSize: 10, color: "#64748b", fontWeight: 900, textTransform: "uppercase", lineHeight: 1 }}>{label}</div>
+      <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.3, color: tone }}>{value}</div>
     </div>
   );
 }

@@ -7,6 +7,22 @@ import { calcPlayerAge, getPlayerQuickStats } from "../../utils/helpers";
 
 const SUSPENSION_THRESHOLD = 5;
 
+function numberStat(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeMatchStats(stats = {}) {
+  return {
+    appearances: numberStat(stats.appearances),
+    minutes: numberStat(stats.minutes_played ?? stats.minutes),
+    goals: numberStat(stats.goals),
+    assists: numberStat(stats.assists),
+    yellowCards: numberStat(stats.yellow_cards ?? stats.yellowCards),
+    redCards: numberStat(stats.red_cards ?? stats.redCards),
+  };
+}
+
 function FormDots({ ratings }) {
   if (!ratings || ratings.length === 0) return null;
   return (
@@ -27,13 +43,15 @@ function FormDots({ ratings }) {
   );
 }
 
-function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards = 0, avgRating = null, recentRatings = null }) {
+function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats = {}, yellowCards = 0, avgRating = null, recentRatings = null }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
   const computedAge = calcPlayerAge(player.birthDate);
   const ageValue = computedAge ?? player.age ?? "-";
-  const { appearances, trainingPct } = getPlayerQuickStats(player, sessions, matches);
+  const { trainingPct } = getPlayerQuickStats(player, sessions, matches);
+  const stats = normalizeMatchStats(matchStats);
+  const suspensionYellowCards = yellowCards || stats.yellowCards || 0;
   const trainingPctValue = trainingPct === null ? "-" : `${trainingPct}%`;
   const trainingPctLabelKey = "components.playerCard.trainingPctAbbr";
   const trainingPctLabel = t(trainingPctLabelKey);
@@ -114,14 +132,14 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards
             }>
               {player.status || "Disponibile"}
             </Badge>
-            {yellowCards >= SUSPENSION_THRESHOLD - 1 && (
+            {suspensionYellowCards >= SUSPENSION_THRESHOLD - 1 && (
               <span style={{
                 fontSize: 11, fontWeight: 900, padding: "2px 7px", borderRadius: 7,
-                background: yellowCards >= SUSPENSION_THRESHOLD ? "rgba(248,113,113,0.18)" : "rgba(251,191,36,0.18)",
-                border: `1px solid ${yellowCards >= SUSPENSION_THRESHOLD ? "rgba(248,113,113,0.4)" : "rgba(251,191,36,0.4)"}`,
-                color: yellowCards >= SUSPENSION_THRESHOLD ? "#f87171" : "#fbbf24",
+                background: suspensionYellowCards >= SUSPENSION_THRESHOLD ? "rgba(248,113,113,0.18)" : "rgba(251,191,36,0.18)",
+                border: `1px solid ${suspensionYellowCards >= SUSPENSION_THRESHOLD ? "rgba(248,113,113,0.4)" : "rgba(251,191,36,0.4)"}`,
+                color: suspensionYellowCards >= SUSPENSION_THRESHOLD ? "#f87171" : "#fbbf24",
               }}>
-                🟨 {yellowCards} {yellowCards >= SUSPENSION_THRESHOLD ? "SQUALIFICA" : "DIFFIDA"}
+                🟨 {suspensionYellowCards} {suspensionYellowCards >= SUSPENSION_THRESHOLD ? "SQUALIFICA" : "DIFFIDA"}
               </span>
             )}
             {avgRating !== null && (
@@ -174,7 +192,11 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], yellowCards
             gap: 10,
           }}
         >
-          <MiniValue label={t("components.playerCard.appearances")} value={appearances} />
+          <MiniValue label={t("components.playerCard.appearances")} value={stats.appearances} />
+          <MiniValue label="Min" value={stats.minutes} />
+          <MiniValue label="Gol" value={stats.goals} />
+          <MiniValue label="Assist" value={stats.assists} />
+          <MiniValue label="G/R" value={`${stats.yellowCards}/${stats.redCards}`} />
           <MiniValue
             label={safeTrainingPctLabel}
             title={t("components.playerCard.trainingPct")}

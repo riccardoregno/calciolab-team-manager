@@ -1005,6 +1005,7 @@ function App() {
                     matches={matches}
                     loading={loading}
                     teamId={auth.team?.id}
+                    appSettings={previewAppSettings}
                   />, "players")
                 }
               />
