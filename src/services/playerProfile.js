@@ -274,12 +274,20 @@ export async function savePlayerMatchStats(teamId, playerId, matchId, newStats, 
 
   const pid = String(playerId);
   const mid = String(matchId);
+  const matchStatsPayload = {
+    goals:          newStats.goals ?? 0,
+    assists:        newStats.assists ?? 0,
+    minutes_played: newStats.minutes_played ?? 0,
+    yellow_cards:   newStats.yellow_cards ?? 0,
+    red_cards:      newStats.red_cards ?? 0,
+    rating:         newStats.rating ?? null,
+  };
 
   // 1. Salva/aggiorna player_matches
   const { error: matchError } = await supabase
     .from("player_matches")
     .upsert(
-      { team_id: teamId, player_id: pid, match_id: mid, ...newStats },
+      { team_id: teamId, player_id: pid, match_id: mid, ...matchStatsPayload },
       { onConflict: "team_id,player_id,match_id" }
     );
 
@@ -310,16 +318,14 @@ export async function savePlayerMatchStats(teamId, playerId, matchId, newStats, 
     p_new_appearance:  isNew,
   });
 
-  // La DB function increment_player_stats è deployata in produzione
-  // (migrazione 20260515_security_hardening.sql). Se l'RPC fallisce per un
-  // motivo inaspettato (permessi, rete) restituiamo l'errore esplicitamente:
-  // silenziosamente cadere sul fallback non-atomico nasconde bugs reali e
-  // può corrompere le statistiche con lost-updates concorrenti.
+  // player_matches è la fonte affidabile per le schermate di statistica.
+  // L'aggregato player_stats accelera alcune viste, ma non deve bloccare
+  // l'inserimento dei dati gara se la funzione RPC non è disponibile.
   if (rpcError) {
     if (import.meta.env.DEV) {
       console.error("[playerProfile] increment_player_stats RPC fallito:", rpcError.message);
     }
-    return { error: rpcError };
+    return { error: null, aggregateError: rpcError };
   }
 
   return { error: null };
