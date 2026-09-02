@@ -1646,10 +1646,15 @@ export function getRpeFromIntensity(intensity) {
  * Serie storica completa (non troncata) di minuti/carico per evento e
  * test fisici, ordinata per data crescente, per i grafici di andamento.
  */
-export function getPlayerSeasonSeries(player, { sessions = [], matches = [], physicalTests = [] } = {}){
+export function getPlayerSeasonSeries(player, { sessions = [], matches = [], physicalTests = [], playerMatchesDB = [] } = {}){
   if(!player){
     return { events: [], tests: [] };
   }
+
+  const dbMatchesById = playerMatchesDB.reduce((acc, row) => {
+    acc[String(row.match_id)] = row;
+    return acc;
+  }, {});
 
   const sessionEvents = sessions
     .map((session) => {
@@ -1669,13 +1674,14 @@ export function getPlayerSeasonSeries(player, { sessions = [], matches = [], phy
 
   const matchEvents = matches
     .map((event) => {
-      const data = event.attendance?.[player.id];
+      const db = dbMatchesById[String(event.id)];
+      const data = db || event.attendance?.[player.id] || event.attendance?.[String(player.id)];
       if(!data) return null;
       return {
         date: event.date,
         title: event.title || event.opponent || "",
         type: "match",
-        matchMinutes: Number(data.minutes || 0),
+        matchMinutes: Number(data.minutes_played ?? data.minutes ?? 0),
       };
     })
     .filter(Boolean);
@@ -1694,7 +1700,7 @@ export function getPlayerSeasonSeries(player, { sessions = [], matches = [], phy
   return { events, tests };
 }
 
-export function getPlayerSummary(player, { sessions = [], matches = [], physicalTests = [] } = {}){
+export function getPlayerSummary(player, { sessions = [], matches = [], physicalTests = [], playerMatchesDB = [] } = {}){
   if(!player){
     return {
       stats: { presences: 0, minutes: 0, goals: 0, assists: 0, avgRpe: 0, load: 0 },
@@ -1715,9 +1721,26 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
     return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
   };
   const events = [...sessions, ...matches].filter((event) => event.date && event.date <= todayStr);
+  const dbMatchesById = playerMatchesDB.reduce((acc, row) => {
+    acc[String(row.match_id)] = row;
+    return acc;
+  }, {});
   const playerEvents = events
     .map((event) => {
-      const data = event.attendance?.[player.id] ?? event.attendance?.[String(player.id)];
+      const db = event.type === "Partita" ? dbMatchesById[String(event.id)] : null;
+      const attendanceData = event.attendance?.[player.id] ?? event.attendance?.[String(player.id)];
+      const data = db
+        ? {
+            ...(attendanceData || {}),
+            status: "Presente",
+            minutes: Number(db.minutes_played || 0),
+            goals: Number(db.goals || 0),
+            assists: Number(db.assists || 0),
+            yellowCards: Number(db.yellow_cards || 0),
+            redCards: Number(db.red_cards || 0),
+            rating: db.rating ?? attendanceData?.rating ?? null,
+          }
+        : attendanceData;
       if(!data) return null;
       return { event, data };
     })

@@ -31,6 +31,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
 import { fetchPlayerPortalActivity } from "../services/playerPortalActivity";
 import { getPlayerWellness } from "../services/wellness";
+import { loadPlayerMatches } from "../services/playerProfile";
 
 const ABSENCE_TYPES = ["ferie", "permesso", "studio", "lavoro", "altro"];
 
@@ -118,6 +119,7 @@ function PlayerDetail({
   const [portalActivityState, setPortalActivityState] = useState({ playerId: "", data: null });
   const [portalActivityNow, setPortalActivityNow] = useState(Date.now());
   const [wellnessHistory, setWellnessHistory] = useState(null); // null = not loaded yet
+  const [playerMatchesDB, setPlayerMatchesDB] = useState([]);
   const currentPlayerId = String(player?.id || "");
   const portalAccountId = portalAccountState.playerId === currentPlayerId ? portalAccountState.accountId : null;
   const portalActivity = portalActivityState.playerId === currentPlayerId ? portalActivityState.data : null;
@@ -199,14 +201,29 @@ function PlayerDetail({
     return () => { cancelled = true; };
   }, [activeTab, currentPlayerId, team?.id]);
 
+  useEffect(() => {
+    if (!currentPlayerId || !team?.id || !isSupabaseConfigured) {
+      return undefined;
+    }
+
+    let active = true;
+    loadPlayerMatches(team.id, currentPlayerId).then(({ data }) => {
+      if (active) setPlayerMatchesDB(data || []);
+    }).catch(() => {
+      if (active) setPlayerMatchesDB([]);
+    });
+
+    return () => { active = false; };
+  }, [currentPlayerId, team?.id]);
+
   const summary = useMemo(
-    () => getPlayerSummary(player, { sessions, matches, physicalTests }),
-    [player, sessions, matches, physicalTests]
+    () => getPlayerSummary(player, { sessions, matches, physicalTests, playerMatchesDB }),
+    [player, sessions, matches, physicalTests, playerMatchesDB]
   );
 
   const seasonSeries = useMemo(
-    () => getPlayerSeasonSeries(player, { sessions, matches, physicalTests }),
-    [player, sessions, matches, physicalTests]
+    () => getPlayerSeasonSeries(player, { sessions, matches, physicalTests, playerMatchesDB }),
+    [player, sessions, matches, physicalTests, playerMatchesDB]
   );
   const injuryHistory = useMemo(
     () => [...(player?.injuries || [])].sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0)),
