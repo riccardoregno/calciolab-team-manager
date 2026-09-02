@@ -1642,6 +1642,30 @@ export function getRpeFromIntensity(intensity) {
   return 6;
 }
 
+function normalizeStatsText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isLeagueStatsMatch(match) {
+  const searchable = normalizeStatsText([
+    match?.matchKind,
+    match?.match_kind,
+    match?.competition,
+    match?.category,
+    match?.kind,
+    match?.title,
+    match?.notes,
+  ].filter(Boolean).join(" "));
+
+  if (/\b(coppa|cup|amichevole|friendly|torneo)\b/.test(searchable)) return false;
+  if (!normalizeStatsText(match?.matchKind || match?.type)) return true;
+
+  return /\b(campionato|girone|league|eccellenza|promozione|serie)\b/.test(searchable);
+}
+
 /**
  * Serie storica completa (non troncata) di minuti/carico per evento e
  * test fisici, ordinata per data crescente, per i grafici di andamento.
@@ -1673,6 +1697,7 @@ export function getPlayerSeasonSeries(player, { sessions = [], matches = [], phy
     .filter(Boolean);
 
   const matchEvents = matches
+    .filter(isLeagueStatsMatch)
     .map((event) => {
       const db = dbMatchesById[String(event.id)];
       const data = db || event.attendance?.[player.id] || event.attendance?.[String(player.id)];
@@ -1718,9 +1743,10 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
   const isFriendlyMatch = (match) => {
     if (match?.isFriendly === true || match?.friendly === true) return true;
     const fields = [match?.matchKind, match?.match_kind, match?.competition, match?.category, match?.kind, match?.title, match?.notes];
-    return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
+    return fields.some((value) => normalizeStatsText(value).includes("amichevol"));
   };
-  const events = [...sessions, ...matches].filter((event) => event.date && event.date <= todayStr);
+  const leagueMatches = matches.filter(isLeagueStatsMatch);
+  const events = [...sessions, ...leagueMatches].filter((event) => event.date && event.date <= todayStr);
   const dbMatchesById = playerMatchesDB.reduce((acc, row) => {
     acc[String(row.match_id)] = row;
     return acc;
