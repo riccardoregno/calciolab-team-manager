@@ -43,6 +43,7 @@ function Statistics({
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [playerStatsMap, setPlayerStatsMap] = useState({});
+  const [playerMatchStatsRows, setPlayerMatchStatsRows] = useState([]);
   const [statsLoading, setStatsLoading] = useState(false);
   const [playerMatchesDB, setPlayerMatchesDB] = useState([]);
   const [sortBy, setSortBy] = useState("role");
@@ -201,17 +202,30 @@ function Statistics({
       return;
     }
     setStatsLoading(true);
-    loadAllPlayerStats(auth.team.id, activeSeason).then(({ data, error }) => {
-      if (error || !data || Object.keys(data).length === 0) {
-        setStatsSource("local");
-        setPlayerStatsMap({});
-      } else {
-        setStatsSource("supabase");
-        setPlayerStatsMap(data);
-      }
+    const leagueMatchIds = events
+      .filter((event) => event.type === "Partita" && !isFriendlyMatch(event))
+      .map((event) => String(event.id))
+      .filter(Boolean);
+
+    Promise.all([
+      loadAllPlayerStats(auth.team.id, activeSeason),
+      leagueMatchIds.length
+        ? loadPlayerMatchesForPeriod(auth.team.id, leagueMatchIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]).then(([summaryResult, matchRowsResult]) => {
+      const summaryData = summaryResult?.data || {};
+      const matchRows = matchRowsResult?.data || [];
+      setPlayerStatsMap(summaryData);
+      setPlayerMatchStatsRows(matchRows);
+      setStatsSource(matchRows.length > 0 || Object.keys(summaryData).length > 0 ? "supabase" : "local");
+      setStatsLoading(false);
+    }).catch(() => {
+      setStatsSource("local");
+      setPlayerStatsMap({});
+      setPlayerMatchStatsRows([]);
       setStatsLoading(false);
     });
-  }, [auth.team?.id, activeSeason]);
+  }, [auth.team?.id, activeSeason, events]);
 
   useEffect(() => {
     if (!auth.team?.id || !effectiveSelectedPlayerId) {
@@ -245,7 +259,7 @@ function Statistics({
       : squadraFilter === "juniores"
       ? players.filter((p) => (p.gruppo || "prima") === "juniores")
       : players;
-  const baseStats = getStatsSummary(filteredEvents, filteredPlayers, playerStatsMap);
+  const baseStats = getStatsSummary(filteredEvents, filteredPlayers, playerStatsMap, playerMatchStatsRows);
 
     return [...baseStats]
       .filter((player) =>
@@ -319,6 +333,7 @@ function Statistics({
   }, [
     filteredEvents,
     players,
+    playerMatchStatsRows,
     playerStatsMap,
     sortBy,
     sortOrder,
@@ -1746,14 +1761,45 @@ function isCompletedTrainingSession(session, today, nowTime) {
   return getTrainingTime(session) <= nowTime;
 }
 
-function getStatsSummary(events, players, playerStatsMap = {}) {
+function getStatsSummary(events, players, playerStatsMap = {}, playerMatchStatsRows = []) {
   const today = localDateString();
   const now = new Date();
   const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const matchEvents = events.filter((e) => e.type === "Partita" && !isFriendlyMatch(e));
+  const matchIdSet = new Set(matchEvents.map((e) => String(e.id)).filter(Boolean));
+  const useMatchRows = playerMatchStatsRows.length > 0 && matchIdSet.size > 0;
   const trainingSessions = events
     .filter(isTrainingStatsEvent)
     .map((e) => ({ ...e, date: normalizeStatsDate(e.date) }))
     .filter((e) => isCompletedTrainingSession(e, today, nowTime));
+
+  const matchStatsByPlayer = playerMatchStatsRows.reduce((acc, row) => {
+    const matchId = String(row.match_id || "");
+    if (!matchIdSet.has(matchId)) return acc;
+
+    const pid = String(row.player_id);
+    if (!acc[pid]) {
+      acc[pid] = { appearances: 0, minutes_played: 0, goals: 0, assists: 0, yellow_cards: 0, red_cards: 0 };
+    }
+
+    const minutes = Number(row.minutes_played || 0);
+    const goals = Number(row.goals || 0);
+    const assists = Number(row.assists || 0);
+    const yellowCards = Number(row.yellow_cards || 0);
+    const redCards = Number(row.red_cards || 0);
+
+    acc[pid].minutes_played += minutes;
+    acc[pid].goals += goals;
+    acc[pid].assists += assists;
+    acc[pid].yellow_cards += yellowCards;
+    acc[pid].red_cards += redCards;
+    if (minutes > 0 || goals > 0 || assists > 0 || yellowCards > 0 || redCards > 0) {
+      acc[pid].appearances += 1;
+    }
+
+    return acc;
+  }, {});
+
   return players.map((player) => {
     const attendance = events.reduce(
       (acc, event) => {
@@ -1783,31 +1829,32 @@ function getStatsSummary(events, players, playerStatsMap = {}) {
       ? Math.round((trainingPresences / effectiveDenominator) * 100)
       : null;
 
-    const ps = playerStatsMap[String(player.id)] || {};
+    const playerKey = String(player.id);
+    const ps = playerStatsMap[playerKey] || {};
 
     // FIX #10: se playerStatsMap è vuoto (Supabase offline), calcola le stats
     // aggregate dalle partite locali (attendance blob) come fallback.
     // Nota: questa è una fonte secondaria — può divergere da player_stats su Supabase
     // se i dati non sono stati sincronizzati. Il badge "Dati locali" in UI avvisa l'utente.
-    const hasSupabaseStats = Object.keys(ps).length > 0;
-    const localMatchStats = hasSupabaseStats ? null : events
+    const hasSummaryStats = Object.keys(ps).length > 0;
+    const localMatchStats = useMatchRows || hasSummaryStats ? null : matchEvents
       .filter((e) => e.type === "Partita" && !isFriendlyMatch(e))
       .reduce(
         (acc, event) => {
           const d = event.attendance?.[player.id];
           if (!d || d.status === "Assente") return acc;
           acc.appearances += 1;
-          acc.minutes_played  += Number(d.minutes || 0);
+          acc.minutes_played  += Number(d.minutes_played ?? d.minutes ?? 0);
           acc.goals           += Number(d.goals || 0);
           acc.assists         += Number(d.assists || 0);
-          acc.yellow_cards    += Number(d.yellowCards || 0);
-          acc.red_cards       += Number(d.redCards || 0);
+          acc.yellow_cards    += Number(d.yellow_cards ?? d.yellowCards ?? 0);
+          acc.red_cards       += Number(d.red_cards ?? d.redCards ?? 0);
           return acc;
         },
         { appearances: 0, minutes_played: 0, goals: 0, assists: 0, yellow_cards: 0, red_cards: 0 }
       );
 
-    const src = hasSupabaseStats ? ps : (localMatchStats || {});
+    const src = useMatchRows ? (matchStatsByPlayer[playerKey] || {}) : (hasSummaryStats ? ps : (localMatchStats || {}));
     const presences = Number(src.appearances ?? 0);
     const minutes = Number(src.minutes_played ?? 0);
     const goals = Number(src.goals ?? 0);
