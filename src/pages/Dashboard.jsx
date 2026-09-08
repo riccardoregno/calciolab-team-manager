@@ -289,7 +289,8 @@ function Dashboard({
     });
   }, [matches, primaPlayers, playerMatchRows, playerStatsMap, playerRatingsMap]);
 
-  const totalGoals = playerStats.reduce((sum, p) => sum + p.goals, 0);
+  const seasonRecord = getSeasonRecord(matches);
+  const totalGoals = seasonRecord.goalsFor;
   const totalAssists = playerStats.reduce((sum, p) => sum + p.assists, 0);
   const totalMinutes = playerStats.reduce((sum, p) => sum + p.minutes, 0);
 
@@ -401,8 +402,6 @@ function Dashboard({
   const recentActivities = [...events]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 4);
-
-  const seasonRecord = getSeasonRecord(matches);
 
   const coachAlerts = useMemo(() => [
     ...getMatchOperationalAlerts(nextMatch, t),

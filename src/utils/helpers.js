@@ -1323,9 +1323,14 @@ export function generatePhysicalWorkout(players = [], tests = [], parameters = {
 export function parseMatchResult(result, match = null) {
   const teamGoals = match?.goalsScored ?? match?.goals_scored;
   const opponentGoals = match?.goalsConceded ?? match?.goals_conceded;
+  const hasTeamScore =
+    teamGoals !== undefined &&
+    opponentGoals !== undefined &&
+    String(teamGoals).trim() !== "" &&
+    String(opponentGoals).trim() !== "";
   const parsedTeamGoals = Number(teamGoals);
   const parsedOpponentGoals = Number(opponentGoals);
-  if (Number.isFinite(parsedTeamGoals) && Number.isFinite(parsedOpponentGoals)) {
+  if (hasTeamScore && Number.isFinite(parsedTeamGoals) && Number.isFinite(parsedOpponentGoals)) {
     const isAway = match?.location === "Trasferta";
     return {
       goalsFor: parsedTeamGoals,
@@ -1337,7 +1342,11 @@ export function parseMatchResult(result, match = null) {
 
   const structuredHomeGoals = match?.goalsFor ?? match?.goals_for;
   const structuredAwayGoals = match?.goalsAgainst ?? match?.goals_against;
-  const hasStructuredScore = structuredHomeGoals !== undefined && structuredAwayGoals !== undefined;
+  const hasStructuredScore =
+    structuredHomeGoals !== undefined &&
+    structuredAwayGoals !== undefined &&
+    String(structuredHomeGoals).trim() !== "" &&
+    String(structuredAwayGoals).trim() !== "";
   const parsedHomeGoals = hasStructuredScore ? Number(structuredHomeGoals) : null;
   const parsedAwayGoals = hasStructuredScore ? Number(structuredAwayGoals) : null;
   let homeGoals = Number.isFinite(parsedHomeGoals) ? parsedHomeGoals : null;
