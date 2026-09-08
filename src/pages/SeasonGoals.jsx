@@ -12,32 +12,16 @@ import { useSeasonGoals } from "../hooks/useSeasonGoals";
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
 import { useToast } from "../components/ui/Toast";
-import { parseMatchResult } from "../utils/helpers";
+import { getSeasonRecord } from "../utils/helpers";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getSeasonStats(matches = []) {
-  const played = matches.map((match) => parseMatchResult(match.result)).filter(Boolean);
-  let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0, cleanSheets = 0;
-  for (const result of played) {
-    const gf = result.goalsFor;
-    const ga = result.goalsAgainst;
-    goalsFor += gf;
-    goalsAgainst += ga;
-    if (ga === 0) cleanSheets++;
-    if (gf > ga) wins++;
-    else if (gf === ga) draws++;
-    else losses++;
-  }
+  const record = getSeasonRecord(matches);
   return {
-    played: played.length,
-    wins,
-    draws,
-    losses,
-    points: wins * 3 + draws,
-    goalsFor,
-    goalsAgainst,
-    cleanSheets,
+    ...record,
+    points: record.wins * 3 + record.draws,
+    cleanSheets: record.cleanSheets || 0,
   };
 }
 

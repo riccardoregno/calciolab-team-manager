@@ -13,7 +13,7 @@ import MetricStrip from "../components/ui/MetricStrip";
 import { SkeletonStatCard } from "../components/ui/Skeleton";
 import { fetchMatchRsvps } from "../services/rsvp";
 import { useAuth } from "../hooks/useAuth";
-import { loadAllPlayerStats, loadAllPlayerAvgRatings } from "../services/playerProfile";
+import { loadAllPlayerStats, loadAllPlayerAvgRatings, loadTeamPlayerMatches } from "../services/playerProfile";
 import { getTeamWellnessToday } from "../services/wellness";
 import { useTranslation } from "../i18n";
 import { getObjectiveStatusMeta } from "../constants/objectiveStatus";
@@ -159,6 +159,7 @@ function Dashboard({
 
   const [playerStatsMap, setPlayerStatsMap] = useState({});
   const [playerRatingsMap, setPlayerRatingsMap] = useState({});
+  const [playerMatchRows, setPlayerMatchRows] = useState([]);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState(null);
   const [teamWellnessToday, setTeamWellnessToday] = useState([]);
@@ -214,11 +215,13 @@ function Dashboard({
     Promise.all([
       loadAllPlayerStats(auth.team.id),
       loadAllPlayerAvgRatings(auth.team.id),
-    ]).then(([{ data, error }, { data: ratingsData }]) => {
+      loadTeamPlayerMatches(auth.team.id),
+    ]).then(([{ data, error }, { data: ratingsData }, { data: matchRows }]) => {
       if (!active) return;
       if (error) setStatsError(error.message || t("pages.dashboard.statsLoadError"));
       setPlayerStatsMap(data || {});
       setPlayerRatingsMap(ratingsData || {});
+      setPlayerMatchRows(matchRows || []);
       setStatsLoading(false);
     });
     return () => { active = false; };
@@ -239,8 +242,36 @@ function Dashboard({
   );
 
   const playerStats = useMemo(() => {
+    const matchIds = new Set(matches.map((match) => String(match.id)).filter(Boolean));
+    const matchRowsByPlayer = (playerMatchRows || []).reduce((acc, row) => {
+      if (matchIds.size > 0 && !matchIds.has(String(row.match_id))) return acc;
+      const playerId = String(row.player_id || "");
+      if (!playerId) return acc;
+      const minutes = Number(row.minutes_played || 0);
+      const goals = Number(row.goals || 0);
+      const assists = Number(row.assists || 0);
+      const yellowCards = Number(row.yellow_cards || 0);
+      const redCards = Number(row.red_cards || 0);
+      if (!acc[playerId]) {
+        acc[playerId] = { goals: 0, assists: 0, minutes_played: 0, yellow_cards: 0, red_cards: 0, appearances: 0 };
+      }
+      acc[playerId].goals += goals;
+      acc[playerId].assists += assists;
+      acc[playerId].minutes_played += minutes;
+      acc[playerId].yellow_cards += yellowCards;
+      acc[playerId].red_cards += redCards;
+      if (minutes > 0 || goals > 0 || assists > 0 || yellowCards > 0 || redCards > 0) {
+        acc[playerId].appearances += 1;
+      }
+      return acc;
+    }, {});
+    const hasMatchRows = Object.keys(matchRowsByPlayer).length > 0;
+
     return primaPlayers.map((player) => {
-      const stat = playerStatsMap[String(player.id)] || {};
+      const playerId = String(player.id);
+      const stat = hasMatchRows
+        ? matchRowsByPlayer[playerId] || {}
+        : playerStatsMap[playerId] || {};
       const avgRating = playerRatingsMap[String(player.id)] ?? null;
 
       return {
@@ -256,7 +287,7 @@ function Dashboard({
         avgRating,
       };
     });
-  }, [primaPlayers, playerStatsMap, playerRatingsMap]);
+  }, [matches, primaPlayers, playerMatchRows, playerStatsMap, playerRatingsMap]);
 
   const totalGoals = playerStats.reduce((sum, p) => sum + p.goals, 0);
   const totalAssists = playerStats.reduce((sum, p) => sum + p.assists, 0);

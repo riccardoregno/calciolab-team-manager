@@ -1317,28 +1317,62 @@ export function generatePhysicalWorkout(players = [], tests = [], parameters = {
   });
 }
 
-// Parsa un risultato tipo "2-1" → { goalsFor: 2, goalsAgainst: 1 }
-export function parseMatchResult(result) {
-  if (!result || typeof result !== "string") return null;
-  const m = result.trim().match(/^(\d+)\s*[-:]\s*(\d+)$/);
-  if (!m) return null;
-  return { goalsFor: parseInt(m[1], 10), goalsAgainst: parseInt(m[2], 10) };
+// Parsa un risultato tipo "2-1".
+// Se viene passato il match, interpreta la stringa come casa-trasferta e restituisce
+// i gol dal punto di vista della squadra; in trasferta quindi inverte i valori.
+export function parseMatchResult(result, match = null) {
+  const teamGoals = match?.goalsScored ?? match?.goals_scored;
+  const opponentGoals = match?.goalsConceded ?? match?.goals_conceded;
+  const parsedTeamGoals = Number(teamGoals);
+  const parsedOpponentGoals = Number(opponentGoals);
+  if (Number.isFinite(parsedTeamGoals) && Number.isFinite(parsedOpponentGoals)) {
+    const isAway = match?.location === "Trasferta";
+    return {
+      goalsFor: parsedTeamGoals,
+      goalsAgainst: parsedOpponentGoals,
+      homeGoals: isAway ? parsedOpponentGoals : parsedTeamGoals,
+      awayGoals: isAway ? parsedTeamGoals : parsedOpponentGoals,
+    };
+  }
+
+  const structuredHomeGoals = match?.goalsFor ?? match?.goals_for;
+  const structuredAwayGoals = match?.goalsAgainst ?? match?.goals_against;
+  const hasStructuredScore = structuredHomeGoals !== undefined && structuredAwayGoals !== undefined;
+  const parsedHomeGoals = hasStructuredScore ? Number(structuredHomeGoals) : null;
+  const parsedAwayGoals = hasStructuredScore ? Number(structuredAwayGoals) : null;
+  let homeGoals = Number.isFinite(parsedHomeGoals) ? parsedHomeGoals : null;
+  let awayGoals = Number.isFinite(parsedAwayGoals) ? parsedAwayGoals : null;
+
+  if (homeGoals === null || awayGoals === null) {
+    if (!result || typeof result !== "string") return null;
+    const m = result.trim().match(/^(\d+)\s*[-:]\s*(\d+)$/);
+    if (!m) return null;
+    homeGoals = parseInt(m[1], 10);
+    awayGoals = parseInt(m[2], 10);
+  }
+
+  if (match?.location === "Trasferta") {
+    return { goalsFor: awayGoals, goalsAgainst: homeGoals, homeGoals, awayGoals };
+  }
+
+  return { goalsFor: homeGoals, goalsAgainst: awayGoals, homeGoals, awayGoals };
 }
 
 // Aggrega tutti i risultati della stagione
 export function getSeasonRecord(matches = []) {
-  let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0, played = 0;
+  let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0, cleanSheets = 0, played = 0;
   for (const match of matches) {
-    const parsed = parseMatchResult(match.result);
+    const parsed = parseMatchResult(match.result, match);
     if (!parsed) continue;
     played++;
     goalsFor     += parsed.goalsFor;
     goalsAgainst += parsed.goalsAgainst;
+    if (parsed.goalsAgainst === 0) cleanSheets++;
     if (parsed.goalsFor > parsed.goalsAgainst)      wins++;
     else if (parsed.goalsFor === parsed.goalsAgainst) draws++;
     else                                              losses++;
   }
-  return { wins, draws, losses, goalsFor, goalsAgainst, played };
+  return { wins, draws, losses, goalsFor, goalsAgainst, cleanSheets, played };
 }
 
 // ─── Birthday & Age utilities ─────────────────────────────────────────────────

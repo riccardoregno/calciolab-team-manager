@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { loadBrandingAssets } from "./pdfBranding";
+import { parseMatchResult } from "./helpers";
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 const C = {
@@ -29,18 +30,16 @@ function pct(num, den) {
 }
 
 function resultText(match) {
-  const gs = Number(match.goalsScored ?? match.goals_scored ?? 0);
-  const gc = Number(match.goalsConceded ?? match.goals_conceded ?? 0);
-  if (match.goalsScored === undefined && match.goalsConceded === undefined) return "—";
-  return `${gs} - ${gc}`;
+  const parsed = parseMatchResult(match.result, match);
+  if (!parsed) return "—";
+  return `${parsed.homeGoals} - ${parsed.awayGoals}`;
 }
 
 function resultOutcome(match) {
-  const gs = Number(match.goalsScored ?? match.goals_scored ?? 0);
-  const gc = Number(match.goalsConceded ?? match.goals_conceded ?? 0);
-  if (match.goalsScored === undefined && match.goalsConceded === undefined) return null;
-  if (gs > gc) return "V";
-  if (gs < gc) return "S";
+  const parsed = parseMatchResult(match.result, match);
+  if (!parsed) return null;
+  if (parsed.goalsFor > parsed.goalsAgainst) return "V";
+  if (parsed.goalsFor < parsed.goalsAgainst) return "S";
   return "P";
 }
 
@@ -177,10 +176,10 @@ export async function generateSeasonReport({ players = [], sessions = [], matche
   const wins    = played.filter((m) => resultOutcome(m) === "V").length;
   const draws   = played.filter((m) => resultOutcome(m) === "P").length;
   const losses  = played.filter((m) => resultOutcome(m) === "S").length;
-  const gf      = played.reduce((s, m) => s + Number(m.goalsScored ?? m.goals_scored ?? 0), 0);
-  const gc      = played.reduce((s, m) => s + Number(m.goalsConceded ?? m.goals_conceded ?? 0), 0);
+  const gf      = played.reduce((s, m) => s + (parseMatchResult(m.result, m)?.goalsFor || 0), 0);
+  const gc      = played.reduce((s, m) => s + (parseMatchResult(m.result, m)?.goalsAgainst || 0), 0);
   const points  = wins * 3 + draws;
-  const cleanSheets = played.filter((m) => Number(m.goalsConceded ?? m.goals_conceded ?? 0) === 0).length;
+  const cleanSheets = played.filter((m) => parseMatchResult(m.result, m)?.goalsAgainst === 0).length;
 
   const stats = [
     ["Partite giocate", played.length, "Allenamenti", sessions.length],

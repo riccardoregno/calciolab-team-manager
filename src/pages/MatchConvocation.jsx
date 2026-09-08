@@ -7,7 +7,7 @@ import MetricStrip from "../components/ui/MetricStrip";
 import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
-import { formatDate, normalizeAppSettings } from "../utils/helpers";
+import { formatDate, getLineup, normalizeAppSettings } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { createRsvpLink, fetchMatchRsvps, sendMatchConvocationEmail } from "../services/rsvp";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -198,6 +198,49 @@ function buildConvocationRosterText(convocati) {
     .join("\n");
 }
 
+function syncLineupWithCalledPlayers(match, selectedIds) {
+  const nextCalledUpIds = selectedIds.map(String);
+  const calledSet = new Set(nextCalledUpIds);
+  const currentLineup = getLineup(match);
+  const starterIds = (currentLineup.starterIds || [])
+    .map(String)
+    .filter((pid) => calledSet.has(pid));
+  const starterSet = new Set(starterIds);
+  const previousBenchIds = (currentLineup.benchIds || [])
+    .map(String)
+    .filter((pid) => calledSet.has(pid) && !starterSet.has(pid));
+  const previousBenchSet = new Set(previousBenchIds);
+  const benchIds = [
+    ...previousBenchIds,
+    ...nextCalledUpIds.filter((pid) => !starterSet.has(pid) && !previousBenchSet.has(pid)),
+  ];
+  const nextFormationPlans = Object.fromEntries(
+    Object.entries(currentLineup.formationPlans || {}).map(([halfKey, plan]) => [
+      halfKey,
+      {
+        ...plan,
+        slots: Object.fromEntries(
+          Object.entries(plan?.slots || {}).filter(([, playerId]) => calledSet.has(String(playerId)))
+        ),
+      },
+    ])
+  );
+  const filterByCalled = (values = {}) =>
+    Object.fromEntries(Object.entries(values).filter(([playerId]) => calledSet.has(String(playerId))));
+
+  return {
+    ...currentLineup,
+    calledUpIds: nextCalledUpIds,
+    starterIds,
+    benchIds,
+    captainId: calledSet.has(String(currentLineup.captainId || "")) ? currentLineup.captainId : "",
+    viceCaptainId: calledSet.has(String(currentLineup.viceCaptainId || "")) ? currentLineup.viceCaptainId : "",
+    roles: filterByCalled(currentLineup.roles),
+    shirtNumbers: filterByCalled(currentLineup.shirtNumbers),
+    formationPlans: nextFormationPlans,
+  };
+}
+
 async function copyText(text) {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
@@ -356,24 +399,34 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   function persistConvocazione(pub) {
     if (!canManage) return;
     const cleanDetails = normalizeConvocationDetails(details, defaultDetails);
+    const savedAt = new Date().toISOString();
+    const nextPublished = pub || Boolean(existing.published);
     const newConv = {
       playerIds:   selectedIds,
       notes:       notes.trim(),
       details:     cleanDetails,
       communicationText: fullMessage.trim(),
       communicationEdited,
-      published:   pub,
-      publishedAt: pub ? (existing.publishedAt || new Date().toISOString()) : (existing.publishedAt || null),
+      published:   nextPublished,
+      savedAt,
+      publishedAt: nextPublished ? (existing.publishedAt || savedAt) : null,
       sentAt:      existing.sentAt || null,
       sentChannel: existing.sentChannel || "",
     };
     setMatches((prevMatches) =>
       prevMatches.map((m) =>
-        String(m.id) === String(id) ? { ...m, convocazione: newConv } : m
+        String(m.id) === String(id)
+          ? { ...m, convocazione: newConv, lineup: syncLineupWithCalledPlayers(m, selectedIds) }
+          : m
       )
     );
-    setPublished(pub);
+    setPublished(nextPublished);
     setSaved(true);
+  }
+
+  function saveAndOpenLineup() {
+    persistConvocazione(false);
+    navigate(`/match-day/${id}`);
   }
 
   async function downloadDistinta() {
@@ -516,7 +569,9 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
 
     setMatches((prevMatches) =>
       prevMatches.map((m) =>
-        String(m.id) === String(id) ? { ...m, convocazione: newConv } : m
+        String(m.id) === String(id)
+          ? { ...m, convocazione: newConv, lineup: syncLineupWithCalledPlayers(m, selectedIds) }
+          : m
       )
     );
     setSaved(true);
@@ -869,7 +924,10 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
 
         <div style={s.selectedPanel}>
           <div style={s.selectedPanelHeader}>
-            <strong>Convocati selezionati</strong>
+            <div>
+              <strong>Convocati selezionati</strong>
+              <p style={s.selectedPanelHint}>{t("pages.matchConvocation.selectedPlayersHint")}</p>
+            </div>
             <span>{orderedConvocati.length} giocatori</span>
           </div>
           {orderedConvocati.length > 0 ? (
@@ -893,6 +951,16 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
             </div>
           ) : (
             <p style={s.emptySelected}>Nessun convocato selezionato.</p>
+          )}
+          {canManage && (
+            <div style={s.selectedPanelActions}>
+              <Button variant="ghost" onClick={() => persistConvocazione(false)} disabled={count === 0}>
+                {t("pages.matchConvocation.saveCalledUp")}
+              </Button>
+              <Button variant="ghost" onClick={saveAndOpenLineup} disabled={count === 0}>
+                {t("pages.matchConvocation.goToLineup")}
+              </Button>
+            </div>
           )}
         </div>
 
@@ -1481,10 +1549,25 @@ const s = {
     fontSize: 13,
     flexWrap: "wrap",
   },
+  selectedPanelHint: {
+    margin: "4px 0 0",
+    color: "#93c5fd",
+    fontSize: 12,
+    lineHeight: 1.35,
+    fontWeight: 700,
+    textTransform: "none",
+  },
   selectedGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
     gap: 8,
+  },
+  selectedPanelActions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 12,
   },
   selectedChip: {
     display: "flex",
