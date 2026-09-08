@@ -566,10 +566,14 @@ function Dashboard({
                     }
                   />
                   <KpiCard
-                    label={t("pages.dashboard.totalMinutes")}
-                    value={totalMinutes}
+                    label={t("pages.dashboard.mostMinutes")}
+                    value={realTopMinutes?.minutes || 0}
                     icon="⏱️"
-                    note={realTopMinutes?.minutes ? t("pages.dashboard.topPlayerNote", { name: realTopMinutes.name }) : t("pages.dashboard.noMinutes")}
+                    note={
+                      realTopMinutes?.minutes
+                        ? t("pages.dashboard.topMinutesNote", { name: realTopMinutes.name, total: totalMinutes })
+                        : t("pages.dashboard.noMinutes")
+                    }
                   />
                 </>
               )}

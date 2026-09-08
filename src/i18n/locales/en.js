@@ -232,6 +232,7 @@ export const en = {
       noGoals: "No goals",
       noAssists: "No assists",
       noMinutes: "No minutes recorded",
+      topMinutesNote: "Top: {{name}} · team total {{total}}'",
       seasonRecord: "Season record",
       matchesPlayed: "matches played",
       goalsMade: "goals scored",
