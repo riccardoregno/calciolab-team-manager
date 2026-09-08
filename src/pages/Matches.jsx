@@ -81,6 +81,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   const [quickStatsMatchId, setQuickStatsMatchId] = useState(null);
   const [quickStatsDraft, setQuickStatsDraft] = useState({});
   const [quickStatsSaving, setQuickStatsSaving] = useState(false);
+  const [matchView, setMatchView] = useState("all");
   const [form, setForm] = useState(() => loadMatchDraft(`${MATCH_DRAFT_KEY}:new`, emptyMatch(clubLogo)));
   const [formErrors, setFormErrors] = useState({});
   const [importSummary, setImportSummary] = useState(null);
@@ -95,10 +96,27 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
     () => getFocusMatch(matches, localDateString()),
     [matches]
   );
+  const playedMatchIds = useMemo(
+    () => new Set(matches.filter((match) => parseMatchResult(match.result, match)).map((match) => String(match.id))),
+    [matches]
+  );
+  const visibleMatches = useMemo(() => {
+    const focusId = String(focusMatch?.id || "");
+    return sortedMatches.filter((match) => {
+      if (focusId && String(match.id) === focusId) return false;
+      const played = playedMatchIds.has(String(match.id));
+      if (matchView === "played") return played;
+      if (matchView === "upcoming") return !played;
+      return true;
+    });
+  }, [focusMatch, matchView, playedMatchIds, sortedMatches]);
 
   function openResultEdit(match) {
-    const parts = String(match.result || "").match(/(\d+)\s*[-:]\s*(\d+)/);
-    setResultDraft({ home: parts ? parts[1] : "", away: parts ? parts[2] : "" });
+    const parsed = parseMatchResult(match.result, match);
+    setResultDraft({
+      home: parsed ? String(parsed.goalsFor) : "",
+      away: parsed ? String(parsed.goalsAgainst) : "",
+    });
     setResultEditId(match.id);
   }
 
@@ -146,8 +164,13 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   function saveResult(matchId) {
     const h = resultDraft.home.trim();
     const a = resultDraft.away.trim();
-    const newResult = h !== "" && a !== "" ? `${Number(h)}-${Number(a)}` : "";
-    setMatches((prev) => prev.map((m) => m.id === matchId ? { ...m, result: newResult, goalsFor: h, goalsAgainst: a } : m));
+    setMatches((prev) => prev.map((m) => {
+      if (m.id !== matchId) return m;
+      return {
+        ...m,
+        ...buildTeamScorePayload(m, h, a),
+      };
+    }));
     setResultEditId(null);
   }
 
@@ -235,14 +258,11 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
     savingRef.current = true;
 
     // Calcola result dalla coppia strutturata; se i campi sono vuoti la partita è "In programma"
-    const computedResult =
-      form.goalsFor !== "" && form.goalsAgainst !== ""
-        ? `${Number(form.goalsFor)}-${Number(form.goalsAgainst)}`
-        : "";
+    const scorePayload = buildTeamScorePayload(form, form.goalsFor, form.goalsAgainst);
 
     const payload = {
       ...form,
-      result: computedResult,
+      ...scorePayload,
       id: editingId || createId("match"),
       type: "Partita",
       title: getMatchTitle(form, clubName).plain,
@@ -500,7 +520,17 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
             gap: 14,
           }}
         >
-          {sortedMatches.map((match) => (
+          <MatchListToolbar
+            t={t}
+            activeView={matchView}
+            onChange={setMatchView}
+            counts={{
+              all: Math.max(0, sortedMatches.length - (focusMatch ? 1 : 0)),
+              played: visibleCount(sortedMatches, focusMatch, playedMatchIds, "played"),
+              upcoming: visibleCount(sortedMatches, focusMatch, playedMatchIds, "upcoming"),
+            }}
+          />
+          {visibleMatches.map((match) => (
             <MatchCard
               key={match.id}
               match={match}
@@ -529,6 +559,11 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
               suppressQuickStatsPanel={String(focusMatch?.id || "") === String(match.id)}
             />
           ))}
+          {visibleMatches.length === 0 && (
+            <AppCard>
+              <p style={{ color: "#94a3b8", margin: 0 }}>{t("pages.matches.noViewMatches")}</p>
+            </AppCard>
+          )}
         </div>
       )}
 
@@ -794,6 +829,38 @@ function PreviewStat({ label, value, tone = "#e2e8f0" }) {
   );
 }
 
+function MatchListToolbar({ t, activeView, onChange, counts }) {
+  const views = [
+    ["all", t("pages.matches.viewAll"), counts.all],
+    ["played", t("pages.matches.viewPlayed"), counts.played],
+    ["upcoming", t("pages.matches.viewUpcoming"), counts.upcoming],
+  ];
+
+  return (
+    <div style={matchStyles.listToolbar}>
+      <div>
+        <h3 style={matchStyles.listTitle}>{t("pages.matches.historyAccessTitle")}</h3>
+        <p style={matchStyles.listSubtitle}>{t("pages.matches.historyAccessSubtitle")}</p>
+      </div>
+      <div style={matchStyles.segmented}>
+        {views.map(([key, label, count]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(key)}
+            style={{
+              ...matchStyles.segmentButton,
+              ...(activeView === key ? matchStyles.segmentButtonActive : {}),
+            }}
+          >
+            {label} <span style={matchStyles.segmentCount}>{count}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MatchFocusCard({
   match,
   clubName,
@@ -851,7 +918,8 @@ function MatchFocusCard({
         <div style={matchStyles.focusActions}>
           <div style={matchStyles.focusScoreBox}>
             {resultEditId === match.id ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 7, justifyContent: "center" }}>
+              <div style={matchStyles.scoreEditWrap}>
+                <span style={matchStyles.scoreEditLabel}>{t("pages.matches.scoreForShort")}</span>
                 <input
                   type="number"
                   min="0"
@@ -859,7 +927,7 @@ function MatchFocusCard({
                   onChange={(e) => setResultDraft((draft) => ({ ...draft, home: e.target.value }))}
                   style={matchStyles.scoreInput}
                 />
-                <span style={{ fontSize: 24, fontWeight: 900, color: "#64748b" }}>-</span>
+                <span style={matchStyles.scoreEditLabel}>{t("pages.matches.scoreAgainstShort")}</span>
                 <input
                   type="number"
                   min="0"
@@ -872,7 +940,7 @@ function MatchFocusCard({
               </div>
             ) : (
               <Button variant={match.result ? "ghost" : "primary"} onClick={canManage ? () => openResultEdit(match) : undefined} style={{ width: "100%" }}>
-                {match.result ? `Risultato ${match.result}` : "Inserisci risultato"}
+                {match.result ? `${t("pages.matches.resultPrefix")} ${formatTeamScore(match)}` : t("pages.matches.addResult")}
               </Button>
             )}
           </div>
@@ -1043,7 +1111,8 @@ function MatchCard({
             }}
           >
             {resultEditId === match.id ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 7, justifyContent: "center" }}>
+              <div style={matchStyles.scoreEditWrap}>
+                <span style={matchStyles.scoreEditLabel}>{t("pages.matches.scoreForShort")}</span>
                 <input
                   type="number"
                   min="0"
@@ -1051,7 +1120,7 @@ function MatchCard({
                   onChange={(e) => setResultDraft((draft) => ({ ...draft, home: e.target.value }))}
                   style={matchStyles.scoreInput}
                 />
-                <span style={{ fontSize: 24, fontWeight: 900, color: "#64748b" }}>-</span>
+                <span style={matchStyles.scoreEditLabel}>{t("pages.matches.scoreAgainstShort")}</span>
                 <input
                   type="number"
                   min="0"
@@ -1079,7 +1148,7 @@ function MatchCard({
                 }}
                 title={canManage ? t("pages.matches.editResult") : undefined}
               >
-                {match.result || (canManage ? `+ ${t("pages.matches.addResult")}` : "-")}
+                {match.result ? formatTeamScore(match) : (canManage ? `+ ${t("pages.matches.addResult")}` : "-")}
               </button>
             )}
           </div>
@@ -1090,7 +1159,7 @@ function MatchCard({
             </Button>
           </Link>
           <Link to={`/match-day/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
-            <Button variant="ghost" style={{ width: "100%" }}>{t("pages.matches.matchSheet")}</Button>
+            <Button variant="ghost" style={{ width: "100%" }}>{t("pages.matches.openMatch")}</Button>
           </Link>
           <Link to={`/match-stats/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
             <Button variant="ghost" style={{ width: "100%" }}>{t("pages.matches.statistics")}</Button>
@@ -1278,7 +1347,7 @@ function clearMatchDraft(id = "new") {
 }
 
 function matchToForm(match) {
-  const parsed = parseMatchResult(match.result);
+  const parsed = parseMatchResult(match.result, match);
   return {
     opponent: match.opponent || "",
     date: match.date || localDateString(),
@@ -1301,6 +1370,37 @@ function matchToForm(match) {
     matchPlan: match.matchPlan || "",
     staffNotes: match.staffNotes || "",
   };
+}
+
+function buildTeamScorePayload(match, goalsForRaw, goalsAgainstRaw) {
+  const goalsFor = String(goalsForRaw ?? "").trim();
+  const goalsAgainst = String(goalsAgainstRaw ?? "").trim();
+  if (goalsFor === "" || goalsAgainst === "") {
+    return {
+      result: "",
+      goalsFor: "",
+      goalsAgainst: "",
+      goalsScored: "",
+      goalsConceded: "",
+    };
+  }
+
+  const scored = Number(goalsFor);
+  const conceded = Number(goalsAgainst);
+  const homeGoals = match.location === "Trasferta" ? conceded : scored;
+  const awayGoals = match.location === "Trasferta" ? scored : conceded;
+  return {
+    result: `${homeGoals}-${awayGoals}`,
+    goalsFor: String(homeGoals),
+    goalsAgainst: String(awayGoals),
+    goalsScored: String(scored),
+    goalsConceded: String(conceded),
+  };
+}
+
+function formatTeamScore(match) {
+  const parsed = parseMatchResult(match.result, match);
+  return parsed ? `${parsed.goalsFor}-${parsed.goalsAgainst}` : (match.result || "-");
 }
 
 function emptyMatch(homeLogo = "") {
@@ -1474,6 +1574,15 @@ function compareMatchesByEncounterOrder(a, b, todayKey) {
   return direction * compareMatchDateTime(a, b);
 }
 
+function visibleCount(matches, focusMatch, playedMatchIds, view) {
+  const focusId = String(focusMatch?.id || "");
+  return matches.filter((match) => {
+    if (focusId && String(match.id) === focusId) return false;
+    const played = playedMatchIds.has(String(match.id));
+    return view === "played" ? played : !played;
+  }).length;
+}
+
 function getFocusMatch(matches, todayKey) {
   const dated = matches.filter((match) => match.date);
   const past = dated
@@ -1499,19 +1608,11 @@ function normalizeSortTime(value) {
 }
 
 function getMatchStatus(match) {
-  const result = String(match.result || "").trim();
-  if (!result) return "In programma";
+  const parsed = parseMatchResult(match.result, match);
+  if (!parsed) return "In programma";
 
-  const score = result.match(/(\d+)\s*[-:]\s*(\d+)/);
-  if (!score) return "In programma";
-
-  const homeGoals = Number(score[1]);
-  const awayGoals = Number(score[2]);
-  const isAway = match.location === "Trasferta";
-  const clubGoals = isAway ? awayGoals : homeGoals;
-  const opponentGoals = isAway ? homeGoals : awayGoals;
-  if (clubGoals > opponentGoals) return "Vinta";
-  if (clubGoals < opponentGoals) return "Persa";
+  if (parsed.goalsFor > parsed.goalsAgainst) return "Vinta";
+  if (parsed.goalsFor < parsed.goalsAgainst) return "Persa";
   return "Pareggio";
 }
 
@@ -1611,6 +1712,19 @@ const matchStyles = {
     color: "#f1f5f9",
     padding: "5px 2px",
   },
+  scoreEditWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: 7,
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
+  scoreEditLabel: {
+    color: "#94a3b8",
+    fontSize: 10,
+    fontWeight: 900,
+    textTransform: "uppercase",
+  },
   iconSave: {
     background: "#22c55e",
     border: "none",
@@ -1628,6 +1742,49 @@ const matchStyles = {
     fontSize: 16,
     padding: "6px 9px",
     cursor: "pointer",
+  },
+  listToolbar: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    flexWrap: "wrap",
+    padding: "2px 2px 4px",
+  },
+  listTitle: {
+    margin: 0,
+    color: "#f8fafc",
+    fontSize: 18,
+    lineHeight: 1.2,
+  },
+  listSubtitle: {
+    margin: "4px 0 0",
+    color: "#94a3b8",
+    fontSize: 13,
+  },
+  segmented: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  segmentButton: {
+    border: "1px solid rgba(148,163,184,0.22)",
+    background: "rgba(15,23,42,0.7)",
+    color: "#cbd5e1",
+    borderRadius: 8,
+    padding: "9px 12px",
+    fontSize: 13,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  segmentButtonActive: {
+    borderColor: "rgba(56,189,248,0.55)",
+    background: "rgba(14,165,233,0.18)",
+    color: "#f8fafc",
+  },
+  segmentCount: {
+    color: "#7dd3fc",
+    marginLeft: 4,
   },
   detailLabel: {
     display: "block",
