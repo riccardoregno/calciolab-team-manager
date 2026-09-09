@@ -78,20 +78,26 @@ function getDefaultStatus(player, dateStr) {
   return "Presente";
 }
 
-// Le partite ufficiali (campionato/coppa) non hanno una riga "attendance"
-// modificabile come le sedute: la presenza è quella decisa in Convocazione
-// (match.convocazione.playerIds), ma SOLO se la convocazione è stata
-// effettivamente pubblicata (match.convocazione.published === true) — una
-// bozza con dei nomi selezionati ma non pubblicata non conta ancora come
-// decisione definitiva. "Assente" va segnato SOLO se c'è una vera
-// indisponibilità dichiarata (ferie/permesso/infortunio/squalifica) per quella
-// data, oppure se la convocazione è pubblicata e il giocatore non ne fa parte.
-// Le amichevoli invece non richiedono affatto convocazione: si comportano
-// come un allenamento normale (vedi getSessionStatus).
+function getMatchPlayerIds(match) {
+  return [...new Set([
+    ...(match?.convocazione?.playerIds || []),
+    ...(match?.lineup?.calledUpIds || []),
+    ...(match?.lineup?.starterIds || []),
+    ...(match?.lineup?.benchIds || []),
+  ].map(String).filter(Boolean))];
+}
+
+// Le partite ufficiali (campionato/coppa) non hanno una presenza "di default":
+// risulta Presente solo chi è in convocazione salvata/pubblicata, in distinta
+// o ha una presenza gara registrata esplicitamente. Tutti gli altri restano
+// Assenti nella matrice, senza impatto sulle multe (campionato/coppa escluse).
+// Le amichevoli invece non richiedono convocazione: si comportano come un
+// allenamento normale (vedi getSessionStatus).
 function getMatchStatus(player, session) {
   const unavailableStatus = getUnavailabilityStatus(player, session.date);
   if (unavailableStatus) return unavailableStatus;
-  if (!session.convocationPublished) return "Presente";
+  const explicitStatus = session.attendance?.[String(player.id)]?.status;
+  if (explicitStatus && STATUS_META[explicitStatus]) return explicitStatus;
   const convocatiIds = session.convocatiIds || [];
   return convocatiIds.includes(String(player.id)) ? "Presente" : "Assente";
 }
@@ -232,7 +238,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
         // ma normalizziamo comunque per non rompersi su dati importati o futuri.
         isFriendly: String(match.matchKind || "").trim().toLowerCase() === "amichevole",
         convocationPublished: Boolean(match.convocazione?.published),
-        convocatiIds: (match.convocazione?.playerIds || []).map(String),
+        convocatiIds: getMatchPlayerIds(match),
         attendance: match.attendance || {},
       })),
     [matches]
