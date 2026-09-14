@@ -72,6 +72,26 @@ function getTrainingThemeLabel(theme, t) {
   return t(TRAINING_THEME_LABEL_KEYS[theme] || "pages.trainings.themeFallback");
 }
 
+function getDisplayPlayerName(player = {}) {
+  return player.name || [player.firstName, player.lastName].filter(Boolean).join(" ") || "-";
+}
+
+function getTopPlayerByStat(players = [], statKey) {
+  return [...players]
+    .filter((player) => Number(player[statKey] || 0) > 0)
+    .sort((a, b) => {
+      const byStat = Number(b[statKey] || 0) - Number(a[statKey] || 0);
+      if (byStat !== 0) return byStat;
+      const byGoals = Number(b.goals || 0) - Number(a.goals || 0);
+      if (byGoals !== 0) return byGoals;
+      const byAssists = Number(b.assists || 0) - Number(a.assists || 0);
+      if (byAssists !== 0) return byAssists;
+      const byMinutes = Number(b.minutes || 0) - Number(a.minutes || 0);
+      if (byMinutes !== 0) return byMinutes;
+      return getDisplayPlayerName(a).localeCompare(getDisplayPlayerName(b), "it", { sensitivity: "base" });
+    })[0] ?? null;
+}
+
 function SortableSection({ id, children }) {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -267,7 +287,7 @@ function Dashboard({
     }, {});
     const hasMatchRows = Object.keys(matchRowsByPlayer).length > 0;
 
-    return primaPlayers.map((player) => {
+    return players.map((player) => {
       const playerId = String(player.id);
       const stat = hasMatchRows
         ? matchRowsByPlayer[playerId] || {}
@@ -276,7 +296,7 @@ function Dashboard({
 
       return {
         id: player.id,
-        name: player.name,
+        name: getDisplayPlayerName(player),
         role: player.role || "",
         goals: Number(stat.goals || 0),
         assists: Number(stat.assists || 0),
@@ -287,17 +307,17 @@ function Dashboard({
         avgRating,
       };
     });
-  }, [matches, primaPlayers, playerMatchRows, playerStatsMap, playerRatingsMap]);
+  }, [matches, players, playerMatchRows, playerStatsMap, playerRatingsMap]);
 
   const seasonRecord = getSeasonRecord(matches);
   const totalGoals = seasonRecord.goalsFor;
   const totalAssists = playerStats.reduce((sum, p) => sum + p.assists, 0);
   const totalMinutes = playerStats.reduce((sum, p) => sum + p.minutes, 0);
 
-  const realTopScorer = [...playerStats].sort((a, b) => b.goals - a.goals)[0];
-  const realTopAssistman = [...playerStats].sort((a, b) => b.assists - a.assists)[0];
-  const realTopMinutes = [...playerStats].sort((a, b) => b.minutes - a.minutes)[0];
-  const realTopPresence = [...playerStats].sort((a, b) => b.appearances - a.appearances)[0];
+  const realTopScorer = getTopPlayerByStat(playerStats, "goals");
+  const realTopAssistman = getTopPlayerByStat(playerStats, "assists");
+  const realTopMinutes = getTopPlayerByStat(playerStats, "minutes");
+  const realTopPresence = getTopPlayerByStat(playerStats, "appearances");
   const realTopRating = [...playerStats]
     .filter((p) => p.avgRating !== null)
     .sort((a, b) => b.avgRating - a.avgRating)[0] ?? null;
