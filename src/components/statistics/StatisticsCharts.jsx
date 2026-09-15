@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { normalizeRoleToGroup } from "../../utils/helpers";
+import { normalizeRoleToGroup, parseMatchResult } from "../../utils/helpers";
 
 /* ─── Tooltip style ─────────────────────────────────────────── */
 const TT = {
@@ -52,42 +52,11 @@ function normalizeRole(role = "") {
   return normalizeRoleToGroup(role) || "Altro";
 }
 
-/**
- * Estrae W/D/L e gol da una stringa risultato come
- * "2-1", "Vittoria 2-1", "Pareggio 0-0", "Sconfitta 1-3", "1:2"
- * Restituisce { outcome: "W"|"D"|"L"|null, goalsFor: n, goalsAgainst: n }
- */
-function parseResult(result = "") {
-  const s = String(result).trim();
-  if (!s) return { outcome: null, goalsFor: 0, goalsAgainst: 0 };
-
-  const lower = s.toLowerCase();
-
-  // Determina esito da parola chiave
-  let outcome = null;
-  if (lower.includes("vittoria") || lower.startsWith("v ") || lower === "v") outcome = "W";
-  else if (lower.includes("pareggio") || lower.startsWith("p ") || lower === "p") outcome = "D";
-  else if (lower.includes("sconfitta") || lower.startsWith("s ") || lower === "s") outcome = "L";
-
-  // Cerca pattern score "X-Y" o "X:Y"
-  const match = s.match(/(\d+)\s*[-:]\s*(\d+)/);
-  let goalsFor = 0;
-  let goalsAgainst = 0;
-
-  if (match) {
-    const a = Number(match[1]);
-    const b = Number(match[2]);
-    goalsFor = a;
-    goalsAgainst = b;
-    // Se non abbiamo già l'esito dalle parole chiave, derivalo dai numeri
-    if (!outcome) {
-      if (a > b) outcome = "W";
-      else if (a === b) outcome = "D";
-      else outcome = "L";
-    }
-  }
-
-  return { outcome, goalsFor, goalsAgainst };
+function isFriendlyMatch(event) {
+  if (event?.type !== "Partita") return false;
+  if (event.isFriendly === true || event.friendly === true) return true;
+  const fields = [event.matchKind, event.match_kind, event.competition, event.category, event.kind, event.title, event.notes];
+  return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
 }
 
 /* ─── Componente principale ─────────────────────────────────── */
@@ -96,7 +65,13 @@ export default function StatisticsCharts({ stats, history, selectedPlayer, event
   /* ── Dati esistenti ── */
   const topScorers = [...stats]
     .filter((p) => p.goals > 0 || p.assists > 0)
-    .sort((a, b) => b.goalContributions - a.goalContributions)
+    .sort((a, b) => {
+      const byGoals = Number(b.goals || 0) - Number(a.goals || 0);
+      if (byGoals !== 0) return byGoals;
+      const byAssists = Number(b.assists || 0) - Number(a.assists || 0);
+      if (byAssists !== 0) return byAssists;
+      return String(a.name || "").localeCompare(String(b.name || ""), "it", { sensitivity: "base" });
+    })
     .slice(0, 10)
     .map((p) => ({ name: p.name.split(" ")[0], goals: p.goals, assists: p.assists }));
 
@@ -137,11 +112,14 @@ export default function StatisticsCharts({ stats, history, selectedPlayer, event
 
   /* ── Nuovo — Andamento stagione + Gol fatti/subiti ── */
   const matchEvents = [...events]
-    .filter((e) => e.type === "Partita" && e.date)
+    .filter((e) => e.type === "Partita" && e.date && !isFriendlyMatch(e))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const seasonTrend = matchEvents.reduce((acc, m, i) => {
-    const { outcome, goalsFor, goalsAgainst } = parseResult(m.result);
+    const parsed = parseMatchResult(m.result, m);
+    if (!parsed) return acc;
+    const { goalsFor, goalsAgainst } = parsed;
+    const outcome = goalsFor > goalsAgainst ? "W" : goalsFor === goalsAgainst ? "D" : "L";
     const pts = outcome === "W" ? 3 : outcome === "D" ? 1 : outcome === "L" ? 0 : null;
     const prev = acc[i - 1];
     const cumulativePoints = pts !== null

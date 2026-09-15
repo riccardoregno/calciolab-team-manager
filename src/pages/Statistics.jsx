@@ -29,6 +29,26 @@ function isTrainingStatsEvent(event) {
   return (event?.type || "Allenamento") === "Allenamento" || isFriendlyMatch(event);
 }
 
+function getDisplayPlayerName(player = {}) {
+  return player.name || [player.firstName, player.lastName].filter(Boolean).join(" ") || "-";
+}
+
+function getTopPlayerByStat(players = [], statKey) {
+  return [...players]
+    .filter((player) => Number(player[statKey] || 0) > 0)
+    .sort((a, b) => {
+      const byStat = Number(b[statKey] || 0) - Number(a[statKey] || 0);
+      if (byStat !== 0) return byStat;
+      const byGoals = Number(b.goals || 0) - Number(a.goals || 0);
+      if (byGoals !== 0) return byGoals;
+      const byAssists = Number(b.assists || 0) - Number(a.assists || 0);
+      if (byAssists !== 0) return byAssists;
+      const byMinutes = Number(b.minutes || 0) - Number(a.minutes || 0);
+      if (byMinutes !== 0) return byMinutes;
+      return getDisplayPlayerName(a).localeCompare(getDisplayPlayerName(b), "it", { sensitivity: "base" });
+    })[0] ?? null;
+}
+
 function Statistics({
   events, players, appSettings = {}, setAppSettings }) {
   const { t } = useTranslation();
@@ -254,12 +274,30 @@ function Statistics({
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const stats = useMemo(() => {
-    const filteredPlayers = squadraFilter === "prima"
+    const groupPlayers = squadraFilter === "prima"
       ? players.filter((p) => (p.gruppo || "prima") === "prima")
       : squadraFilter === "juniores"
       ? players.filter((p) => (p.gruppo || "prima") === "juniores")
       : players;
-  const baseStats = getStatsSummary(filteredEvents, filteredPlayers, playerStatsMap, playerMatchStatsRows);
+    const filteredMatchIds = new Set(
+      filteredEvents
+        .filter((event) => event.type === "Partita" && !isFriendlyMatch(event))
+        .map((event) => String(event.id))
+        .filter(Boolean)
+    );
+    const statPlayerIds = new Set(
+      playerMatchStatsRows
+        .filter((row) => filteredMatchIds.has(String(row.match_id || "")))
+        .map((row) => String(row.player_id || ""))
+        .filter(Boolean)
+    );
+    const filteredPlayers = squadraFilter === "tutti"
+      ? groupPlayers
+      : players.filter((player) => (
+          groupPlayers.some((item) => String(item.id) === String(player.id)) ||
+          statPlayerIds.has(String(player.id))
+        ));
+    const baseStats = getStatsSummary(filteredEvents, filteredPlayers, playerStatsMap, playerMatchStatsRows);
 
     return [...baseStats]
       .filter((player) =>
@@ -358,8 +396,8 @@ function Statistics({
 
   const history = getPlayerHistory(filteredEvents, selectedPlayer, playerMatchesDB);
 
-  const topScorer = [...stats].sort((a, b) => b.goals - a.goals)[0];
-  const mostMinutes = [...stats].sort((a, b) => b.minutes - a.minutes)[0];
+  const topScorer = getTopPlayerByStat(stats, "goals");
+  const mostMinutes = getTopPlayerByStat(stats, "minutes");
   const coachInsights = useMemo(() => getCoachInsights(stats, t), [stats, t]);
   const teamSummary = useMemo(() => getTeamSummary(stats), [stats]);
   const compareStats = comparePlayerIds
@@ -1861,9 +1899,9 @@ function getStatsSummary(events, players, playerStatsMap = {}, playerMatchStatsR
     const assists = Number(src.assists ?? 0);
     const goalContributions = goals + assists;
 
-    return {
-      id: player.id,
-      name: player.name,
+      return {
+        id: player.id,
+        name: getDisplayPlayerName(player),
       lastName: player.lastName || player.last_name || "",
       status: player.status || "Disponibile",
       role: player.role || "",
