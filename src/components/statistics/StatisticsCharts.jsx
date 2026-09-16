@@ -59,6 +59,13 @@ function isFriendlyMatch(event) {
   return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
 }
 
+function chartPlayerLabel(player = {}) {
+  const lastName = String(player.lastName || player.last_name || "").trim();
+  if (lastName) return lastName;
+  const parts = String(player.name || "").trim().split(/\s+/).filter(Boolean);
+  return parts.length > 1 ? parts.at(-1) : parts[0] || "-";
+}
+
 /* ─── Componente principale ─────────────────────────────────── */
 export default function StatisticsCharts({ stats, history, selectedPlayer, events = [], players = [] }) {
 
@@ -73,25 +80,28 @@ export default function StatisticsCharts({ stats, history, selectedPlayer, event
       return String(a.name || "").localeCompare(String(b.name || ""), "it", { sensitivity: "base" });
     })
     .slice(0, 10)
-    .map((p) => ({ name: p.name.split(" ")[0], goals: p.goals, assists: p.assists }));
+    .map((p) => ({ name: chartPlayerLabel(p), fullName: p.name, goals: p.goals, assists: p.assists }));
 
   const minutesHistory = [...history]
-    .filter((h) => h.minutes > 0)
     .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .map((h) => ({ date: h.date?.slice(5), min: h.minutes }));
+    .map((h) => ({
+      date: h.date?.slice(5),
+      label: h.title || h.date?.slice(5) || "-",
+      min: h.minutes,
+    }));
 
   const attendanceData = [...stats]
     .filter((p) => p.trainingPct !== null)
     .sort((a, b) => b.trainingPct - a.trainingPct)
     .slice(0, 12)
-    .map((p) => ({ name: p.name.split(" ")[0], pct: p.trainingPct }));
+    .map((p) => ({ name: chartPlayerLabel(p), pct: p.trainingPct }));
 
   /* ── Nuovo — Top minutaggio ── */
   const topMinutes = [...stats]
     .filter((p) => p.minutes > 0)
     .sort((a, b) => b.minutes - a.minutes)
     .slice(0, 12)
-    .map((p) => ({ name: p.name.split(" ")[0], min: p.minutes }));
+    .map((p) => ({ name: chartPlayerLabel(p), min: p.minutes }));
 
   /* ── Nuovo — Distribuzione ruoli ── */
   const roleMap = {};
@@ -139,6 +149,9 @@ export default function StatisticsCharts({ stats, history, selectedPlayer, event
 
   const hasMatchData = seasonTrend.some((m) => m.outcome !== null);
   const hasGoalData  = seasonTrend.some((m) => m.goalsFor > 0 || m.goalsAgainst > 0);
+  const teamGoalsFor = seasonTrend.reduce((sum, match) => sum + Number(match.goalsFor || 0), 0);
+  const playerGoalsTotal = stats.reduce((sum, player) => sum + Number(player.goals || 0), 0);
+  const hasGoalMismatch = hasGoalData && playerGoalsTotal !== teamGoalsFor;
 
   // Conteggio V/P/S
   const wdl = seasonTrend.reduce(
@@ -180,6 +193,11 @@ export default function StatisticsCharts({ stats, history, selectedPlayer, event
               <Bar dataKey="assists" name="Assist" stackId="a" fill="#38bdf8" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          {hasGoalMismatch && (
+            <p style={{ margin: "8px 0 0", color: "#fbbf24", fontSize: 12, lineHeight: 1.35 }}>
+              Verifica marcatori: somma giocatori {playerGoalsTotal}, gol squadra {teamGoalsFor}.
+            </p>
+          )}
         </AppCard>
       )}
 
@@ -193,7 +211,7 @@ export default function StatisticsCharts({ stats, history, selectedPlayer, event
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
               <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip {...TT} formatter={(v) => [`${v} min`, "Minuti"]} />
+              <Tooltip {...TT} formatter={(v) => [`${v} min`, "Minuti"]} labelFormatter={(_label, payload) => payload?.[0]?.payload?.label || _label} />
               <Line type="monotone" dataKey="min" stroke="#a78bfa" strokeWidth={2.5}
                 dot={{ r: 3, fill: "#a78bfa", strokeWidth: 0 }}
                 activeDot={{ r: 5, fill: "#a78bfa" }} />

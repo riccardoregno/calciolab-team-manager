@@ -1940,19 +1940,27 @@ function getPlayerHistory(events, player, playerMatchesDB = []) {
       if (event.type === "Partita") {
         // Partite: usa player_matches da Supabase
         const db = dbMap[String(event.id)];
-        if (!db) return null;
+        const playerId = String(player.id);
+        const lineup = event.lineup || {};
+        const involved = [
+          ...(lineup.calledUpIds || []),
+          ...(lineup.starterIds || []),
+          ...(lineup.benchIds || []),
+        ].map(String).includes(playerId);
+        const attendanceData = event.attendance?.[player.id] ?? event.attendance?.[playerId];
+        if (!db && !involved && !attendanceData) return null;
         return {
           sessionId: event.id,
           title: event.title,
           date: event.date,
           type: event.type,
-          status: "Presente",
-          minutes: Number(db.minutes_played || 0),
-          goals: Number(db.goals || 0),
-          assists: Number(db.assists || 0),
-          yellowCards: Number(db.yellow_cards || 0),
-          redCards: Number(db.red_cards || 0),
-          rating: db.rating != null ? db.rating : null,
+          status: db || involved ? "Presente" : attendanceData?.status,
+          minutes: Number(db?.minutes_played ?? attendanceData?.minutes_played ?? attendanceData?.minutes ?? 0),
+          goals: Number(db?.goals ?? attendanceData?.goals ?? 0),
+          assists: Number(db?.assists ?? attendanceData?.assists ?? 0),
+          yellowCards: Number(db?.yellow_cards ?? attendanceData?.yellow_cards ?? attendanceData?.yellowCards ?? 0),
+          redCards: Number(db?.red_cards ?? attendanceData?.red_cards ?? attendanceData?.redCards ?? 0),
+          rating: db?.rating != null ? db.rating : attendanceData?.rating ?? null,
         };
       } else {
         // Allenamenti: usa event.attendance (sistema locale)
