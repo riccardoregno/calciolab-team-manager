@@ -212,6 +212,11 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     [matches],
   );
   const matchIds = useMemo(() => matrixMatches.map((item) => String(item.id)), [matrixMatches]);
+  const matchIdsKey = useMemo(() => matchIds.join("|"), [matchIds]);
+  const stableMatchIdsKey = matchIdsKey ? matchIdsKey.split("|").sort().join("|") : "";
+  const statsMatrixKey = teamId && stableMatchIdsKey
+    ? `${teamId}:${activeSeason || "season"}:${stableMatchIdsKey}`
+    : "";
   const matchPlayerIdSets = useMemo(
     () => Object.fromEntries(matrixMatches.map((item) => [String(item.id), new Set(getMatchPlayerIds(item))])),
     [matrixMatches],
@@ -224,6 +229,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   const savedRef = useRef({});
   const matrixWrapRef = useRef(null);
   const rowsHydratedRef = useRef(false);
+  const loadedStatsMatrixKeyRef = useRef("");
   const [scrollMax, setScrollMax] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -266,15 +272,21 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   }, [currentCalledUpIds, currentStarterIds, matrixPlayers, playerFilter]);
 
   useEffect(() => {
-    if (!auth.team?.id || matchIds.length === 0) {
+    const statsMatchIds = matchIdsKey ? matchIdsKey.split("|") : [];
+    if (!auth.team?.id || !statsMatrixKey || statsMatchIds.length === 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(false);
       return;
     }
+    if (loadedStatsMatrixKeyRef.current === statsMatrixKey && rowsHydratedRef.current) {
+      return;
+    }
 
+    let cancelled = false;
     rowsHydratedRef.current = false;
-    setLoading(true);
-    loadMatchStatsMatrix(auth.team.id, matchIds).then(({ data }) => {
+    if (!loadedStatsMatrixKeyRef.current) setLoading(true);
+    loadMatchStatsMatrix(auth.team.id, statsMatchIds).then(({ data }) => {
+      if (cancelled) return;
       const savedByCell = {};
       const savedPlayers = new Set();
       const initial = {};
@@ -301,10 +313,14 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       savedRef.current = savedByCell;
       setStatsPlayerIds([...savedPlayers]);
       rowsHydratedRef.current = true;
+      loadedStatsMatrixKeyRef.current = statsMatrixKey;
       setRows(mergeRows(initial, loadDraftRows(draftKey)));
       setLoading(false);
     });
-  }, [auth.team?.id, draftKey, matchIds]);
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.team?.id, draftKey, matchIdsKey, statsMatrixKey]);
 
   useEffect(() => {
     if (!draftKey || !rowsHydratedRef.current) return;
