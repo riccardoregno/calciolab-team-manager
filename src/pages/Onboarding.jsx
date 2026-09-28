@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Badge from "../components/ui/Badge";
 import { createId, normalizeAppSettings } from "../utils/helpers";
-import { supabase } from "../lib/supabaseClient";
+import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { useTranslation } from "../i18n";
 
 // ─────────────────────────────────────────────
@@ -597,7 +597,7 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
 // ─────────────────────────────────────────────
 // Step 4 — Invita il tuo staff
 // ─────────────────────────────────────────────
-function Step4({ form, appSettings, setAppSettings, team: _team, inviteToken, onBack, onComplete, isMobile }) {
+function Step4({ form: _form, appSettings, setAppSettings, team, inviteToken, onBack, onComplete, isMobile }) {
   const { t } = useTranslation();
   const settings = normalizeAppSettings(appSettings) || {};
   const [emails, setEmails]         = useState([]);
@@ -652,21 +652,22 @@ function Step4({ form, appSettings, setAppSettings, team: _team, inviteToken, on
         }));
 
       if (pendingInvites.length) {
-        setAppSettings?.({
+        const nextSettings = {
           ...settings,
           pendingInvites: [...currentInvites, ...pendingInvites],
-        });
+        };
+        if (team?.id && isSupabaseConfigured) {
+          const { error } = await supabase.from("teams").update({ settings: nextSettings }).eq("id", team.id);
+          if (error) throw error;
+        }
+        setAppSettings?.(nextSettings);
       }
 
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token || "";
 
-      const inviterName = sessionData?.session?.user?.user_metadata?.first_name
-        || sessionData?.session?.user?.email
-        || form.clubName
-        || t("pages.onboarding.yourCoach");
       await Promise.allSettled(
-        emails.map((inv) =>
+        pendingInvites.map((inv) =>
           fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
             method: "POST",
             headers: {
@@ -677,15 +678,13 @@ function Step4({ form, appSettings, setAppSettings, team: _team, inviteToken, on
             body: JSON.stringify({
               type:        "team_invite",
               to:          inv.email,
-              inviterName,
-              teamName:    form.clubName || "CalcioLab",
-              roleName:    INVITE_ROLES.find((r) => r.id === inv.role)?.label || inv.role,
-              inviteUrl,
+              teamId:      team?.id,
+              inviteId:    inv.id,
             }),
           }).catch(() => {})
         )
       );
-      setSentCount(emails.length);
+      setSentCount(pendingInvites.length);
       setEmails((current) => current.map((inv) => ({ ...inv, sent: true })));
     } finally {
       setSending(false);

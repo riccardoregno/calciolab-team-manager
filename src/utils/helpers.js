@@ -829,6 +829,7 @@ export function normalizeAppSettings(settings = {}){
     // qui), causando "Invito non trovato o non valido" non appena l'utente
     // toccava qualsiasi altra impostazione dopo aver generato/copiato il link.
     inviteToken: settings.inviteToken || null,
+    inviteTokenExpiresAt: settings.inviteTokenExpiresAt || null,
     communications: (settings.communications || []).map(normalizeComm),
     developmentPreviewPlan: settings.developmentPreviewPlan || "",
     developmentPreviewRole: settings.developmentPreviewRole || "",

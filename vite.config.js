@@ -9,9 +9,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
-      // Temporaneamente disattivata in produzione: il service worker precedente
-      // puo bloccare login/cache. Questo deploy lo rimuove dai browser.
-      selfDestroying: true,
+      selfDestroying: false,
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'pwa-192.svg', 'pwa-512.svg'],
       manifest: {
@@ -40,10 +38,11 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        // Pagina offline custom servita quando la rete non è disponibile
-        navigateFallback: '/offline.html',
-        // Escludi la pagina offline dal fallback normale (solo per navigazione, non asset)
+        // L'app shell resta disponibile offline; i dati operativi usano il
+        // fallback locale gia gestito da teamData.
+        navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
+        cleanupOutdatedCaches: true,
         // Cache-first per tutti gli asset statici (JS/CSS/font/immagini).
         // offline.html e gia incluso da globPatterns: aggiungerlo anche a
         // additionalManifestEntries crea conflitti Workbox nel precache.
@@ -51,20 +50,8 @@ export default defineConfig(({ mode }) => ({
         // Dimensione massima file in cache: 5MB (catalogo esercizi è ~700KB)
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
-          // Supabase API → network-first, fallback cache 1h
-          {
-            urlPattern: ({ url }) => url.hostname.endsWith('.supabase.co'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api',
-              networkTimeoutSeconds: 10,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60, // 1 ora
-              },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
+          // Le API autenticate Supabase non vengono mai messe in cache dal SW:
+          // evita dati obsoleti o condivisi tra account sullo stesso browser.
           // Google Fonts (se aggiunte in futuro)
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com/,

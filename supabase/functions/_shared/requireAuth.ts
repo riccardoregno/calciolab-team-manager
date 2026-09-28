@@ -95,8 +95,11 @@ const ALLOWED_PRICE_IDS = new Set([
 ].filter(Boolean));
 
 export function isAllowedPriceId(priceId: string): boolean {
-  // If no price IDs are configured in env, allow any (dev mode)
-  if (ALLOWED_PRICE_IDS.size === 0) return priceId.startsWith("price_");
+  // Fail closed in production when Stripe price IDs are missing. Local/dev
+  // environments can opt in explicitly instead of accepting arbitrary prices.
+  if (ALLOWED_PRICE_IDS.size === 0) {
+    return Deno.env.get("ALLOW_UNCONFIGURED_STRIPE_PRICES") === "true" && priceId.startsWith("price_");
+  }
   return ALLOWED_PRICE_IDS.has(priceId);
 }
 

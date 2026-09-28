@@ -1,5 +1,39 @@
 import { useState, useMemo } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import {
+  Activity,
+  BarChart3,
+  Bot,
+  BrainCircuit,
+  CalendarDays,
+  CalendarRange,
+  ChevronDown,
+  ChevronUp,
+  ClipboardCheck,
+  ClipboardList,
+  Dumbbell,
+  Gem,
+  GitCompareArrows,
+  Handshake,
+  HeartPulse,
+  Home,
+  LibraryBig,
+  ListChecks,
+  LogOut,
+  Menu,
+  MessagesSquare,
+  Printer,
+  RadioTower,
+  Ruler,
+  Scale,
+  Search,
+  Settings,
+  Shirt,
+  Target,
+  Timer,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { isRoleAllowed } from "../../utils/helpers";
 import { supabase } from "../../lib/supabaseClient";
@@ -13,48 +47,48 @@ const playerCalendarRoles = ["owner", "headCoach", "assistantCoach", "athleticTr
 
 // ── Voci principali sempre visibili ──────────────────────────────
 const PRIMARY = [
-  { to: "/",          labelKey: "navigation.mobile.home", icon: "🏠", roles: allRoles },
-  { to: "/players",   labelKey: "navigation.mobile.roster", icon: "👥", roles: coachRoles },
-  { to: "/trainings", labelKey: "navigation.mobile.trainings", icon: "📋", roles: technicalRoles },
-  { to: "/matches",   labelKey: "navigation.mobile.matches", icon: "⚽", roles: coachRoles },
-  { to: "/calendar",  labelKey: "navigation.mobile.calendar", icon: "📅", roles: playerCalendarRoles },
+  { to: "/",          labelKey: "navigation.mobile.home", icon: Home, roles: allRoles },
+  { to: "/players",   labelKey: "navigation.mobile.roster", icon: Users, roles: coachRoles },
+  { to: "/trainings", labelKey: "navigation.mobile.trainings", icon: ClipboardList, roles: technicalRoles },
+  { to: "/matches",   labelKey: "navigation.mobile.matches", icon: Trophy, roles: coachRoles },
+  { to: "/calendar",  labelKey: "navigation.mobile.calendar", icon: CalendarDays, roles: playerCalendarRoles },
 ];
 
 // ── Drawer "Altro": poche scorciatoie operative, il resto sotto avanzate ──
 const CORE_SECONDARY = [
-  { to: "/availability",        labelKey: "navigation.items.availability",        icon: "🩺", roles: ["owner","headCoach","assistantCoach","athleticTrainer","player"], cat: "squadra" },
-  { to: "/staff-chat",          labelKey: "navigation.items.staffChat",           icon: "💬", roles: coachRoles, cat: "squadra", badge: "chat" },
-  { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister",  icon: "🧾", roles: technicalRoles, cat: "campo" },
-  { to: "/statistics",          labelKey: "navigation.items.statistics",          icon: "📊", roles: coachRoles, cat: "analisi" },
-  { to: "/exports",             labelKey: "navigation.items.exports",             icon: "🖨️", roles: managementRoles, cat: "gestione" },
-  { to: "/settings",            labelKey: "navigation.items.settings",            icon: "⚙️", roles: allRoles, cat: "gestione" },
+  { to: "/availability",        labelKey: "navigation.items.availability",        icon: HeartPulse, roles: ["owner","headCoach","assistantCoach","athleticTrainer","player"], cat: "squadra" },
+  { to: "/staff-chat",          labelKey: "navigation.items.staffChat",           icon: MessagesSquare, roles: coachRoles, cat: "squadra", badge: "chat" },
+  { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister",  icon: ClipboardCheck, roles: technicalRoles, cat: "campo" },
+  { to: "/statistics",          labelKey: "navigation.items.statistics",          icon: BarChart3, roles: coachRoles, cat: "analisi" },
+  { to: "/exports",             labelKey: "navigation.items.exports",             icon: Printer, roles: managementRoles, cat: "gestione" },
+  { to: "/settings",            labelKey: "navigation.items.settings",            icon: Settings, roles: allRoles, cat: "gestione" },
 ];
 
 const ADVANCED_SECONDARY = [
-  { to: "/player-compare",      labelKey: "navigation.items.playerCompare",       icon: "⚡", roles: coachRoles, cat: "analisi" },
-  { to: "/season-goals",        labelKey: "navigation.items.seasonGoals",         icon: "🎯", roles: coachRoles, cat: "analisi" },
-  { to: "/physical-tests",      labelKey: "navigation.items.physicalTests",       icon: "⏱️", roles: physicalRoles, cat: "analisi" },
-  { to: "/physical-workouts",   labelKey: "navigation.items.physicalWorkouts",    icon: "🏃", roles: physicalRoles, cat: "analisi" },
-  { to: "/gps-load",            labelKey: "navigation.items.gpsLoad",             icon: "📡", roles: physicalRoles, cat: "analisi" },
-  { to: "/exercises",           labelKey: "navigation.items.exercises",           icon: "📚", roles: technicalRoles, cat: "campo" },
-  { to: "/microcycle",          labelKey: "navigation.items.microcycle",          icon: "🗓️", roles: technicalRoles, cat: "campo" },
-  { to: "/set-plays",           labelKey: "navigation.items.setPlays",            icon: "📐", roles: technicalRoles, cat: "campo" },
-  { to: "/tactical-board",      labelKey: "navigation.items.tacticalBoard",       icon: "🧠", roles: technicalRoles, cat: "campo" },
-  { to: "/ai-session-builder",  labelKey: "navigation.items.aiBuilder",           icon: "🤖", roles: technicalRoles, cat: "campo" },
-  { to: "/team-generator",      labelKey: "navigation.items.teamGenerator",       icon: "⚖️", roles: technicalRoles, cat: "campo" },
-  { to: "/opponents",           labelKey: "navigation.items.opponents",           icon: "🕵️", roles: technicalRoles, cat: "gara" },
-  { to: "/player-portal",       labelKey: "navigation.items.playerPortal",        icon: "🎽", roles: coachRoles, cat: "gestione" },
-  { to: "/staff-tasks",         labelKey: "navigation.items.staffTasks",          icon: "✅", roles: ["owner","headCoach","assistantCoach","athleticTrainer","director"], cat: "gestione" },
-  { to: "/sponsors",            labelKey: "navigation.items.sponsors",            icon: "🤝", roles: ["owner","director","sponsor"], cat: "gestione" },
-  { to: "/premium",             labelKey: "navigation.items.premium",             icon: "💎", roles: managementRoles, cat: "gestione" },
+  { to: "/player-compare",      labelKey: "navigation.items.playerCompare",       icon: GitCompareArrows, roles: coachRoles, cat: "analisi" },
+  { to: "/season-goals",        labelKey: "navigation.items.seasonGoals",         icon: Target, roles: coachRoles, cat: "analisi" },
+  { to: "/physical-tests",      labelKey: "navigation.items.physicalTests",       icon: Timer, roles: physicalRoles, cat: "analisi" },
+  { to: "/physical-workouts",   labelKey: "navigation.items.physicalWorkouts",    icon: Dumbbell, roles: physicalRoles, cat: "analisi" },
+  { to: "/gps-load",            labelKey: "navigation.items.gpsLoad",             icon: RadioTower, roles: physicalRoles, cat: "analisi" },
+  { to: "/exercises",           labelKey: "navigation.items.exercises",           icon: LibraryBig, roles: technicalRoles, cat: "campo" },
+  { to: "/microcycle",          labelKey: "navigation.items.microcycle",          icon: CalendarRange, roles: technicalRoles, cat: "campo" },
+  { to: "/set-plays",           labelKey: "navigation.items.setPlays",            icon: Ruler, roles: technicalRoles, cat: "campo" },
+  { to: "/tactical-board",      labelKey: "navigation.items.tacticalBoard",       icon: BrainCircuit, roles: technicalRoles, cat: "campo" },
+  { to: "/ai-session-builder",  labelKey: "navigation.items.aiBuilder",           icon: Bot, roles: technicalRoles, cat: "campo" },
+  { to: "/team-generator",      labelKey: "navigation.items.teamGenerator",       icon: Scale, roles: technicalRoles, cat: "campo" },
+  { to: "/opponents",           labelKey: "navigation.items.opponents",           icon: Search, roles: technicalRoles, cat: "gara" },
+  { to: "/player-portal",       labelKey: "navigation.items.playerPortal",        icon: Shirt, roles: coachRoles, cat: "gestione" },
+  { to: "/staff-tasks",         labelKey: "navigation.items.staffTasks",          icon: ListChecks, roles: ["owner","headCoach","assistantCoach","athleticTrainer","director"], cat: "gestione" },
+  { to: "/sponsors",            labelKey: "navigation.items.sponsors",            icon: Handshake, roles: ["owner","director","sponsor"], cat: "gestione" },
+  { to: "/premium",             labelKey: "navigation.items.premium",             icon: Gem, roles: managementRoles, cat: "gestione" },
 ];
 
 const CATEGORIES = [
-  { id: "squadra", label: "👥 Squadra" },
-  { id: "campo",   label: "⚽ Campo" },
-  { id: "gara",    label: "🏟️ Gara" },
-  { id: "analisi", label: "📊 Analisi" },
-  { id: "gestione",label: "⚙️ Gestione" },
+  { id: "squadra", label: "Squadra", icon: Users },
+  { id: "campo",   label: "Campo", icon: ClipboardList },
+  { id: "gara",    label: "Gara", icon: Trophy },
+  { id: "analisi", label: "Analisi", icon: Activity },
+  { id: "gestione",label: "Gestione", icon: Settings },
 ];
 
 export default function MobileBottomNav({ currentRole = "headCoach", storageSource = null, chatUnread = 0 }) {
@@ -108,6 +142,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
   }
 
   function renderItem(item) {
+    const Icon = item.icon;
     return (
       <button
         key={item.to}
@@ -120,15 +155,15 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
           padding: "12px 8px",
           background: "rgba(255,255,255,0.04)",
           border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 12,
+          borderRadius: 8,
           color: "#cbd5e1",
           cursor: "pointer",
           minHeight: 72,
           justifyContent: "center",
         }}
       >
-        <span style={{ position: "relative", fontSize: 22, lineHeight: 1 }}>
-          {item.icon}
+        <span style={{ position: "relative", width: 22, height: 22, display: "grid", placeItems: "center" }}>
+          <Icon size={21} strokeWidth={2} aria-hidden="true" />
           {item.badge === "chat" && chatUnread > 0 && (
             <span style={{
               position: "absolute", top: -4, right: -8,
@@ -179,7 +214,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
             zIndex: 9998,
             background: "#0f172a",
             borderTop: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: "20px 20px 0 0",
+            borderRadius: "12px 12px 0 0",
             padding: "16px 16px calc(76px + env(safe-area-inset-bottom, 0px)) 16px",
             boxShadow: "0 -8px 40px rgba(0,0,0,0.5)",
             maxHeight: "75vh",
@@ -198,7 +233,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
               <span style={{
                 position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
                 fontSize: 14, pointerEvents: "none", opacity: 0.4,
-              }}>🔍</span>
+              }}><Search size={15} /></span>
               <input
                 type="text"
                 value={search}
@@ -231,6 +266,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
               /* ── vista per categorie ── */
               <>
                 {CATEGORIES.map((cat) => {
+                  const CategoryIcon = cat.icon;
                   const items = filteredItems.filter((i) => i.cat === cat.id);
                   if (items.length === 0) return null;
                   return (
@@ -240,7 +276,9 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
                         fontSize: 11, fontWeight: 700,
                         color: "#64748b", textTransform: "uppercase", letterSpacing: 0.6,
                       }}>
-                        {cat.label}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                          <CategoryIcon size={13} /> {cat.label}
+                        </span>
                       </p>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
                         {items.map(renderItem)}
@@ -270,7 +308,10 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
                     }}
                   >
                     <span>{showAdvanced ? "Nascondi strumenti avanzati" : "Mostra strumenti avanzati"}</span>
-                    <span>{showAdvanced ? "⌃" : `${advancedItems.length} +`}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      {!showAdvanced && advancedItems.length}
+                      {showAdvanced ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </span>
                   </button>
                 )}
               </>
@@ -290,7 +331,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
                   cursor: "pointer", textAlign: "left",
                 }}
               >
-                <span style={{ fontSize: 20 }}>🚪</span>
+                <LogOut size={19} />
                 Esci dall'account
               </button>
             )}
@@ -300,19 +341,22 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
 
       {/* ── Bottom nav bar ─────────────────────────────────────── */}
       <nav className="mobile-bottom-nav">
-        {primaryItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === "/"}
-            className={({ isActive }) =>
-              isActive ? "mobile-nav-item active" : "mobile-nav-item"
-            }
-          >
-            <span>{item.icon}</span>
-            <small>{t(item.labelKey)}</small>
-          </NavLink>
-        ))}
+        {primaryItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === "/"}
+              className={({ isActive }) =>
+                isActive ? "mobile-nav-item active" : "mobile-nav-item"
+              }
+            >
+              <Icon size={19} strokeWidth={2.1} aria-hidden="true" />
+              <small>{t(item.labelKey)}</small>
+            </NavLink>
+          );
+        })}
 
         {/* Pulsante Altro */}
         <button
@@ -321,7 +365,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
           style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
         >
           <span style={{ position: "relative", lineHeight: 1 }}>
-            ☰
+            <Menu size={19} strokeWidth={2.1} aria-hidden="true" />
             {showAltroDot && (
               <span style={{
                 position: "absolute",

@@ -12,11 +12,36 @@ body,
 }
 
 body {
-  background: #0f1115;
+  background: #0b0e13;
   overflow-x: hidden;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   text-rendering: geometricPrecision;
+}
+
+::selection {
+  background: rgba(59, 130, 246, 0.38);
+  color: #ffffff;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3a4352 #11151c;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #11151c;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #3a4352;
+  border: 2px solid #11151c;
+  border-radius: 8px;
 }
 
 button,
@@ -95,7 +120,7 @@ textarea:focus-visible {
     max-width: 100% !important;
     min-height: 100vh !important;
     margin: 0 !important;
-    padding: 12px 14px 118px !important;
+    padding: 10px 14px 104px !important;
     overflow-x: hidden !important;
   }
 
@@ -148,8 +173,8 @@ textarea:focus-visible {
     grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 2px;
     padding: 6px;
-    border-radius: 20px;
-    background: rgba(15, 23, 42, 0.96);
+    border-radius: 12px;
+    background: rgba(17, 21, 28, 0.96);
     border: 1px solid rgba(148, 163, 184, 0.18);
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
     backdrop-filter: blur(16px);
@@ -161,10 +186,10 @@ textarea:focus-visible {
     gap: 3px;
     min-width: 0;
     padding: 6px 2px;
-    border-radius: 11px;
+    border-radius: 8px;
     color: #94a3b8;
     text-decoration: none;
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1;
     min-height: 52px;
   }
@@ -181,9 +206,9 @@ textarea:focus-visible {
   }
 
   .mobile-nav-item.active {
-    background: rgba(59, 130, 246, 0.20);
+    background: #2563eb;
     color: #ffffff;
-    box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.16);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
   }
 
   button,
@@ -207,6 +232,30 @@ textarea:focus-visible {
 @media (max-width: 480px) {
   .mobile-topbar-subtitle {
     display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-heading-row {
+    align-items: center !important;
+  }
+
+  .dashboard-heading-row .page-header {
+    margin-bottom: 0 !important;
+  }
+
+  .dashboard-heading-row > button {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    padding: 0 !important;
+    font-size: 0 !important;
+    justify-content: center;
+  }
+
+  .dashboard-heading-row > button svg {
+    width: 18px;
+    height: 18px;
   }
 }
 

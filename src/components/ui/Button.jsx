@@ -1,9 +1,15 @@
 export default function Button({ children, onClick, variant = "primary", style = {}, disabled, type = "button", ...props }) {
   const base = {
     border: "none",
-    borderRadius: 14,
-    padding: "11px 16px",
+    borderRadius: 8,
+    minHeight: 42,
+    padding: "10px 15px",
     fontWeight: 800,
+    fontSize: 14,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     cursor: disabled ? "not-allowed" : "pointer",
     transition: "0.2s",
     opacity: disabled ? 0.45 : 1,

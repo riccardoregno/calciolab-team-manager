@@ -685,9 +685,8 @@ function PlayerDetail({
         body: JSON.stringify({
           type: "player_invite",
           to: player.email,
-          playerName: player.name,
-          teamName: team.name,
-          inviteUrl,
+          teamId: team.id,
+          inviteId: pending.id,
         }),
       });
       const emailResult = await emailResponse.json().catch(() => ({}));

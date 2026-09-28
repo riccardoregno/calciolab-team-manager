@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { Activity, CalendarDays, Eye, EyeOff, Settings2, Users } from "lucide-react";
 
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
@@ -1142,7 +1143,7 @@ function Dashboard({
   return (
     <div>
       {/* Header + gear button */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+      <div className="dashboard-heading-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, gap: 16 }}>
         <PageHeader
           title={t("pages.dashboard.title")}
           subtitle={t("pages.dashboard.subtitle")}
@@ -1153,7 +1154,7 @@ function Dashboard({
           style={{
             marginTop: 4,
             border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 12,
+            borderRadius: 8,
             background: showPersonalize ? "rgba(56,189,248,0.14)" : "rgba(255,255,255,0.05)",
             color: showPersonalize ? "#38bdf8" : "#94a3b8",
             padding: "9px 14px",
@@ -1166,7 +1167,7 @@ function Dashboard({
             flexShrink: 0,
           }}
         >
-          ⚙️ {t("pages.dashboard.personalize")}
+          <Settings2 size={16} /> {t("pages.dashboard.personalize")}
         </button>
       </div>
 
@@ -1426,7 +1427,7 @@ function Dashboard({
               fontSize: 14, fontWeight: 700, cursor: "pointer",
             }}
           >
-            <span style={{ fontSize: 18 }}>{simpleView ? "🔍" : "📋"}</span>
+            {simpleView ? <Eye size={18} /> : <EyeOff size={18} />}
             {simpleView ? "Vista semplice attiva — tocca per vedere tutto" : "Vuoi una vista più semplice?"}
           </button>
 
@@ -1436,28 +1437,33 @@ function Dashboard({
               display: "flex", gap: 0, marginBottom: 14,
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 12, padding: 3, overflow: "hidden",
+              borderRadius: 8, padding: 3, overflow: "hidden",
             }}>
               {[
-                { id: "oggi",    label: "🗓️ Oggi" },
-                { id: "squadra", label: "👥 Squadra" },
-                { id: "carico",  label: "📈 Carico" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setDashTab(tab.id)}
-                  style={{
-                    flex: 1, border: "none", borderRadius: 10, padding: "10px 4px",
-                    fontSize: 13, fontWeight: 800, cursor: "pointer", transition: "0.15s",
-                    background: dashTab === tab.id ? "rgba(56,189,248,0.18)" : "transparent",
-                    color: dashTab === tab.id ? "#38bdf8" : "#64748b",
-                    outline: dashTab === tab.id ? "1px solid rgba(56,189,248,0.3)" : "none",
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
+                { id: "oggi",    label: "Oggi", icon: CalendarDays },
+                { id: "squadra", label: "Squadra", icon: Users },
+                { id: "carico",  label: "Carico", icon: Activity },
+              ].map((tab) => {
+                const TabIcon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setDashTab(tab.id)}
+                    style={{
+                      flex: 1, border: "none", borderRadius: 6, padding: "10px 4px",
+                      fontSize: 13, fontWeight: 800, cursor: "pointer", transition: "0.15s",
+                      background: dashTab === tab.id ? "rgba(56,189,248,0.18)" : "transparent",
+                      color: dashTab === tab.id ? "#38bdf8" : "#64748b",
+                      outline: dashTab === tab.id ? "1px solid rgba(56,189,248,0.3)" : "none",
+                    }}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <TabIcon size={15} /> {tab.label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </>

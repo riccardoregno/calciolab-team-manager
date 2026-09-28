@@ -81,12 +81,26 @@ export function saveLocalState(state) {
 
   function write() {
     try {
-      if (previous) {
-        localStorage.setItem(STORAGE_BACKUP_KEY, previous);
-      }
       localStorage.setItem(STORAGE_KEY, serialized);
     } catch (error) {
-      if (import.meta.env.DEV) console.error("Errore salvataggio localStorage:", error);
+      // Il backup non deve mai impedire il salvataggio dello stato corrente.
+      // Se la quota e esaurita, libera il backup e ritenta una sola volta.
+      try {
+        localStorage.removeItem(STORAGE_BACKUP_KEY);
+        localStorage.setItem(STORAGE_KEY, serialized);
+      } catch (retryError) {
+        if (import.meta.env.DEV) console.error("Errore salvataggio localStorage:", retryError || error);
+        return;
+      }
+    }
+
+    if (previous && previous !== serialized) {
+      try {
+        localStorage.setItem(STORAGE_BACKUP_KEY, previous);
+      } catch {
+        // Backup best-effort: lo stato principale e gia stato scritto.
+        localStorage.removeItem(STORAGE_BACKUP_KEY);
+      }
     }
   }
 
@@ -105,15 +119,24 @@ if (typeof window !== "undefined") {
     if (!_lastSerialized) return;
     try {
       const previous = localStorage.getItem(STORAGE_KEY);
+      localStorage.setItem(STORAGE_KEY, _lastSerialized);
       if (previous && previous !== _lastSerialized) {
-        localStorage.setItem(STORAGE_BACKUP_KEY, previous);
         const nextState = parseStoredState(_lastSerialized);
         const previousState = parseStoredState(previous);
         if (nextState && previousState) updateEmptyEntityIntents(nextState, previousState);
+        try {
+          localStorage.setItem(STORAGE_BACKUP_KEY, previous);
+        } catch {
+          localStorage.removeItem(STORAGE_BACKUP_KEY);
+        }
       }
-      localStorage.setItem(STORAGE_KEY, _lastSerialized);
     } catch {
-      // Best-effort on pagehide
+      try {
+        localStorage.removeItem(STORAGE_BACKUP_KEY);
+        localStorage.setItem(STORAGE_KEY, _lastSerialized);
+      } catch {
+        // Best-effort on pagehide
+      }
     }
   });
 }
@@ -132,7 +155,7 @@ export async function loadRemoteState({ teamId, entityKeys } = {}) {
 /** @param {object} state
  * @param {string} teamId
  * @returns {Promise<{data: any[], error: any}>} */
-export async function saveTeamTablesState(state, teamId, { keys } = {}) {
+export async function saveTeamTablesState(state, teamId, { keys, entityChanges } = {}) {
   try {
     const normalized = normalizeAppState(state);
     const selectedKeys = Array.isArray(keys) && keys.length > 0 ? new Set(keys) : null;
@@ -145,6 +168,7 @@ export async function saveTeamTablesState(state, teamId, { keys } = {}) {
           try {
             await syncEntityTable(table, teamId, normalized[stateKey] || [], {
               allowEmptyDelete: hasEmptyEntityIntent(stateKey),
+              changes: entityChanges?.[stateKey],
             });
           } catch (error) {
             error._syncTable = table;
@@ -580,7 +604,12 @@ function hasArrayItems(value) {
 }
 
 // ─── Sync singola tabella ──────────────────────────────────────────────────
-async function syncEntityTable(table, teamId, records, { allowEmptyDelete = false } = {}) {
+async function syncEntityTable(table, teamId, records, { allowEmptyDelete = false, changes } = {}) {
+  if (changes) {
+    await syncEntityChanges(table, teamId, changes);
+    return;
+  }
+
   if (!Array.isArray(records) || records.length === 0) {
     if (allowEmptyDelete) {
       const { error } = await supabase.from(table).delete().eq("team_id", teamId);
@@ -608,7 +637,9 @@ async function syncEntityTable(table, teamId, records, { allowEmptyDelete = fals
         return null;
       }
 
-      const data = dbId === id ? record : { ...record, id: dbId };
+      const { _updatedAt: _ignoredUpdatedAt, ...recordData } = record;
+      void _ignoredUpdatedAt;
+      const data = dbId === id ? recordData : { ...recordData, id: dbId };
 
       return {
         id:         dbId,
@@ -631,16 +662,52 @@ async function syncEntityTable(table, teamId, records, { allowEmptyDelete = fals
     return;
   }
 
-  // FIX #7: usa solo ID validati nella lista delete per evitare injection PostgREST
-  const safeIds = rows.map((row) => row.id).filter((id) => SAFE_ID_REGEX.test(id));
-  let deleteQuery = supabase.from(table).delete().eq("team_id", teamId);
+  // Un salvataggio completo viene usato solo per bootstrap/ripristino e non
+  // implica più che tutto ciò che manca localmente debba essere cancellato.
+  // Le cancellazioni ordinarie passano da syncEntityChanges con ID espliciti.
+}
 
-  if (safeIds.length > 0) {
-    deleteQuery = deleteQuery.not("id", "in", `(${safeIds.map(escapeSupabaseListValue).join(",")})`);
+async function syncEntityChanges(table, teamId, { changedOrAdded = [], deleted = [] } = {}) {
+  for (const record of changedOrAdded) {
+    const originalId = String(record?.id || "");
+    const id = normalizeRecordIdForTable(table, originalId);
+    if (!id || !SAFE_ID_REGEX.test(id)) throw new Error(`ID non valido per ${table}`);
+
+    const { _updatedAt, ...recordData } = record;
+    const data = id === originalId ? recordData : { ...recordData, id };
+    const updatedAt = new Date().toISOString();
+    const row = { id, team_id: teamId, data, updated_at: updatedAt };
+
+    if (_updatedAt) {
+      const { data: updated, error } = await supabase
+        .from(table)
+        .update({ data: row.data, updated_at: row.updated_at })
+        .eq("team_id", teamId)
+        .eq("id", id)
+        .eq("updated_at", _updatedAt)
+        .select("id");
+      if (error) throw error;
+      if (!updated?.length) throw new Error(`Conflitto di sincronizzazione su ${table}:${id}`);
+    } else {
+      const { error } = await supabase.from(table).insert(row);
+      if (error) {
+        if (error.code === "23505") throw new Error(`Conflitto di sincronizzazione su ${table}:${id}`);
+        throw error;
+      }
+    }
   }
 
-  const { error: deleteError } = await deleteQuery;
-  if (deleteError) throw deleteError;
+  for (const deletedRecord of deleted) {
+    const id = normalizeRecordIdForTable(table, String(deletedRecord?.id || ""));
+    if (!id || !SAFE_ID_REGEX.test(id)) throw new Error(`ID non valido per ${table}`);
+    let query = supabase.from(table).delete().eq("team_id", teamId).eq("id", id);
+    if (deletedRecord?._updatedAt) query = query.eq("updated_at", deletedRecord._updatedAt);
+    const { data: removed, error } = await query.select("id");
+    if (error) throw error;
+    if (deletedRecord?._updatedAt && !removed?.length) {
+      throw new Error(`Conflitto di sincronizzazione su ${table}:${id}`);
+    }
+  }
 }
 
 function loadEmptyEntityIntents() {
@@ -701,14 +768,6 @@ function updateEmptyEntityIntents(nextState, previousState) {
   });
 
   if (changed) saveEmptyEntityIntents(intents);
-}
-
-// FIX #7: funzione di escape più sicura — lancia eccezione se l'ID non supera la regex.
-// La regex è già applicata prima di arrivare qui, ma aggiungiamo il guard come doppia protezione.
-function escapeSupabaseListValue(value) {
-  const s = String(value);
-  if (!SAFE_ID_REGEX.test(s)) throw new Error(`[teamData] ID non sicuro: "${s}"`);
-  return `"${s}"`;
 }
 
 function normalizeRecordIdForTable(table, id) {

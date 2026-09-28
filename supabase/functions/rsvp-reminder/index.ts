@@ -20,6 +20,12 @@ function json(data: unknown, status = 200) {
   });
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 function isAuthorized(req: Request) {
   if (RSVP_REMINDER_SECRET && req.headers.get("x-internal-secret") === RSVP_REMINDER_SECRET) return true;
   const bearer = req.headers.get("authorization")?.replace("Bearer ", "") ?? "";
@@ -102,11 +108,11 @@ Deno.serve(async (req: Request) => {
           subject: `Promemoria convocazione ${team?.name || "CalcioLab"}`,
           html: `
             <h1 style="margin:0 0 16px;font-size:24px;color:white;">Promemoria disponibilità</h1>
-            <p style="color:#94a3b8;line-height:1.7;">Ciao ${playerName(playerData)}, non abbiamo ancora ricevuto la tua risposta per la convocazione di ${team?.name || "CalcioLab"}.</p>
-            <p style="color:#e2e8f0;line-height:1.7;">${matchLabel(matchData)}</p>
+            <p style="color:#94a3b8;line-height:1.7;">Ciao ${escapeHtml(playerName(playerData))}, non abbiamo ancora ricevuto la tua risposta per la convocazione di ${escapeHtml(team?.name || "CalcioLab")}.</p>
+            <p style="color:#e2e8f0;line-height:1.7;">${escapeHtml(matchLabel(matchData))}</p>
             <p style="color:#94a3b8;line-height:1.7;">Conferma se sei disponibile o non disponibile dal link qui sotto.</p>
-            <p><a href="${rsvpUrl}" style="display:inline-block;background:#2563eb;color:white;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:800;">Rispondi alla convocazione</a></p>
-            <p style="color:#64748b;font-size:12px;word-break:break-all;">${rsvpUrl}</p>
+            <p><a href="${escapeHtml(rsvpUrl)}" style="display:inline-block;background:#2563eb;color:white;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:800;">Rispondi alla convocazione</a></p>
+            <p style="color:#64748b;font-size:12px;word-break:break-all;">${escapeHtml(rsvpUrl)}</p>
           `,
         });
 

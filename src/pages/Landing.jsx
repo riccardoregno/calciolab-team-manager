@@ -4,17 +4,27 @@
  * Nessuna dipendenza da auth/Supabase/useTeamData
  */
 import { useState } from "react";
+import {
+  Activity, ArrowRight, BarChart3, ClipboardList, Dumbbell, Menu,
+  Network, Sparkles, Target, Users, X,
+} from "lucide-react";
 
 /* ─── Dati ────────────────────────────────────────────────────── */
 const FEATURES = [
-  { icon: "👥", title: "Gestione Rosa",       desc: "Anagrafica completa, status, ruoli, disponibilità e schede individuali per ogni giocatore." },
-  { icon: "📋", title: "Allenamenti",          desc: "Pianifica sedute, registra presenze e carico. Libreria esercizi con filtri e categorie." },
-  { icon: "⚽", title: "Match Day",            desc: "Distinta ufficiale, piano gara, scouting avversari e report post-partita con statistiche." },
-  { icon: "📊", title: "Statistiche",          desc: "Grafici rendimento squadra, top scorer, minutaggio, andamento stagione e gol fatti/subiti." },
-  { icon: "🏃", title: "Test Fisici",          desc: "Gacon, Yo-Yo, sprint e lavori individuali. Storico progressi per ogni atleta." },
-  { icon: "🎯", title: "Obiettivi Stagione",   desc: "Traguardi di squadra e individuali con avanzamento automatico dai dati partita." },
-  { icon: "🤝", title: "Staff Multi-utente",   desc: "Invita assistenti, preparatori e dirigenti. Ogni ruolo vede solo ciò che serve." },
-  { icon: "✨", title: "AI Session Builder",   desc: "Genera sedute di allenamento personalizzate basate su obiettivi e disponibilità." },
+  { icon: Users, title: "Gestione rosa", desc: "Anagrafica, ruoli, disponibilità e schede individuali sempre aggiornate." },
+  { icon: ClipboardList, title: "Allenamenti", desc: "Pianifica sedute, registra presenze e carico con una libreria esercizi pronta all'uso." },
+  { icon: Network, title: "Match day", desc: "Distinta, piano gara, scouting avversario e report post-partita nello stesso flusso." },
+  { icon: BarChart3, title: "Statistiche", desc: "Rendimento, marcatori, minutaggio e andamento stagionale leggibili a colpo d'occhio." },
+  { icon: Activity, title: "Test fisici", desc: "Gacon, Yo-Yo, sprint e storico dei progressi di ogni atleta." },
+  { icon: Target, title: "Obiettivi stagione", desc: "Traguardi di squadra e individuali aggiornati dai dati partita." },
+  { icon: Dumbbell, title: "Staff multi-utente", desc: "Assistenti, preparatori e dirigenti accedono alle aree pertinenti al proprio ruolo." },
+  { icon: Sparkles, title: "AI Session Builder", desc: "Crea proposte di seduta coerenti con obiettivi, durata e disponibilità." },
+];
+
+const WORKFLOW = [
+  { step: "01", title: "Prepara", text: "Costruisci la seduta, controlla disponibilità e condividi il lavoro con lo staff." },
+  { step: "02", title: "Lavora sul campo", text: "Registra presenze, carico, test e note senza disperdere informazioni tra chat e fogli." },
+  { step: "03", title: "Analizza", text: "Trasforma partite e allenamenti in report, statistiche e prossime decisioni operative." },
 ];
 
 const PLANS = [
@@ -136,7 +146,7 @@ export default function Landing() {
             onClick={() => setMobileMenuOpen((v) => !v)}
             aria-label="Menu"
           >
-            {mobileMenuOpen ? "✕" : "☰"}
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
@@ -157,18 +167,15 @@ export default function Landing() {
       {/* ── Hero ── */}
       <section style={l.hero}>
         <div style={l.heroInner}>
-          <div style={l.heroBadge}>⚽ Piattaforma per allenatori di calcio</div>
-          <h1 style={l.heroTitle}>
-            Gestisci la squadra<br />
-            <span style={l.heroAccent}>come uno staff professionista</span>
-          </h1>
+          <div style={l.heroBadge}>Gestionale per staff di calcio</div>
+          <h1 style={l.heroTitle}>CalcioLab</h1>
           <p style={l.heroSubtitle}>
-            Rosa, allenamenti, partite, statistiche e obiettivi stagione — tutto in un'unica piattaforma.
-            Gratis per iniziare, potente quando cresci.
+            Gestisci rosa, allenamenti, convocazioni, partite e statistiche in un unico spazio,
+            dal campo alla riunione dello staff.
           </p>
           <div style={l.heroActions}>
             <button style={l.btnHeroPrimary} onClick={goToSignup}>
-              Crea account gratuito →
+              Crea account gratuito <ArrowRight size={18} />
             </button>
             <button style={l.btnHeroGhost} onClick={goToLogin}>
               Ho già un account
@@ -188,6 +195,18 @@ export default function Landing() {
               <MockDashboard />
             </div>
           </div>
+        </div>
+      </section>
+
+      <section style={l.workflowSection} aria-label="Come si usa CalcioLab">
+        <div style={l.workflowInner}>
+          {WORKFLOW.map((item) => (
+            <div key={item.step} style={l.workflowItem}>
+              <span style={l.workflowStep}>{item.step}</span>
+              <h2 style={l.workflowTitle}>{item.title}</h2>
+              <p style={l.workflowText}>{item.text}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -214,11 +233,11 @@ export default function Landing() {
             </p>
           </div>
           <div style={l.featuresGrid}>
-            {FEATURES.map((f) => (
-              <div key={f.title} style={l.featureCard}>
-                <div style={l.featureIcon}>{f.icon}</div>
-                <h3 style={l.featureTitle}>{f.title}</h3>
-                <p style={l.featureDesc}>{f.desc}</p>
+            {FEATURES.map(({ icon: Icon, title, desc }) => (
+              <div key={title} style={l.featureCard}>
+                <div style={l.featureIcon}><Icon size={22} strokeWidth={1.8} /></div>
+                <h3 style={l.featureTitle}>{title}</h3>
+                <p style={l.featureDesc}>{desc}</p>
               </div>
             ))}
           </div>
@@ -484,7 +503,7 @@ const l = {
     fontSize: 13, fontWeight: 700, cursor: "pointer",
   },
   btnNavSignup: {
-    background: "linear-gradient(135deg,#2563eb,#1d4ed8)",
+    background: "#2563eb",
     border: "none", color: "white", borderRadius: 10, padding: "8px 18px",
     fontSize: 13, fontWeight: 800, cursor: "pointer",
     boxShadow: "0 4px 16px rgba(37,99,235,0.35)",
@@ -530,7 +549,7 @@ const l = {
   /* Hero */
   hero: {
     padding: "100px 24px 80px",
-    background: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(37,99,235,0.18), transparent)",
+    background: "#0b0f17",
   },
   heroInner: { maxWidth: 860, margin: "0 auto", textAlign: "center" },
   heroBadge: {
@@ -542,9 +561,9 @@ const l = {
     marginBottom: 28,
   },
   heroTitle: {
-    fontSize: "clamp(36px, 6vw, 64px)",
+    fontSize: 56,
     fontWeight: 900, lineHeight: 1.1,
-    margin: "0 0 24px", letterSpacing: -0.5,
+    margin: "0 0 18px", letterSpacing: 0,
   },
   heroAccent: {
     background: "linear-gradient(135deg,#38bdf8,#a78bfa)",
@@ -552,7 +571,7 @@ const l = {
     WebkitTextFillColor: "transparent",
   },
   heroSubtitle: {
-    fontSize: "clamp(15px, 2vw, 19px)",
+    fontSize: 18,
     color: "#94a3b8", lineHeight: 1.65,
     maxWidth: 620, margin: "0 auto 36px",
   },
@@ -561,11 +580,12 @@ const l = {
     flexWrap: "wrap", marginBottom: 16,
   },
   btnHeroPrimary: {
-    background: "linear-gradient(135deg,#2563eb,#1d4ed8)",
+    background: "#2563eb",
     border: "none", color: "white", borderRadius: 14,
     padding: "15px 32px", fontSize: 16, fontWeight: 800,
     cursor: "pointer",
     boxShadow: "0 8px 32px rgba(37,99,235,0.4)",
+    display: "inline-flex", alignItems: "center", gap: 9,
   },
   btnHeroGhost: {
     background: "transparent",
@@ -604,6 +624,19 @@ const l = {
     borderBottom: "1px solid rgba(255,255,255,0.06)",
     padding: "32px 24px",
   },
+  workflowSection: {
+    padding: "48px 24px",
+    background: "#10151d",
+    borderBottom: "1px solid rgba(255,255,255,0.07)",
+  },
+  workflowInner: {
+    maxWidth: 1100, margin: "0 auto", display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))", gap: 32,
+  },
+  workflowItem: { borderLeft: "2px solid #22c55e", paddingLeft: 18 },
+  workflowStep: { color: "#22c55e", fontSize: 12, fontWeight: 900 },
+  workflowTitle: { margin: "8px 0", fontSize: 20, letterSpacing: 0 },
+  workflowText: { margin: 0, color: "#94a3b8", fontSize: 14, lineHeight: 1.65 },
   statsGrid: {
     maxWidth: 860, margin: "0 auto",
     display: "grid",
@@ -627,7 +660,7 @@ const l = {
     color: "#38bdf8", marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: "clamp(26px, 4vw, 40px)", fontWeight: 900,
+    fontSize: 36, fontWeight: 900,
     margin: "0 0 14px", lineHeight: 1.2,
   },
   sectionSubtitle: {
@@ -645,10 +678,13 @@ const l = {
     padding: "24px 22px",
     background: "rgba(255,255,255,0.035)",
     border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: 18,
+    borderRadius: 8,
     transition: "border-color 0.2s",
   },
-  featureIcon: { fontSize: 28, marginBottom: 12 },
+  featureIcon: {
+    width: 40, height: 40, marginBottom: 14, borderRadius: 8,
+    display: "grid", placeItems: "center", color: "#38bdf8", background: "#111e2a",
+  },
   featureTitle: { margin: "0 0 8px", fontSize: 16, fontWeight: 800 },
   featureDesc: { margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.6 },
 
@@ -681,7 +717,7 @@ const l = {
   },
   planCard: {
     display: "flex", flexDirection: "column",
-    borderRadius: 20, overflow: "hidden",
+    borderRadius: 8, overflow: "hidden",
     border: "1px solid rgba(255,255,255,0.08)",
     background: "rgba(21,25,34,0.96)",
     boxShadow: "0 8px 30px rgba(0,0,0,0.25)",
@@ -737,21 +773,21 @@ const l = {
   /* CTA Banner */
   ctaBanner: {
     padding: "80px 24px",
-    background: "radial-gradient(ellipse 70% 80% at 50% 50%, rgba(37,99,235,0.22), transparent)",
+    background: "#101824",
     borderTop: "1px solid rgba(37,99,235,0.2)",
     borderBottom: "1px solid rgba(37,99,235,0.2)",
     textAlign: "center",
   },
   ctaBannerInner: { maxWidth: 600, margin: "0 auto" },
   ctaBannerTitle: {
-    fontSize: "clamp(24px, 4vw, 36px)", fontWeight: 900,
+    fontSize: 34, fontWeight: 900,
     margin: "0 0 14px", lineHeight: 1.2,
   },
   ctaBannerSubtitle: {
     color: "#64748b", fontSize: 16, margin: "0 0 32px", lineHeight: 1.6,
   },
   btnCtaBig: {
-    background: "linear-gradient(135deg,#2563eb,#1d4ed8)",
+    background: "#2563eb",
     border: "none", color: "white", borderRadius: 14,
     padding: "16px 40px", fontSize: 17, fontWeight: 800,
     cursor: "pointer",

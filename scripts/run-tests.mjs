@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { diffEntityArray, mergeEntityArrayWithRemote } from "../src/utils/syncHelpers.js";
 import {
   getAvailabilityGroups,
   getLineup,
@@ -79,10 +80,13 @@ const workspaceSettings = normalizeAppSettings({
   onboarding: { completed: true },
   workspaceProfile: { teamName: "Prima squadra", seasonGoal: "Playoff", userRole: "owner" },
   members: [{ id: "m1", name: "Mister", role: "headCoach" }],
+  inviteToken: "invite-token",
+  inviteTokenExpiresAt: "2026-10-01T12:00:00.000Z",
 });
 assert.equal(workspaceSettings.onboarding.completed, true);
 assert.equal(workspaceSettings.workspaceProfile.userRole, "owner");
 assert.equal(workspaceSettings.members[0].role, "headCoach");
+assert.equal(workspaceSettings.inviteTokenExpiresAt, "2026-10-01T12:00:00.000Z");
 assert.equal(hasPermission("owner", "manageBilling"), true);
 assert.equal(hasPermission("player", "manageBilling"), false);
 assert.equal(getCurrentUserRole(workspaceSettings), "owner");
@@ -174,5 +178,26 @@ const generatedSession = generateGuidedSession({
 assert.equal(generatedSession.theme, "Pressing");
 assert.ok(generatedSession.exercises.length > 0);
 assert.equal(generatedSession.exercises[0].exerciseId, 1);
+
+const syncBaseline = [
+  { id: "a", name: "Alpha", _updatedAt: "2026-01-01T00:00:00.000Z" },
+  { id: "b", name: "Beta", _updatedAt: "2026-01-01T00:00:00.000Z" },
+];
+const syncDiff = diffEntityArray(syncBaseline, [
+  { id: "a", name: "Alpha", _updatedAt: "2026-01-02T00:00:00.000Z" },
+  { id: "c", name: "Gamma" },
+]);
+assert.deepEqual(syncDiff.changedOrAdded.map((item) => item.id), ["c"]);
+assert.deepEqual(syncDiff.deleted, [{ id: "b", _updatedAt: "2026-01-01T00:00:00.000Z" }]);
+
+const syncMerged = mergeEntityArrayWithRemote(syncBaseline, [
+  { id: "a", name: "Alpha locale", _updatedAt: "2026-01-01T00:00:00.000Z" },
+], [
+  { id: "a", name: "Alpha", _updatedAt: "2026-01-01T00:00:00.000Z" },
+  { id: "b", name: "Beta", _updatedAt: "2026-01-01T00:00:00.000Z" },
+  { id: "remote", name: "Aggiunto altrove", _updatedAt: "2026-01-02T00:00:00.000Z" },
+]);
+assert.deepEqual(syncMerged.map((item) => item.id).sort(), ["a", "remote"]);
+assert.equal(syncMerged.find((item) => item.id === "a").name, "Alpha locale");
 
 console.log("All tests passed");

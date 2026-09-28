@@ -203,7 +203,10 @@ export default function MatchFormationPlanner({
   const calledIds = lineup.calledUpIds?.length
     ? lineup.calledUpIds.map(String)
     : [...(lineup.starterIds || []), ...(lineup.benchIds || [])].map(String);
-  const calledPlayers = sortPlayers(calledIds.map((id) => playerMap.get(id)).filter(Boolean));
+  const calledPlayers = sortPlayersByShirtNumber(
+    calledIds.map((id) => playerMap.get(id)).filter(Boolean),
+    lineup
+  );
   const assignedIds = new Set(Object.values(activePlan.slots || {}).map(String).filter(Boolean));
   const availablePlayers = calledPlayers.filter((player) => !assignedIds.has(String(player.id)));
   const captain = playerMap.get(String(lineup.captainId || ""));

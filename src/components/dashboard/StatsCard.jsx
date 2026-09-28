@@ -14,26 +14,13 @@ function StatsCard({
         position: "relative",
         overflow: "hidden",
         background:
-          "linear-gradient(180deg, #171b24 0%, #11151d 100%)",
+          "#141820",
         border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 24,
-        padding: 24,
-        boxShadow: `0 10px 30px ${color}22`,
+        borderRadius: 8,
+        padding: 20,
+        boxShadow: "0 10px 26px rgba(0,0,0,0.18)",
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          top: -30,
-          right: -30,
-          width: 120,
-          height: 120,
-          borderRadius: "50%",
-          background: `${color}22`,
-          filter: "blur(20px)",
-        }}
-      />
-
       <div
         style={{
           display: "flex",
@@ -57,7 +44,7 @@ function StatsCard({
           <h2
             style={{
               margin: "8px 0 0",
-              fontSize: "clamp(20px, 8vw, 34px)",
+              fontSize: 32,
               lineHeight: 1,
             }}
           >
@@ -69,7 +56,8 @@ function StatsCard({
           style={{
             width: 52,
             height: 52,
-            borderRadius: 18,
+            borderRadius: 8,
+            border: `1px solid ${color}33`,
             background: `${color}22`,
             display: "flex",
             alignItems: "center",

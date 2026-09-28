@@ -1,8 +1,8 @@
 export const theme = {
   colors: {
-    bg: "#0b0f14",
-    card: "#151922",
-    border: "#252b36",
+    bg: "#0b0e13",
+    card: "#141820",
+    border: "#2a303b",
 
     primary: "#2563eb",
     primaryHover: "#1d4ed8",
@@ -21,9 +21,9 @@ export const theme = {
   },
 
   radius: {
-    sm: 10,
-    md: 16,
-    lg: 24,
+    sm: 6,
+    md: 8,
+    lg: 8,
     full: 999,
   },
 
@@ -36,6 +36,6 @@ export const theme = {
   },
 
   shadow: {
-    card: "0 8px 24px rgba(0,0,0,0.25)",
+    card: "0 10px 30px rgba(0,0,0,0.18)",
   },
 };

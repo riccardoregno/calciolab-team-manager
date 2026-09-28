@@ -51,7 +51,9 @@ topbarProfileMenuHeader: {
 },
 
 topbarProfileMenuItem: {
-  display: "block",
+  display: "flex",
+  alignItems: "center",
+  gap: 9,
   padding: "11px 12px",
   borderRadius: 13,
   color: "#e5e7eb",
@@ -71,12 +73,17 @@ topbarProfileLogout: {
   fontSize: 13,
   fontWeight: 900,
   cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
 },
 
   content: {
     flex: 1,
-    padding: "28px 36px",
+    padding: "24px clamp(24px, 3vw, 44px) 40px",
     overflowX: "hidden",
+    minWidth: 0,
   },
 
   storageStatus: {
@@ -136,7 +143,7 @@ topbarProfileLogout: {
     alignItems: "flex-start",
     gap: 16,
     flexWrap: "wrap",
-    marginBottom: 28,
+    marginBottom: 24,
   },
 
 topbarSearchResults: {
@@ -212,7 +219,7 @@ topbarNotificationEmpty: {
   fontSize: 13,
 },
   pageTitle: {
-    fontSize: 34,
+    fontSize: 32,
     lineHeight: 1.08,
     fontWeight: 900,
     margin: 0,
@@ -232,8 +239,9 @@ topbarNotificationEmpty: {
     justifyContent: "space-between",
     alignItems: "center",
     gap: 20,
-    marginBottom: 28,
-    padding: "16px 4px",
+    marginBottom: 22,
+    padding: "10px 0 18px",
+    borderBottom: "1px solid rgba(255,255,255,0.065)",
     flexWrap: "wrap",
   },
 
@@ -279,7 +287,7 @@ topbarSearchWrapper: {
     gap: 10,
     background: "rgba(255,255,255,0.045)",
     border: "1px solid rgba(255,255,255,0.09)",
-    borderRadius: 18,
+    borderRadius: 8,
     padding: "0 14px",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
   },
@@ -307,7 +315,7 @@ topbarSearchWrapper: {
     background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
     color: "white",
     textDecoration: "none",
-    borderRadius: 18,
+    borderRadius: 8,
     padding: "13px 17px",
     fontWeight: 900,
     fontSize: 14,
@@ -318,7 +326,7 @@ topbarSearchWrapper: {
   topbarPlus: {
     width: 20,
     height: 20,
-    borderRadius: 999,
+    borderRadius: 6,
     background: "rgba(255,255,255,0.18)",
     display: "inline-flex",
     alignItems: "center",
@@ -330,7 +338,7 @@ topbarSearchWrapper: {
     position: "relative",
     width: 46,
     height: 46,
-    borderRadius: 16,
+    borderRadius: 8,
     border: "1px solid rgba(255,255,255,0.09)",
     background: "rgba(255,255,255,0.045)",
     color: "white",

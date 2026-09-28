@@ -10,15 +10,14 @@ export const cards = {
     boxShadow: theme.shadow.card,
   },
 
- sectionCard: {
-  background: "linear-gradient(180deg, #171b24 0%, #11151d 100%)",
-  border: "1px solid #2b3240",
-  borderRadius: 18,
-  padding: 22,
-  color: theme.colors.text,
-  boxShadow: "0 14px 34px rgba(0,0,0,0.22)",
-  backdropFilter: "blur(10px)",
-},
+  sectionCard: {
+    background: "#141820",
+    border: "1px solid #2a303b",
+    borderRadius: 8,
+    padding: 22,
+    color: theme.colors.text,
+    boxShadow: "0 12px 30px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.025)",
+  },
 
   playerCard: {
     background: theme.colors.card,
@@ -72,20 +71,20 @@ export const cards = {
     fontWeight: 800,
   }),
   cardHeader: {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  marginBottom: 20,
-  gap: 16,
-  flexWrap: "wrap",
-},
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 18,
+    gap: 16,
+    flexWrap: "wrap",
+  },
 
-cardHeaderTitle: {
-  margin: 0,
-  fontSize: 18,
-  lineHeight: 1.2,
-  fontWeight: 850,
-},
+  cardHeaderTitle: {
+    margin: 0,
+    fontSize: 17,
+    lineHeight: 1.25,
+    fontWeight: 800,
+  },
 
 cardHeaderSubtitle: {
   margin: "6px 0 0 0",

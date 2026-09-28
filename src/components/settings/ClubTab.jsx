@@ -172,18 +172,6 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
     if (!inviteForm.email) return;
     const token = inviteToken || generateInviteToken();
 
-    // FIX (bug inviti): flush immediato e bloccante del token su Supabase.
-    // Se il token era appena stato generato e il debounce di setAppSettings
-    // non aveva ancora scritto su Supabase, l'Edge Function accept-team-invite
-    // non trovava il token (SELECT ... WHERE settings->>inviteToken = ?) e
-    // rispondeva 404, rendendo il link nell'email sempre invalido.
-    // Aspettiamo che il token sia persistito prima di inviare l'email.
-    const { error: flushError } = await flushInviteToken(token);
-    if (flushError) {
-      showToast?.(t("pages.settings.inviteFlushError"), "error");
-      return;
-    }
-
     const pending = {
       id:          createId("invite"),
       name:        inviteForm.name,
@@ -195,10 +183,23 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
       sentAt:      new Date().toISOString(),
       expiresAt:   getInviteExpiryDate(),
     };
-    setAppSettings?.((prev) => {
-      const s = normalizeAppSettings(prev);
-      return { ...s, pendingInvites: [...(s.pendingInvites || []), pending] };
-    });
+    const currentSettings = normalizeAppSettings(appSettings) || {};
+    const nextSettings = {
+      ...currentSettings,
+      inviteToken: token,
+      inviteTokenExpiresAt: currentSettings.inviteToken === token && currentSettings.inviteTokenExpiresAt
+        ? currentSettings.inviteTokenExpiresAt
+        : getInviteExpiryDate(),
+      pendingInvites: [...(currentSettings.pendingInvites || []), pending],
+    };
+    const { error: flushError } = team?.id && isSupabaseConfigured
+      ? await supabase.from("teams").update({ settings: nextSettings }).eq("id", team.id)
+      : { error: null };
+    if (flushError) {
+      showToast?.(t("pages.settings.inviteFlushError"), "error");
+      return;
+    }
+    setAppSettings?.(() => nextSettings);
     setInviteForm(EMPTY_INVITE_FORM);
     setShowCustomPerms(false);
     clearInviteMemberDraft();
@@ -211,13 +212,8 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
 
     // L'invito resta valido anche se l'email fallisce: in quel caso mostriamo
     // l'errore reale e il coach può condividere il link manualmente.
-    const teamName  = profile.teamName || profile.clubName || "CalcioLab";
-    const roleName  = memberRoles?.find?.((r) => r.id === inviteForm.role)?.label || inviteForm.role || "Membro dello staff";
     supabase.auth.getSession().then(async ({ data: sessionData }) => {
       const accessToken = sessionData?.session?.access_token || "";
-      const inviterName = sessionData?.session?.user?.user_metadata?.first_name
-        || sessionData?.session?.user?.email
-        || "Il tuo coach";
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
         {
@@ -230,10 +226,8 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
           body: JSON.stringify({
             type:        "team_invite",
             to:          inviteForm.email,
-            inviterName,
-            teamName,
-            roleName,
-            inviteUrl,
+            teamId:      team?.id,
+            inviteId:    pending.id,
           }),
         }
       );

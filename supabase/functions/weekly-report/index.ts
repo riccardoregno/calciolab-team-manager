@@ -27,6 +27,12 @@ function json(data: unknown, status = 200) {
   });
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 function isAuthorized(req: Request) {
   if (WEEKLY_REPORT_SECRET && req.headers.get("x-internal-secret") === WEEKLY_REPORT_SECRET) return true;
   const bearer = req.headers.get("authorization")?.replace("Bearer ", "") ?? "";
@@ -108,8 +114,8 @@ async function sendEmail(payload: Record<string, unknown>) {
 
 function htmlReport(teamName: string, rangeLabel: string, summary: Record<string, unknown>) {
   return `
-    <h1 style="margin:0 0 16px;font-size:24px;color:white;">Report settimanale ${teamName}</h1>
-    <p style="color:#94a3b8;line-height:1.7;">Riepilogo operativo della settimana ${rangeLabel}.</p>
+    <h1 style="margin:0 0 16px;font-size:24px;color:white;">Report settimanale ${escapeHtml(teamName)}</h1>
+    <p style="color:#94a3b8;line-height:1.7;">Riepilogo operativo della settimana ${escapeHtml(rangeLabel)}.</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;border-collapse:separate;border-spacing:0 8px;">
       ${[
         ["Sedute svolte", summary.sessions],
@@ -122,7 +128,7 @@ function htmlReport(teamName: string, rangeLabel: string, summary: Record<string
       ].map(([label, value]) => `
         <tr>
           <td style="padding:12px 14px;background:rgba(255,255,255,0.04);border-radius:10px 0 0 10px;color:#94a3b8;">${label}</td>
-          <td style="padding:12px 14px;background:rgba(255,255,255,0.04);border-radius:0 10px 10px 0;color:white;font-weight:900;text-align:right;">${value}</td>
+          <td style="padding:12px 14px;background:rgba(255,255,255,0.04);border-radius:0 10px 10px 0;color:white;font-weight:900;text-align:right;">${escapeHtml(value)}</td>
         </tr>
       `).join("")}
     </table>
@@ -176,7 +182,7 @@ Deno.serve(async (req: Request) => {
       const load = weekSessions.reduce((sum, row) => sum + sessionLoad(row), 0);
       const matchList = weekMatches.map((row) => {
         const opponent = row.data?.opponent ? `vs ${row.data.opponent}` : row.data?.title || "Partita";
-        return `${row.data?.date || ""} ${opponent}${row.data?.result ? ` (${row.data.result})` : ""}`;
+        return escapeHtml(`${row.data?.date || ""} ${opponent}${row.data?.result ? ` (${row.data.result})` : ""}`);
       }).join("<br>");
 
       const summary = {

@@ -320,9 +320,9 @@ function App() {
   const authRequested = _authParams.has("invite_mode") || _authParams.has("mode") || _authParams.has("token");
   if (_path === "/terms")                  return <BrowserRouter><Suspense fallback={null}><Terms /></Suspense></BrowserRouter>;
   if (_path === "/privacy")                return <BrowserRouter><Suspense fallback={null}><Privacy /></Suspense></BrowserRouter>;
-  if (_path.startsWith("/join"))           return <Suspense fallback={null}><JoinTeam /></Suspense>;
-  if (_path.startsWith("/rsvp"))           return <Suspense fallback={null}><Rsvp /></Suspense>;
-  if (_path.startsWith("/reset-password")) return <Suspense fallback={null}><ResetPassword /></Suspense>;
+  if (_path.startsWith("/join"))           return <BrowserRouter><Suspense fallback={null}><JoinTeam /></Suspense></BrowserRouter>;
+  if (_path.startsWith("/rsvp"))           return <BrowserRouter><Suspense fallback={null}><Rsvp /></Suspense></BrowserRouter>;
+  if (_path.startsWith("/reset-password")) return <BrowserRouter><Suspense fallback={null}><ResetPassword /></Suspense></BrowserRouter>;
 
   if (auth.authLoading) {
     return (

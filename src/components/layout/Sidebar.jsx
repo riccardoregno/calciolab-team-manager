@@ -1,5 +1,38 @@
 import { useState, useCallback } from "react";
 import { NavLink } from "react-router-dom";
+import {
+  BarChart3,
+  BrainCircuit,
+  CalendarDays,
+  CalendarRange,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardCheck,
+  ClipboardList,
+  Dumbbell,
+  Gem,
+  GitCompareArrows,
+  Handshake,
+  HeartPulse,
+  Home,
+  LibraryBig,
+  ListChecks,
+  LockKeyhole,
+  MessagesSquare,
+  Printer,
+  RadioTower,
+  Rocket,
+  Ruler,
+  Search,
+  Settings,
+  Target,
+  Timer,
+  Trophy,
+  Users,
+  Wrench,
+  Zap,
+} from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { getCurrentUserRole, isFeatureUnlocked, isRoleAllowed, normalizeAppSettings } from "../../utils/helpers";
 
@@ -13,25 +46,25 @@ const primaryMenuGroups = [
   {
     titleKey: "navigation.groups.home",
     items: [
-      { to: "/", labelKey: "navigation.items.dashboard", icon: "🏠", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
+      { to: "/", labelKey: "navigation.items.dashboard", icon: Home, roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
     ],
   },
   {
     titleKey: "navigation.groups.team",
     items: [
-      { to: "/players", label: "Squadra", icon: "👥", roles: coachRoles },
+      { to: "/players", label: "Squadra", icon: Users, roles: coachRoles },
     ],
   },
   {
     titleKey: "navigation.groups.field",
     items: [
-      { to: "/trainings", label: "Allenamenti", icon: "📋", roles: technicalRoles },
+      { to: "/trainings", label: "Allenamenti", icon: ClipboardList, roles: technicalRoles },
     ],
   },
   {
     titleKey: "navigation.groups.match",
     items: [
-      { to: "/matches", label: "Centro partite", icon: "⚽", roles: coachRoles },
+      { to: "/matches", label: "Centro partite", icon: Trophy, roles: coachRoles },
     ],
   },
 ];
@@ -40,47 +73,47 @@ const toolboxGroups = [
   {
     titleKey: "navigation.groups.home",
     items: [
-      { to: "/calendar", labelKey: "navigation.items.calendar", icon: "📅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"] },
-      { to: "/onboarding", labelKey: "navigation.items.onboarding", icon: "🚀", roles: onboardingRoles },
+      { to: "/calendar", labelKey: "navigation.items.calendar", icon: CalendarDays, roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"] },
+      { to: "/onboarding", labelKey: "navigation.items.onboarding", icon: Rocket, roles: onboardingRoles },
     ],
   },
   {
     titleKey: "navigation.groups.team",
     items: [
-      { to: "/availability", labelKey: "navigation.items.availability", icon: "🩺", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
-      { to: "/player-compare", labelKey: "navigation.items.playerCompare", icon: "⚡", featureKey: "statistics", roles: coachRoles },
-      { to: "/season-goals", labelKey: "navigation.items.seasonGoals", icon: "🎯", roles: coachRoles },
-      { to: "/physical-tests", labelKey: "navigation.items.physicalTests", icon: "⏱️", featureKey: "physicalTests", roles: physicalRoles },
-      { to: "/physical-workouts", labelKey: "navigation.items.physicalWorkouts", icon: "🏃", featureKey: "physicalWorkouts", roles: physicalRoles },
-      { to: "/gps-load", labelKey: "navigation.items.gpsLoad", icon: "📡", featureKey: "physicalTests", roles: physicalRoles },
+      { to: "/availability", labelKey: "navigation.items.availability", icon: HeartPulse, roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "player"] },
+      { to: "/player-compare", labelKey: "navigation.items.playerCompare", icon: GitCompareArrows, featureKey: "statistics", roles: coachRoles },
+      { to: "/season-goals", labelKey: "navigation.items.seasonGoals", icon: Target, roles: coachRoles },
+      { to: "/physical-tests", labelKey: "navigation.items.physicalTests", icon: Timer, featureKey: "physicalTests", roles: physicalRoles },
+      { to: "/physical-workouts", labelKey: "navigation.items.physicalWorkouts", icon: Dumbbell, featureKey: "physicalWorkouts", roles: physicalRoles },
+      { to: "/gps-load", labelKey: "navigation.items.gpsLoad", icon: RadioTower, featureKey: "physicalTests", roles: physicalRoles },
     ],
   },
   {
     titleKey: "navigation.groups.field",
     items: [
-      { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: "🧾", roles: technicalRoles },
-      { to: "/exercises", labelKey: "navigation.items.exercises", icon: "📚", roles: technicalRoles },
-      { to: "/microcycle", labelKey: "navigation.items.microcycle", icon: "🗓️", roles: technicalRoles },
-      { to: "/tactical-board", labelKey: "navigation.items.tacticalBoard", icon: "🧠", roles: technicalRoles },
-      { to: "/set-plays", labelKey: "navigation.items.setPlays", icon: "📐", roles: technicalRoles },
-      { to: "/opponents", labelKey: "navigation.items.opponents", icon: "🕵️", featureKey: "opponents", roles: technicalRoles },
+      { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister", icon: ClipboardCheck, roles: technicalRoles },
+      { to: "/exercises", labelKey: "navigation.items.exercises", icon: LibraryBig, roles: technicalRoles },
+      { to: "/microcycle", labelKey: "navigation.items.microcycle", icon: CalendarRange, roles: technicalRoles },
+      { to: "/tactical-board", labelKey: "navigation.items.tacticalBoard", icon: BrainCircuit, roles: technicalRoles },
+      { to: "/set-plays", labelKey: "navigation.items.setPlays", icon: Ruler, roles: technicalRoles },
+      { to: "/opponents", labelKey: "navigation.items.opponents", icon: Search, featureKey: "opponents", roles: technicalRoles },
     ],
   },
   {
     titleKey: "navigation.groups.system",
     items: [
-      { to: "/statistics", labelKey: "navigation.items.statistics", icon: "📊", roles: coachRoles },
-      { to: "/staff-tasks", labelKey: "navigation.items.staffTasks", icon: "✅", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
-      { to: "/staff-chat", labelKey: "navigation.items.staffChat", icon: "💬", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
-      { to: "/exports", labelKey: "navigation.items.exports", icon: "🖨️", featureKey: "exports", roles: managementRoles },
-      { to: "/premium", labelKey: "navigation.items.premium", icon: "💎", roles: managementRoles },
-      { to: "/settings", labelKey: "navigation.items.settings", icon: "⚙️", roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
+      { to: "/statistics", labelKey: "navigation.items.statistics", icon: BarChart3, roles: coachRoles },
+      { to: "/staff-tasks", labelKey: "navigation.items.staffTasks", icon: ListChecks, roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
+      { to: "/staff-chat", labelKey: "navigation.items.staffChat", icon: MessagesSquare, roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"] },
+      { to: "/exports", labelKey: "navigation.items.exports", icon: Printer, featureKey: "exports", roles: managementRoles },
+      { to: "/premium", labelKey: "navigation.items.premium", icon: Gem, roles: managementRoles },
+      { to: "/settings", labelKey: "navigation.items.settings", icon: Settings, roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"] },
     ],
   },
   {
     titleKey: "navigation.groups.club",
     items: [
-      { to: "/sponsors", labelKey: "navigation.items.sponsors", icon: "🤝", featureKey: "sponsors", roles: ["owner", "director", "sponsor"] },
+      { to: "/sponsors", labelKey: "navigation.items.sponsors", icon: Handshake, featureKey: "sponsors", roles: ["owner", "director", "sponsor"] },
     ],
   },
 ];
@@ -99,7 +132,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
   const juniorGroups = managesJuniores ? [{
     titleKey: "navigation.groups.juniors",
     items: [
-      { to: "/players?gruppo=juniores", labelKey: "navigation.items.juniorRoster", icon: "⚡", roles: coachRoles },
+      { to: "/players?gruppo=juniores", labelKey: "navigation.items.juniorRoster", icon: Zap, roles: coachRoles },
     ],
   }] : [];
 
@@ -139,20 +172,19 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
           }}
         >
           {!collapsed && (
-            <div>
-              <h2 style={{ margin: 0, fontSize: 26, letterSpacing: 0 }}>
-                ⚽ CalcioLab
-              </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+              <img src="/favicon.svg" alt="" style={{ width: 36, height: 36 }} />
+              <div>
+                <h2 style={{ margin: 0, fontSize: 22, letterSpacing: 0 }}>CalcioLab</h2>
               <p style={{ color: "#94a3b8", marginTop: 6, marginBottom: 0 }}>
                 {t("common.coachPlatform")}
               </p>
+              </div>
             </div>
           )}
 
           {collapsed && (
-            <div style={{ fontSize: 28 }} title="CalcioLab">
-              ⚽
-            </div>
+            <img src="/favicon.svg" alt="CalcioLab" style={{ width: 38, height: 38 }} />
           )}
 
           <button
@@ -160,7 +192,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
             style={sidebarStyles.collapseButton}
             title={collapsed ? "Espandi menu" : "Comprimi menu"}
           >
-            {collapsed ? "›" : "‹"}
+            {collapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
           </button>
         </div>
 
@@ -196,13 +228,13 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
                 title={collapsed ? "Altri strumenti" : undefined}
               >
                 <span style={sidebarStyles.toolboxButtonLabel}>
-                  <span style={{ fontSize: 18 }}>🧰</span>
+                  <Wrench size={18} />
                   {!collapsed && <span>Altri strumenti</span>}
                 </span>
                 {!collapsed && (
                   <span style={sidebarStyles.toolboxMeta}>
                     {toolsOpen ? "Chiudi" : `${visibleToolboxAreas} aree`}
-                    <span style={{ transform: toolsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>⌄</span>
+                    <ChevronDown size={15} style={{ transform: toolsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }} />
                   </span>
                 )}
               </button>
@@ -302,6 +334,7 @@ const ROUTE_PREFETCH_MAP = {
 };
 
 function SidebarLink({ item, collapsed, locked, label, badge = 0, compact = false }) {
+  const Icon = item.icon;
   const prefetch = useCallback(() => {
     const loader = ROUTE_PREFETCH_MAP[item.to.split("?")[0]];
     if (loader) loader().catch(() => {});
@@ -327,17 +360,17 @@ function SidebarLink({ item, collapsed, locked, label, badge = 0, compact = fals
         boxShadow: isActive ? "0 10px 25px rgba(37,99,235,0.35)" : "none",
         position: "relative",
         minWidth: 0,
-        borderRadius: compact ? 10 : 14,
+        borderRadius: 8,
       })}
     >
-      <span style={{ fontSize: compact ? 15 : 18, position: "relative", flexShrink: 0 }}>
-        {item.icon}
+      <span style={{ width: compact ? 17 : 20, height: compact ? 17 : 20, position: "relative", flexShrink: 0, display: "grid", placeItems: "center" }}>
+        <Icon size={compact ? 16 : 19} strokeWidth={2.1} aria-hidden="true" />
         {badge > 0 && collapsed && (
           <span style={sidebarStyles.badgeDot} />
         )}
       </span>
       {!collapsed && <span style={{ ...sidebarStyles.linkLabel, fontSize: compact ? 12 : 13 }}>{label}</span>}
-      {!collapsed && locked && <span style={sidebarStyles.lockPill}>🔒</span>}
+      {!collapsed && locked && <LockKeyhole size={13} style={sidebarStyles.lockPill} aria-label="Funzione Premium" />}
       {!collapsed && badge > 0 && (
         <span style={sidebarStyles.badge}>{badge > 99 ? "99+" : badge}</span>
       )}
@@ -355,6 +388,8 @@ const sidebarStyles = {
     color: "white",
     cursor: "pointer",
     fontWeight: 900,
+    display: "grid",
+    placeItems: "center",
   },
   nav: {
     display: "flex",
@@ -382,7 +417,7 @@ const sidebarStyles = {
   },
   link: {
     textDecoration: "none",
-    borderRadius: 14,
+    borderRadius: 8,
     fontWeight: 800,
     display: "flex",
     alignItems: "center",
@@ -407,7 +442,7 @@ const sidebarStyles = {
   },
   toolboxButton: {
     width: "100%",
-    borderRadius: 14,
+    borderRadius: 8,
     border: "1px solid rgba(148,163,184,0.16)",
     background: "rgba(15,23,42,0.72)",
     color: "#cbd5e1",
@@ -434,7 +469,7 @@ const sidebarStyles = {
     display: "grid",
     gap: 8,
     padding: "12px",
-    borderRadius: 16,
+    borderRadius: 8,
     border: "1px solid rgba(148,163,184,0.12)",
     background: "rgba(2,6,23,0.32)",
   },
@@ -445,7 +480,7 @@ const sidebarStyles = {
   toolboxGroupButton: {
     width: "100%",
     minHeight: 38,
-    borderRadius: 12,
+    borderRadius: 8,
     border: "1px solid rgba(148,163,184,0.12)",
     background: "rgba(255,255,255,0.035)",
     color: "#cbd5e1",
@@ -475,7 +510,7 @@ const sidebarStyles = {
   footer: {
     background: "rgba(255,255,255,0.035)",
     border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: 20,
+    borderRadius: 8,
     padding: 16,
     color: "#cbd5e1",
     fontSize: 13,

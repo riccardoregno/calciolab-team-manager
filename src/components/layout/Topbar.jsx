@@ -1,5 +1,16 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  BarChart3,
+  Bell,
+  CalendarDays,
+  ChevronDown,
+  LogOut,
+  Plus,
+  Search,
+  Settings,
+  Users,
+} from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { supabase } from "../../lib/supabaseClient";
 import { styles } from "../../styles/index.js";
@@ -114,7 +125,7 @@ export default function Topbar({
           style={styles.topbarProfileMenuItem}
           onClick={onClose}
         >
-          ⚙️ {t("topbar.settings")}
+          <Settings size={16} /> {t("topbar.settings")}
         </Link>
 
         <Link
@@ -122,7 +133,7 @@ export default function Topbar({
           style={styles.topbarProfileMenuItem}
           onClick={onClose}
         >
-          📊 {t("topbar.performanceDashboard")}
+          <BarChart3 size={16} /> {t("topbar.performanceDashboard")}
         </Link>
 
         <Link
@@ -130,7 +141,7 @@ export default function Topbar({
           style={styles.topbarProfileMenuItem}
           onClick={onClose}
         >
-          👥 {t("topbar.rosterManagement")}
+          <Users size={16} /> {t("topbar.rosterManagement")}
         </Link>
 
         <Link
@@ -138,11 +149,11 @@ export default function Topbar({
           style={styles.topbarProfileMenuItem}
           onClick={onClose}
         >
-          🗓️ {t("topbar.planning")}
+          <CalendarDays size={16} /> {t("topbar.planning")}
         </Link>
 
         <button style={styles.topbarProfileLogout} onClick={handleLogout}>
-          {t("topbar.logout")}
+          <LogOut size={16} /> {t("topbar.logout")}
         </button>
       </div>
     );
@@ -183,7 +194,7 @@ export default function Topbar({
 
         <div style={styles.topbarSearchWrapper}>
           <div style={styles.topbarSearchBox}>
-            <span style={styles.topbarSearchIcon}>⌕</span>
+            <Search size={17} style={styles.topbarSearchIcon} aria-hidden="true" />
 
             <input
               value={search}
@@ -231,7 +242,7 @@ export default function Topbar({
         </div>
 
         <Link to="/trainings" onClick={handleNewSessionClick} style={styles.topbarPrimaryAction}>
-          <span style={styles.topbarPlus}>+</span>
+          <span style={styles.topbarPlus}><Plus size={15} /></span>
           {t("topbar.newSession")}
         </Link>
 
@@ -241,7 +252,7 @@ export default function Topbar({
             title={t("topbar.notifications")}
             onClick={() => setOpenNotifications(!openNotifications)}
           >
-            🔔
+            <Bell size={18} aria-hidden="true" />
             {unreadCount > 0 && (
               <span style={{
                 ...styles.topbarNotificationDot,
@@ -350,7 +361,7 @@ export default function Topbar({
               <span style={styles.topbarProfileRole}>Coach CalcioLab</span>
             </div>
 
-            <span style={styles.topbarChevron}>⌄</span>
+            <ChevronDown size={15} style={styles.topbarChevron} aria-hidden="true" />
           </button>
 
           {openProfileDesktop && renderProfileMenu(
