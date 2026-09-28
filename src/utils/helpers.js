@@ -738,6 +738,7 @@ export function normalizeAppSettings(settings = {}){
     : settings.workspaceProfile?.category;
 
   return {
+    experienceMode: settings.experienceMode === "advanced" ? "advanced" : "essential",
     subscription: {
       plan: settings.subscription?.plan || "free",
       billingCycle: settings.subscription?.billingCycle || "monthly",

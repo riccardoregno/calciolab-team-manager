@@ -1,9 +1,12 @@
 import { useNavigate } from "react-router-dom";
+import { ArrowRight, BarChart3, ClipboardCheck, FileText, Shirt } from "lucide-react";
 
 const TABS = [
   {
     key: "convocazione",
-    label: "Prima",
+    label: "Convocazione",
+    shortLabel: "Convocati",
+    icon: ClipboardCheck,
     path: (id) => `/match-convocation/${id}`,
     getStatus(d) {
       if (!d) return null;
@@ -18,7 +21,9 @@ const TABS = [
   },
   {
     key: "scheda",
-    label: "Durante",
+    label: "Formazione",
+    shortLabel: "Formazione",
+    icon: Shirt,
     path: (id) => `/match-day/${id}`,
     getStatus(d) {
       if (!d) return null;
@@ -33,7 +38,9 @@ const TABS = [
   },
   {
     key: "postgara",
-    label: "Dopo",
+    label: "Dopo gara",
+    shortLabel: "Dopo gara",
+    icon: FileText,
     path: (id) => `/post-match/${id}`,
     getStatus(d) {
       if (!d) return null;
@@ -47,7 +54,9 @@ const TABS = [
   },
   {
     key: "statistiche",
-    label: "Analisi",
+    label: "Statistiche",
+    shortLabel: "Statistiche",
+    icon: BarChart3,
     path: (id) => `/match-stats/${id}`,
     getStatus: () => null,
     getCount:  () => null,
@@ -57,6 +66,8 @@ const TABS = [
 export default function MatchTabBar({ matchId, active, matchLabel, matchData }) {
   const navigate = useNavigate();
   const normalizedActive = active === "live" ? "scheda" : active;
+  const activeIndex = TABS.findIndex((tab) => tab.key === normalizedActive);
+  const nextTab = activeIndex >= 0 ? TABS[activeIndex + 1] : null;
 
   if (!matchId) return null;
 
@@ -64,11 +75,13 @@ export default function MatchTabBar({ matchId, active, matchLabel, matchData }) 
     <div style={s.wrap}>
       {matchLabel && <span style={s.label}>{matchLabel}</span>}
 
+      <div style={s.flowWrap}>
       <div style={s.tabRow}>
         {TABS.map((tab) => {
           const isActive = normalizedActive === tab.key;
           const status   = tab.getStatus(matchData);
           const count    = tab.getCount(matchData);
+          const Icon = tab.icon;
           return (
             <button
               key={tab.key}
@@ -79,7 +92,8 @@ export default function MatchTabBar({ matchId, active, matchLabel, matchData }) 
                 ...(isActive ? s.tabActive : s.tabInactive),
               }}
             >
-              {tab.label}
+              <Icon size={15} aria-hidden="true" />
+              <span>{tab.label}</span>
               {status === "done" && (
                 <span style={s.badgeDone}>✓</span>
               )}
@@ -94,6 +108,13 @@ export default function MatchTabBar({ matchId, active, matchLabel, matchData }) 
           );
         })}
       </div>
+      {nextTab && (
+        <button type="button" onClick={() => navigate(nextTab.path(matchId))} style={s.nextButton}>
+          Avanti: {nextTab.shortLabel}
+          <ArrowRight size={15} />
+        </button>
+      )}
+      </div>
     </div>
   );
 }
@@ -106,7 +127,7 @@ const s = {
     gap: 14,
     flexWrap: "wrap",
     padding: "12px 16px",
-    borderRadius: 16,
+    borderRadius: 8,
     background: "rgba(255,255,255,0.035)",
     border: "1px solid rgba(255,255,255,0.08)",
     marginBottom: 20,
@@ -123,11 +144,18 @@ const s = {
     gap: 6,
     flexWrap: "wrap",
   },
+  flowWrap: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 10,
+    flexWrap: "wrap",
+  },
   tab: {
     position: "relative",
     border: "1px solid transparent",
-    borderRadius: 12,
-    padding: "9px 18px",
+    borderRadius: 8,
+    padding: "9px 13px",
     fontWeight: 800,
     fontSize: 13,
     cursor: "pointer",
@@ -184,5 +212,20 @@ const s = {
     background: "#f59e0b",
     display: "inline-block",
     flexShrink: 0,
+  },
+  nextButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    minHeight: 38,
+    padding: "8px 12px",
+    borderRadius: 8,
+    border: "1px solid rgba(96,165,250,0.32)",
+    background: "rgba(37,99,235,0.12)",
+    color: "#bfdbfe",
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: "pointer",
   },
 };

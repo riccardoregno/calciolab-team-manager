@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LayoutDashboard, PanelsTopLeft } from "lucide-react";
 import AppCard from "../ui/AppCard";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
@@ -55,8 +56,69 @@ export function CoachTab({ appSettings, setAppSettings, setConfirmState, showToa
     setAppSettings({ ...settings, dashboardWidgets: { ...settings.dashboardWidgets, [key]: value } });
   }
 
+  function updateExperienceMode(experienceMode) {
+    setAppSettings({ ...settings, experienceMode });
+    showToast(
+      experienceMode === "essential"
+        ? t("pages.settings.experienceEssentialToast")
+        : t("pages.settings.experienceCompleteToast"),
+      "ok",
+    );
+  }
+
   return (
     <div style={sharedStyles.panel}>
+      <AppCard
+        title={t("pages.settings.experienceTitle")}
+        subtitle={t("pages.settings.experienceSubtitle")}
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
+          {[
+            {
+              id: "essential",
+              title: t("pages.settings.experienceEssential"),
+              text: t("pages.settings.experienceEssentialText"),
+              Icon: LayoutDashboard,
+            },
+            {
+              id: "advanced",
+              title: t("pages.settings.experienceComplete"),
+              text: t("pages.settings.experienceCompleteText"),
+              Icon: PanelsTopLeft,
+            },
+          ].map(({ id, title, text, Icon }) => {
+            const active = settings.experienceMode === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => updateExperienceMode(id)}
+                aria-pressed={active}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  minHeight: 92,
+                  padding: 14,
+                  textAlign: "left",
+                  borderRadius: 8,
+                  border: active ? "1px solid rgba(96,165,250,0.55)" : "1px solid rgba(255,255,255,0.09)",
+                  background: active ? "rgba(37,99,235,0.14)" : "rgba(255,255,255,0.035)",
+                  color: "#f8fafc",
+                  cursor: "pointer",
+                }}
+              >
+                <Icon size={20} color={active ? "#60a5fa" : "#94a3b8"} />
+                <span>
+                  <strong style={{ display: "block", marginBottom: 4 }}>{title}</strong>
+                  <span style={{ display: "block", color: "#94a3b8", fontSize: 13, lineHeight: 1.45 }}>{text}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </AppCard>
+
       <div style={sharedStyles.grid2}>
         <AppCard>
           <h3 style={{ marginTop: 0, lineHeight: 1.2 }}>{t("pages.settings.coachParamsTitle")}</h3>

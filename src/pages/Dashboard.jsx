@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
-import { Activity, CalendarDays, Eye, EyeOff, Settings2, Users } from "lucide-react";
+import { Activity, ArrowRight, CalendarDays, CheckCircle2, Circle, Eye, EyeOff, Settings2, Users } from "lucide-react";
 
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
@@ -177,6 +177,7 @@ function Dashboard({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const auth = useAuth();
+  const settings = useMemo(() => normalizeAppSettings(appSettings), [appSettings]);
 
   const [playerStatsMap, setPlayerStatsMap] = useState({});
   const [playerRatingsMap, setPlayerRatingsMap] = useState({});
@@ -187,21 +188,16 @@ function Dashboard({
   const [showPersonalize, setShowPersonalize] = useState(false);
   const [pendingRsvpMatches, setPendingRsvpMatches] = useState([]);
   const [dashTab, setDashTab] = useState("oggi");
-  const [simpleView, setSimpleView] = useState(() => {
-    try { return localStorage.getItem("dash_simple_view") === "1"; } catch { return false; }
-  });
+  const simpleView = settings.experienceMode !== "advanced";
   const isMobile = useIsMobile();
 
   function toggleSimpleView() {
-    setSimpleView((v) => {
-      const next = !v;
-      try { localStorage.setItem("dash_simple_view", next ? "1" : "0"); } catch (_e) { /* ignore */ }
-      return next;
-    });
+    setAppSettings?.((previous) => ({
+      ...normalizeAppSettings(previous),
+      experienceMode: simpleView ? "advanced" : "essential",
+    }));
   }
 
-  // Memoize settings so derived useMemo hooks don't re-run on every render
-  const settings = useMemo(() => normalizeAppSettings(appSettings), [appSettings]);
   const widgets = settings.dashboardWidgets;
   const currentRole = getCurrentUserRole(settings);
 
@@ -433,6 +429,47 @@ function Dashboard({
     ? settings.dashboardSectionOrder.filter((key) => DASHBOARD_SECTION_KEYS.includes(key))
     : DEFAULT_SECTION_ORDER;
   const safeSectionOrder = sectionOrder.length ? sectionOrder : DEFAULT_SECTION_ORDER;
+
+  const quickStartSteps = [
+    {
+      id: "roster",
+      title: t("pages.dashboard.quickStart.rosterTitle"),
+      text: t("pages.dashboard.quickStart.rosterText"),
+      done: players.length > 0,
+      action: () => navigate("/players?modal=new-player"),
+      actionLabel: t("pages.dashboard.quickStart.rosterAction"),
+    },
+    {
+      id: "training",
+      title: t("pages.dashboard.quickStart.trainingTitle"),
+      text: t("pages.dashboard.quickStart.trainingText"),
+      done: sessions.length > 0,
+      action: () => navigate("/trainings", { state: { newSession: true } }),
+      actionLabel: t("pages.dashboard.quickStart.trainingAction"),
+    },
+    {
+      id: "match",
+      title: t("pages.dashboard.quickStart.matchTitle"),
+      text: t("pages.dashboard.quickStart.matchText"),
+      done: matches.length > 0,
+      action: () => navigate("/matches?modal=match"),
+      actionLabel: t("pages.dashboard.quickStart.matchAction"),
+    },
+    {
+      id: "callup",
+      title: t("pages.dashboard.quickStart.callupTitle"),
+      text: t("pages.dashboard.quickStart.callupText"),
+      done: matches.some((match) => Array.isArray(match.convocazione?.playerIds) && match.convocazione.playerIds.length > 0),
+      action: () => {
+        const target = nextMatch || matches[0];
+        navigate(target?.id ? `/match-convocation/${target.id}` : "/matches?modal=match");
+      },
+      actionLabel: matches.length > 0
+        ? t("pages.dashboard.quickStart.callupAction")
+        : t("pages.dashboard.quickStart.callupBlockedAction"),
+    },
+  ];
+  const quickStartCompleted = quickStartSteps.filter((step) => step.done).length;
 
   function updateSectionOrder(newOrder) {
     setAppSettings?.({ ...settings, dashboardSectionOrder: newOrder });
@@ -1289,110 +1326,12 @@ function Dashboard({
         </AppCard>
       )}
 
-      {/* ── First-run welcome card: visibile solo quando l'utente non ha ancora dati ── */}
-      {!loading && players.length === 0 && sessions.length === 0 && matches.length === 0 ? (
-        <AppCard style={{ marginBottom: 18 }}>
-          <div style={{ marginBottom: 20 }}>
-            <h2 style={{ margin: "0 0 6px", fontSize: 26, lineHeight: 1.12 }}>
-              {t("pages.dashboard.firstRunTitle")}
-            </h2>
-            <p style={{ color: "#94a3b8", margin: 0, lineHeight: 1.5 }}>
-              {t("pages.dashboard.firstRunSubtitle")}
-            </p>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14 }}>
-            {[
-              { icon: "👥", titleKey: "firstRunStep1Title", textKey: "firstRunStep1Text", btnKey: "firstRunStep1Btn", path: "/players", tone: "blue" },
-              { icon: "📋", titleKey: "firstRunStep2Title", textKey: "firstRunStep2Text", btnKey: "firstRunStep2Btn", path: "/trainings", tone: "green" },
-              { icon: "⚽", titleKey: "firstRunStep3Title", textKey: "firstRunStep3Text", btnKey: "firstRunStep3Btn", path: "/matches", tone: "orange" },
-            ].map(({ icon, titleKey, textKey, btnKey, path, tone }) => (
-              <button
-                key={path}
-                type="button"
-                onClick={() => navigate(path)}
-                className="cl-card-btn"
-                style={{
-                  textAlign: "left", padding: "18px 16px", borderRadius: 16, cursor: "pointer",
-                  background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.09)",
-                  color: "white",
-                }}
-              >
-                <div style={{ fontSize: 28, marginBottom: 10 }}>{icon}</div>
-                <h3 style={{ margin: "0 0 6px", fontSize: 15, lineHeight: 1.2 }}>
-                  {t(`pages.dashboard.${titleKey}`)}
-                </h3>
-                <p style={{ margin: "0 0 14px", color: "#94a3b8", fontSize: 13, lineHeight: 1.5 }}>
-                  {t(`pages.dashboard.${textKey}`)}
-                </p>
-                <Badge tone={tone}>{t(`pages.dashboard.${btnKey}`)}</Badge>
-              </button>
-            ))}
-          </div>
-        </AppCard>
-      ) : (
-        /* ── Setup progress card: visibile dopo il primo dato inserito ── */
-        <AppCard style={{ marginBottom: 18 }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr auto",
-              gap: 16,
-              alignItems: "center",
-            }}
-          >
-            <div>
-              <Badge tone={setup.percent >= 70 ? "green" : "orange"}>
-                {t("pages.dashboard.setupPercent", { percent: setup.percent })}
-              </Badge>
-
-              <h2 className="setup-progress-title" style={{ margin: "12px 0 6px" }}>
-                {setup.next ? t(setup.next.labelKey) : t("pages.dashboard.workspaceReady")}
-              </h2>
-
-              <p className="mobile-hide" style={{ color: "#94a3b8", margin: 0 }}>
-                {t("pages.dashboard.setupStepsCompleted", { completed: setup.completed, total: setup.total })}
-              </p>
-
-              <div
-                className="setup-progress-bar"
-                style={{
-                  height: 10,
-                  borderRadius: 999,
-                  background: "rgba(255,255,255,0.08)",
-                  overflow: "hidden",
-                  marginTop: 14,
-                }}
-              >
-                <div
-                  style={{
-                    width: `${setup.percent}%`,
-                    height: "100%",
-                    background: "linear-gradient(135deg,#22c55e,#38bdf8)",
-                  }}
-                />
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                flexWrap: "wrap",
-                justifyContent: "flex-end",
-              }}
-            >
-              {!settings.onboarding?.completed && (
-                <Button variant="ghost" onClick={() => navigate("/onboarding")}>
-                  {t("pages.dashboard.onboarding")}
-                </Button>
-              )}
-
-              <Button onClick={() => navigate(setup.next?.path || "/settings")}>
-                {t("pages.dashboard.nextStep")}
-              </Button>
-            </div>
-          </div>
-        </AppCard>
+      {!loading && quickStartCompleted < quickStartSteps.length && (
+        <GettingStartedCard
+          steps={quickStartSteps}
+          completed={quickStartCompleted}
+          onResumeOnboarding={!settings.onboarding?.completed ? () => navigate("/onboarding") : null}
+        />
       )}
 
       {openCorrections.length > 0 && (
@@ -1411,28 +1350,20 @@ function Dashboard({
         />
       )}
 
-      {/* Tab switcher mobile + toggle vista semplice */}
-      {isMobile && (
-        <>
-          {/* Toggle vista semplice */}
-          <button
-            onClick={toggleSimpleView}
-            style={{
-              width: "100%", marginBottom: 10,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              padding: "11px 16px", borderRadius: 12, border: "none",
-              background: simpleView ? "rgba(56,189,248,0.12)" : "rgba(255,255,255,0.04)",
-              outline: simpleView ? "1px solid rgba(56,189,248,0.35)" : "1px solid rgba(255,255,255,0.08)",
-              color: simpleView ? "#38bdf8" : "#94a3b8",
-              fontSize: 14, fontWeight: 700, cursor: "pointer",
-            }}
-          >
-            {simpleView ? <Eye size={18} /> : <EyeOff size={18} />}
-            {simpleView ? "Vista semplice attiva — tocca per vedere tutto" : "Vuoi una vista più semplice?"}
-          </button>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+        <div>
+          <strong style={{ display: "block", fontSize: 14 }}>{simpleView ? t("pages.dashboard.essentialMode") : t("pages.dashboard.completeMode")}</strong>
+          <span style={{ color: "#64748b", fontSize: 12 }}>
+            {simpleView ? t("pages.dashboard.essentialModeText") : t("pages.dashboard.completeModeText")}
+          </span>
+        </div>
+        <Button variant="ghost" onClick={toggleSimpleView}>
+          {simpleView ? <Eye size={17} /> : <EyeOff size={17} />}
+          {simpleView ? t("pages.dashboard.showAll") : t("pages.dashboard.reduce")}
+        </Button>
+      </div>
 
-          {/* Tab switcher (nascosto in vista semplice) */}
-          {!simpleView && (
+      {isMobile && !simpleView && (
             <div style={{
               display: "flex", gap: 0, marginBottom: 14,
               background: "rgba(255,255,255,0.04)",
@@ -1465,8 +1396,6 @@ function Dashboard({
                 );
               })}
             </div>
-          )}
-        </>
       )}
 
       {/* Sezioni draggable (desktop) / filtrate per tab (mobile) */}
@@ -1474,8 +1403,8 @@ function Dashboard({
         <SortableContext items={safeSectionOrder} strategy={verticalListSortingStrategy}>
           {safeSectionOrder
             .filter((id) => {
+              if (simpleView) return new Set(["nextEvent", "coachAlerts", "weekFocus", "rosterStatus", "quickActions"]).has(id);
               if (!isMobile) return true;
-              if (simpleView) return new Set(["nextEvent", "coachAlerts", "rosterStatus"]).has(id);
               const DASH_TAB_SECTIONS = {
                 oggi:    new Set(["nextEvent", "coachAlerts", "quickActions", "weekFocus"]),
                 squadra: new Set(["leaderboard", "rosterStatus", "wellnessToday", "recentActivities", "rewardCenter"]),
@@ -1503,6 +1432,75 @@ function Dashboard({
         </SortableContext>
       </DndContext>
     </div>
+  );
+}
+
+function GettingStartedCard({ steps, completed, onResumeOnboarding }) {
+  const { t } = useTranslation();
+  const nextStep = steps.find((step) => !step.done);
+  const percent = Math.round((completed / steps.length) * 100);
+
+  return (
+    <AppCard style={{ marginBottom: 18, borderColor: "rgba(96,165,250,0.28)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 18, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 18 }}>
+        <div style={{ minWidth: 0 }}>
+          <Badge tone="blue">{t("pages.dashboard.quickStart.badge")} · {completed}/{steps.length}</Badge>
+          <h2 style={{ margin: "12px 0 6px", fontSize: 22, lineHeight: 1.2 }}>{t("pages.dashboard.quickStart.title")}</h2>
+          <p style={{ color: "#94a3b8", margin: 0, lineHeight: 1.5 }}>
+            {t("pages.dashboard.quickStart.subtitle")}
+          </p>
+        </div>
+        {nextStep && (
+          <Button onClick={nextStep.action}>
+            {nextStep.actionLabel}
+            <ArrowRight size={16} />
+          </Button>
+        )}
+      </div>
+
+      <div style={{ height: 6, borderRadius: 6, overflow: "hidden", background: "rgba(255,255,255,0.07)", marginBottom: 16 }}>
+        <div style={{ width: `${percent}%`, height: "100%", background: "#2563eb", transition: "width 0.25s ease" }} />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 8 }}>
+        {steps.map((step, index) => (
+          <button
+            key={step.id}
+            type="button"
+            onClick={step.action}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 10,
+              padding: 12,
+              minHeight: 82,
+              textAlign: "left",
+              borderRadius: 8,
+              border: step.done ? "1px solid rgba(34,197,94,0.20)" : "1px solid rgba(255,255,255,0.08)",
+              background: step.done ? "rgba(34,197,94,0.06)" : "rgba(255,255,255,0.03)",
+              color: step.done ? "#86efac" : "#f8fafc",
+              cursor: "pointer",
+            }}
+          >
+            {step.done ? <CheckCircle2 size={19} /> : <Circle size={19} color={index === completed ? "#60a5fa" : "#475569"} />}
+            <span>
+              <strong style={{ display: "block", marginBottom: 4, fontSize: 13 }}>{step.title}</strong>
+              <span style={{ display: "block", color: "#94a3b8", fontSize: 12, lineHeight: 1.4 }}>{step.text}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {onResumeOnboarding && (
+        <button
+          type="button"
+          onClick={onResumeOnboarding}
+          style={{ marginTop: 14, padding: 0, border: 0, background: "transparent", color: "#60a5fa", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
+        >
+          {t("pages.dashboard.quickStart.resumeSetup")}
+        </button>
+      )}
+    </AppCard>
   );
 }
 

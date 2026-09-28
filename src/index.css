@@ -677,6 +677,16 @@ textarea:focus-visible {
   filter: brightness(1.1);
 }
 
+.page-tool-item {
+  transition: background-color 0.13s ease, color 0.13s ease;
+}
+.page-tool-item:hover,
+.page-tool-item:focus-visible {
+  background: rgba(255,255,255,0.08) !important;
+  color: #fff !important;
+  outline: none;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    MOBILE NAV — hover state (desktop mouse su tablet)
 ───────────────────────────────────────────────────────────────────────────── */

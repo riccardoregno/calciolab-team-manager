@@ -147,6 +147,7 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
     try {
       setAppSettings?.({
         ...settings,
+        experienceMode: "essential",
         workspaceProfile: {
           ...form,
           recommendedPlan: recommendPlan(form.modules),

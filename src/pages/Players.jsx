@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Download, Ellipsis, GitCompareArrows, Upload, UserPlus } from "lucide-react";
 import { useTranslation } from "../i18n";
 
 import PageHeader from "../components/ui/PageHeader";
@@ -136,6 +137,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     loadTeamRecentRatings(teamId).then(({ data }) => setPlayerRecentRatings(data || {}));
   }, [activeSeason, teamId]);
   const [showImport, setShowImport] = useState(false);
+  const [showPageTools, setShowPageTools] = useState(false);
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filterStatus, setFilterStatus] = useState("tutti");
@@ -528,55 +530,38 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
         title={t("pages.players.title")}
         subtitle={t("pages.players.subtitle")}
         action={
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", width: isMobile ? "100%" : "auto" }}>
-            <Link
-              to="/player-compare"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                flex: isMobile ? "1 1 100%" : "0 0 auto",
-                minWidth: 0,
-                justifyContent: "center",
-                padding: "8px 14px", borderRadius: 12,
-                background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.35)",
-                color: "#c4b5fd", fontWeight: 800, fontSize: 13, textDecoration: "none",
-              }}
-            >
-              ⚡ {t("navigation.items.playerCompare")}
-            </Link>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", width: isMobile ? "100%" : "auto" }}>
             {canManage && (
               <>
-                <button
-                  onClick={() => exportPlayersCSV(filteredPlayers, gruppoFilter)}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    flex: isMobile ? "1 1 100%" : "0 0 auto",
-                    minWidth: 0,
-                    justifyContent: "center",
-                    padding: "8px 14px", borderRadius: 12,
-                    background: "rgba(139,26,46,0.12)", border: "1px solid rgba(139,26,46,0.35)",
-                    color: "#f9a8b8", fontWeight: 800, fontSize: 13, cursor: "pointer",
-                  }}
-                >
-                  📤 Esporta
-                </button>
-                <button
-                  onClick={() => setShowImport(true)}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    flex: isMobile ? "1 1 100%" : "0 0 auto",
-                    minWidth: 0,
-                    justifyContent: "center",
-                    padding: "8px 14px", borderRadius: 12,
-                    background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.35)",
-                    color: "#6ee7b7", fontWeight: 800, fontSize: 13, cursor: "pointer",
-                  }}
-                >
-                  📥 {t("pages.importPlayers.btnLabel")}
-                </button>
-                <Button onClick={openNewPlayerModal} style={{ flex: isMobile ? "1 1 100%" : "0 0 auto", minWidth: 0 }}>
+                <div style={{ position: "relative" }}>
+                  <Button variant="ghost" onClick={() => setShowPageTools((value) => !value)} aria-expanded={showPageTools} aria-label="Altre azioni sulla rosa">
+                    <Ellipsis size={18} />
+                    {!isMobile && "Altre azioni"}
+                  </Button>
+                  {showPageTools && (
+                    <div style={pStyles.pageToolsMenu}>
+                      <button type="button" className="page-tool-item" style={pStyles.pageToolItem} onClick={() => { navigate("/player-compare"); setShowPageTools(false); }}>
+                        <GitCompareArrows size={16} /> {t("navigation.items.playerCompare")}
+                      </button>
+                      <button type="button" className="page-tool-item" style={pStyles.pageToolItem} onClick={() => { setShowImport(true); setShowPageTools(false); }}>
+                        <Upload size={16} /> {t("pages.importPlayers.btnLabel")}
+                      </button>
+                      <button type="button" className="page-tool-item" style={pStyles.pageToolItem} onClick={() => { exportPlayersCSV(filteredPlayers, gruppoFilter); setShowPageTools(false); }}>
+                        <Download size={16} /> Esporta rosa
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <Button onClick={openNewPlayerModal} style={{ flex: isMobile ? 1 : "0 0 auto", minWidth: 0 }}>
+                  <UserPlus size={17} />
                   {t("pages.players.newPlayer")}
                 </Button>
               </>
+            )}
+            {!canManage && (
+              <Button variant="ghost" onClick={() => navigate("/player-compare")}>
+                <GitCompareArrows size={16} /> {t("navigation.items.playerCompare")}
+              </Button>
             )}
           </div>
         }
@@ -1205,6 +1190,33 @@ function InlineStat({ label, value, tone = "white" }) {
 }
 
 const pStyles = {
+  pageToolsMenu: {
+    position: "absolute",
+    top: "calc(100% + 8px)",
+    right: 0,
+    zIndex: 40,
+    width: 220,
+    padding: 6,
+    borderRadius: 8,
+    background: "#111722",
+    border: "1px solid rgba(148,163,184,0.22)",
+    boxShadow: "0 18px 44px rgba(0,0,0,0.38)",
+  },
+  pageToolItem: {
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    gap: 9,
+    padding: "10px 11px",
+    border: 0,
+    borderRadius: 6,
+    background: "transparent",
+    color: "#e2e8f0",
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+    textAlign: "left",
+  },
   birthdayBanner: {
     display: "flex",
     alignItems: "center",
