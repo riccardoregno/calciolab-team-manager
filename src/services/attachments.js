@@ -1,6 +1,14 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 export const ATTACHMENTS_BUCKET = "team-attachments";
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+const ATTACHMENT_TYPES = {
+  pdf: "application/pdf",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
 
 /** @param {{ teamId: string, folder: string, file: File }} params
  * @returns {Promise<{data: any[], error: any}>} */
@@ -15,6 +23,17 @@ export async function uploadTeamAttachment({ teamId, folder, file }) {
     throw new Error("File mancante");
   }
 
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    throw new Error("La distinta supera il limite di 10 MB.");
+  }
+  const extension = file.name.split(".").pop().toLowerCase();
+  const contentType = !file.type || file.type === "application/octet-stream"
+    ? ATTACHMENT_TYPES[extension]
+    : file.type;
+  if (!Object.values(ATTACHMENT_TYPES).includes(contentType)) {
+    throw new Error("Formato non supportato. Usa un PDF oppure un'immagine JPG, PNG o WebP.");
+  }
+
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const path = `${teamId}/${folder}/${Date.now()}-${safeName}`;
 
@@ -23,7 +42,7 @@ export async function uploadTeamAttachment({ teamId, folder, file }) {
     .upload(path, file, {
       cacheControl: "3600",
       upsert: false,
-      contentType: file.type || undefined,
+      contentType,
     });
 
   if (uploadError) throw uploadError;
@@ -34,7 +53,7 @@ export async function uploadTeamAttachment({ teamId, folder, file }) {
 
   return {
     name: file.name,
-    type: file.type,
+    type: contentType,
     size: file.size,
     bucket: ATTACHMENTS_BUCKET,
     path,

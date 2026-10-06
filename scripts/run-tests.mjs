@@ -200,4 +200,12 @@ const syncMerged = mergeEntityArrayWithRemote(syncBaseline, [
 assert.deepEqual(syncMerged.map((item) => item.id).sort(), ["a", "remote"]);
 assert.equal(syncMerged.find((item) => item.id === "a").name, "Alpha locale");
 
+const savedVersion = "2026-10-06T10:00:00.000Z";
+const repeatedEdit = diffEntityArray(
+  [{ id: "match", result: "2-0", _updatedAt: savedVersion }],
+  [{ id: "match", result: "2-0", opponentScouting: { attachment: { path: "team/distinta.pdf" } }, _updatedAt: "2026-10-05T10:00:00.000Z" }],
+);
+assert.equal(repeatedEdit.changedOrAdded[0]._updatedAt, savedVersion);
+assert.equal(repeatedEdit.changedOrAdded[0].opponentScouting.attachment.path, "team/distinta.pdf");
+
 console.log("All tests passed");

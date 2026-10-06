@@ -20,7 +20,9 @@ export function diffEntityArray(baselineArr = [], localArr = []) {
   localById.forEach((item, id) => {
     const baselineItem = baselineById.get(id);
     if (!baselineItem || JSON.stringify(withoutSyncMetadata(baselineItem)) !== JSON.stringify(withoutSyncMetadata(item))) {
-      changedOrAdded.push(item);
+      // The UI may still carry metadata from before our last successful save.
+      // Compare against the latest acknowledged version, not that stale copy.
+      changedOrAdded.push(baselineItem ? { ...item, _updatedAt: baselineItem._updatedAt } : item);
     }
   });
 

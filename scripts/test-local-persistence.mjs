@@ -19,6 +19,7 @@ const server = await createServer({ server: { middlewareMode: true }, appType: '
 try {
   const { loadLocalState, saveLocalState, loadRemoteState } = await server.ssrLoadModule('/src/services/teamData.js');
   const { supabase } = await server.ssrLoadModule('/src/lib/supabaseClient.js');
+  const { uploadTeamAttachment } = await server.ssrLoadModule('/src/services/attachments.js');
   const key = 'calciolab-platform-v2';
   const backupKey = `${key}:backup`;
   const snapshot = { matches: [{ id: 'test-match', opponent: 'Saved locally', result: '2-0' }] };
@@ -52,6 +53,29 @@ try {
     assert.deepEqual(values, before, 'A remote read must not overwrite local edits or their backup');
   } finally {
     supabase.from = originalFrom;
+  }
+
+  await assert.rejects(uploadTeamAttachment({ teamId: 'test-team', folder: 'matches/test', file: {
+    name: 'distinta.pdf', type: 'application/pdf', size: 10 * 1024 * 1024 + 1,
+  } }), /10 MB/);
+  await assert.rejects(uploadTeamAttachment({ teamId: 'test-team', folder: 'matches/test', file: {
+    name: 'distinta.heic', type: 'image/heic', size: 100,
+  } }), /Formato non supportato/);
+  const originalStorageFrom = supabase.storage.from;
+  let uploadedType;
+  supabase.storage.from = () => ({
+    upload: async (_path, _file, options) => { uploadedType = options.contentType; return { error: null }; },
+    getPublicUrl: () => ({ data: { publicUrl: 'https://example.test/distinta.pdf' } }),
+  });
+  try {
+    const attachment = await uploadTeamAttachment({ teamId: 'test-team', folder: 'matches/test', file: {
+      name: 'distinta.pdf', type: '', size: 100,
+    } });
+    assert.equal(uploadedType, 'application/pdf');
+    assert.equal(attachment.type, 'application/pdf');
+    assert.equal(attachment.url, 'https://example.test/distinta.pdf');
+  } finally {
+    supabase.storage.from = originalStorageFrom;
   }
   console.log('Local persistence regression tests passed');
 } finally {

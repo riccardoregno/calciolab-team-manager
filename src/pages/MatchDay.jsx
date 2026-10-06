@@ -32,6 +32,8 @@ function MatchDay({
   const { showToast, ToastContainer } = useToast();
   const [confirmState, setConfirmState] = useState(null);
   const [showOpponentLineupEditor, setShowOpponentLineupEditor] = useState(false);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const [attachmentError, setAttachmentError] = useState(null);
 
   const isMobile = useIsMobile();
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
@@ -241,23 +243,30 @@ function MatchDay({
   }
 
   async function handleOpponentAttachment(event) {
-    const file = event.target.files?.[0];
+    const input = event.target;
+    const file = input.files?.[0];
     if (!file) return;
-
+    const matchId = selectedMatch.id;
+    setAttachmentUploading(true);
+    setAttachmentError(null);
     try {
       const attachment = await uploadTeamAttachment({
         teamId: auth.team?.id,
-        folder: `matches/${selectedMatch.id}/opponent-lineup`,
+        folder: `matches/${matchId}/opponent-lineup`,
         file,
       });
 
-      updateOpponentScouting({
-        attachment,
-      });
+      setMatches((current) => current.map((match) => match.id === matchId
+        ? { ...match, opponentScouting: { ...getOpponentScouting(match), attachment } }
+        : match));
     } catch (error) {
-      showToast(error?.message || t("pages.matchDay.uploadFailed"), "error");
+      const message = error?.message || t("pages.matchDay.uploadFailed");
+      setAttachmentError(message);
+      showToast(message, "error");
+    } finally {
+      setAttachmentUploading(false);
+      input.value = "";
     }
-    event.target.value = "";
   }
 
   async function removeOpponentAttachment() {
@@ -638,10 +647,11 @@ function MatchDay({
                 </>
               ) : (
                 <label style={matchDayStyles.uploadButton}>
-                  {t("pages.matchDay.uploadFile")}
+                  {attachmentUploading ? "Caricamento distinta..." : t("pages.matchDay.uploadFile")}
                   <input
                     type="file"
-                    accept="image/*,.pdf,application/pdf"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                    disabled={attachmentUploading}
                     onChange={handleOpponentAttachment}
                     style={{ display: "none" }}
                   />
@@ -649,6 +659,8 @@ function MatchDay({
               )}
             </div>
           </div>
+
+          {attachmentError && <p role="alert" style={{ color: "#ef4444" }}>{attachmentError}</p>}
 
           {opponentScouting.attachment && (
             <AttachmentPreview attachment={opponentScouting.attachment} />
