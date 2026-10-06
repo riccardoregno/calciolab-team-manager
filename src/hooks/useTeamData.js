@@ -18,6 +18,7 @@ import {
   normalizeStaffTask,
 } from "../utils/helpers";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
+import { persistPendingChanges, restorePendingChanges, acknowledgePendingChanges } from "../services/pendingChanges";
 import {
   ARRAY_ENTITY_KEYS,
   buildEntityChanges,
@@ -65,15 +66,22 @@ export function useTeamData({ teamId } = {}) {
   // Ultimo stato conosciuto come sincronizzato (da hydration o refresh remoto):
   // baseline per il merge a 3 vie nel salvataggio debounced, vedi sopra.
   const lastSyncedSnapshotRef = useRef(null);
+  const saveQueueRef = useRef(Promise.resolve());
+  const editRevisionRef = useRef(0);
+  const teamIdRef = useRef(teamId);
+  useEffect(() => {
+    teamIdRef.current = teamId;
+  }, [teamId]);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
-  const applyLoadedState = useCallback(({ state: loadedState, source, error }) => {
+  const applyLoadedState = useCallback(({ state: loadedState, source, error, syncBaseline, pendingKeys = [] }) => {
     setState(loadedState);
-    lastSyncedSnapshotRef.current = loadedState;
-    dirtyKeysRef.current.clear();
+    lastSyncedSnapshotRef.current = syncBaseline || loadedState;
+    dirtyKeysRef.current = new Set(pendingKeys);
+    hasUnsyncedLocalChanges.current = pendingKeys.length > 0;
     setStorageSource(source);
     setStorageError(error?.message || null);
     const canSyncRemote = (source === "supabase" || source === "pending-upload") && !error;
@@ -89,14 +97,24 @@ export function useTeamData({ teamId } = {}) {
 
   const markDirty = useCallback((key) => {
     if (key) dirtyKeysRef.current.add(key);
+    editRevisionRef.current += 1;
   }, []);
 
   const refreshTeamData = useCallback(async () => {
     if (!isSupabaseConfigured || !teamId) return { source: "local" };
+    if (pendingSaveCount.current > 0) return { source: "pending-upload" };
 
     setRefreshing(true);
+    await saveQueueRef.current.catch(() => {});
+    if (teamIdRef.current !== teamId) {
+      setRefreshing(false);
+      return { source: "local" };
+    }
+    const revision = editRevisionRef.current;
     if (hasUnsyncedLocalChanges.current) {
       const retryKeys = Array.from(dirtyKeysRef.current);
+      let token = null;
+      try { token = persistPendingChanges(teamId, lastSyncedSnapshotRef.current, stateRef.current, retryKeys); } catch { /* Keep the cloud retry available. */ }
       const retryChanges = buildEntityChanges(lastSyncedSnapshotRef.current, stateRef.current, retryKeys);
       const retryResult = await saveTeamTablesState(stateRef.current, teamId, {
         keys: retryKeys,
@@ -113,6 +131,11 @@ export function useTeamData({ teamId } = {}) {
         setRefreshing(false);
         return retryResult;
       }
+      if (revision !== editRevisionRef.current || teamIdRef.current !== teamId) {
+        setRefreshing(false);
+        return { source: "pending-upload" };
+      }
+      try { acknowledgePendingChanges(teamId, token); } catch { /* Keep the recovery copy. */ }
 
       hasUnsyncedLocalChanges.current = false;
       retryKeys.forEach((key) => dirtyKeysRef.current.delete(key));
@@ -120,8 +143,16 @@ export function useTeamData({ teamId } = {}) {
     }
 
     const result = await loadRemoteState({ teamId });
+    if (revision !== editRevisionRef.current || teamIdRef.current !== teamId) {
+      setRefreshing(false);
+      return { source: "pending-upload" };
+    }
     if (result.pendingUpload && !result.error) {
       const saveResult = await saveTeamTablesState(result.state, teamId);
+      if (revision !== editRevisionRef.current || teamIdRef.current !== teamId) {
+        setRefreshing(false);
+        return { source: "pending-upload" };
+      }
       applyLoadedState({
         ...result,
         source: saveResult.source,
@@ -158,7 +189,7 @@ export function useTeamData({ teamId } = {}) {
 
     loadRemoteState({ teamId }).then((result) => {
       if (!active) return;
-      applyLoadedState(result);
+      applyLoadedState(restorePendingChanges(teamId, result));
       setLoading(false);
     }).catch(() => {
       if (!active) return;
@@ -182,9 +213,11 @@ export function useTeamData({ teamId } = {}) {
       // state is newer than what remote would return.
       if (pendingSaveCount.current > 0) return;
       if (hasUnsyncedLocalChanges.current) return;
+      if (dirtyKeysRef.current.size) return;
+      const revision = editRevisionRef.current;
       refreshing = true;
       const result = await loadRemoteState({ teamId });
-      if (active) applyLoadedState(result);
+      if (active && revision === editRevisionRef.current && !hasUnsyncedLocalChanges.current) applyLoadedState(result);
       refreshing = false;
     }
 
@@ -213,27 +246,45 @@ export function useTeamData({ teamId } = {}) {
   }, [teamId, applyLoadedState]);
 
   // Persistenza: localStorage IMMEDIATAMENTE (previene perdita dati su chiusura tab),
-  // Supabase con debounce 300ms.
+  // Supabase con debounce; the per-tab journal protects unacknowledged edits.
   useEffect(() => {
     if (!hydrated.current) return;
 
     // Salvataggio localStorage sincrono — non perdiamo nulla se il tab chiude ora
     saveLocalState(state);
+    const keysToSave = Array.from(dirtyKeysRef.current);
+    if (teamId && keysToSave.length) {
+      try {
+        persistPendingChanges(teamId, lastSyncedSnapshotRef.current, state, keysToSave);
+      } catch {
+        // Report failure of the browser storage operation to the user.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setStorageError("Backup delle modifiche non disponibile: non ricaricare prima del salvataggio cloud.");
+        setStorageSource("partial");
+      }
+    }
 
     // Supabase debounced
     if (!isSupabaseConfigured || !teamId) return;
     if (!remoteSyncReady.current) return;
     if (skipNextRemoteSave.current) {
       skipNextRemoteSave.current = false;
-      return;
+      if (!keysToSave.length) return;
     }
 
-    const normalized = normalizeAppState(state);
-    const keysToSave = Array.from(dirtyKeysRef.current);
     if (keysToSave.length === 0) return;
     hasUnsyncedLocalChanges.current = true;
+    setStorageSource("pending-upload");
     pendingSaveCount.current += 1;
-    const timeoutId = window.setTimeout(async () => {
+    const savePending = async () => {
+      if (teamIdRef.current !== teamId) return;
+      const snapshot = stateRef.current;
+      const revision = editRevisionRef.current;
+      const normalized = normalizeAppState(snapshot);
+      const keysToSave = Array.from(dirtyKeysRef.current);
+      if (!keysToSave.length) return;
+      let journalToken = null;
+      try { journalToken = persistPendingChanges(teamId, lastSyncedSnapshotRef.current, snapshot, keysToSave); } catch { /* Cloud save can still succeed. */ }
       // Prima di sovrascrivere la tabella remota, rilegge lo stato attuale e
       // unisce le modifiche locali sopra: se un'altra scheda/dispositivo ha
       // salvato nel frattempo (es. un'altra seduta modificata), quei record
@@ -258,13 +309,12 @@ export function useTeamData({ teamId } = {}) {
         // come accadeva prima di questa modifica.
       }
       const result = await saveTeamTablesState(toSave, teamId, { keys: keysToSave, entityChanges });
-      pendingSaveCount.current = Math.max(0, pendingSaveCount.current - 1);
+      if (teamIdRef.current !== teamId) return;
       if (result.source === "supabase" && !result.error) {
-        hasUnsyncedLocalChanges.current = false;
-        keysToSave.forEach((key) => dirtyKeysRef.current.delete(key));
         const dirtyEntityKeys = keysToSave.filter((key) => ARRAY_ENTITY_KEYS.includes(key));
         if (dirtyEntityKeys.length > 0) {
           const refreshed = await loadRemoteState({ teamId, entityKeys: dirtyEntityKeys });
+          if (teamIdRef.current !== teamId) return;
           if (refreshed?.state && !refreshed.error) {
             lastSyncedSnapshotRef.current = {
               ...toSave,
@@ -276,22 +326,41 @@ export function useTeamData({ teamId } = {}) {
         } else {
           lastSyncedSnapshotRef.current = toSave;
         }
+        if (teamIdRef.current !== teamId) return;
+        const unchanged = revision === editRevisionRef.current;
+        hasUnsyncedLocalChanges.current = !unchanged;
+        if (unchanged) {
+          keysToSave.forEach((key) => dirtyKeysRef.current.delete(key));
+          try { acknowledgePendingChanges(teamId, journalToken); } catch { /* Retain recovery data. */ }
+        }
         setLastSyncedAt(new Date().toISOString());
       } else {
         hasUnsyncedLocalChanges.current = true;
       }
       // Aggiorna solo se il valore cambia — React esce comunque se uguale (Object.is),
       // ma la forma funzionale evita closure stale e rende l'intento esplicito.
-      setStorageSource((prev) => result.source !== prev ? result.source : prev);
+      setStorageSource(hasUnsyncedLocalChanges.current && !result.error ? "pending-upload" : result.source);
       setStorageError((prev) => {
         const next = result.error?.message || null;
         return next !== prev ? next : prev;
+      });
+    };
+    let started = false;
+    const timeoutId = window.setTimeout(() => {
+      started = true;
+      saveQueueRef.current = saveQueueRef.current.catch(() => {}).then(savePending).catch((error) => {
+        if (teamIdRef.current !== teamId) return;
+        hasUnsyncedLocalChanges.current = true;
+        setStorageSource("partial");
+        setStorageError(error.message);
+      }).finally(() => {
+        pendingSaveCount.current = Math.max(0, pendingSaveCount.current - 1);
       });
     }, REMOTE_SAVE_DEBOUNCE_MS);
 
     return () => {
       window.clearTimeout(timeoutId);
-      pendingSaveCount.current = Math.max(0, pendingSaveCount.current - 1);
+      if (!started) pendingSaveCount.current = Math.max(0, pendingSaveCount.current - 1);
     };
   }, [state, teamId]);
 

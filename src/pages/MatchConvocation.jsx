@@ -367,27 +367,34 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   const count  = selectedIds.length;
   const full   = count >= MAX_PLAYERS;
 
+  function updateRoster(ids) {
+    setSaved(false);
+    setSelectedIds(ids);
+    setMatches((previous) => previous.map((item) => String(item.id) === String(id)
+      ? {
+          ...item,
+          convocazione: { ...item.convocazione, playerIds: ids },
+          lineup: syncLineupWithCalledPlayers(item, ids),
+        }
+      : item));
+  }
+
   function toggle(pid) {
     if (!canManage) return;
     const key = String(pid);
-    setSaved(false);
-    setSelectedIds((prev) =>
-      prev.includes(key)
-        ? prev.filter((x) => x !== key)
-        : full ? prev : [...prev, key]
-    );
+    updateRoster(selectedIds.includes(key)
+      ? selectedIds.filter((value) => value !== key)
+      : full ? selectedIds : [...selectedIds, key]);
   }
 
   function selectAll() {
     if (!canManage) return;
-    setSaved(false);
-    setSelectedIds(players.slice(0, MAX_PLAYERS).map((p) => String(p.id)));
+    updateRoster(players.slice(0, MAX_PLAYERS).map((p) => String(p.id)));
   }
 
   function clearAll() {
     if (!canManage) return;
-    setSaved(false);
-    setSelectedIds([]);
+    updateRoster([]);
   }
 
   function updateDetails(field, value) {
