@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node scripts/run-tests.mjs",
+    "test": "node scripts/run-tests.mjs && node scripts/test-local-persistence.mjs",
     "preview": "vite preview",
     "build:mobile": "vite build --mode mobile",
     "cap:sync": "npx cap sync",

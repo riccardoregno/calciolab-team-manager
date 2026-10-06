@@ -45,14 +45,10 @@ export function getInitialState() {
 /** @returns {object} */
 export function loadLocalState() {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const backup = localStorage.getItem(STORAGE_BACKUP_KEY);
-    if (!saved) return backup ? normalizeAppState(JSON.parse(backup)) : getInitialState();
-
-    const state = normalizeAppState(JSON.parse(saved));
-    if (!backup) return state;
-
-    const backupState = normalizeAppState(JSON.parse(backup));
+    const state = parseStoredState(localStorage.getItem(STORAGE_KEY));
+    const backupState = parseStoredState(localStorage.getItem(STORAGE_BACKUP_KEY));
+    if (!state) return backupState || getInitialState();
+    if (!backupState) return state;
     return recoverMissingLocalEntities(state, backupState, loadEmptyEntityIntents());
   } catch (error) {
     if (import.meta.env.DEV) console.error("Errore caricamento dati locali:", error);
@@ -104,12 +100,8 @@ export function saveLocalState(state) {
     }
   }
 
-  // Write during browser idle time when available — falls back to sync write.
-  if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-    window.requestIdleCallback(write, { timeout: 2000 });
-  } else {
-    write();
-  }
+  // Persist before any remote read or navigation can replace this state.
+  write();
 }
 
 // Flush the latest state synchronously when the tab is about to be hidden/closed
@@ -357,7 +349,8 @@ async function loadTeamTablesState(teamId, { entityKeys } = {}) {
       setPlays: shouldLoadTeamSettings ? resolveSetPlays(teamRow?.set_plays, localState.setPlays) : localState.setPlays,
     });
 
-    saveLocalState(state);
+    // The caller persists only after accepting this result. A stale or partial
+    // read used during sync must not overwrite unsaved local edits.
     const hasPendingUpload = failures.length === 0 && retainedLocalEntityKeys.length > 0;
 
     return {
