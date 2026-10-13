@@ -238,6 +238,11 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   const [validationErrors, setValidationErrors] = useState({}); // { [`${matchId}:${pid}`]: string[] }
   const [playerFilter, setPlayerFilter] = useState("all");
   const draftKey = teamId ? `${MATRIX_DRAFT_PREFIX}:${teamId}:${activeSeason}` : "";
+  const currentMatchId = String(id);
+  const activeMatchIndex = useMemo(
+    () => matrixMatches.findIndex((item) => String(item.id) === currentMatchId),
+    [currentMatchId, matrixMatches],
+  );
 
   const matrixPlayers = useMemo(() => {
     const firstTeamIds = new Set(
@@ -252,7 +257,6 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       .filter(Boolean)
       .sort(comparePlayersByRoleAndSurname);
   }, [players, statsPlayerIds]);
-  const currentMatchId = String(id);
   const currentCalledUpIds = useMemo(
     () => matchPlayerIdSets[currentMatchId] || new Set(),
     [currentMatchId, matchPlayerIdSets],
@@ -376,11 +380,34 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   }
 
   useEffect(() => {
+    const el = matrixWrapRef.current;
     syncScrollState();
+    const frame = window.requestAnimationFrame(syncScrollState);
     const onResize = () => syncScrollState();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(syncScrollState) : null;
+    if (observer && el) {
+      observer.observe(el);
+      if (el.firstElementChild) observer.observe(el.firstElementChild);
+    }
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", onResize);
+      observer?.disconnect();
+    };
   }, [matrixMatches.length, syncScrollState, visibleMatrixPlayers.length]);
+
+  useEffect(() => {
+    const el = matrixWrapRef.current;
+    if (!el || activeMatchIndex < 0) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      el.scrollLeft = activeMatchIndex * 168;
+      syncScrollState();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeMatchIndex, syncScrollState]);
 
   async function handleSave() {
     if (!auth.team?.id) return;
@@ -537,7 +564,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       ) : matrixMatches.length === 0 ? (
         <AppCard><p style={s.muted}>Nessuna partita di campionato disponibile.</p></AppCard>
       ) : (
-        <AppCard>
+        <AppCard style={s.matrixCard}>
           <div style={s.matrixHint}>
             <span>Scorri orizzontalmente per vedere le altre partite</span>
             <div style={s.matrixScrollControls}>
@@ -773,6 +800,11 @@ const s = {
   errorMsg:   { margin: "12px 0 0", color: "#f87171", fontSize: 14, lineHeight: 1.4 },
   link:       { background: "none", border: "none", color: "#38bdf8", cursor: "pointer", padding: 0, fontSize: "inherit" },
 
+  matrixCard: {
+    minWidth: 0,
+    maxWidth: "100%",
+    overflow: "hidden",
+  },
   matrixHint: {
     display: "flex",
     justifyContent: "space-between",
@@ -814,6 +846,11 @@ const s = {
   },
   matrixWrap: {
     overflow: "auto",
+    overflowX: "auto",
+    overflowY: "auto",
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
     maxHeight: "calc(100vh - 270px)",
     paddingBottom: 10,
     borderRadius: 14,
@@ -821,6 +858,8 @@ const s = {
     background: "rgba(2,6,23,0.2)",
     scrollbarWidth: "thin",
     scrollbarColor: "#60a5fa rgba(15,23,42,0.82)",
+    WebkitOverflowScrolling: "touch",
+    overscrollBehaviorX: "contain",
   },
   matrix: {
     display: "grid",
