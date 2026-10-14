@@ -470,6 +470,8 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
           quickStatsSaving={quickStatsSaving}
           closeQuickStats={() => setQuickStatsMatchId(null)}
           saveQuickStats={saveQuickStats}
+          editMatch={editMatch}
+          deleteMatch={deleteMatch}
         />
       )}
 
@@ -880,6 +882,8 @@ function MatchFocusCard({
   quickStatsSaving,
   closeQuickStats,
   saveQuickStats,
+  editMatch,
+  deleteMatch,
 }) {
   const status = getMatchStatus(match);
   const playerCount = getMatchPlayerIds(match).length;
@@ -959,6 +963,16 @@ function MatchFocusCard({
               Convocazione
             </Button>
           </Link>
+          {canManage && (
+            <>
+              <Button variant="ghost" onClick={() => editMatch(match)} style={{ minWidth: 0 }}>
+                {t("common.edit")}
+              </Button>
+              <Button variant="danger" onClick={() => deleteMatch(match.id)} style={{ minWidth: 0 }}>
+                {t("common.delete")}
+              </Button>
+            </>
+          )}
           {canManage && match.result && playerCount > 0 && (
             <Button
               variant="ghost"
