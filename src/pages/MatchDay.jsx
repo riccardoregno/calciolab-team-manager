@@ -21,7 +21,7 @@ import {
   SectionHeader, MatchCommandCenter,
 } from "../components/matchday/MatchDayElements";
 import MatchFormationPlanner from "../components/matchday/MatchFormationPlanner";
-import { getOpponentScouting, getMatchVenue } from "../utils/matchDayHelpers";
+import { getOpponentScouting, getMatchVenue, syncFormationLineup } from "../utils/matchDayHelpers";
 
 function MatchDay({
   matches = [], setMatches, players = [], appSettings = {} }) {
@@ -46,7 +46,13 @@ function MatchDay({
   );
   const selectedMatch =
     matches.find((match) => String(match.id) === String(id)) || sortedMatches[0];
-  const lineup = getLineup(selectedMatch);
+  const savedLineup = getLineup(selectedMatch);
+  const lineup = syncFormationLineup({
+    ...savedLineup,
+    calledUpIds: savedLineup.calledUpIds.length
+      ? savedLineup.calledUpIds
+      : selectedMatch?.convocazione?.playerIds || [],
+  });
 
   useEffect(() => {
     const convIds = (selectedMatch?.convocazione?.playerIds || []).map(String);
@@ -78,10 +84,13 @@ function MatchDay({
           ? {
               ...match,
               ...patch,
-              lineup: {
+              lineup: syncFormationLineup({
                 ...getLineup(match),
+                calledUpIds: match.lineup?.calledUpIds?.length
+                  ? match.lineup.calledUpIds
+                  : match.convocazione?.playerIds || [],
                 ...(patch.lineup || {}),
-              },
+              }),
             }
           : match
       )
@@ -116,9 +125,9 @@ function MatchDay({
   }
 
   const starterPlayers = players.filter((player) =>
-    lineup.starterIds.includes(player.id)
+    lineup.starterIds.map(String).includes(String(player.id))
   );
-  const benchPlayers = players.filter((player) => lineup.benchIds.includes(player.id));
+  const benchPlayers = players.filter((player) => lineup.benchIds.map(String).includes(String(player.id)));
   const opponentScouting = getOpponentScouting(selectedMatch);
   const previousOpponentMatches = matches
     .filter(

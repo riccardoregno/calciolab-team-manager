@@ -1,3 +1,23 @@
+export function syncFormationLineup(lineup) {
+  const slots = lineup.formationPlans?.firstHalf?.slots;
+  if (!slots) return lineup;
+
+  const assignedIds = [...new Set(Object.values(slots).filter((id) => id != null && id !== "").map(String))];
+  const calledUpIds = [...new Set((lineup.calledUpIds?.length
+    ? lineup.calledUpIds
+    : [...(lineup.starterIds || []), ...(lineup.benchIds || []), ...assignedIds]).map(String))];
+  const calledSet = new Set(calledUpIds);
+  const starterIds = assignedIds.filter((id) => calledSet.has(id)).slice(0, 11);
+  const starterSet = new Set(starterIds);
+
+  return {
+    ...lineup,
+    calledUpIds,
+    starterIds,
+    benchIds: calledUpIds.filter((id) => !starterSet.has(id)),
+  };
+}
+
 export function getOpponentScouting(match) {
   return {
     formation: match?.opponentScouting?.formation || "",
