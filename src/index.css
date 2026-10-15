@@ -120,7 +120,7 @@ textarea:focus-visible {
     max-width: 100% !important;
     min-height: 100vh !important;
     margin: 0 !important;
-    padding: 10px 14px 104px !important;
+    padding: max(10px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) calc(104px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)) !important;
     overflow-x: hidden !important;
   }
 
@@ -164,8 +164,8 @@ textarea:focus-visible {
 
   .mobile-bottom-nav {
     position: fixed;
-    left: 12px;
-    right: 12px;
+    left: max(12px, env(safe-area-inset-left, 0px));
+    right: max(12px, env(safe-area-inset-right, 0px));
     bottom: max(10px, env(safe-area-inset-bottom));
     width: auto;
     z-index: 9999;
@@ -317,9 +317,7 @@ textarea:focus-visible {
   }
 
   .action-bar-title {
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
+    overflow-wrap: anywhere;
   }
 
   .mobile-topbar {
@@ -694,4 +692,73 @@ textarea:focus-visible {
   background: rgba(255,255,255,0.06);
   color: #e2e8f0;
   transition: background 0.12s ease, color 0.12s ease;
+}
+
+/* Shared responsive surfaces: preserve intentional grids via no-mobile-override. */
+.page-header h1 { overflow-wrap: anywhere; }
+.page-header p { margin-bottom: 0; }
+.metric-strip-value { overflow-wrap: anywhere; }
+.cl-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  display: grid;
+  place-items: center;
+  padding: max(20px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
+  background: rgba(2,6,23,0.72);
+  backdrop-filter: blur(10px);
+}
+.cl-modal-panel {
+  width: 100%;
+  min-width: 0;
+  max-width: 720px;
+  max-height: calc(100dvh - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: 18px;
+  padding: 24px;
+  background: linear-gradient(145deg, rgba(15,23,42,0.99), rgba(30,41,59,0.98));
+  color: #e2e8f0;
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.42);
+}
+.cl-modal-panel--compact { max-width: 420px; }
+.cl-modal-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+.cl-modal-heading h2 { margin: 0; font-size: 22px; line-height: 1.2; overflow-wrap: anywhere; }
+.cl-modal-close {
+  width: 44px; height: 44px; min-height: 44px; flex: 0 0 auto;
+  display: grid; place-items: center;
+  border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06); color: white;
+  cursor: pointer; font-weight: 900; font-size: 20px;
+}
+.cl-modal-handle { display: none; }
+.mobile-nav-sheet { overscroll-behavior: contain; }
+@media screen and (max-width: 1024px) {
+  .page-header { gap: 12px !important; margin-bottom: 18px !important; }
+  .page-header h1 { font-size: 28px !important; line-height: 1.15 !important; }
+  .page-header p { font-size: 13px; }
+  .app-shell, .app-content { min-height: 100dvh !important; }
+}
+@media screen and (max-width: 640px) {
+  .page-header > div { flex-basis: auto !important; }
+  .page-header { flex-direction: column; align-items: stretch !important; }
+  .metric-strip:not(.mobile-scroll-x) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .mobile-nav-sheet { max-height: calc(85dvh - env(safe-area-inset-top, 0px)) !important; }
+  .app-content input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+  .app-content select, .app-content textarea,
+  .cl-modal-panel input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+  .cl-modal-panel select, .cl-modal-panel textarea { font-size: 16px !important; }
+  .cl-modal-overlay { align-items: end; padding: env(safe-area-inset-top, 0px) 0 0; }
+  .cl-modal-panel {
+    max-width: 100%;
+    max-height: calc(100dvh - max(16px, env(safe-area-inset-top, 0px)));
+    border-radius: 20px 20px 0 0;
+    padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  }
+  .cl-modal-heading h2 { font-size: 18px; }
+  .cl-modal-handle { display: block; width: 36px; height: 4px; border-radius: 99px; background: rgba(255,255,255,0.22); margin: 0 auto 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }

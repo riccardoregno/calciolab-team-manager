@@ -4,10 +4,10 @@ export default function MetricStrip({ items = [], min = 118, style = {}, classNa
 
   return (
     <div
-      className={`metric-strip ${className}`.trim()}
+      className={`metric-strip no-mobile-override ${className}`.trim()}
       style={{
         ...stripStyles.grid,
-        gridTemplateColumns: `repeat(auto-fit,minmax(${min}px,1fr))`,
+        gridTemplateColumns: `repeat(auto-fit,minmax(min(100%, ${min}px),1fr))`,
         ...style,
       }}
     >

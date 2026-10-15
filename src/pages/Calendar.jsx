@@ -344,6 +344,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
       </div>
 
       <div
+        className="no-mobile-override"
         style={{
           display: "grid",
           gridTemplateColumns: isMobile ? "repeat(7, 1fr)" : "repeat(7, minmax(90px, 1fr))",
@@ -367,6 +368,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
         onDragEnd={handleDragEnd}
       >
         <div
+          className="no-mobile-override"
           style={{
             display: "grid",
             gridTemplateColumns: isMobile ? "repeat(7, 1fr)" : "repeat(7, minmax(90px, 1fr))",

@@ -1,87 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import {
-  Activity,
-  BarChart3,
-  Bot,
-  BrainCircuit,
-  CalendarDays,
-  CalendarRange,
-  ChevronDown,
-  ChevronUp,
-  ClipboardCheck,
-  ClipboardList,
-  Dumbbell,
-  Gem,
-  GitCompareArrows,
-  Handshake,
-  HeartPulse,
-  Home,
-  LibraryBig,
-  ListChecks,
-  LogOut,
-  Menu,
-  MessagesSquare,
-  Printer,
-  RadioTower,
-  Ruler,
-  Scale,
-  Search,
-  Settings,
-  Shirt,
-  Target,
-  Timer,
-  Trophy,
-  Users,
-} from "lucide-react";
+import { Activity, ChevronDown, ChevronUp, ClipboardList, LogOut, Menu, Search, Settings, Trophy, Users } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { isRoleAllowed } from "../../utils/helpers";
+import { PRIMARY, CORE_SECONDARY, ADVANCED_SECONDARY, juniorNavigationItems } from "../../constants/navigation";
+import { useIsMobile } from "../../hooks/useIsMobile";
+import { useDialogFocus } from "../../hooks/useDialogFocus";
 import { supabase } from "../../lib/supabaseClient";
-
-const allRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"];
-const coachRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director"];
-const technicalRoles = ["owner", "headCoach", "assistantCoach"];
-const physicalRoles = ["owner", "headCoach", "athleticTrainer"];
-const managementRoles = ["owner", "headCoach", "director"];
-const playerCalendarRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"];
-
-// ── Voci principali sempre visibili ──────────────────────────────
-const PRIMARY = [
-  { to: "/",          labelKey: "navigation.mobile.home", icon: Home, roles: allRoles },
-  { to: "/players",   labelKey: "navigation.mobile.roster", icon: Users, roles: coachRoles },
-  { to: "/trainings", labelKey: "navigation.mobile.trainings", icon: ClipboardList, roles: technicalRoles },
-  { to: "/matches",   labelKey: "navigation.mobile.matches", icon: Trophy, roles: coachRoles },
-  { to: "/calendar",  labelKey: "navigation.mobile.calendar", icon: CalendarDays, roles: playerCalendarRoles },
-];
-
-// ── Drawer "Altro": poche scorciatoie operative, il resto sotto avanzate ──
-const CORE_SECONDARY = [
-  { to: "/availability",        labelKey: "navigation.items.availability",        icon: HeartPulse, roles: ["owner","headCoach","assistantCoach","athleticTrainer","player"], cat: "squadra" },
-  { to: "/staff-chat",          labelKey: "navigation.items.staffChat",           icon: MessagesSquare, roles: coachRoles, cat: "squadra", badge: "chat" },
-  { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister",  icon: ClipboardCheck, roles: technicalRoles, cat: "campo" },
-  { to: "/statistics",          labelKey: "navigation.items.statistics",          icon: BarChart3, roles: coachRoles, cat: "analisi" },
-  { to: "/exports",             labelKey: "navigation.items.exports",             icon: Printer, roles: managementRoles, cat: "gestione" },
-  { to: "/settings",            labelKey: "navigation.items.settings",            icon: Settings, roles: allRoles, cat: "gestione" },
-];
-
-const ADVANCED_SECONDARY = [
-  { to: "/player-compare",      labelKey: "navigation.items.playerCompare",       icon: GitCompareArrows, roles: coachRoles, cat: "analisi" },
-  { to: "/season-goals",        labelKey: "navigation.items.seasonGoals",         icon: Target, roles: coachRoles, cat: "analisi" },
-  { to: "/physical-tests",      labelKey: "navigation.items.physicalTests",       icon: Timer, roles: physicalRoles, cat: "analisi" },
-  { to: "/physical-workouts",   labelKey: "navigation.items.physicalWorkouts",    icon: Dumbbell, roles: physicalRoles, cat: "analisi" },
-  { to: "/gps-load",            labelKey: "navigation.items.gpsLoad",             icon: RadioTower, roles: physicalRoles, cat: "analisi" },
-  { to: "/exercises",           labelKey: "navigation.items.exercises",           icon: LibraryBig, roles: technicalRoles, cat: "campo" },
-  { to: "/microcycle",          labelKey: "navigation.items.microcycle",          icon: CalendarRange, roles: technicalRoles, cat: "campo" },
-  { to: "/set-plays",           labelKey: "navigation.items.setPlays",            icon: Ruler, roles: technicalRoles, cat: "campo" },
-  { to: "/tactical-board",      labelKey: "navigation.items.tacticalBoard",       icon: BrainCircuit, roles: technicalRoles, cat: "campo" },
-  { to: "/ai-session-builder",  labelKey: "navigation.items.aiBuilder",           icon: Bot, roles: technicalRoles, cat: "campo" },
-  { to: "/team-generator",      labelKey: "navigation.items.teamGenerator",       icon: Scale, roles: technicalRoles, cat: "campo" },
-  { to: "/opponents",           labelKey: "navigation.items.opponents",           icon: Search, roles: technicalRoles, cat: "gara" },
-  { to: "/player-portal",       labelKey: "navigation.items.playerPortal",        icon: Shirt, roles: coachRoles, cat: "gestione" },
-  { to: "/staff-tasks",         labelKey: "navigation.items.staffTasks",          icon: ListChecks, roles: ["owner","headCoach","assistantCoach","athleticTrainer","director"], cat: "gestione" },
-  { to: "/sponsors",            labelKey: "navigation.items.sponsors",            icon: Handshake, roles: ["owner","director","sponsor"], cat: "gestione" },
-  { to: "/premium",             labelKey: "navigation.items.premium",             icon: Gem, roles: managementRoles, cat: "gestione" },
-];
 
 const CATEGORIES = [
   { id: "squadra", label: "Squadra", icon: Users },
@@ -91,9 +16,14 @@ const CATEGORIES = [
   { id: "gestione",label: "Gestione", icon: Settings },
 ];
 
-export default function MobileBottomNav({ currentRole = "headCoach", storageSource = null, chatUnread = 0 }) {
+export default function MobileBottomNav({ currentRole = "headCoach", storageSource = null, chatUnread = 0, onboardingCompleted = false, appSettings = {} }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const isCompact = useIsMobile(1025);
+  const drawerOpen = open && isCompact;
+  const drawerRef = useRef(null);
+  const drawerId = "mobile-navigation-sheet";
+  useDialogFocus(drawerRef, closeDrawer, drawerOpen);
   const [search, setSearch] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const navigate = useNavigate();
@@ -104,8 +34,8 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
     [effectiveRole],
   );
   const advancedItems = useMemo(
-    () => ADVANCED_SECONDARY.filter((item) => isRoleAllowed(effectiveRole, item.roles)),
-    [effectiveRole],
+    () => [...ADVANCED_SECONDARY, ...juniorNavigationItems(appSettings)].filter((item) => isRoleAllowed(effectiveRole, item.roles) && !(item.to === "/onboarding" && onboardingCompleted)),
+    [effectiveRole, onboardingCompleted, appSettings],
   );
   const showSyncDot = Boolean(storageSource && storageSource !== "supabase");
   const syncDotColor = storageSource === "partial" || storageSource === "pending-upload" ? "#fb923c" : "#f87171";
@@ -194,7 +124,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
   return (
     <>
       {/* ── Drawer "Altro" ─────────────────────────────────────── */}
-      {open && (
+      {drawerOpen && (
         <>
           {/* Backdrop */}
           <div
@@ -208,7 +138,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
           />
 
           {/* Sheet */}
-          <div style={{
+          <div ref={drawerRef} id={drawerId} role="dialog" aria-modal="true" aria-label={t("navigation.mobile.more")} tabIndex={-1} className="mobile-nav-sheet" style={{
             position: "fixed",
             left: 0, right: 0, bottom: 0,
             zIndex: 9998,
@@ -258,7 +188,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
                   Nessun risultato
                 </p>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                <div className="no-mobile-override" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
                   {filteredItems.map(renderItem)}
                 </div>
               )
@@ -280,7 +210,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
                           <CategoryIcon size={13} /> {cat.label}
                         </span>
                       </p>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                      <div className="no-mobile-override" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
                         {items.map(renderItem)}
                       </div>
                     </div>
@@ -340,7 +270,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
       )}
 
       {/* ── Bottom nav bar ─────────────────────────────────────── */}
-      <nav className="mobile-bottom-nav">
+      <nav className="mobile-bottom-nav no-mobile-override" aria-label="Navigazione principale" style={{ gridTemplateColumns: `repeat(${primaryItems.length + 1}, minmax(0, 1fr))` }}>
         {primaryItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -360,9 +290,12 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
 
         {/* Pulsante Altro */}
         <button
+          type="button"
+          aria-expanded={drawerOpen}
+          aria-controls={drawerOpen ? drawerId : undefined}
           onClick={() => setOpen((v) => !v)}
-          className={open ? "mobile-nav-item active" : "mobile-nav-item"}
-          style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+          className={drawerOpen ? "mobile-nav-item active" : "mobile-nav-item"}
+          style={{ background: drawerOpen ? "#2563eb" : "none", border: "none", cursor: "pointer", padding: 0 }}
         >
           <span style={{ position: "relative", lineHeight: 1 }}>
             <Menu size={19} strokeWidth={2.1} aria-hidden="true" />

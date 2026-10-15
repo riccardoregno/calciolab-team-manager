@@ -1124,7 +1124,7 @@ function App() {
       <DeepLinkHandler />
 
       {auth.team?.role !== "player" && (
-        <MobileBottomNav currentRole={auth.team?.role || null} storageSource={storageSource} chatUnread={chatUnread} />
+        <MobileBottomNav appSettings={previewAppSettings} onboardingCompleted={onboardingDone} currentRole={auth.team?.role || null} storageSource={storageSource} chatUnread={chatUnread} />
       )}
       <PWAInstallBanner />
       <PWAUpdateBanner />

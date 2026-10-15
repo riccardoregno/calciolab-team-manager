@@ -1,4 +1,4 @@
-export default function Button({ children, onClick, variant = "primary", style = {}, disabled, type = "button", ...props }) {
+export default function Button({ children, onClick, variant = "primary", style = {}, disabled, className = "", type = "button", ...props }) {
   const base = {
     border: "none",
     borderRadius: 8,
@@ -37,7 +37,7 @@ export default function Button({ children, onClick, variant = "primary", style =
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`cl-btn-${variant}`}
+      className={`cl-btn-${variant} ${className}`.trim()}
       style={{ ...base, ...variants[variant], ...style }}
       {...props}
     >

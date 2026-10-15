@@ -1,3 +1,5 @@
+import Modal from "./Modal";
+
 /**
  * ConfirmDialog — modal di conferma che sostituisce window.confirm()
  *
@@ -26,47 +28,30 @@ export default function ConfirmDialog({ state, onClose }) {
   }
 
   return (
-    <div style={dlgStyles.overlay} onClick={onClose}>
-      <div style={dlgStyles.panel} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+    <Modal title="Conferma operazione" onClose={onClose} role="alertdialog" compact>
+      <div style={dlgStyles.panel}>
         <div style={dlgStyles.iconWrap}>⚠️</div>
         <p style={dlgStyles.message}>{message}</p>
         <div style={dlgStyles.actions}>
-          <button style={dlgStyles.cancel} onClick={onClose}>Annulla</button>
+          <button type="button" style={dlgStyles.cancel} onClick={onClose}>Annulla</button>
           <button
+            type="button"
             style={{ ...dlgStyles.confirm, ...(confirmTone === "red" ? dlgStyles.confirmRed : dlgStyles.confirmBlue) }}
             onClick={handleConfirm}
-            autoFocus
           >
             {confirmLabel}
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
 const dlgStyles = {
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.55)",
-    backdropFilter: "blur(4px)",
-    zIndex: 9000,
-    display: "grid",
-    placeItems: "center",
-    padding: 16,
-  },
   panel: {
-    background: "#1e293b",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 16,
-    padding: "28px 24px",
-    maxWidth: 380,
-    width: "100%",
     textAlign: "center",
     display: "grid",
     gap: 16,
-    boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
   },
   iconWrap: {
     fontSize: 34,

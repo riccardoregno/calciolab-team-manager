@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { Eye, EyeOff } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { useTranslation } from "../i18n";
@@ -42,19 +43,9 @@ function Auth() {
     return Boolean((params.get("invite_mode") || params.get("token")) && isSupabaseConfigured && supabase);
   });
   const [visible,      setVisible]      = useState(true);
-  const [isMobile,     setIsMobile]     = useState(
-    () => typeof window !== "undefined" && window.innerWidth < 680
-  );
+  const isMobile = useIsMobile(681);
   const authUnavailable = !isSupabaseConfigured || !supabase;
 
-  /* Responsive: listen for resize */
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(max-width: 680px)");
-    const handler = (e) => setIsMobile(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
 
   /* Legge ?invite_mode=register|login o ?mode=register|login dall'URL */
   useEffect(() => {

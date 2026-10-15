@@ -209,3 +209,6 @@ assert.equal(repeatedEdit.changedOrAdded[0]._updatedAt, savedVersion);
 assert.equal(repeatedEdit.changedOrAdded[0].opponentScouting.attachment.path, "team/distinta.pdf");
 
 console.log("All tests passed");
+
+// Desktop and mobile must expose the same tools for each role.
+await import("./test-navigation.mjs");

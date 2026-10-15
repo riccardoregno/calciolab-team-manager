@@ -24,6 +24,8 @@ export default function SearchBar({ value, onChange, placeholder = "Cerca..." })
       </span>
 
       <input
+        type="search"
+        aria-label={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
@@ -33,7 +35,7 @@ export default function SearchBar({ value, onChange, placeholder = "Cerca..." })
           border: "1px solid rgba(255,255,255,0.10)",
           color: "white",
           borderRadius: 12,
-          padding: value ? "12px 42px 12px 38px" : "12px 15px 12px 38px",
+          padding: value ? "12px 48px 12px 38px" : "12px 15px 12px 38px",
           outline: "none",
           fontWeight: 650,
           lineHeight: 1.2,
@@ -47,12 +49,12 @@ export default function SearchBar({ value, onChange, placeholder = "Cerca..." })
           onClick={() => onChange("")}
           style={{
             position: "absolute",
-            right: 8,
+            right: 2,
             top: "50%",
             transform: "translateY(-50%)",
-            width: 28,
-            height: 28,
-            minHeight: 0,
+            width: 44,
+            height: 44,
+            minHeight: 44,
             borderRadius: 8,
             border: "1px solid rgba(255,255,255,0.10)",
             background: "rgba(255,255,255,0.06)",
