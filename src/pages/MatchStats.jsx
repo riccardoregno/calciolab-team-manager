@@ -9,6 +9,13 @@ import { useAuth } from "../hooks/useAuth";
 import { compareMatchDateTime, comparePlayersByName, formatDate, normalizeAppSettings } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
+const COUNTER_FIELDS = [
+  { field: "goals", label: "G", name: "Gol" },
+  { field: "assists", label: "A", name: "Assist" },
+  { field: "yellow_cards", label: "🟨", name: "Ammonizioni", max: 2 },
+  { field: "red_cards", label: "🟥", name: "Espulsioni", max: 1 },
+];
+
 const EMPTY_ROW = {
   minutes_played: "",
   goals: "",
@@ -492,7 +499,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         matchLabel={match.opponent ? `vs ${match.opponent}` : undefined}
         matchData={match}
       />
-      <div style={s.floatingSave}>
+      <div className="match-stats-save-bar" style={s.floatingSave}>
         <span style={s.floatingSaveText}>
           I dati restano in bozza anche se cambi pagina
         </span>
@@ -567,7 +574,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         <AppCard style={s.matrixCard}>
           <div style={s.matrixHint}>
             <span>Scorri orizzontalmente per vedere le altre partite</span>
-            <div style={s.matrixScrollControls}>
+            <div className="no-mobile-override match-stats-scroll-controls" style={s.matrixScrollControls}>
               <button type="button" style={s.inlineScrollButton} onClick={() => scrollMatrix(-1)} title="Scorri a sinistra">
                 ‹
               </button>
@@ -585,11 +592,12 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
               </button>
             </div>
           </div>
-          <div ref={matrixWrapRef} className="match-stats-matrix-scroll" style={s.matrixWrap} onScroll={syncScrollState}>
+          <div ref={matrixWrapRef} tabIndex={0} role="region" aria-label="Statistiche giocatori per partita, scorri orizzontalmente" className="match-stats-matrix-scroll" style={s.matrixWrap} onScroll={syncScrollState}>
             <div
+              className="no-mobile-override match-stats-matrix"
               style={{
                 ...s.matrix,
-                gridTemplateColumns: `220px repeat(${matrixMatches.length}, 168px)`,
+                gridTemplateColumns: `var(--match-player-width, 220px) repeat(${matrixMatches.length}, 168px)`,
               }}
             >
               <div style={{ ...s.cornerCell, ...s.stickyLeft }}>Giocatore</div>
@@ -657,31 +665,19 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                             onChange={(event) => updateCell(mid, pid, "minutes_played", event.target.value)}
                             aria-label={`${displayName} minuti ${matchItem.opponent || ""}`}
                           />
-                          <div style={s.cellCounters}>
-                            <Counter
-                              label="G"
-                              value={row.goals}
-                              onMinus={() => bumpCellNumber(mid, pid, "goals", -1)}
-                              onPlus={() => bumpCellNumber(mid, pid, "goals", 1)}
-                            />
-                            <Counter
-                              label="A"
-                              value={row.assists}
-                              onMinus={() => bumpCellNumber(mid, pid, "assists", -1)}
-                              onPlus={() => bumpCellNumber(mid, pid, "assists", 1)}
-                            />
-                            <Counter
-                              label="🟨"
-                              value={row.yellow_cards}
-                              onMinus={() => bumpCellNumber(mid, pid, "yellow_cards", -1, 2)}
-                              onPlus={() => bumpCellNumber(mid, pid, "yellow_cards", 1, 2)}
-                            />
-                            <Counter
-                              label="🟥"
-                              value={row.red_cards}
-                              onMinus={() => bumpCellNumber(mid, pid, "red_cards", -1, 1)}
-                              onPlus={() => bumpCellNumber(mid, pid, "red_cards", 1, 1)}
-                            />
+                          <div className="no-mobile-override" style={s.cellCounters}>
+                            {COUNTER_FIELDS.map(({ field, label, name, max }) => (
+                              <Counter
+                                key={field}
+                                label={label}
+                                ariaLabel={`${name}: ${displayName}, ${matchItem.opponent || ""}, ${formatDate(matchItem.date)}`}
+                                value={row[field]}
+                                max={max}
+                                onMinus={() => bumpCellNumber(mid, pid, field, -1, max)}
+                                onPlus={() => bumpCellNumber(mid, pid, field, 1, max)}
+                                onChange={(value) => updateCell(mid, pid, field, value)}
+                              />
+                            ))}
                           </div>
                           {hasError && <span style={s.cellErrorMark}>!</span>}
                         </div>
@@ -698,13 +694,26 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   );
 }
 
-function Counter({ label, value, onMinus, onPlus }) {
+function Counter({ label, ariaLabel, value, max, onMinus, onPlus, onChange }) {
   return (
-    <div style={s.counter}>
-      <span style={s.counterLabel}>{label}</span>
-      <button type="button" onClick={onMinus} style={s.counterButton}>-</button>
-      <strong style={s.counterValue}>{value || 0}</strong>
-      <button type="button" onClick={onPlus} style={s.counterButton}>+</button>
+    <div className="no-mobile-override match-stat-counter" style={s.counter}>
+      <span style={s.counterLabel} aria-hidden="true">{label}</span>
+      <button className="mobile-hide" type="button" aria-label={`Riduci ${ariaLabel}`} onClick={onMinus} style={s.counterButton}>−</button>
+      <strong className="mobile-hide" style={s.counterValue}>{value || 0}</strong>
+      <button className="mobile-hide" type="button" aria-label={`Aumenta ${ariaLabel}`} onClick={onPlus} style={s.counterButton}>+</button>
+      <input
+        className="mobile-only match-stat-counter-input"
+        type="number"
+        inputMode="numeric"
+        min="0"
+        max={max}
+        step="1"
+        aria-label={ariaLabel}
+        value={value}
+        placeholder="0"
+        onChange={(event) => onChange(event.target.value)}
+        style={s.minutesInput}
+      />
     </div>
   );
 }
@@ -818,16 +827,16 @@ const s = {
   },
   matrixScrollControls: {
     display: "grid",
-    gridTemplateColumns: "34px minmax(220px, 420px) 34px",
+    gridTemplateColumns: "44px minmax(0, 1fr) 44px",
     alignItems: "center",
     gap: 8,
     flex: "1 1 360px",
     maxWidth: 520,
   },
   inlineScrollButton: {
-    width: 34,
-    height: 30,
-    minHeight: 30,
+    width: 44,
+    height: 44,
+    minHeight: 44,
     borderRadius: 10,
     border: "1px solid rgba(96,165,250,0.28)",
     background: "rgba(37,99,235,0.18)",

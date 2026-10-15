@@ -2,6 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
@@ -69,6 +70,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const navigate = useNavigate();
   const { canManage } = useAreaPermission();
   const [showSummaryList, setShowSummaryList] = useState(false);
+  const [confirmState, setConfirmState] = useState(null);
 
   const trainingSession = sessions.find((s) => String(s.id) === String(id));
   const friendlyMatch = matches.find((match) => String(match.id) === String(id) && isFriendlyMatch(match));
@@ -166,6 +168,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
         badge={t("pages.sessionAttendance.badge", { count: players.length })}
       />
 
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
+
       {/* Barra riepilogo + azioni */}
       <AppCard>
         <div style={s.topBar}>
@@ -178,7 +182,11 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
           </div>
           <div style={s.topActions}>
             {canManage && (
-              <Button variant="ghost" onClick={() => { if (window.confirm("Sei sicuro? Questo sovrascriverà le presenze di tutti i giocatori.")) markAll("Presente"); }}>
+              <Button variant="ghost" onClick={() => setConfirmState({
+                message: "Questo aggiornerà le presenze di tutti i giocatori. Vuoi continuare?",
+                confirmLabel: t("pages.sessionAttendance.markAllPresent"),
+                onConfirm: () => markAll("Presente"),
+              })}>
                 {t("pages.sessionAttendance.markAllPresent")}
               </Button>
             )}
@@ -222,13 +230,16 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
         return (
           <AppCard>
             <button
+              type="button"
+              aria-expanded={showSummaryList}
+              aria-controls={showSummaryList ? "attendance-summary" : undefined}
               onClick={() => setShowSummaryList((v) => !v)}
               style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, padding: 0 }}
             >
               {showSummaryList ? "▲" : "▼"} Lista presenti / non in campo
             </button>
             {showSummaryList && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 14 }}>
+              <div id="attendance-summary" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 14 }}>
                 <div>
                   <p style={{ color: "#22c55e", fontWeight: 800, fontSize: 13, marginBottom: 8 }}>✔ Presenti ({presentiList.length})</p>
                   {presentiList.map((p) => {
@@ -266,7 +277,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
         </AppCard>
       ) : (
         <AppCard>
-          <div style={s.grid}>
+          <div className="cl-fluid-grid" style={s.grid}>
             {[...players].sort((a, b) => {
               const ro = (r) => { const s = (r||"").toLowerCase(); return s.startsWith("portiere") ? 0 : s.startsWith("difensore") ? 1 : s.startsWith("centrocampista") ? 2 : s.startsWith("attaccante") ? 3 : 99; };
               if (ro(a.role) !== ro(b.role)) return ro(a.role) - ro(b.role);
@@ -297,6 +308,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                     {STATUS_OPTIONS.map((opt) => (
                       <button
                         key={opt}
+                        type="button"
+                        aria-pressed={status === opt}
                         onClick={() => updatePlayer(pid, "status", opt)}
                         disabled={!canManage}
                         style={{
@@ -319,6 +332,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                         min="1"
                         max="10"
                         step="0.5"
+                        aria-label={`RPE ${displayName}`}
+                        inputMode="decimal"
                         placeholder="1–10"
                         value={rpe}
                         onChange={(e) => updatePlayer(pid, "rpe", e.target.value)}
@@ -386,7 +401,7 @@ const s = {
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+    "--cl-grid-min": "280px",
     gap: 14,
   },
 

@@ -10,7 +10,7 @@ export default function ActionBar({
   style = {},
 }) {
   return (
-    <AppCard style={{ padding: "14px 18px", marginBottom: 18, ...style }}>
+    <AppCard className="cl-action-bar" style={{ padding: "14px 18px", marginBottom: 18, ...style }}>
       <div style={barStyles.inner}>
         <div style={barStyles.copy}>
           {eyebrow && <span style={barStyles.eyebrow}>{eyebrow}</span>}
@@ -20,9 +20,9 @@ export default function ActionBar({
         </div>
 
         {(meta || actions) && (
-          <div style={barStyles.side}>
+          <div className="cl-action-bar-side" style={barStyles.side}>
             {meta && <div style={barStyles.meta}>{meta}</div>}
-            {actions && <div style={barStyles.actions}>{actions}</div>}
+            {actions && <div className="cl-action-bar-actions" style={barStyles.actions}>{actions}</div>}
           </div>
         )}
       </div>

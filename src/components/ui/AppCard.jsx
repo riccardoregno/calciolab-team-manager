@@ -11,16 +11,16 @@ function AppCard({
 }) {
   return (
     <div
-      className={className}
+      className={`cl-app-card ${className}`.trim()}
       style={{
         ...styles.sectionCard,
-        padding: noPadding ? 0 : styles.sectionCard.padding,
+        padding: noPadding ? 0 : "var(--cl-card-padding, 22px)",
         ...style,
       }}
     >
       {(title || subtitle || rightContent) && (
-        <div style={styles.cardHeader}>
-          <div>
+        <div className="cl-card-heading" style={styles.cardHeader}>
+          <div style={{ minWidth: 0, flex: "1 1 180px" }}>
             {title && (
               <h3 style={styles.cardHeaderTitle}>
                 {title}

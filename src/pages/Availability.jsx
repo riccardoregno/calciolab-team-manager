@@ -766,7 +766,7 @@ export default function Availability({
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginBottom: 16 }}>
+        <div className="cl-fluid-grid" style={{ "--cl-grid-min": "140px", gap: 12, marginBottom: 16 }}>
           <div style={{ display: "grid", gap: 6 }}>
             <label style={av.fieldLabel}>{t("pages.availability.prepFromLabel")}</label>
             <input
@@ -886,7 +886,7 @@ export default function Availability({
             <p style={av.muted}>{t("pages.availability.preventionSub")}</p>
           </div>
         </div>
-        <div style={av.preventionGrid}>
+        <div className="cl-fluid-grid" style={av.preventionGrid}>
           {PREVENTION_CARDS.map((card) => (
             <div key={card.titleKey} style={av.preventionCard}>
               <div style={av.preventionTop}>
@@ -954,7 +954,7 @@ export default function Availability({
       ) : injuredPlayers.length === 0 ? (
         <EmptyState icon="🏥" title={t("pages.availability.emptyTitle")} text={t("pages.availability.emptyText")} />
       ) : (
-        <div style={av.grid}>
+        <div className="cl-fluid-grid" style={av.grid}>
           {injuredPlayers.map((player) => {
             const name = [player.firstName, player.lastName].filter(Boolean).join(" ") || player.name || "—";
             const st   = getStatusStyle(player.status);
@@ -1183,7 +1183,7 @@ export default function Availability({
               </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 }}>
+            <div className="cl-fluid-grid" style={{ "--cl-grid-min": "140px", gap: 12 }}>
               <div style={{ display: "grid", gap: 6 }}>
                 <label style={av.fieldLabel}>{t("pages.availability.fieldStartDate")}</label>
                 <input type="date" value={form.injuryStartDate} onChange={(e) => setForm({ ...form, injuryStartDate: e.target.value })} style={styles.input} />
@@ -1281,7 +1281,7 @@ function InfoRow({ icon, label, value, extra }) {
 }
 
 const av = {
-  grid:       { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 },
+  grid:       { display: "grid", "--cl-grid-min": "320px", gap: 16 },
   card:       { borderRadius: 14, padding: 18, border: "1px solid", display: "grid", gap: 14 },
   cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   avatar:     { width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", flexShrink: 0 },
@@ -1300,7 +1300,7 @@ const av = {
   fieldLabel: { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0, color: "#64748b" },
   sectionHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 14 },
   sectionTitle: { margin: 0, color: "#f1f5f9", fontSize: 16, lineHeight: 1.2 },
-  preventionGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 },
+  preventionGrid: { display: "grid", "--cl-grid-min": "220px", gap: 12 },
   preventionCard: { padding: 14, borderRadius: 13, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" },
   preventionTop: { display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", marginBottom: 10 },
   preventionTitle: { color: "#e2e8f0", fontSize: 13, lineHeight: 1.25 },

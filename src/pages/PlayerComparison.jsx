@@ -178,7 +178,7 @@ function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) 
           />
         </div>
 
-        <div style={cmp.metricLabel}>
+        <div className="player-comparison-metric-label" style={cmp.metricLabel}>
           {icon && <span style={{ marginRight: 4 }}>{icon}</span>}
           {label}
         </div>
@@ -334,10 +334,11 @@ export default function PlayerComparison({ players = [], sessions = [], matches 
 
       {/* Selettori */}
       <AppCard style={{ marginBottom: 20 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 16, alignItems: "center" }} className="no-mobile-override">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 16, alignItems: "center" }} className="no-mobile-override player-comparison-selectors">
           <div>
-            <label style={cmp.selectLabel}>{t("pages.playerComparison.playerA")}</label>
+            <label htmlFor="compare-player-a" style={cmp.selectLabel}>{t("pages.playerComparison.playerA")}</label>
             <select
+              id="compare-player-a"
               value={idA}
               onChange={(e) => setIdA(e.target.value)}
               style={cmp.select}
@@ -349,13 +350,14 @@ export default function PlayerComparison({ players = [], sessions = [], matches 
             </select>
           </div>
 
-          <div style={{ textAlign: "center" }}>
+          <div className="player-comparison-vs" style={{ textAlign: "center" }}>
             <div style={cmp.vsCircle}>VS</div>
           </div>
 
           <div>
-            <label style={cmp.selectLabel}>{t("pages.playerComparison.playerB")}</label>
+            <label htmlFor="compare-player-b" style={cmp.selectLabel}>{t("pages.playerComparison.playerB")}</label>
             <select
+              id="compare-player-b"
               value={idB}
               onChange={(e) => setIdB(e.target.value)}
               style={cmp.select}

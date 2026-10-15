@@ -31,13 +31,14 @@ export function useToast() {
 
   const ToastContainer = useCallback(
     () => (
-      <div style={toastStyles.container} aria-live="polite">
+      <div className="cl-toast-container" style={toastStyles.container} aria-live="polite" aria-relevant="additions text">
         {toasts.map((t) => (
-          <div key={t.id} style={{ ...toastStyles.toast, ...toastStyles[t.type] }}>
+          <div key={t.id} className="cl-toast" style={{ ...toastStyles.toast, ...toastStyles[t.type] }}>
             <span style={toastStyles.icon}>{ICONS[t.type]}</span>
-            <span style={{ flex: 1 }}>{t.text}</span>
+            <span style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>{t.text}</span>
             {t.action && (
               <button
+                type="button"
                 style={toastStyles.action}
                 onClick={() => { t.action.fn(); dismiss(t.id); }}
               >
@@ -45,6 +46,7 @@ export function useToast() {
               </button>
             )}
             <button
+              type="button"
               style={toastStyles.close}
               onClick={() => dismiss(t.id)}
               aria-label="Chiudi notifica"
@@ -68,7 +70,7 @@ const toastStyles = {
     position: "fixed",
     bottom: 24,
     right: 24,
-    zIndex: 9999,
+    zIndex: 10010,
     display: "flex",
     flexDirection: "column",
     gap: 10,

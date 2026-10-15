@@ -88,3 +88,15 @@ Le colonne seguenti indicano solo segnali presenti nel sorgente. L'assenza di us
 | TeamGenerator.jsx | Sì | Sì | 2 |
 | Terms.jsx | No | No | 0 |
 | Trainings.jsx | Sì | Sì | 10 |
+
+## Secondo intervento — compattazione e operatività
+
+- AppCard usa un padding predefinito di 16 px su telefono e 22 px su desktop; padding espliciti e noPadding restano supportati. Titoli e sottotitoli gestiscono testi lunghi. ActionBar distribuisce le azioni su righe utilizzabili su telefono.
+- Classe condivisa cl-fluid-grid per disponibilità, schede delle presenze e modulo GPS: si adatta alla larghezza del contenitore, evitando minimi più larghi della scheda e il selettore globale sugli stili inline.
+- Statistiche partita: preservate matrice, contatori e controlli di scorrimento; colonna giocatore più stretta su mobile; barra Salva sopra la navigazione inferiore. Su telefono/tablet i contatori offrono campi numerici, mantenendo i comandi più/meno su desktop; nomi accessibili distinguono giocatore e partita.
+- Navigazione delle fasi partita con link semantici, fase attiva annunciata e disposizione a due colonne su telefono.
+- Confronto giocatori: selettori impilati su telefono, etichette associate ai campi e metriche senza obbligo di testo su una sola riga.
+- Notifiche adattate alla larghezza del telefono e spostate in alto per evitare la sovrapposizione con navigazione e salvataggio.
+- Presenze: conferma multipla nel componente condiviso, stato selezionato annunciato e campo RPE con etichetta accessibile.
+
+Validazione del secondo intervento: npm test, npm run lint, npm run build e npm run build:mobile. Resta da eseguire la verifica visiva interattiva sui dispositivi; le build non la sostituiscono.

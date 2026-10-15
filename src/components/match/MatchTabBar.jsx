@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ArrowRight, BarChart3, ClipboardCheck, FileText, Shirt } from "lucide-react";
 
 const TABS = [
@@ -64,7 +64,6 @@ const TABS = [
 ];
 
 export default function MatchTabBar({ matchId, active, matchLabel, matchData }) {
-  const navigate = useNavigate();
   const normalizedActive = active === "live" ? "scheda" : active;
   const activeIndex = TABS.findIndex((tab) => tab.key === normalizedActive);
   const nextTab = activeIndex >= 0 ? TABS[activeIndex + 1] : null;
@@ -72,21 +71,21 @@ export default function MatchTabBar({ matchId, active, matchLabel, matchData }) 
   if (!matchId) return null;
 
   return (
-    <div style={s.wrap}>
+    <nav aria-label="Fasi della partita" className="match-flow-nav" style={s.wrap}>
       {matchLabel && <span style={s.label}>{matchLabel}</span>}
 
-      <div style={s.flowWrap}>
-      <div style={s.tabRow}>
+      <div className="match-flow-actions" style={s.flowWrap}>
+      <div className="match-flow-tabs" style={s.tabRow}>
         {TABS.map((tab) => {
           const isActive = normalizedActive === tab.key;
           const status   = tab.getStatus(matchData);
           const count    = tab.getCount(matchData);
           const Icon = tab.icon;
           return (
-            <button
+            <Link
               key={tab.key}
-              type="button"
-              onClick={() => navigate(tab.path(matchId))}
+              to={tab.path(matchId)}
+              aria-current={isActive ? "page" : undefined}
               style={{
                 ...s.tab,
                 ...(isActive ? s.tabActive : s.tabInactive),
@@ -104,18 +103,18 @@ export default function MatchTabBar({ matchId, active, matchLabel, matchData }) 
                 <span style={s.dotDraft} />
               )}
               {isActive && <span style={s.activeDot} />}
-            </button>
+            </Link>
           );
         })}
       </div>
       {nextTab && (
-        <button type="button" onClick={() => navigate(nextTab.path(matchId))} style={s.nextButton}>
+        <Link to={nextTab.path(matchId)} className="match-flow-next" style={s.nextButton}>
           Avanti: {nextTab.shortLabel}
           <ArrowRight size={15} />
-        </button>
+        </Link>
       )}
       </div>
-    </div>
+    </nav>
   );
 }
 
@@ -152,6 +151,7 @@ const s = {
     flexWrap: "wrap",
   },
   tab: {
+    textDecoration: "none",
     position: "relative",
     border: "1px solid transparent",
     borderRadius: 8,
@@ -214,6 +214,7 @@ const s = {
     flexShrink: 0,
   },
   nextButton: {
+    textDecoration: "none",
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",

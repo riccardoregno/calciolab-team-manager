@@ -762,3 +762,57 @@ textarea:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* Explicit fluid grids adapt to the available card width, including sidebars. */
+.cl-fluid-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--cl-grid-min, 16rem)), 1fr));
+  gap: var(--cl-grid-gap, 12px);
+  min-width: 0;
+}
+.cl-fluid-grid > * { min-width: 0; }
+.cl-app-card { min-width: 0; }
+.cl-card-heading h3, .cl-card-heading p { overflow-wrap: anywhere; }
+.player-comparison-selectors > * { min-width: 0; }
+.cl-toast { max-width: min(360px, calc(100vw - 48px)) !important; }
+@media screen and (max-width: 1024px) {
+  .match-stats-save-bar {
+    left: max(14px, env(safe-area-inset-left, 0px)) !important;
+    right: max(14px, env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .match-stats-save-bar > span { flex: 1; min-width: 0; font-size: 11px !important; }
+  .match-stats-save-bar > button { min-width: 112px !important; flex-shrink: 0; }
+  .match-stats-matrix { --match-player-width: 140px; }
+  .match-stat-counter { grid-template-columns: 14px minmax(0, 1fr) !important; }
+  .match-stat-counter-input { padding: 4px 2px; }
+  .match-stats-matrix-scroll { max-height: 60dvh !important; scroll-padding-left: 140px; }
+  .cl-toast-container {
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    bottom: auto !important;
+    left: max(14px, env(safe-area-inset-left, 0px));
+    right: max(14px, env(safe-area-inset-right, 0px)) !important;
+    align-items: center;
+  }
+  .cl-toast { width: 100%; min-width: 0 !important; max-width: 480px !important; }
+  .cl-toast button { min-width: 44px; min-height: 44px; }
+}
+@media screen and (max-width: 640px) {
+  .cl-app-card { --cl-card-padding: 16px; }
+  .cl-card-heading { gap: 10px !important; margin-bottom: 14px !important; }
+  .cl-card-heading p { font-size: 13px !important; }
+  .cl-action-bar { padding: 12px 14px !important; }
+  .cl-action-bar-side { flex: 1 1 100% !important; justify-content: flex-start !important; }
+  .cl-action-bar-actions { flex: 1; justify-content: flex-start !important; }
+  .cl-action-bar-actions > button, .cl-action-bar-actions > a { flex: 1 1 auto; }
+  .match-flow-nav { padding: 12px !important; gap: 10px !important; margin-bottom: 14px !important; }
+  .match-flow-actions { width: 100%; min-width: 0; }
+  .match-flow-tabs { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .match-flow-tabs > a { min-height: 44px; min-width: 0; padding: 10px !important; }
+  .match-flow-tabs > a > svg { flex-shrink: 0; }
+  .match-flow-tabs > a > span { overflow-wrap: anywhere; }
+  .match-flow-next { min-height: 44px !important; }
+  .player-comparison-selectors { grid-template-columns: minmax(0, 1fr) !important; gap: 12px !important; }
+  .player-comparison-vs { display: none; }
+  .player-comparison-metric-label { white-space: normal !important; overflow-wrap: anywhere; }
+}

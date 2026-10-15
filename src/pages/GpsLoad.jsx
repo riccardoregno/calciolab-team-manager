@@ -120,7 +120,7 @@ export default function GpsLoad({
         {showForm && (
           <div style={gl.importBox}>
             <h4 style={gl.importTitle}>{t("pages.gpsLoad.configTitle", { count: pendingRows.length })}</h4>
-            <div style={gl.formGrid}>
+            <div className="cl-fluid-grid" style={gl.formGrid}>
               <label style={labelStyle}>
                 {t("pages.gpsLoad.fieldTitle")}
                 <input
@@ -346,7 +346,7 @@ const gl = {
   muted: { margin: "4px 0 0", color: "#94a3b8", fontSize: 13, lineHeight: 1.5 },
   importBox: { marginTop: 20, padding: 18, background: "rgba(59,130,246,0.07)", borderRadius: 14, border: "1px solid rgba(59,130,246,0.2)" },
   importTitle: { margin: "0 0 14px", color: "#93c5fd", fontSize: 15 },
-  formGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 },
+  formGrid: { display: "grid", "--cl-grid-min": "200px", gap: 12 },
   actions: { display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" },
   sessionList: { display: "flex", flexDirection: "column", gap: 10, marginTop: 16 },
   sessionCard: { borderRadius: 14, border: "1px solid rgba(255,255,255,0.09)", overflow: "hidden" },
