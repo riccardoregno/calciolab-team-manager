@@ -1,0 +1,59 @@
+.coach-focus-card { overflow: hidden; border-color: rgba(96,165,250,.24); }
+.coach-focus-layout { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(240px,1fr); }
+.coach-focus-layout:not(:has(.coach-focus-agenda)) { grid-template-columns:minmax(0,1fr); }
+.coach-focus-main { min-width:0; padding:28px; }
+.coach-focus-eyebrow { display:flex; align-items:center; gap:8px; color:#b8c9e1; font-size:12px; font-weight:650; margin-bottom:22px; }
+.coach-focus-marker { width:7px; height:7px; border-radius:50%; background:#60a5fa; }
+.coach-focus-heading { display:flex; gap:18px; align-items:center; }
+.coach-focus-date { display:grid; justify-items:center; gap:2px; width:64px; min-height:74px; padding:10px; flex-shrink:0; border:1px solid rgba(96,165,250,.2); border-radius:12px; background:rgba(37,99,235,.09); }
+.coach-focus-date strong { font-size:28px; line-height:1.1; }
+.coach-focus-date span { font-size:12px; color:#a9bbd3; text-transform:uppercase; }
+.coach-focus-copy { min-width:0; overflow-wrap:anywhere; }
+.coach-focus-type { font-size:12px; color:#a9bbd3; }
+.coach-focus-copy h2 { font-size:clamp(23px,2.5vw,32px); line-height:1.18; letter-spacing:-.025em; margin:5px 0 7px; }
+.coach-focus-copy p { margin:0; color:#a9bbd3; line-height:1.5; font-size:13px; }
+.coach-focus-meta { display:flex; flex-wrap:wrap; gap:10px 18px; margin:20px 0 0; font-size:13px; color:#b8c9e1; }
+.coach-focus-meta span { display:inline-flex; align-items:center; gap:6px; overflow-wrap:anywhere; min-width:0; }
+.coach-focus-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:24px; }
+.coach-focus-rsvp { font-size:12px; color:#a9bbd3; line-height:1.6; margin:16px 0 0; }
+.coach-focus-agenda { min-width:0; padding:24px; border-left:1px solid rgba(148,163,184,.12); background:rgba(15,23,42,.18); }
+.coach-focus-agenda .cl-field-caption { margin:0 0 10px; }
+.coach-agenda-item { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; padding:13px 0; border:0; border-bottom:1px solid rgba(148,163,184,.12); background:transparent; color:#e2e8f0; text-align:left; cursor:pointer; min-height:54px; }
+.coach-agenda-item span { min-width:0; overflow-wrap:anywhere; }
+.coach-agenda-item strong { display:block; font-size:13px; line-height:1.4; font-weight:600; }
+.coach-agenda-item small { display:block; color:#a9bbd3; margin-top:4px; font-size:12px; }
+.coach-agenda-item svg,.coach-alert-row svg { flex-shrink:0; }
+.coach-agenda-all { display:flex; align-items:center; gap:8px; min-height:44px; padding:10px 0; border:0; background:transparent; color:#93c5fd; cursor:pointer; font-size:12px; font-weight:600; }
+.coach-focus-bottom { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-top:1px solid rgba(148,163,184,.14); background:rgba(15,23,42,.2); }
+.coach-focus-bottom>div,.coach-focus-bottom>button { display:flex; align-items:center; gap:10px; padding:18px 20px; min-width:0; border:0; border-right:1px solid rgba(148,163,184,.12); background:transparent; color:#a9bbd3; text-align:left; }
+.coach-focus-bottom>button { cursor:pointer; }
+.coach-focus-bottom>:last-child { border-right:0; }
+.coach-focus-bottom span { display:grid; gap:4px; font-size:11px; overflow-wrap:anywhere; }
+.coach-focus-bottom strong { font-size:20px; line-height:1.15; color:#f1f5f9; font-weight:650; }
+.coach-focus-bottom svg { flex-shrink:0; }
+.coach-focus-bottom button>svg:last-child { margin-left:auto; }
+.coach-focus-details,.coach-secondary-details { margin-top:12px; }
+.coach-focus-details summary,.coach-secondary-details summary,.coach-setup-details summary { min-height:44px; padding:12px 0; cursor:pointer; color:#a9bbd3; font-size:13px; line-height:1.5; }
+.coach-focus-details[open]>div { padding-top:14px; }
+.coach-alert-list { display:grid; gap:8px; }
+.coach-alert-row { display:flex; width:100%; align-items:center; gap:12px; text-align:left; padding:13px 14px; min-height:48px; background:rgba(148,163,184,.035); border:1px solid rgba(148,163,184,.12); border-radius:10px; color:#d6e0ee; font:inherit; font-size:13px; line-height:1.5; }
+button.coach-alert-row { cursor:pointer; }
+.coach-alert-row>span:nth-child(2) { flex:1; min-width:0; overflow-wrap:anywhere; }
+.coach-alert-dot { width:6px; height:6px; border-radius:50%; background:#60a5fa; flex-shrink:0; }
+.coach-alert-red .coach-alert-dot { background:#f87171; }
+.coach-alert-orange .coach-alert-dot { background:#fb923c; }
+.coach-alert-green .coach-alert-dot { background:#4ade80; }
+.coach-alert-purple .coach-alert-dot { background:#c084fc; }
+.coach-alert-count { font-size:13px; color:#a9bbd3; }
+.coach-setup-details summary { padding:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px; }
+.coach-setup-details summary strong { color:#d6e0ee; font-size:13px; }
+.coach-setup-details summary>span:last-child { margin-left:auto; color:#93c5fd; }
+.coach-setup-content { padding-top:18px; }
+.coach-section-handle { position:absolute; top:10px; right:10px; z-index:20; min-width:44px; min-height:44px; border:1px solid #334155; border-radius:8px; background:#17243a; color:#a9bbd3; font-size:22px; cursor:grab; touch-action:none; }
+.coach-agenda-item:hover,.coach-focus-bottom>button:hover,button.coach-alert-row:hover { background:rgba(96,165,250,.07); }
+@media(max-width:1000px) { .coach-focus-layout { grid-template-columns:minmax(0,1fr); } .coach-focus-agenda { border-left:0; border-top:1px solid rgba(148,163,184,.12); } }
+@media(max-width:640px) { .coach-focus-main,.coach-focus-agenda { padding:20px; } .coach-focus-heading { gap:12px; } .coach-focus-date { width:55px; min-height:66px; } .coach-focus-bottom { grid-template-columns:repeat(2,minmax(0,1fr)); } .coach-focus-bottom>div,.coach-focus-bottom>button { padding:14px; gap:8px; } .coach-focus-bottom>:nth-child(2) { border-right:0; } .coach-focus-bottom>:nth-child(-n+2) { border-bottom:1px solid rgba(148,163,184,.12); } .coach-focus-actions { display:grid; grid-template-columns:minmax(0,1fr); } .coach-focus-copy h2 { font-size:23px; } .coach-setup-details summary>span:last-child { margin-left:0; width:100%; } }
+
+.coach-sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+
+@media(max-width:640px) { .coach-focus-card { display:flex; flex-direction:column; } .coach-focus-layout { display:contents; } .coach-focus-main { order:0; } .coach-focus-bottom { order:1; } .coach-focus-agenda { order:2; } }

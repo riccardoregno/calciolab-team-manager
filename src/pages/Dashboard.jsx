@@ -1,3 +1,4 @@
+import "../styles/coach-focus.css";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -5,13 +6,15 @@ import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { Activity, ArrowRight, CalendarDays, CheckCircle2, Circle, Eye, EyeOff, Settings2, Users } from "lucide-react";
 
+import CoachFocusCard from "../components/dashboard/CoachFocusCard";
+import CoachAlertList from "../components/dashboard/CoachAlertList";
+import { buildCoachAgenda, completeSectionOrder, prioritizeCoachAlerts } from "../utils/coachAgenda";
 import FilterChips from "../components/ui/FilterChips";
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
-import MetricStrip from "../components/ui/MetricStrip";
 import { SkeletonStatCard } from "../components/ui/Skeleton";
 import { fetchMatchRsvps } from "../services/rsvp";
 import { useAuth } from "../hooks/useAuth";
@@ -30,7 +33,6 @@ import {
   getPhysicalReference,
   getPlayerSummary,
   getSeasonRecord,
-  getSetupProgress,
   getSubscriptionPlan,
   localDateString,
   normalizeAppSettings,
@@ -94,10 +96,10 @@ function getTopPlayerByStat(players = [], statKey) {
     })[0] ?? null;
 }
 
-function SortableSection({ id, children }) {
+function SortableSection({ id, children, enabled = false }) {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id });
+    useSortable({ id, disabled: !enabled });
 
   return (
     <div
@@ -112,30 +114,7 @@ function SortableSection({ id, children }) {
         marginBottom: 18,
       }}
     >
-      {/* drag handle */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="mobile-hide"
-        style={{
-          position: "absolute",
-          top: 14,
-          right: 14,
-          zIndex: 20,
-          cursor: isDragging ? "grabbing" : "grab",
-          color: "#475569",
-          fontSize: 18,
-          lineHeight: 1,
-          userSelect: "none",
-          padding: "2px 6px",
-          borderRadius: 8,
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.07)",
-        }}
-        title={t("pages.dashboard.dragHandle")}
-      >
-        ⠿
-      </div>
+      {enabled && <button type="button" {...attributes} {...listeners} className="coach-section-handle" aria-label={t("pages.dashboard.focus.handleLabel")}>⠿</button>}
       {children}
     </div>
   );
@@ -207,10 +186,6 @@ function Dashboard({
   }), [players, exercises, sessions, matches, physicalTests]);
 
   const plan = getSubscriptionPlan(settings);
-
-  const setup = useMemo(() => getSetupProgress({
-    players, exercises, sessions, matches, appSettings: settings,
-  }), [players, exercises, sessions, matches, settings]);
 
   const billing = getBillingStatus(settings);
   // FIX: i piani concessi via codice promo arrivano ora da
@@ -322,18 +297,9 @@ function Dashboard({
 
   const today = todayStart();
   const todayTime = today.getTime();
-  const weekEnd = new Date(today);
-  weekEnd.setDate(today.getDate() + 7);
-
-  const events = [...sessions, ...matches].sort(
-    (a, b) => new Date(a.date) - new Date(b.date)
-  );
-
-  const nextEvent = events.find((event) => new Date(event.date) >= today);
-  const nextTraining = sessions.find((s) => new Date(s.date) >= today);
-  const nextMatch = [...matches]
-    .filter((m) => new Date(m.date) >= today)
-    .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+  const agendaMinute = Math.floor(new Date().getTime() / 60000) * 60000;
+  const agenda = useMemo(() => buildCoachAgenda(sessions, matches, new Date(agendaMinute)), [sessions, matches, agendaMinute]);
+  const { nextEvent, nextMatch } = agenda;
 
   const [nextMatchRsvpState, setNextMatchRsvpState] = useState({ matchId: "", rsvps: [] });
   const nextMatchId = String(nextMatch?.id || "");
@@ -401,35 +367,17 @@ function Dashboard({
     return () => { active = false; };
   }, [effectiveTeamId, matches, todayTime]);
 
-  const todayEvents = events.filter((event) => {
-    const date = new Date(event.date);
-    return date >= today && date < new Date(today.getTime() + 24 * 60 * 60 * 1000);
-  });
-  const upcomingWeekAgenda = events.filter((event) => {
-    const date = new Date(event.date);
-    return date >= today && date <= weekEnd;
-  }).slice(0, 5);
-  const upcomingWeekEvents = upcomingWeekAgenda.length;
+  const todayEvents = agenda.todayEvents;
+  const upcomingWeekAgenda = agenda.weekEvents.slice(0, 5);
+  const upcomingWeekEvents = agenda.weekEvents.length;
   const openCorrections = getOpenPostMatchCorrections(sessions, matches);
-
-  const availablePlayers = primaPlayers.filter(
-    (p) => !p.status || p.status === "Disponibile"
-  ).length;
-  const unavailablePlayers = Math.max(0, primaPlayers.length - availablePlayers);
-
-  const recentActivities = [...events]
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .slice(0, 4);
-
-  const coachAlerts = useMemo(() => [
+  const availablePlayers = primaPlayers.filter((p) => !p.status || p.status === "Disponibile").length;
+  const recentActivities = agenda.pastEvents.slice(0, 4);
+  const coachAlerts = useMemo(() => prioritizeCoachAlerts([
     ...getMatchOperationalAlerts(nextMatch, t),
     ...getCoachAlerts({ players: primaPlayers, matches, physicalTests, sessions, playerStatsMap, teamWellnessToday, t }),
-  ], [primaPlayers, matches, physicalTests, sessions, playerStatsMap, teamWellnessToday, nextMatch, t]);
-
-  const sectionOrder = Array.isArray(settings.dashboardSectionOrder)
-    ? settings.dashboardSectionOrder.filter((key) => DASHBOARD_SECTION_KEYS.includes(key))
-    : DEFAULT_SECTION_ORDER;
-  const safeSectionOrder = sectionOrder.length ? sectionOrder : DEFAULT_SECTION_ORDER;
+  ]), [primaPlayers, matches, physicalTests, sessions, playerStatsMap, teamWellnessToday, nextMatch, t]);
+  const safeSectionOrder = completeSectionOrder(settings.dashboardSectionOrder, DEFAULT_SECTION_ORDER);
 
   const quickStartSteps = [
     {
@@ -501,7 +449,7 @@ function Dashboard({
       return;
     }
 
-    navigate("/trainings");
+    navigate("/trainings", event.id ? { state: { editSessionId: event.id } } : undefined);
   }
 
   function renderSectionContent(sectionId) {
@@ -509,71 +457,15 @@ function Dashboard({
       case "nextEvent":
         if (!widgets.hero && !widgets.nextEvent) return null;
         return (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "1.4fr 0.8fr",
-              gap: 24,
-              alignItems: "start",
-            }}
-          >
-            {widgets.hero && (
-              <CoachControlRoom
-                nextEvent={nextEvent}
-                nextTraining={nextTraining}
-                nextMatch={nextMatch}
-                todayEvents={todayEvents}
-                upcomingWeekEvents={upcomingWeekEvents}
-                availablePlayers={availablePlayers}
-                unavailablePlayers={unavailablePlayers}
-                playersCount={primaPlayers.length}
-                coachAlerts={coachAlerts}
-                setup={setup}
-                navigate={navigate}
-                isMobile={isMobile}
-              />
-            )}
-
-            {widgets.nextEvent && (
-              <AppCard>
-                {nextEvent?.type === "Partita" ? (
-                  <NextMatchCard match={nextEvent} navigate={navigate} clubName={settings.workspaceProfile?.clubName || t("common.appName")} rsvpSummary={nextMatchRsvpSummary} />
-                ) : (
-                  <>
-                    <h3 style={{ marginTop: 0 }}>{t("pages.dashboard.nextEvent")}</h3>
-                    {nextEvent ? (
-                      <div>
-                        <Badge tone="green">{getDashboardEventTypeLabel(nextEvent.type, t)}</Badge>
-                        <h2 style={{ marginBottom: 8 }}>{nextEvent.title}</h2>
-                        <p style={{ color: "#94a3b8" }}>{formatDate(nextEvent.date)}</p>
-                        <p style={{ color: "#cbd5e1" }}>
-                          {nextEvent.theme || t("pages.dashboard.scheduledSession")}
-                        </p>
-                        <Button
-                          variant="ghost"
-                          style={{ marginTop: 14 }}
-                          onClick={() => navigate("/trainings")}
-                        >
-                          {t("pages.dashboard.goToSessions")}
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <p style={{ color: "#94a3b8" }}>{t("pages.dashboard.noScheduledEvent")}</p>
-                        <Button
-                          variant="ghost"
-                          style={{ marginTop: 10 }}
-                          onClick={() => navigate("/calendar")}
-                        >
-                          {t("pages.dashboard.openCalendar")}
-                        </Button>
-                      </>
-                    )}
-                  </>
-                )}
-              </AppCard>
-            )}
-          </div>
+          <CoachFocusCard event={nextEvent} todayEvents={todayEvents} weekCount={upcomingWeekEvents}
+            available={availablePlayers} playerCount={primaPlayers.length} alerts={coachAlerts}
+            clubName={settings.workspaceProfile?.clubName || t("common.appName")}
+            onOpenEvent={openAgendaEvent} onCreateSession={() => navigate("/trainings", { state: { newSession: true } })}
+            onOpenCalendar={() => navigate("/calendar")} onOpenAlert={(path) => navigate(path)}
+            rsvpSummary={nextMatchRsvpSummary} nextEvents={agenda.futureEvents.filter((event) => event !== nextEvent)}
+            showMetrics={widgets.hero} showAgenda={widgets.nextEvent}>
+            {nextEvent?.type === "Partita" && <NextMatchCard match={nextEvent} navigate={navigate} clubName={settings.workspaceProfile?.clubName || t("common.appName")} rsvpSummary={nextMatchRsvpSummary} />}
+          </CoachFocusCard>
         );
 
       case "kpis":
@@ -937,43 +829,7 @@ function Dashboard({
 
       case "coachAlerts":
         if (!widgets.coachAlerts) return null;
-        return (
-          <AppCard>
-            <SectionTitle
-              title={t("pages.dashboard.coachAlerts")}
-              subtitle={t("pages.dashboard.coachAlertsSubtitle")}
-            />
-
-            {coachAlerts.length ? (
-              <div style={{ display: "grid", gap: 10 }}>
-                {coachAlerts.map((alert, index) => {
-                  const toneLabels = { red: t("pages.dashboard.toneUrgent"), orange: t("pages.dashboard.toneWarning"), green: t("pages.dashboard.toneOk"), blue: t("pages.dashboard.toneInfo"), purple: t("pages.dashboard.toneNote") };
-                  return (
-                  <div
-                    key={`${alert.text}-${index}`}
-                    onClick={alert.path ? () => navigate(alert.path) : undefined}
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      alignItems: "center",
-                      padding: 12,
-                      borderRadius: 14,
-                      background: "rgba(255,255,255,0.045)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      cursor: alert.path ? "pointer" : "default",
-                    }}
-                  >
-                    <Badge tone={alert.tone}>{toneLabels[alert.tone] || alert.tone}</Badge>
-                    <span>{alert.text}</span>
-                  </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p style={{ color: "#94a3b8" }}>{t("pages.dashboard.noAlerts")}</p>
-            )}
-          </AppCard>
-        );
+        return <CoachAlertList alerts={coachAlerts} onOpen={(path) => navigate(path)} />;
 
       case "recentActivities":
         if (!widgets.recentActivities) return null;
@@ -1385,7 +1241,10 @@ function Dashboard({
         <SortableContext items={safeSectionOrder} strategy={verticalListSortingStrategy}>
           {safeSectionOrder
             .filter((id) => {
-              if (simpleView) return new Set(["nextEvent", "coachAlerts", "weekFocus", "rosterStatus", "quickActions"]).has(id);
+              if (simpleView) {
+                if (id === "weekFocus" && widgets.nextEvent) return false;
+                return new Set(["nextEvent", "coachAlerts", "weekFocus", "rosterStatus", "quickActions"]).has(id);
+              }
               if (!isMobile) return true;
               const DASH_TAB_SECTIONS = {
                 oggi:    new Set(["nextEvent", "coachAlerts", "quickActions", "weekFocus"]),
@@ -1406,7 +1265,7 @@ function Dashboard({
             }
             if (!content) return null;
             return (
-              <SortableSection key={id} id={id}>
+              <SortableSection key={id} id={id} enabled={showPersonalize && !isMobile}>
                 {content}
               </SortableSection>
             );
@@ -1424,6 +1283,9 @@ function GettingStartedCard({ steps, completed, onResumeOnboarding }) {
 
   return (
     <AppCard style={{ marginBottom: 18, borderColor: "rgba(96,165,250,0.28)" }}>
+      <details className="coach-setup-details" open={completed === 0}>
+      <summary><strong>{t("pages.dashboard.focus.setupProgress", { completed, total: steps.length })}</strong><span>{nextStep?.title}</span><span>{t("pages.dashboard.focus.allSteps")}</span></summary>
+      <div className="coach-setup-content">
       <div style={{ display: "flex", justifyContent: "space-between", gap: 18, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 18 }}>
         <div style={{ minWidth: 0 }}>
           <Badge tone="blue">{t("pages.dashboard.quickStart.badge")} · {completed}/{steps.length}</Badge>
@@ -1482,6 +1344,8 @@ function GettingStartedCard({ steps, completed, onResumeOnboarding }) {
           {t("pages.dashboard.quickStart.resumeSetup")}
         </button>
       )}
+      </div>
+      </details>
     </AppCard>
   );
 }
@@ -1856,152 +1720,6 @@ function PhysicalRoleDashboard({ players, matches, physicalTests, coachAlerts })
     </div>
   );
 }
-
-function CoachControlRoom({
-  nextEvent,
-  nextTraining,
-  nextMatch,
-  todayEvents,
-  upcomingWeekEvents,
-  availablePlayers,
-  unavailablePlayers,
-  playersCount,
-  coachAlerts,
-  setup,
-  navigate,
-  isMobile = false,
-}) {
-  const { t } = useTranslation();
-  const toneLabels = { red: t("pages.dashboard.toneUrgent"), orange: t("pages.dashboard.toneWarning"), green: t("pages.dashboard.toneOk"), blue: t("pages.dashboard.toneInfo"), purple: t("pages.dashboard.toneNote") };
-
-  const primaryStatus = todayEvents.length
-    ? t("pages.dashboard.eventsToday", { count: todayEvents.length })
-    : nextEvent
-    ? t("pages.dashboard.nextEventDate", { date: formatShortDate(nextEvent.date) })
-    : t("pages.dashboard.noEvent");
-
-  const actions = [
-    !nextTraining && {
-      label: t("pages.dashboard.planSchedule"),
-      path: "/trainings",
-      variant: "primary",
-    },
-    !nextMatch && {
-      label: t("pages.dashboard.insertMatch"),
-      path: "/matches",
-      variant: "ghost",
-    },
-    coachAlerts.length > 0 && {
-      label: t("pages.dashboard.checkAlerts"),
-      path: coachAlerts[0]?.path || "/players",
-      variant: "ghost",
-    },
-    setup.next && {
-      label: t("pages.dashboard.completeSetup"),
-      path: setup.next.path,
-      variant: "ghost",
-    },
-    {
-      label: t("pages.dashboard.newSession"),
-      path: "/trainings",
-      variant: "primary",
-    },
-  ].filter(Boolean).slice(0, 3);
-
-  const controlMetricItems = [
-    {
-      key: "today",
-      label: t("pages.dashboard.today"),
-      value: todayEvents.length,
-      color: todayEvents.length ? "#86efac" : "#7dd3fc",
-    },
-    {
-      key: "week",
-      label: t("pages.dashboard.days7"),
-      value: upcomingWeekEvents,
-      color: "#7dd3fc",
-    },
-    {
-      key: "available",
-      label: t("pages.dashboard.availableCount"),
-      value: `${availablePlayers}/${playersCount}`,
-      color: "#86efac",
-    },
-    {
-      key: "monitor",
-      label: t("pages.dashboard.monitor"),
-      value: unavailablePlayers,
-      color: unavailablePlayers ? "#fdba74" : "#86efac",
-    },
-  ];
-
-  return (
-    <AppCard>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0,1.25fr) minmax(280px,0.75fr)", gap: 22, alignItems: "stretch" }}>
-        <div>
-          <Badge tone={coachAlerts.length ? "orange" : "green"}>
-            {coachAlerts.length ? t("pages.dashboard.alertsOpen", { count: coachAlerts.length }) : t("pages.dashboard.underControl")}
-          </Badge>
-
-          <h2 style={{ fontSize: 30, margin: "16px 0 8px", lineHeight: 1.08 }}>
-            {primaryStatus}
-          </h2>
-
-          <p style={{ color: "#94a3b8", maxWidth: 640, lineHeight: 1.55, margin: 0 }}>
-            {nextEvent
-              ? `${nextEvent.title || nextEvent.opponent || t("pages.dashboard.widgetEvent")} · ${formatDate(nextEvent.date)}`
-              : t("pages.dashboard.noOperationalUrgencyHint")}
-          </p>
-
-          <MetricStrip items={controlMetricItems} min={130} style={{ marginTop: 18 }} />
-        </div>
-
-        <div style={{ display: "grid", gap: 10, alignContent: "space-between" }}>
-          <div style={{ display: "grid", gap: 8 }}>
-            {(coachAlerts.length ? coachAlerts.slice(0, 2) : [
-              { text: t("pages.dashboard.noOperationalUrgency"), tone: "green" },
-            ]).map((alert, index) => (
-              <div
-                key={`${alert.text}-${index}`}
-                style={{ ...controlRoomStyles.alert, cursor: alert.path ? "pointer" : "default" }}
-                onClick={alert.path ? () => navigate(alert.path) : undefined}
-              >
-                <Badge tone={alert.tone || "blue"}>{toneLabels[alert.tone] || alert.tone || t("common.info")}</Badge>
-                <span>{alert.text}</span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            {actions.map((action) => (
-              <Button
-                key={`${action.label}-${action.path}`}
-                variant={action.variant === "ghost" ? "ghost" : undefined}
-                onClick={() => navigate(action.path)}
-              >
-                {action.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </AppCard>
-  );
-}
-
-const controlRoomStyles = {
-  alert: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: 12,
-    borderRadius: 12,
-    background: "rgba(255,255,255,0.045)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    color: "#e2e8f0",
-    lineHeight: 1.35,
-  },
-};
 
 function KpiCard({ label, value, icon, note }) {
   return (

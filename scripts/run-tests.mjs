@@ -212,3 +212,6 @@ console.log("All tests passed");
 
 // Desktop and mobile must expose the same tools for each role.
 await import("./test-navigation.mjs");
+
+// Calendar boundaries, event priority and dashboard preferences.
+await import("./test-coach-agenda.mjs");

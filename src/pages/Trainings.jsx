@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import ActionBar from "../components/ui/ActionBar";
@@ -86,9 +86,9 @@ function Trainings({
   const [weekOffset, setWeekOffset] = useState(0); // 0 = settimana corrente
   const formCardRef = useRef(null);
 
-  function scrollToTrainingForm() {
+  const scrollToTrainingForm = useCallback(() => {
     formCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  }, []);
 
   // Disponibilità giocatori dalla tabella player_availability (per includere juniores disponibili)
   const [availabilityRecords, setAvailabilityRecords] = useState([]);
@@ -132,27 +132,6 @@ function Trainings({
     } catch { /* ignore */ }
     return getInitialTrainingForm(null);
   });
-
-  useEffect(() => {
-    const draftTraining = location.state?.draftTraining;
-    const newSession = location.state?.newSession;
-
-    if (draftTraining) {
-      showToast(t("pages.trainings.draftLoaded"), "info");
-    }
-
-    if (newSession || draftTraining) {
-      navigate(location.pathname, { replace: true, state: null });
-    }
-
-    if (newSession) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setEditingId(null);
-      setForm(emptyTraining());
-      setFormErrors({});
-      setTimeout(scrollToTrainingForm, 150);
-    }
-  }, [location.pathname, location.state, navigate, showToast, t]);
 
   // RPE calcolato dalla distanza dalla gara
   const rpeTarget = RPE_BY_MATCH_DAY[form.matchDayDistance] || RPE_BY_MATCH_DAY["MD-3"];
@@ -320,7 +299,7 @@ function Trainings({
     if (editingId) {
       setSessions((prevSessions) =>
         prevSessions.map((session) =>
-          session.id === editingId ? payload : session
+          session.id === editingId ? { ...session, ...payload } : session
         )
       );
     } else {
@@ -339,7 +318,7 @@ function Trainings({
     showToast(editingId ? t("pages.trainings.sessionUpdated") : t("pages.trainings.sessionSaved"), "ok");
   }
 
-  function editTraining(session) {
+  const editTraining = useCallback((session) => {
     if (!canManage) return;
     setEditingId(session.id);
 
@@ -370,8 +349,40 @@ function Trainings({
       completedAt: session.completedAt || "",
     });
 
+    setFormErrors({});
     requestAnimationFrame(scrollToTrainingForm);
-  }
+  }, [canManage, scrollToTrainingForm]);
+
+  useEffect(() => {
+    const requestedId = location.state?.editSessionId;
+    if (requestedId != null) {
+      const requested = sessions.find((session) => String(session.id) === String(requestedId));
+      if (!requested) return;
+      const frame = requestAnimationFrame(() => {
+        editTraining(requested);
+        navigate(location.pathname, { replace: true, state: null });
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+    const draftTraining = location.state?.draftTraining;
+    const newSession = location.state?.newSession;
+
+    if (draftTraining) {
+      showToast(t("pages.trainings.draftLoaded"), "info");
+    }
+
+    if (newSession || draftTraining) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+
+    if (newSession) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEditingId(null);
+      setForm(emptyTraining());
+      setFormErrors({});
+      setTimeout(scrollToTrainingForm, 150);
+    }
+  }, [location.pathname, location.state, navigate, showToast, t, sessions, editTraining, scrollToTrainingForm]);
 
   function deleteTraining(id) {
     if (!canManage) return;
