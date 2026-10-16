@@ -1,41 +1,15 @@
+// Shared visual tokens for web and Capacitor. No remote font dependencies.
 export const theme = {
   colors: {
-    bg: "#0b0e13",
-    card: "#141820",
-    border: "#2a303b",
-
-    primary: "#2563eb",
-    primaryHover: "#1d4ed8",
-
-    text: "#f9fafb",
-    muted: "#9ca3af",
-
-    successBg: "#123d2a",
-    successText: "#86efac",
-
-    dangerBg: "#4a1f1f",
-    dangerText: "#fca5a5",
-
-    warningBg: "#3b2f12",
-    warningText: "#fde68a",
+    bg: "#0b111b", card: "#121c2a", raised: "#182536", border: "#2a384b",
+    primary: "#2563eb", primaryHover: "#1d4ed8",
+    text: "#edf3fb", muted: "#a5b4c8", subtle: "#8b9db5",
+    successBg: "#123629", successText: "#86efac",
+    dangerBg: "#40232b", dangerText: "#fda4af",
+    warningBg: "#3b301c", warningText: "#fcd34d",
   },
-
-  radius: {
-    sm: 6,
-    md: 8,
-    lg: 8,
-    full: 999,
-  },
-
-  spacing: {
-    xs: 6,
-    sm: 10,
-    md: 16,
-    lg: 24,
-    xl: 32,
-  },
-
-  shadow: {
-    card: "0 10px 30px rgba(0,0,0,0.18)",
-  },
+  radius: { sm: 6, md: 10, lg: 14, full: 999 },
+  spacing: { xs: 6, sm: 10, md: 16, lg: 24, xl: 32 },
+  shadow: { card: "0 4px 18px rgba(0,0,0,0.12)" },
+  font: { family: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
 };

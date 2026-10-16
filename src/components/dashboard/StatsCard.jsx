@@ -9,16 +9,17 @@ function StatsCard({
 }) {
   return (
     <div
+      className="cl-stat-card"
       style={{
         ...styles.card,
         position: "relative",
         overflow: "hidden",
         background:
-          "#141820",
+          "var(--cl-surface, #121c2a)",
         border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 8,
+        borderRadius: 14,
         padding: 20,
-        boxShadow: "0 10px 26px rgba(0,0,0,0.18)",
+        boxShadow: "0 4px 18px rgba(0,0,0,0.12)",
       }}
     >
       <div
@@ -54,8 +55,8 @@ function StatsCard({
 
         <div
           style={{
-            width: 52,
-            height: 52,
+            width: 42,
+            height: 42,
             borderRadius: 8,
             border: `1px solid ${color}33`,
             background: `${color}22`,

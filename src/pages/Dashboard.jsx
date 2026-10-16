@@ -5,6 +5,7 @@ import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { Activity, ArrowRight, CalendarDays, CheckCircle2, Circle, Eye, EyeOff, Settings2, Users } from "lucide-react";
 
+import FilterChips from "../components/ui/FilterChips";
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
@@ -761,10 +762,10 @@ function Dashboard({
         if (!top3Scorers.length && !top3Assists.length && !top3Minutes.length) return null;
         const LeaderCol = ({ title, icon, rows, valueKey, unit = "" }) => (
           <div>
-            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{icon} {title}</p>
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#94a6be", textTransform: "uppercase", letterSpacing: 0.5 }}>{icon} {title}</p>
             {rows.map((p, i) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: i < rows.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                <span style={{ fontSize: 11, fontWeight: 900, color: i === 0 ? "#fbbf24" : "#475569", minWidth: 16 }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</span>
+                <span style={{ fontSize: 11, fontWeight: 750, color: i === 0 ? "#fbbf24" : "#475569", minWidth: 16 }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</span>
                 <span style={{ flex: 1, fontSize: 13, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
                 <strong style={{ fontSize: 14, color: "#f1f5f9" }}>{p[valueKey]}{unit}</strong>
               </div>
@@ -826,7 +827,7 @@ function Dashboard({
             <RosterGrid players={primaPlayers} />
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-              <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>
+              <span style={{ color: "#94a6be", fontSize: 12, fontWeight: 700 }}>
                 {t("pages.dashboard.totalRoster")} {primaPlayers.length}
               </span>
               <Button variant="ghost" onClick={() => navigate("/players")}>
@@ -863,8 +864,8 @@ function Dashboard({
                 const avg = teamAvg(key);
                 return (
                   <div key={key} style={{ textAlign: "center", padding: "12px 8px", borderRadius: 12, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    <div style={{ fontSize: 10, color: "#64748b", fontWeight: 900, textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
-                    <div style={{ fontSize: 24, fontWeight: 900, color: avg ? color : "#475569" }}>{avg ?? "—"}</div>
+                    <div style={{ fontSize: 10, color: "#94a6be", fontWeight: 750, textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 24, fontWeight: 750, color: avg ? color : "#475569" }}>{avg ?? "—"}</div>
                     <div style={{ fontSize: 10, color: "#475569" }}>/ 5</div>
                   </div>
                 );
@@ -1178,7 +1179,7 @@ function Dashboard({
   }
 
   return (
-    <div>
+    <div className="dashboard-workspace">
       {/* Header + gear button */}
       <div className="dashboard-heading-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, gap: 16 }}>
         <PageHeader
@@ -1188,6 +1189,8 @@ function Dashboard({
         <button
           type="button"
           onClick={() => setShowPersonalize((p) => !p)}
+          aria-label={t("pages.dashboard.personalize")}
+          aria-expanded={showPersonalize}
           style={{
             marginTop: 4,
             border: "1px solid rgba(255,255,255,0.1)",
@@ -1196,7 +1199,7 @@ function Dashboard({
             color: showPersonalize ? "#38bdf8" : "#94a3b8",
             padding: "9px 14px",
             cursor: "pointer",
-            fontWeight: 800,
+            fontWeight: 700,
             fontSize: 13,
             display: "flex",
             alignItems: "center",
@@ -1231,7 +1234,7 @@ function Dashboard({
                   color: "#94a3b8",
                   padding: "8px 12px",
                   cursor: "pointer",
-                  fontWeight: 800,
+                  fontWeight: 700,
                   fontSize: 12,
                 }}
               >
@@ -1265,7 +1268,7 @@ function Dashboard({
                   color: "white",
                   padding: "8px 12px",
                   cursor: "pointer",
-                  fontWeight: 800,
+                  fontWeight: 700,
                 }}
               >
                 {label}
@@ -1353,7 +1356,7 @@ function Dashboard({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
         <div>
           <strong style={{ display: "block", fontSize: 14 }}>{simpleView ? t("pages.dashboard.essentialMode") : t("pages.dashboard.completeMode")}</strong>
-          <span style={{ color: "#64748b", fontSize: 12 }}>
+          <span style={{ color: "#94a6be", fontSize: 12 }}>
             {simpleView ? t("pages.dashboard.essentialModeText") : t("pages.dashboard.completeModeText")}
           </span>
         </div>
@@ -1364,38 +1367,17 @@ function Dashboard({
       </div>
 
       {isMobile && !simpleView && (
-            <div style={{
-              display: "flex", gap: 0, marginBottom: 14,
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 8, padding: 3, overflow: "hidden",
-            }}>
-              {[
-                { id: "oggi",    label: "Oggi", icon: CalendarDays },
-                { id: "squadra", label: "Squadra", icon: Users },
-                { id: "carico",  label: "Carico", icon: Activity },
-              ].map((tab) => {
-                const TabIcon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setDashTab(tab.id)}
-                    style={{
-                      flex: 1, border: "none", borderRadius: 6, padding: "10px 4px",
-                      fontSize: 13, fontWeight: 800, cursor: "pointer", transition: "0.15s",
-                      background: dashTab === tab.id ? "rgba(56,189,248,0.18)" : "transparent",
-                      color: dashTab === tab.id ? "#38bdf8" : "#64748b",
-                      outline: dashTab === tab.id ? "1px solid rgba(56,189,248,0.3)" : "none",
-                    }}
-                  >
-                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                      <TabIcon size={15} /> {tab.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+        <FilterChips
+          label="Sezioni della dashboard"
+          className="cl-dashboard-tabs"
+          value={dashTab}
+          onChange={setDashTab}
+          options={[
+            { value: "oggi", label: <><CalendarDays size={15} aria-hidden="true" /> Oggi</> },
+            { value: "squadra", label: <><Users size={15} aria-hidden="true" /> Squadra</> },
+            { value: "carico", label: <><Activity size={15} aria-hidden="true" /> Carico</> },
+          ]}
+        />
       )}
 
       {/* Sezioni draggable (desktop) / filtrate per tab (mobile) */}
@@ -1495,7 +1477,7 @@ function GettingStartedCard({ steps, completed, onResumeOnboarding }) {
         <button
           type="button"
           onClick={onResumeOnboarding}
-          style={{ marginTop: 14, padding: 0, border: 0, background: "transparent", color: "#60a5fa", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
+          style={{ marginTop: 14, padding: 0, border: 0, background: "transparent", color: "#60a5fa", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
         >
           {t("pages.dashboard.quickStart.resumeSetup")}
         </button>
@@ -2033,11 +2015,11 @@ function KpiCard({ label, value, icon, note }) {
         }}
       >
         <div>
-          <p style={{ color: "#94a3b8", margin: 0, fontWeight: 800, lineHeight: 1.25 }}>{label}</p>
+          <p style={{ color: "#94a3b8", margin: 0, fontWeight: 700, lineHeight: 1.25 }}>{label}</p>
 
           <span style={{ fontSize: "clamp(20px, 7vw, 32px)", lineHeight: 1, margin: "9px 0 8px", display: "block" }}>{value}</span>
 
-          <p style={{ color: "#64748b", margin: 0, lineHeight: 1.35 }}>{note}</p>
+          <p style={{ color: "#94a6be", margin: 0, lineHeight: 1.35 }}>{note}</p>
         </div>
 
         <div
@@ -2114,7 +2096,7 @@ function FocusItem({ label, title, meta, tone, action, onClick }) {
     >
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
         <Badge tone={tone}>{label}</Badge>
-        {action && <span style={{ color: "#38bdf8", fontSize: 12, fontWeight: 900 }}>{action}</span>}
+        {action && <span style={{ color: "#38bdf8", fontSize: 12, fontWeight: 750 }}>{action}</span>}
       </div>
       <h3 style={{ margin: "12px 0 6px", lineHeight: 1.2 }}>{title}</h3>
       <p style={{ color: "#94a3b8", margin: 0, lineHeight: 1.35 }}>{meta}</p>
@@ -2228,7 +2210,7 @@ function WeeklyLoadWidget({ sessions }) {
           const label = d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
           return (
             <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 42, flex: "1 1 42px" }}>
-              <span style={{ fontSize: 11, fontWeight: 900, color }}>{b.avg}</span>
+              <span style={{ fontSize: 11, fontWeight: 750, color }}>{b.avg}</span>
               <div
                 title={`${b.title} — RPE medio ${b.avg} (${b.count} giocatori)`}
                 style={{ width: "100%", height: h, borderRadius: "5px 5px 0 0", background: color, opacity: 0.85, transition: "height 0.3s ease", minHeight: 8 }}
@@ -2242,7 +2224,7 @@ function WeeklyLoadWidget({ sessions }) {
         {[["≤4 Leggero","#4ade80"],["5-6 Moderato","#facc15"],["7-8 Intenso","#fb923c"],["9-10 Massimale","#f87171"]].map(([l,c]) => (
           <div key={l} style={{ display: "flex", gap: 5, alignItems: "center" }}>
             <div style={{ width: 8, height: 8, borderRadius: 2, background: c }} />
-            <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>{l}</span>
+            <span style={{ fontSize: 10, color: "#94a6be", fontWeight: 700 }}>{l}</span>
           </div>
         ))}
       </div>
@@ -2457,7 +2439,7 @@ function SeasonRecordStat({ label, value, tone }) {
       textAlign: "center",
     }}>
       <p style={{ color: "#94a3b8", margin: "0 0 8px", fontWeight: 700, fontSize: 12, textTransform: "uppercase", letterSpacing: 0, lineHeight: 1.2 }}>{label}</p>
-      <span style={{ margin: 0, fontSize: "clamp(26px, 9vw, 42px)", fontWeight: 900, color: c.text, letterSpacing: 0, lineHeight: 1, display: "block" }}>{value}</span>
+      <span style={{ margin: 0, fontSize: "clamp(26px, 9vw, 42px)", fontWeight: 750, color: c.text, letterSpacing: 0, lineHeight: 1, display: "block" }}>{value}</span>
     </div>
   );
 }
@@ -2473,7 +2455,7 @@ const srStyles = {
     border: "1px solid rgba(255,255,255,0.08)",
   },
   pillLabel: {
-    color: "#64748b",
+    color: "#94a6be",
     fontSize: 13,
   },
   pillValue: {
@@ -2500,7 +2482,7 @@ function NextMatchCard({ match, navigate, clubName, rsvpSummary }) {
         <div>
           <Badge tone="orange">{t("pages.dashboard.nextMatchLabel")}</Badge>
           <h2 style={{ margin: "10px 0 4px", lineHeight: 1.15 }}>
-            {clubName} <span style={{ color: "#64748b" }}>vs</span> {match.opponent}
+            {clubName} <span style={{ color: "#94a6be" }}>vs</span> {match.opponent}
           </h2>
           <p style={{ color: "#94a3b8", margin: 0 }}>
             {formatDate(match.date)}
@@ -2510,8 +2492,8 @@ function NextMatchCard({ match, navigate, clubName, rsvpSummary }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <div style={{ textAlign: "center", padding: "6px 14px", borderRadius: 10, background: "rgba(0,0,0,0.25)", border: `1px solid ${countdownColor}44` }}>
-            <div style={{ fontSize: 22, fontWeight: 900, color: countdownColor, lineHeight: 1 }}>{countdownLabel}</div>
-            {daysUntil > 1 && <div style={{ fontSize: 9, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 2 }}>alla partita</div>}
+            <div style={{ fontSize: 22, fontWeight: 750, color: countdownColor, lineHeight: 1 }}>{countdownLabel}</div>
+            {daysUntil > 1 && <div style={{ fontSize: 9, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 2 }}>alla partita</div>}
           </div>
           <Badge tone={lineupReady ? "green" : "orange"}>
             {lineupReady ? t("pages.dashboard.lineupReady") : t("pages.dashboard.lineupDraft")}
@@ -2535,7 +2517,7 @@ function NextMatchCard({ match, navigate, clubName, rsvpSummary }) {
           { label: t("pages.dashboard.logistics"), value: `${checklistProgress.done}/${checklistProgress.total}` },
         ].map(({ label, value }) => (
           <div key={label} style={{ borderRadius: 10, padding: "10px 8px", background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", textAlign: "center" }}>
-            <p style={{ color: "#64748b", margin: "0 0 4px", fontSize: 11, fontWeight: 800, textTransform: "uppercase" }}>{label}</p>
+            <p style={{ color: "#94a6be", margin: "0 0 4px", fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>{label}</p>
             <strong style={{ fontSize: 18 }}>{value}</strong>
           </div>
         ))}
@@ -2575,7 +2557,7 @@ const nmcBtn = {
   border: "1px solid rgba(255,255,255,0.1)",
   color: "white",
   cursor: "pointer",
-  fontWeight: 800,
+  fontWeight: 700,
   fontSize: 13,
   textAlign: "center",
   lineHeight: 1.2,

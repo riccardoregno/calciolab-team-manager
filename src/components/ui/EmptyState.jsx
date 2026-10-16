@@ -8,7 +8,7 @@ export default function EmptyState({
   steps,
 }) {
   return (
-    <AppCard>
+    <AppCard className="cl-empty-state">
       <div
         style={{
           textAlign: "center",
@@ -25,7 +25,7 @@ export default function EmptyState({
             borderRadius: 20,
             display: "grid",
             placeItems: "center",
-            fontSize: 34,
+            fontSize: 28,
             background: "rgba(15,23,42,0.56)",
             border: "1px solid rgba(255,255,255,0.08)",
           }}
@@ -37,7 +37,7 @@ export default function EmptyState({
           {title}
         </h3>
 
-        <p style={{ color: "#94a3b8", marginTop: 10, marginBottom: steps ? 20 : 20, lineHeight: 1.6, fontSize: 15 }}>
+        <p style={{ color: "#94a3b8", marginTop: 10, marginBottom: 20, lineHeight: 1.6, fontSize: 15 }}>
           {text}
         </p>
 
@@ -57,7 +57,7 @@ export default function EmptyState({
                 </div>
                 <div style={{ paddingTop: 6 }}>
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#e2e8f0", lineHeight: 1.3 }}>{step.title}</p>
-                  {step.text && <p style={{ margin: "3px 0 0", fontSize: 13, color: "#64748b", lineHeight: 1.4 }}>{step.text}</p>}
+                  {step.text && <p style={{ margin: "3px 0 0", fontSize: 13, color: "#a5b4c8", lineHeight: 1.4 }}>{step.text}</p>}
                 </div>
               </div>
             ))}

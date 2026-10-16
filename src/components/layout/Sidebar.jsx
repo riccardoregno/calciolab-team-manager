@@ -1,3 +1,4 @@
+import { theme } from "../../styles/theme";
 import { useState, useCallback } from "react";
 import { NavLink } from "react-router-dom";
 import { ChevronDown, ChevronLeft, ChevronRight, LockKeyhole, Wrench } from "lucide-react";
@@ -26,16 +27,16 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
     <aside
       className="sidebar"
       style={{
-        width: collapsed ? 92 : 286,
-        minWidth: collapsed ? 92 : 286,
+        width: collapsed ? 84 : 256,
+        minWidth: collapsed ? 84 : 256,
         minHeight: "100vh",
-        background: "linear-gradient(180deg, #0f172a 0%, #080b12 100%)",
+        background: "#0e1724",
         borderRight: "1px solid rgba(255,255,255,0.08)",
-        padding: collapsed ? "24px 14px" : "28px 20px",
+        padding: collapsed ? "24px 12px" : "26px 16px",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        boxShadow: "12px 0 40px rgba(0,0,0,0.25)",
+        boxShadow: "none",
         transition: "all 0.25s ease",
         position: "sticky",
         top: 0,
@@ -72,6 +73,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
             onClick={() => setCollapsed(!collapsed)}
             style={sidebarStyles.collapseButton}
             title={collapsed ? "Espandi menu" : "Comprimi menu"}
+            aria-label={collapsed ? "Espandi menu" : "Comprimi menu"}
           >
             {collapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
           </button>
@@ -100,7 +102,11 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
           {visibleToolboxCount > 0 && (
             <div style={sidebarStyles.toolboxWrap}>
               <button
-                onClick={() => setToolsOpen((value) => !value)}
+                onClick={() => {
+                  if (collapsed) { setCollapsed(false); setToolsOpen(true); }
+                  else setToolsOpen((value) => !value);
+                }}
+                aria-expanded={!collapsed && toolsOpen}
                 style={{
                   ...sidebarStyles.toolboxButton,
                   justifyContent: collapsed ? "center" : "space-between",
@@ -231,14 +237,14 @@ function SidebarLink({ item, collapsed, locked, label, badge = 0, compact = fals
         ...sidebarStyles.link,
         color: isActive ? "#ffffff" : "#cbd5e1",
         background: isActive
-          ? "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)"
+          ? "rgba(59,130,246,0.16)"
           : "rgba(255,255,255,0.035)",
         border: isActive
-          ? "1px solid rgba(147,197,253,0.6)"
+          ? "1px solid rgba(96,165,250,0.24)"
           : "1px solid rgba(255,255,255,0.07)",
         padding: collapsed ? "12px 0" : compact ? "9px 10px" : "11px 13px",
         justifyContent: collapsed ? "center" : "flex-start",
-        boxShadow: isActive ? "0 10px 25px rgba(37,99,235,0.35)" : "none",
+        boxShadow: isActive ? `inset 3px 0 0 ${theme.colors.primary}` : "none",
         position: "relative",
         minWidth: 0,
         borderRadius: 8,
@@ -268,7 +274,7 @@ const sidebarStyles = {
     background: "rgba(255,255,255,0.05)",
     color: "white",
     cursor: "pointer",
-    fontWeight: 900,
+    fontWeight: 700,
     display: "grid",
     placeItems: "center",
   },
@@ -285,7 +291,7 @@ const sidebarStyles = {
     gap: 8,
   },
   groupTitle: {
-    color: "#64748b",
+    color: "#94a6be",
     fontSize: 11,
     fontWeight: 900,
     textTransform: "uppercase",
@@ -299,7 +305,7 @@ const sidebarStyles = {
   link: {
     textDecoration: "none",
     borderRadius: 8,
-    fontWeight: 800,
+    fontWeight: 650,
     display: "flex",
     alignItems: "center",
     gap: 11,
@@ -322,6 +328,8 @@ const sidebarStyles = {
     paddingTop: 2,
   },
   toolboxButton: {
+    fontSize: 13,
+    lineHeight: 1.3,
     width: "100%",
     borderRadius: 8,
     border: "1px solid rgba(148,163,184,0.16)",
@@ -334,6 +342,7 @@ const sidebarStyles = {
     gap: 10,
   },
   toolboxButtonLabel: {
+    whiteSpace: "nowrap",
     display: "flex",
     alignItems: "center",
     gap: 11,

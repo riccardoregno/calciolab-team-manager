@@ -6,7 +6,7 @@ export const layout = {
     minHeight: "100vh",
     background: theme.colors.bg,
     color: theme.colors.text,
-    fontFamily: "Inter, sans-serif",
+    fontFamily: theme.font.family,
   },
 
   topbarProfileButton: {
@@ -81,7 +81,7 @@ topbarProfileLogout: {
 
   content: {
     flex: 1,
-    padding: "24px clamp(24px, 3vw, 44px) 40px",
+    padding: "24px clamp(24px, 2.7vw, 40px) 48px",
     overflowX: "hidden",
     minWidth: 0,
   },
@@ -220,17 +220,19 @@ topbarNotificationEmpty: {
 },
   pageTitle: {
     fontSize: 32,
-    lineHeight: 1.08,
-    fontWeight: 900,
+    lineHeight: 1.15,
+    fontWeight: 750,
     margin: 0,
     color: theme.colors.text,
-    letterSpacing: 0,
+    letterSpacing: "-0.035em",
   },
 
   pageSubtitle: {
     color: theme.colors.muted,
-    marginTop: 6,
-    maxWidth: 760,
+    marginTop: 8,
+    marginBottom: 0,
+    fontSize: 14,
+    maxWidth: 720,
     lineHeight: 1.5,
   },
 
@@ -259,9 +261,9 @@ topbarNotificationEmpty: {
 
   topbarTitle: {
     margin: "5px 0 0",
-    fontSize: 24,
-    lineHeight: 1.15,
-    fontWeight: 900,
+    fontSize: 18,
+    lineHeight: 1.3,
+    fontWeight: 650,
     color: theme.colors.text,
   },
 
@@ -312,14 +314,14 @@ topbarSearchWrapper: {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+    background: theme.colors.primary,
     color: "white",
     textDecoration: "none",
     borderRadius: 8,
     padding: "13px 17px",
     fontWeight: 900,
     fontSize: 14,
-    boxShadow: "0 14px 30px rgba(37,99,235,0.32)",
+    boxShadow: "0 2px 8px rgba(37,99,235,0.18)",
     whiteSpace: "nowrap",
   },
 

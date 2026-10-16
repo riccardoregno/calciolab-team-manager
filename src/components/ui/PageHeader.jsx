@@ -13,11 +13,11 @@ function PageHeader({ title, subtitle, badge, action }) {
         )}
       </div>
 
-      {action || (badge && (
-        <div style={styles.heroBadge}>
-          {badge}
+      {(action || badge) && (
+        <div className="page-header-actions">
+          {action || <div className="page-header-badge" style={styles.heroBadge}>{badge}</div>}
         </div>
-      ))}
+      )}
     </div>
   );
 }

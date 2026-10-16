@@ -27,7 +27,7 @@ function FormDots({ ratings }) {
   if (!ratings || ratings.length === 0) return null;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 10 }}>
-      <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700, marginRight: 2 }}>FORMA</span>
+      <span style={{ fontSize: 10, color: "#94a6be", fontWeight: 700, marginRight: 2 }}>FORMA</span>
       {ratings.map((r, i) => (
         <span
           key={i}
@@ -71,15 +71,16 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
 
   return (
     <div
+      className="cl-player-card"
       style={{
         position: "relative",
         overflow: "hidden",
-        borderRadius: 18,
+        borderRadius: 14,
         padding: 18,
         background:
-          "linear-gradient(145deg, rgba(15,23,42,0.98), rgba(30,41,59,0.92))",
+          "var(--cl-surface, #121c2a)",
         border: "1px solid rgba(255,255,255,0.10)",
-        boxShadow: "0 18px 42px rgba(0,0,0,0.24)",
+        boxShadow: "0 4px 18px rgba(0,0,0,0.12)",
       }}
     >
       <div style={{ position: "relative", zIndex: 2 }}>
@@ -176,6 +177,7 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
             }}
           >
             {player.role || t("components.playerCard.noRole")}
+            {ageValue !== "-" && <span style={{ fontWeight: 400, marginLeft: 6 }}>· {t("components.playerCard.age")} {ageValue}</span>}
             {player.birthDate && (
               <span style={{ fontWeight: 400, marginLeft: 6 }}>
                 · {new Date(player.birthDate).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })}
@@ -185,6 +187,7 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
         </div>
 
         <div
+          className="no-mobile-override cl-player-card-metrics"
           style={{
             marginTop: 16,
             display: "grid",
@@ -202,7 +205,6 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
             title={t("components.playerCard.trainingPct")}
             value={trainingPctValue}
           />
-          <MiniValue label={t("components.playerCard.age")} value={ageValue} />
         </div>
 
         <FormDots ratings={recentRatings} />

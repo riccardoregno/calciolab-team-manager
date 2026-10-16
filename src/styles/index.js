@@ -13,7 +13,7 @@ export const styles = {
   page: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr)",
-    gap: 22,
+    gap: 20,
   },
 
   // ─── PageHeader badge slot ────────────────────────────────────────────
@@ -142,8 +142,8 @@ exerciseLibraryItem: {
     width: "100%",
     padding: "10px 12px",
     borderRadius: 10,
-    border: "1px solid rgba(255,255,255,0.11)",
-    background: "rgba(255,255,255,0.06)",
+    border: "1px solid var(--cl-border, #2a384b)",
+    background: "var(--cl-raised, #182536)",
     color: "white",
     outline: "none",
     fontSize: 16,

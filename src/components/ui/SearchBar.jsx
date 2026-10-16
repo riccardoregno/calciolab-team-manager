@@ -1,6 +1,9 @@
+import { Search, X } from "lucide-react";
+
 export default function SearchBar({ value, onChange, placeholder = "Cerca..." }) {
   return (
     <div
+      className="cl-search"
       style={{
         width: "100%",
         maxWidth: 360,
@@ -20,7 +23,7 @@ export default function SearchBar({ value, onChange, placeholder = "Cerca..." })
           pointerEvents: "none",
         }}
       >
-        &#8981;
+        <Search size={17} strokeWidth={1.8} />
       </span>
 
       <input
@@ -36,8 +39,8 @@ export default function SearchBar({ value, onChange, placeholder = "Cerca..." })
           color: "white",
           borderRadius: 12,
           padding: value ? "12px 48px 12px 38px" : "12px 15px 12px 38px",
-          outline: "none",
-          fontWeight: 650,
+          minHeight: 44,
+          fontWeight: 500,
           lineHeight: 1.2,
         }}
       />
@@ -63,7 +66,7 @@ export default function SearchBar({ value, onChange, placeholder = "Cerca..." })
             lineHeight: 1,
           }}
         >
-          ×
+          <X size={16} aria-hidden="true" />
         </button>
       )}
     </div>

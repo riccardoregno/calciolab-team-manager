@@ -1,33 +1,35 @@
+import { theme } from "../../styles/theme";
+
 export default function Button({ children, onClick, variant = "primary", style = {}, disabled, className = "", type = "button", ...props }) {
   const base = {
     border: "none",
-    borderRadius: 8,
-    minHeight: 42,
+    borderRadius: theme.radius.md,
+    minHeight: 44,
     padding: "10px 15px",
-    fontWeight: 800,
+    fontWeight: 650,
     fontSize: 14,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     cursor: disabled ? "not-allowed" : "pointer",
-    transition: "0.2s",
+    transition: "background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease",
     opacity: disabled ? 0.45 : 1,
   };
 
   const variants = {
     primary: {
-      background: "linear-gradient(135deg,#38bdf8,#2563eb)",
+      background: theme.colors.primary,
       color: "white",
-      boxShadow: "0 12px 30px rgba(37,99,235,0.28)",
+      boxShadow: "0 2px 6px rgba(0,0,0,0.16)",
     },
     ghost: {
-      background: "rgba(255,255,255,0.06)",
-      color: "white",
+      background: "rgba(148,163,184,0.06)",
+      color: "#dce7f5",
       border: "1px solid rgba(255,255,255,0.10)",
     },
     danger: {
-      background: "linear-gradient(135deg,#fb7185,#e11d48)",
+      background: "#be3455",
       color: "white",
     },
   };

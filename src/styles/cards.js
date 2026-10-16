@@ -11,12 +11,12 @@ export const cards = {
   },
 
   sectionCard: {
-    background: "#141820",
-    border: "1px solid #2a303b",
-    borderRadius: 8,
+    background: theme.colors.card,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.radius.lg,
     padding: 22,
     color: theme.colors.text,
-    boxShadow: "0 12px 30px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.025)",
+    boxShadow: theme.shadow.card,
   },
 
   playerCard: {
@@ -83,12 +83,13 @@ export const cards = {
     margin: 0,
     fontSize: 17,
     lineHeight: 1.25,
-    fontWeight: 800,
+    fontWeight: 700,
+    letterSpacing: "-0.015em",
   },
 
 cardHeaderSubtitle: {
   margin: "6px 0 0 0",
-  color: "#9ca3af",
+  color: theme.colors.muted,
   fontSize: 14,
   lineHeight: 1.45,
 },

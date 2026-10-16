@@ -10,6 +10,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 import MetricStrip from "../components/ui/MetricStrip";
 import SearchBar from "../components/ui/SearchBar";
+import MiniMatchFinesView from "../components/trainings/MiniMatchFinesView";
 import SortableTrainingTimeline from "../components/trainings/SortableTrainingTimeline";
 import ExerciseDiagram from "../components/exercises/ExerciseDiagram";
 import { useToast } from "../components/ui/Toast";
@@ -429,7 +430,7 @@ function Trainings({
   }
 
   return (
-    <div style={styles.page}>
+    <div className="trainings-workspace" style={styles.page}>
       <ToastContainer />
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
@@ -460,7 +461,7 @@ function Trainings({
         <AppCard style={{ marginBottom: 4 }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div>
-              <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 800, color: "#22c55e", textTransform: "uppercase", letterSpacing: 0.5 }}>
+              <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#22c55e", textTransform: "uppercase", letterSpacing: 0.5 }}>
                 Prossima seduta
               </p>
               <h3 style={{ margin: "0 0 6px", fontSize: 20 }}>{nextSession.title || "Allenamento"}</h3>
@@ -472,7 +473,7 @@ function Trainings({
                   <span style={{ fontSize: 13, color: "#94a3b8" }}>· {nextSession.sessionBlocks.length} blocchi · {nextSession.sessionBlocks.reduce((s, b) => s + (Number(b.duration) || 0), 0)} min</span>
                 )}
               </div>
-              {nextSession.objective && <p style={{ margin: "8px 0 0", fontSize: 13, color: "#64748b" }}>{nextSession.objective}</p>}
+              {nextSession.objective && <p style={{ margin: "8px 0 0", fontSize: 13, color: "#94a6be" }}>{nextSession.objective}</p>}
             </div>
             {canManage && (
               <Button onClick={() => editTraining(nextSession)} style={{ flexShrink: 0 }}>
@@ -928,10 +929,10 @@ function Trainings({
                       padding: "10px 14px", borderRadius: 12,
                       background: "rgba(15,23,42,0.5)", border: `1px solid ${phaseColor}33`,
                     }}>
-                      <span style={{ fontSize: 11, fontWeight: 900, color: phaseColor, flexShrink: 0, paddingTop: 2 }}>{block.phase.toUpperCase()}</span>
+                      <span style={{ fontSize: 11, fontWeight: 750, color: phaseColor, flexShrink: 0, paddingTop: 2 }}>{block.phase.toUpperCase()}</span>
                       <span style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{block.name || "—"}</span>
                       <span style={{ color: "#94a3b8", fontSize: 12, flexShrink: 0 }}>{block.duration} min · Int. {block.intensity}/10</span>
-                      {block.notes && <span style={{ width: "100%", color: "#64748b", fontSize: 12, paddingLeft: 2 }}>{block.notes}</span>}
+                      {block.notes && <span style={{ width: "100%", color: "#94a6be", fontSize: 12, paddingLeft: 2 }}>{block.notes}</span>}
                     </div>
                   );
                 })}
@@ -1607,25 +1608,25 @@ function AvailablePlayers({ players, date, availabilityRecords = [], attendance 
     );
   }
 
-  const labelStyle = { fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5, margin: "10px 0 5px" };
+  const labelStyle = { fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5, margin: "10px 0 5px" };
 
   return (
     <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-        <h4 style={{ margin: 0, fontSize: 13, color: "#94a3b8", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4 }}>
+        <h4 style={{ margin: 0, fontSize: 13, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 }}>
           {t("pages.trainings.availablePlayers")}
         </h4>
-        <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#22c55e" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#22c55e" }}>
           {primaPresent} / {total} prima
         </span>
         {junAvailable.length > 0 && (
-          <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999, background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.3)", color: "#fb923c" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.3)", color: "#fb923c" }}>
             +{junPresent} juniores
           </span>
         )}
         {unavailable.length > 0 && (
-          <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 999, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.25)", color: "#f87171" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.25)", color: "#f87171" }}>
             {unavailable.length} non disp.
           </span>
         )}
@@ -1683,14 +1684,14 @@ function RpePanel({ rpe, md }) {
       background: c.bg, border: `1px solid ${c.border}`,
     }}>
       <div style={{ textAlign: "center", minWidth: 52 }}>
-        <div style={{ fontSize: 20, fontWeight: 900, color: c.text, lineHeight: 1 }}>
+        <div style={{ fontSize: 20, fontWeight: 750, color: c.text, lineHeight: 1 }}>
           {displayRpe.min}–{displayRpe.max}
         </div>
         <div style={{ fontSize: 10, color: "#475569", fontWeight: 700, textTransform: "uppercase", marginTop: 2 }}>RPE</div>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{displayRpe.label}</p>
-        <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{displayRpe.description} · {md}</p>
+        <p style={{ margin: 0, fontSize: 12, color: "#94a6be" }}>{displayRpe.description} · {md}</p>
       </div>
       <div style={{ width: 70, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.08)", overflow: "hidden", flexShrink: 0 }}>
         <div style={{ height: "100%", width: `${(displayRpe.max / 10) * 100}%`, borderRadius: 3, background: c.text, transition: "width .3s" }} />
@@ -1812,7 +1813,7 @@ function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, on
               title={daySessions.length === 0 && onCreateSession ? "Crea seduta" : undefined}
             >
               <div style={{ marginBottom: 6, textAlign: "center" }}>
-                <div style={{ fontSize: 10, fontWeight: 800, color: "#475569", textTransform: "uppercase" }}>{DAYS_IT_SHORT[i]}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>{DAYS_IT_SHORT[i]}</div>
                 <div style={{ fontSize: 14, fontWeight: isToday ? 900 : 600, color: isToday ? "#38bdf8" : "#cbd5e1" }}>
                   {d.getDate()}
                 </div>
@@ -1835,11 +1836,11 @@ function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, on
                       onClick={openSession}
                       title={s.title || "Allenamento"}
                     >
-                      <div style={{ fontSize: 11, fontWeight: 800, color: "#38bdf8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {s.title || "Allenamento"}
                       </div>
                       {s.exercises?.length > 0 && (
-                        <div style={{ fontSize: 10, color: "#64748b" }}>
+                        <div style={{ fontSize: 10, color: "#94a6be" }}>
                           {s.exercises.reduce((t, e) => t + Number(e.customDuration || 0), 0)} min
                         </div>
                       )}
@@ -1919,9 +1920,9 @@ const trainingStyles = {
     display: "grid",
     gap: 7,
     minWidth: 0,
-    color: "#64748b",
+    color: "#94a6be",
     fontSize: 11,
-    fontWeight: 900,
+    fontWeight: 750,
     textTransform: "uppercase",
     letterSpacing: 0,
   },
@@ -1937,7 +1938,7 @@ const trainingStyles = {
     margin: "0 0 6px",
     color: "#7dd3fc",
     fontSize: 11,
-    fontWeight: 900,
+    fontWeight: 750,
     textTransform: "uppercase",
     letterSpacing: 0,
   },
@@ -1998,7 +1999,7 @@ const trainingStyles = {
     display: "block",
     color: "#7dd3fc",
     fontSize: 11,
-    fontWeight: 900,
+    fontWeight: 750,
     textTransform: "uppercase",
     letterSpacing: 0,
     marginBottom: 6,
@@ -2035,7 +2036,7 @@ const trainingStyles = {
     gap: 8,
     color: "#7dd3fc",
     fontSize: 12,
-    fontWeight: 900,
+    fontWeight: 750,
     textTransform: "uppercase",
     letterSpacing: 0,
     marginBottom: 10,
@@ -2053,7 +2054,7 @@ const trainingStyles = {
   },
   printFooter: {
     borderTop: "1px solid #dbe3ef",
-    color: "#64748b",
+    color: "#94a6be",
     fontSize: 11,
     paddingTop: 12,
   },
@@ -2185,7 +2186,7 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
             <span>Piano della seduta</span>
           </div>
           <h3 style={{ margin: "4px 0 0", lineHeight: 1.2 }}>Blocchi e esercitazioni</h3>
-          <p style={{ color: "#64748b", margin: "6px 0 0", fontSize: 13, lineHeight: 1.45 }}>
+          <p style={{ color: "#94a6be", margin: "6px 0 0", fontSize: 13, lineHeight: 1.45 }}>
             Costruisci la seduta blocco per blocco: tipo, durata, descrizione e foto opzionale.
           </p>
         </div>
@@ -2274,7 +2275,7 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
                       onChange={(e) => updateBlock(block.id, "duration", Number(e.target.value))}
                       style={{ ...styles.input, width: 58, textAlign: "center", fontSize: 14, fontWeight: 700 }}
                     />
-                    <span style={{ color: "#64748b", fontSize: 12 }}>min</span>
+                    <span style={{ color: "#94a6be", fontSize: 12 }}>min</span>
                   </div>
                 </div>
 
@@ -2311,7 +2312,7 @@ function SessionBlockBuilder({ blocks, onChange, onSave, saveLabel, teamId, canM
                     display: "inline-flex", alignItems: "center", gap: 7, cursor: "pointer",
                     padding: "7px 14px", borderRadius: 9,
                     border: "1px dashed rgba(255,255,255,0.13)",
-                    color: "#64748b", fontSize: 12,
+                    color: "#94a6be", fontSize: 12,
                     background: "rgba(255,255,255,0.025)",
                     width: "fit-content",
                   }}>
@@ -2596,7 +2597,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
   }
   function renderGoalInput(playerId) {
     return (
-      <label style={{ display: "flex", alignItems: "center", gap: 4, color: "#64748b", fontSize: 10, fontWeight: 800 }}>
+      <label style={{ display: "flex", alignItems: "center", gap: 4, color: "#94a6be", fontSize: 10, fontWeight: 700 }}>
         Gol
         <input
           type="number"
@@ -2612,7 +2613,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
             background: "rgba(15,23,42,0.55)",
             color: "#e2e8f0",
             fontSize: 11,
-            fontWeight: 800,
+            fontWeight: 700,
             textAlign: "center",
           }}
         />
@@ -2663,7 +2664,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
           <button onClick={() => setCollapsed((v) => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 16, padding: 0 }}>
             {collapsed ? "▶" : "▼"}
           </button>
-          <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>Generatore squadre</h4>
+          <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>Generatore squadre</h4>
         </div>
         {!collapsed && (
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -2677,7 +2678,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
               }}>{n} squadre</button>
             ))}
             <div style={{ display: "flex", alignItems: "center", gap: 5, marginLeft: 4 }}>
-              <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>Gioc./squadra</span>
+              <span style={{ fontSize: 11, color: "#94a6be", fontWeight: 700 }}>Gioc./squadra</span>
               <input
                 type="number" min={1} max={30} value={playersPerTeam}
                 onChange={(e) => setPlayersPerTeam(Math.max(1, Number(e.target.value)))}
@@ -2693,7 +2694,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
           {/* Giocatori non assegnati */}
           {unassigned.length > 0 && (
             <div style={{ marginBottom: 14 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#94a6be", textTransform: "uppercase", letterSpacing: 0.5 }}>
                 Da assegnare ({unassigned.length})
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -2708,7 +2709,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
                         display: "flex", alignItems: "center", gap: 5,
                       }} title={getPlayerFullName(p)}>
                         {tag && (
-                          <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag], lineHeight: 1 }}>{tag}</span>
+                          <span style={{ fontSize: 10, fontWeight: 750, color: ROLE_COLORS[tag], lineHeight: 1 }}>{tag}</span>
                         )}
                         {name}
                       </span>
@@ -2739,7 +2740,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
                 border: `1px solid ${TEAM_COLORS[i].border}`,
                 minHeight: 60,
               }}>
-                <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 900, color: TEAM_COLORS[i].color, textTransform: "uppercase" }}>
+                <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 750, color: TEAM_COLORS[i].color, textTransform: "uppercase" }}>
                   {TEAM_COLORS[i].label} <span style={{ opacity: 0.7 }}>({members.length})</span>
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -2749,14 +2750,14 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
                     return (
                       <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
                         <span title={getPlayerFullName(p)} style={{ fontSize: 12, fontWeight: 600, color: "#e2e8f0", display: "flex", alignItems: "center", gap: 5 }}>
-                          {tag && <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag], minWidth: 10 }}>{tag}</span>}
+                          {tag && <span style={{ fontSize: 10, fontWeight: 750, color: ROLE_COLORS[tag], minWidth: 10 }}>{tag}</span>}
                           {name}
                         </span>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {renderGoalInput(p.id)}
                           <button onClick={() => sendToBench(p.id, i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 10, padding: "0 2px", lineHeight: 1 }} title="A disposizione">Disp.</button>
                           <button onClick={() => unassign(p.id)} style={{
-                            background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 13, padding: "0 2px", lineHeight: 1,
+                            background: "none", border: "none", cursor: "pointer", color: "#94a6be", fontSize: 13, padding: "0 2px", lineHeight: 1,
                           }} title="Rimuovi">✕</button>
                         </div>
                       </div>
@@ -2772,7 +2773,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
               {benches.map((b, i) => (
                 <div key={i} style={{ padding: "10px 12px", borderRadius: 10, background: TEAM_COLORS[i].bg, border: `1px solid ${TEAM_COLORS[i].border}` }}>
-                  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 800, color: TEAM_COLORS[i].color, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: TEAM_COLORS[i].color, textTransform: "uppercase", letterSpacing: 0.5 }}>
                     A disp. {TEAM_COLORS[i].label} ({b.length})
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -2783,7 +2784,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
                       return (
                         <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
                           <span title={getPlayerFullName(p)} style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>
-                            {tag && <span style={{ fontSize: 10, fontWeight: 900, color: ROLE_COLORS[tag] }}>{tag}</span>}
+                            {tag && <span style={{ fontSize: 10, fontWeight: 750, color: ROLE_COLORS[tag] }}>{tag}</span>}
                             {name}
                             {isJ && <span style={{ fontSize: 10, color: "#475569" }}>Jun</span>}
                           </span>
@@ -2821,8 +2822,8 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
                     const podium = partitella?.podium || {};
                     return (
                       <div key={pos} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, color, minWidth: 46 }}>
-                          {medal} {pos}° <span style={{ fontSize: 10, fontWeight: 500, color: "#64748b" }}>({fineTxt})</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color, minWidth: 46 }}>
+                          {medal} {pos}° <span style={{ fontSize: 10, fontWeight: 500, color: "#94a6be" }}>({fineTxt})</span>
                         </span>
                         {Array.from({ length: numTeams }, (_, teamIdx) => {
                           const selected = podium[teamIdx] === pos;
@@ -2896,7 +2897,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
             <button onClick={reset} style={{
               padding: "7px 14px", borderRadius: 8,
               background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
-              color: "#64748b", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              color: "#94a6be", fontSize: 12, fontWeight: 700, cursor: "pointer",
             }}>Reset</button>
           </div>
         </>
@@ -3394,108 +3395,22 @@ function MiniMatchStats({ sessions = [], players = [], appSettings = {}, setAppS
   const totTorello    = rows.reduce((s, r) => s + r.torello, 0);
   const totTotale     = rows.reduce((s, r) => s + r.totalFine, 0);
 
-  const sortBtnStyle = (mode) => ({
-    padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer",
-    border: `1px solid ${sortMode === mode ? "#38bdf8" : "rgba(255,255,255,0.1)"}`,
-    background: sortMode === mode ? "rgba(56,189,248,0.12)" : "transparent",
-    color: sortMode === mode ? "#38bdf8" : "#64748b",
-  });
-
-  const weekBtnStyle = (w) => ({
-    padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-    border: `1px solid ${selectedWeek === w ? "#a78bfa" : "rgba(255,255,255,0.1)"}`,
-    background: selectedWeek === w ? "rgba(167,139,250,0.15)" : "transparent",
-    color: selectedWeek === w ? "#a78bfa" : "#64748b",
-  });
-  const groupBtnStyle = (group) => ({
-    padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-    border: `1px solid ${groupFilter === group ? "#38bdf8" : "rgba(255,255,255,0.1)"}`,
-    background: groupFilter === group ? "rgba(56,189,248,0.12)" : "transparent",
-    color: groupFilter === group ? "#38bdf8" : "#64748b",
-  });
-
   return (
-    <AppCard style={{ marginTop: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>
-          Statistiche partitelle
-          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: "#64748b" }}>{totalSessions} partite</span>
-        </h4>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button style={sortBtnStyle("alpha")}    onClick={() => setSortMode("alpha")}>A→Z</button>
-          <button style={sortBtnStyle("fineDesc")} onClick={() => setSortMode("fineDesc")}>Multa ↓</button>
-          <button style={sortBtnStyle("fineAsc")}  onClick={() => setSortMode("fineAsc")}>Multa ↑</button>
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {weeks.map((w) => (
-            <button key={w} style={weekBtnStyle(w)} onClick={() => setSelectedWeek(w)}>
-              {w === "totale" ? "Totale" : formatWeekLabel(w)}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <button style={groupBtnStyle("prima")} onClick={() => setGroupFilter("prima")}>Prima squadra</button>
-          <button style={groupBtnStyle("tutti")} onClick={() => setGroupFilter("tutti")}>Tutti</button>
-        </div>
-      </div>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              {["Giocatore", "Vinte", "Perse", "Pari", "Partitelle (€)", "Torello (€)", "Totale (€)"].map((h) => (
-                <th key={h} style={{ padding: "6px 10px", textAlign: h === "Giocatore" ? "left" : "center", color: "#64748b", fontWeight: 700, fontSize: 11 }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ p, wins, losses, draws, fine, torello, totalFine }) => (
-              <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                <td style={{ padding: "7px 10px", color: "#e2e8f0", fontWeight: 600 }}>{getPlayerFullName(p)}</td>
-                <td style={{ padding: "7px 10px", textAlign: "center", color: "#22c55e", fontWeight: 700 }}>{wins}</td>
-                <td style={{ padding: "7px 10px", textAlign: "center", color: "#ef4444", fontWeight: 700 }}>{losses}</td>
-                <td style={{ padding: "7px 10px", textAlign: "center", color: "#94a3b8" }}>{draws}</td>
-                <td style={{ padding: "7px 10px", textAlign: "center", color: fine > 0 ? "#f97316" : "#64748b" }}>
-                  {formatFineAmount(fine)}
-                </td>
-                <td style={{ padding: "7px 10px", textAlign: "center" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    {setAppSettings && selectedWeek !== "totale" && (
-                      <button onClick={() => changeTorello(p.id, -1)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#94a3b8", cursor: "pointer", fontSize: 13, lineHeight: 1, display: "grid", placeItems: "center" }}>−</button>
-                    )}
-                    <span style={{ color: torello > 0 ? "#f97316" : "#64748b", fontWeight: torello > 0 ? 700 : 400, minWidth: 20, textAlign: "center" }}>
-                      {formatFineAmount(torello)}
-                    </span>
-                    {setAppSettings && selectedWeek !== "totale" && (
-                      <button onClick={() => changeTorello(p.id, 1)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#94a3b8", cursor: "pointer", fontSize: 13, lineHeight: 1, display: "grid", placeItems: "center" }}>+</button>
-                    )}
-                  </div>
-                </td>
-                <td style={{ padding: "7px 10px", textAlign: "center", color: totalFine > 0 ? "#ef4444" : "#64748b", fontWeight: totalFine > 0 ? 800 : 400 }}>
-                  {formatFineAmount(totalFine)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr style={{ borderTop: "2px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.03)" }}>
-              <td style={{ padding: "8px 10px", color: "#94a3b8", fontWeight: 800, fontSize: 11 }}>TOTALE CASSA</td>
-              <td colSpan={3} />
-              <td style={{ padding: "8px 10px", textAlign: "center", color: totPartitelle > 0 ? "#f97316" : "#64748b", fontWeight: 800 }}>
-                {totPartitelle > 0 ? `€ ${totPartitelle}` : "—"}
-              </td>
-              <td style={{ padding: "8px 10px", textAlign: "center", color: totTorello > 0 ? "#f97316" : "#64748b", fontWeight: 800 }}>
-                {totTorello > 0 ? `€ ${totTorello}` : "—"}
-              </td>
-              <td style={{ padding: "8px 10px", textAlign: "center", color: totTotale > 0 ? "#ef4444" : "#64748b", fontWeight: 900, fontSize: 13 }}>
-                {totTotale > 0 ? `€ ${totTotale}` : "—"}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </AppCard>
+    <MiniMatchFinesView
+      rows={rows.map((row) => ({ ...row, name: getPlayerFullName(row.p) }))}
+      weekOptions={weeks.map((week) => ({ value: week, label: week === "totale" ? "Totale" : formatWeekLabel(week) }))}
+      selectedWeek={selectedWeek}
+      onWeekChange={setSelectedWeek}
+      sortMode={sortMode}
+      onSortChange={setSortMode}
+      groupFilter={groupFilter}
+      onGroupChange={setGroupFilter}
+      editable={Boolean(setAppSettings) && selectedWeek !== "totale"}
+      onTorelloChange={changeTorello}
+      totalSessions={totalSessions}
+      totals={{ partitelle: totPartitelle, torello: totTorello, total: totTotale }}
+      formatAmount={formatFineAmount}
+    />
   );
 }
 

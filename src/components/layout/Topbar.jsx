@@ -173,10 +173,10 @@ export default function Topbar({
       <div />
     </header>
 
-    <header className="mobile-hide" style={styles.topbar}>
+    <header className="mobile-hide cl-desktop-topbar" style={styles.topbar}>
       <div style={styles.topbarLeft}>
         <p style={styles.topbarEyebrow}>{t("topbar.greeting", { name: displayFirstName })}</p>
-        <h1 style={styles.topbarTitle}>{t("topbar.title")}</h1>
+        <p style={styles.topbarTitle}>{t("topbar.title")}</p>
       </div>
 
       <div style={styles.topbarActions}>
@@ -347,7 +347,7 @@ export default function Topbar({
                 placeItems: "center",
                 flexShrink: 0,
                 background: "linear-gradient(135deg,#22c55e,#16a34a)",
-                color: "#052e16",
+                color: "#bfdbfe",
                 fontSize: 11,
                 fontWeight: 950,
               }}>
@@ -387,7 +387,7 @@ const mobileTopbarStyles = {
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    background: "rgba(15,17,21,0.94)",
+    background: "rgba(11,17,27,0.94)",
     backdropFilter: "blur(14px)",
   },
   brand: {
@@ -441,7 +441,7 @@ const mobileTopbarStyles = {
     minHeight: 38,
     borderRadius: 14,
     border: "1px solid rgba(255,255,255,0.12)",
-    background: "linear-gradient(135deg, #22c55e, #16a34a)",
+    background: "#1e3a5f",
     color: "#052e16",
     fontSize: 13,
     fontWeight: 950,

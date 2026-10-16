@@ -42,18 +42,19 @@ export default function Badge({ children, tone, variant }) {
 
   return (
     <span
+      className="cl-badge"
       style={{
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        minHeight: 26,
+        minHeight: 28,
         padding: "5px 9px",
         borderRadius: 999,
         background: toneStyle.background,
         color: toneStyle.color,
         fontSize: 12,
-        fontWeight: 800,
-        lineHeight: 1,
+        fontWeight: 650,
+        lineHeight: 1.25,
         whiteSpace: "nowrap",
         border: `1px solid ${toneStyle.border}`,
       }}

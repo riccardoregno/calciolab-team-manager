@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-
 
 import { styles } from "./styles/index.js";
 import { useTranslation } from "./i18n";
+import RouteScrollReset from "./components/layout/RouteScrollReset";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
 import MobileBottomNav from "./components/layout/MobileBottomNav";
@@ -505,6 +506,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <RouteScrollReset />
       <div className="app-shell" style={styles.appShell}>
         {auth.team?.role !== "player" && (
           <div className="desktop-sidebar">

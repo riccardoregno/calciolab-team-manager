@@ -298,7 +298,7 @@ textarea:focus-visible {
 
   .players-list-wrap {
     display: flex !important;
-    flex-direction: column-reverse !important;
+    flex-direction: column !important;
     gap: 14px;
   }
 

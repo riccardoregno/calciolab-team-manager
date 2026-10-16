@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import FilterChips from "../components/ui/FilterChips";
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -407,7 +408,7 @@ function Statistics({
 
   if (players.length === 0) {
     return (
-      <div style={{ ...styles.page, ...s.page }}>
+      <div className="statistics-workspace" style={{ ...styles.page, ...s.page }}>
         <PageHeader
           title={t("pages.statistics.title")}
           subtitle={t("pages.statistics.subtitle")}
@@ -422,7 +423,7 @@ function Statistics({
   }
 
   return (
-    <div style={{ ...styles.page, ...s.page }}>
+    <div className="statistics-workspace" style={{ ...styles.page, ...s.page }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, minWidth: 0 }}>
         <PageHeader
           title={t("pages.statistics.title")}
@@ -498,7 +499,7 @@ function Statistics({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
           <div>
             <p style={{ ...s.sectionLabel, marginBottom: 2 }}>⚡ Carico Preparatore</p>
-            <span style={{ fontSize: 12, color: "#64748b" }}>
+            <span style={{ fontSize: 12, color: "#94a6be" }}>
               {caricoMatchCount} {caricoMatchCount === 1 ? "partita" : "partite"} nel periodo
             </span>
           </div>
@@ -515,7 +516,7 @@ function Statistics({
                   borderColor: caricoPreset === val ? "#3b82f6" : "rgba(255,255,255,0.1)",
                   background: caricoPreset === val ? "rgba(37,99,235,0.25)" : "rgba(255,255,255,0.04)",
                   color: caricoPreset === val ? "#93c5fd" : "#94a3b8",
-                  fontWeight: 900,
+                  fontWeight: 750,
                   fontSize: 12,
                   cursor: "pointer",
                 }}
@@ -550,7 +551,7 @@ function Statistics({
         {!caricoLoading && caricoRows.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             {/* header row */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 8, padding: "0 0 8px", borderBottom: "1px solid rgba(255,255,255,0.07)", fontSize: 10, fontWeight: 900, color: "#475569", textTransform: "uppercase", letterSpacing: 0.6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 8, padding: "0 0 8px", borderBottom: "1px solid rgba(255,255,255,0.07)", fontSize: 10, fontWeight: 750, color: "#475569", textTransform: "uppercase", letterSpacing: 0.6 }}>
               <span>Giocatore</span>
               <span style={{ textAlign: "right", minWidth: 60 }}>Minuti</span>
               <span style={{ textAlign: "center", minWidth: 36 }}>P</span>
@@ -578,16 +579,16 @@ function Statistics({
                     </div>
                   </div>
                   <div style={{ textAlign: "right", minWidth: 60 }}>
-                    <span style={{ fontWeight: 900, color: "#f8fafc", fontSize: 14 }}>{row.minutes}</span>
-                    <span style={{ fontSize: 10, color: "#64748b", marginLeft: 2 }}>min</span>
+                    <span style={{ fontWeight: 750, color: "#f8fafc", fontSize: 14 }}>{row.minutes}</span>
+                    <span style={{ fontSize: 10, color: "#94a6be", marginLeft: 2 }}>min</span>
                   </div>
                   <div style={{ textAlign: "center", minWidth: 36, fontWeight: 700, color: "#94a3b8", fontSize: 13 }}>
                     {row.matches}
                   </div>
                   <div style={{ textAlign: "right", minWidth: 56, fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap" }}>
-                    <span style={row.goals > 0 ? { color: "#4ade80", fontWeight: 900 } : {}}>{row.goals}G</span>
+                    <span style={row.goals > 0 ? { color: "#4ade80", fontWeight: 750 } : {}}>{row.goals}G</span>
                     {" · "}
-                    <span style={row.assists > 0 ? { color: "#60a5fa", fontWeight: 900 } : {}}>{row.assists}A</span>
+                    <span style={row.assists > 0 ? { color: "#60a5fa", fontWeight: 750 } : {}}>{row.assists}A</span>
                   </div>
                 </div>
               );
@@ -604,18 +605,18 @@ function Statistics({
         >
           <div>
             <p style={{ ...s.sectionLabel, marginBottom: 2 }}>📋 Tabella Minutaggio</p>
-            <span style={{ fontSize: 12, color: "#64748b" }}>
+            <span style={{ fontSize: 12, color: "#94a6be" }}>
               Matrice giocatori × partite — minuti per ogni gara
             </span>
           </div>
-          <span style={{ fontSize: 18, color: "#60a5fa", fontWeight: 900, lineHeight: 1 }}>
+          <span style={{ fontSize: 18, color: "#60a5fa", fontWeight: 750, lineHeight: 1 }}>
             {showMatrix ? "▲" : "▼"}
           </span>
         </div>
 
         {showMatrix && (
           <div style={{ marginTop: 20 }}>
-            <Suspense fallback={<div style={{ padding: "24px 0", textAlign: "center", color: "#64748b", fontSize: 13 }}>Caricamento…</div>}>
+            <Suspense fallback={<div style={{ padding: "24px 0", textAlign: "center", color: "#94a6be", fontSize: 13 }}>Caricamento…</div>}>
               <MinutaggioMatrix players={players} matches={filteredEvents} />
             </Suspense>
           </div>
@@ -781,7 +782,7 @@ function Statistics({
           <div style={s.tableHeader}>
             <div>
               <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2 }}>{t("pages.statistics.playerSummary")}</h3>
-              <p style={{ color: "#64748b", margin: "4px 0 0", fontSize: 13, lineHeight: 1.4 }}>
+              <p style={{ color: "#94a6be", margin: "4px 0 0", fontSize: 13, lineHeight: 1.4 }}>
                 {t("pages.statistics.playerSummarySubtitle")}
               </p>
             </div>
@@ -812,21 +813,13 @@ function Statistics({
             </div>
           </div>
 
-          {/* Toggle Prima squadra / Tutti */}
-          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-            {[{ v: "prima", label: "Prima squadra" }, { v: "juniores", label: "Juniores" }, { v: "tutti", label: "Tutti" }].map(({ v, label }) => (
-              <button
-                key={v}
-                onClick={() => setSquadraFilter(v)}
-                style={{
-                  padding: "5px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: squadraFilter === v ? "rgba(56,189,248,0.18)" : "rgba(255,255,255,0.05)",
-                  color: squadraFilter === v ? "#38bdf8" : "#94a3b8",
-                }}
-              >{label}</button>
-            ))}
-          </div>
+          <FilterChips
+            label="Gruppo delle statistiche"
+            className="cl-statistics-groups"
+            value={squadraFilter}
+            onChange={setSquadraFilter}
+            options={[{ value: "prima", label: "Prima squadra" }, { value: "juniores", label: "Juniores" }, { value: "tutti", label: "Tutti" }]}
+          />
 
           {/* Barra ricerca + filtri secondari */}
           <div style={s.searchRow}>
@@ -991,7 +984,7 @@ function Statistics({
                         {isTopScorer && <span style={s.tagGoal}>⚽ Top</span>}
                         {isTopMinutes && !isTopScorer && <span style={s.tagMinutes}>⏱ Top</span>}
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 900, color: row.status === "Disponibile" ? "#86efac" : "#fdba74", flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, fontWeight: 750, color: row.status === "Disponibile" ? "#86efac" : "#fdba74", flexShrink: 0 }}>
                         {row.status || "—"}
                       </span>
                     </div>
@@ -1041,16 +1034,16 @@ function Statistics({
                 >
                   {t("common.player")} {sortArrow("name")}
                 </span>
-                <span style={{ color: "#64748b" }}>{t("common.status")}</span>
+                <span style={{ color: "#94a6be" }}>{t("common.status")}</span>
                 <span
                   onClick={() => handleSort("presences")}
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "presences" ? "#38bdf8" : "#64748b" }}
                 >
                   {t("pages.statistics.presAbbr")} {sortArrow("presences")}
                 </span>
-                <span style={{ ...s.thNum, color: "#64748b" }}>{t("pages.statistics.absAbbr")}</span>
-                <span style={{ ...s.thNum, color: "#64748b" }}>{t("pages.statistics.injAbbr")}</span>
-                <span style={{ ...s.thNum, color: "#64748b" }}>{t("pages.statistics.trainingPresAbbr")}</span>
+                <span style={{ ...s.thNum, color: "#94a6be" }}>{t("pages.statistics.absAbbr")}</span>
+                <span style={{ ...s.thNum, color: "#94a6be" }}>{t("pages.statistics.injAbbr")}</span>
+                <span style={{ ...s.thNum, color: "#94a6be" }}>{t("pages.statistics.trainingPresAbbr")}</span>
                 <span
                   onClick={() => handleSort("trainingPct")}
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "trainingPct" ? "#22d3ee" : "#64748b" }}
@@ -1088,8 +1081,8 @@ function Statistics({
                 >
                   {t("pages.statistics.gaAbbr")} {sortArrow("goalContributions")}
                 </span>
-                <span style={{ ...s.thNum, color: "#64748b" }}>{t("pages.statistics.minPerGoalAbbr")}</span>
-                <span style={{ ...s.thNum, color: "#64748b" }}>{t("pages.statistics.minPerGAAbbr")}</span>
+                <span style={{ ...s.thNum, color: "#94a6be" }}>{t("pages.statistics.minPerGoalAbbr")}</span>
+                <span style={{ ...s.thNum, color: "#94a6be" }}>{t("pages.statistics.minPerGAAbbr")}</span>
                 <span
                   onClick={() => handleSort("yellowCards")}
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "yellowCards" ? "#fbbf24" : "#64748b" }}
@@ -1240,14 +1233,14 @@ function Statistics({
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       />
                     ) : (
-                      <span style={{ fontSize: 26, fontWeight: 900 }}>
+                      <span style={{ fontSize: 26, fontWeight: 750 }}>
                         {selectedPlayer.name?.[0]}
                       </span>
                     )}
                   </div>
                   <div>
                     <h2 style={{ margin: 0, fontSize: 18, lineHeight: 1.2 }}>{selectedPlayer.name}</h2>
-                    <p style={{ color: "#64748b", margin: "4px 0 0", fontSize: 13, lineHeight: 1.35 }}>
+                    <p style={{ color: "#94a6be", margin: "4px 0 0", fontSize: 13, lineHeight: 1.35 }}>
                       {selectedPlayer.role || t("pages.statistics.roleNotSet")}
                     </p>
                   </div>
@@ -1272,7 +1265,7 @@ function Statistics({
             {history.length === 0 ? (
               <div style={s.emptyHistory}>
                 <span style={{ fontSize: 28 }}>📭</span>
-                <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: 13 }}>
+                <p style={{ margin: "8px 0 0", color: "#94a6be", fontSize: 13 }}>
                   {t("pages.statistics.noEventHistory")}
                 </p>
               </div>
@@ -1285,7 +1278,7 @@ function Statistics({
                       <StatusBadge status={item.status} />
                     </div>
 
-                    <p style={{ color: "#64748b", margin: "5px 0 8px", fontSize: 12, lineHeight: 1.35 }}>
+                    <p style={{ color: "#94a6be", margin: "5px 0 8px", fontSize: 12, lineHeight: 1.35 }}>
                       {formatDate(item.date)} · {item.type}
                     </p>
 
@@ -1438,10 +1431,10 @@ function PartitelleStats({ events, players, squadraFilter }) {
     <AppCard style={{ marginBottom: 18 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2, fontWeight: 800 }}>
+          <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2, fontWeight: 700 }}>
             Statistiche partitelle
           </h3>
-          <p style={{ color: "#64748b", margin: "4px 0 0", fontSize: 13, lineHeight: 1.4 }}>
+          <p style={{ color: "#94a6be", margin: "4px 0 0", fontSize: 13, lineHeight: 1.4 }}>
             {selectedSessions.length} partitelle salvate su {selectedTrainingCount} allenamenti
           </p>
         </div>
@@ -1473,11 +1466,11 @@ function PartitelleStats({ events, players, squadraFilter }) {
         </div>
       ) : (
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
+          <table className="cl-data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
                 {["Giocatore", "Gol", "Vinte", "Perse", "Pari", "Multa (€)"].map((h) => (
-                  <th key={h} style={{ padding: "8px 12px", textAlign: h === "Giocatore" ? "left" : "center", color: "#64748b", fontWeight: 800, fontSize: 11, textTransform: "uppercase" }}>{h}</th>
+                  <th key={h} style={{ padding: "8px 12px", textAlign: h === "Giocatore" ? "left" : "center", color: "#94a6be", fontWeight: 700, fontSize: 11, textTransform: "uppercase" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1489,7 +1482,7 @@ function PartitelleStats({ events, players, squadraFilter }) {
                     <span style={{ marginLeft: 6, fontSize: 11, color: "#475569", fontWeight: 500 }}>{p.role}</span>
                   </td>
                   <td style={{ padding: "10px 12px", textAlign: "center", color: goals > 0 ? "#4ade80" : "#64748b", fontWeight: goals > 0 ? 800 : 500 }}>{goals}</td>
-                  <td style={{ padding: "10px 12px", textAlign: "center", color: "#22c55e", fontWeight: 800 }}>{wins}</td>
+                  <td style={{ padding: "10px 12px", textAlign: "center", color: "#22c55e", fontWeight: 700 }}>{wins}</td>
                   <td style={{ padding: "10px 12px", textAlign: "center", color: losses > 0 ? "#ef4444" : "#64748b", fontWeight: losses > 0 ? 800 : 500 }}>{losses}</td>
                   <td style={{ padding: "10px 12px", textAlign: "center", color: "#94a3b8" }}>{draws}</td>
                   <td style={{ padding: "10px 12px", textAlign: "center", color: losses > 0 ? "#f97316" : "#64748b", fontWeight: losses > 0 ? 800 : 500 }}>
@@ -1512,10 +1505,10 @@ function KpiCard({ icon, label, value, accent = "#38bdf8" }) {
     <AppCard>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div>
-          <p style={{ color: "#64748b", margin: 0, fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0, lineHeight: 1.2 }}>
+          <p style={{ color: "#94a6be", margin: 0, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0, lineHeight: 1.2 }}>
             {label}
           </p>
-          <h2 style={{ margin: "9px 0 0", fontSize: 32, fontWeight: 900, letterSpacing: 0, lineHeight: 1 }}>
+          <h2 style={{ margin: "9px 0 0", fontSize: 32, fontWeight: 750, letterSpacing: 0, lineHeight: 1 }}>
             {value}
           </h2>
         </div>
@@ -1539,7 +1532,7 @@ function KpiCard({ icon, label, value, accent = "#38bdf8" }) {
 
 function SummaryCard({ label, value, detail, accent = "#38bdf8" }) {
   return (
-    <div style={{ ...s.summaryCard, borderColor: `${accent}33`, background: `linear-gradient(135deg, ${accent}14, rgba(255,255,255,0.035))` }}>
+    <div className="cl-summary-card" style={{ ...s.summaryCard, borderColor: "var(--cl-border)", background: "var(--cl-surface)" }}>
       <div style={{ ...s.summaryAccent, background: accent }} />
       <p style={s.summaryLabel}>{label}</p>
       <strong style={s.summaryValue}>{value}</strong>
@@ -1553,11 +1546,11 @@ function MiniStat({ label, value, icon, color }) {
     <div style={s.miniStat}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
         <span style={{ fontSize: 14 }}>{icon}</span>
-        <span style={{ color: "#64748b", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0 }}>
+        <span style={{ color: "#94a6be", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0 }}>
           {label}
         </span>
       </div>
-      <strong style={{ fontSize: 22, fontWeight: 900, color: color || "white", lineHeight: 1 }}>{value}</strong>
+      <strong style={{ fontSize: 22, fontWeight: 750, color: color || "white", lineHeight: 1 }}>{value}</strong>
     </div>
   );
 }
@@ -1577,7 +1570,7 @@ function SeasonSelector({ activeSeason, onChange }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0, color: "#475569" }}>
+      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0, color: "#475569" }}>
         {t("pages.statistics.activeSeason")}
       </span>
       <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", overflowX: "auto", justifyContent: "flex-end", paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
@@ -1590,7 +1583,7 @@ function SeasonSelector({ activeSeason, onChange }) {
               padding: "0 12px",
               borderRadius: 10,
               fontSize: 12,
-              fontWeight: 800,
+              fontWeight: 700,
               cursor: "pointer",
               transition: "all 0.15s",
               background: activeSeason === s ? "rgba(56,189,248,0.18)" : "rgba(255,255,255,0.05)",
@@ -1617,7 +1610,7 @@ function StatusBadge({ status }) {
   return (
     <span style={{
       fontSize: 11,
-      fontWeight: 800,
+      fontWeight: 700,
       padding: "3px 8px",
       borderRadius: 8,
       background: t.bg,
@@ -2018,28 +2011,28 @@ const s = {
   insightTitle: {
     margin: "0 0 2px",
     fontSize: 11,
-    fontWeight: 900,
+    fontWeight: 750,
     textTransform: "uppercase",
     letterSpacing: 0,
-    color: "#64748b",
+    color: "#94a6be",
   },
   insightName: {
     margin: "0 0 4px",
     fontSize: 15,
-    fontWeight: 900,
+    fontWeight: 750,
     color: "white",
   },
   insightDesc: {
     margin: 0,
     fontSize: 12,
-    color: "#64748b",
+    color: "#94a6be",
     lineHeight: 1.4,
   },
   insightValue: {
     marginLeft: "auto",
     flexShrink: 0,
     fontSize: 15,
-    fontWeight: 900,
+    fontWeight: 750,
     color: "#38bdf8",
     paddingLeft: 12,
   },
@@ -2078,7 +2071,7 @@ const s = {
     margin: "0 0 8px",
     color: "#94a3b8",
     fontSize: 11,
-    fontWeight: 900,
+    fontWeight: 750,
     textTransform: "uppercase",
     letterSpacing: 0,
   },
@@ -2092,7 +2085,7 @@ const s = {
   summaryDetail: {
     display: "block",
     marginTop: 6,
-    color: "#64748b",
+    color: "#94a6be",
     fontSize: 12,
     lineHeight: 1.35,
   },
@@ -2103,9 +2096,9 @@ const s = {
     background: "rgba(255,255,255,0.035)",
     display: "grid",
     placeItems: "center",
-    color: "#64748b",
+    color: "#94a6be",
     fontSize: 13,
-    fontWeight: 800,
+    fontWeight: 700,
     marginBottom: 20,
   },
   mainGrid: {
@@ -2136,7 +2129,7 @@ const s = {
   sectionLabel: {
     margin: "0 0 12px",
     fontSize: 11,
-    fontWeight: 900,
+    fontWeight: 750,
     textTransform: "uppercase",
     letterSpacing: 0,
     color: "#475569",
@@ -2153,10 +2146,10 @@ const s = {
     flexDirection: "column",
     gap: 6,
     fontSize: 11,
-    fontWeight: 800,
+    fontWeight: 700,
     textTransform: "uppercase",
     letterSpacing: 0,
-    color: "#64748b",
+    color: "#94a6be",
   },
   compareHeader: {
     display: "flex",
@@ -2216,7 +2209,7 @@ const s = {
     border: "1px solid rgba(167,139,250,0.35)",
     background: "rgba(167,139,250,0.1)",
     color: "#a78bfa",
-    fontWeight: 800,
+    fontWeight: 700,
     fontSize: 12,
     cursor: "pointer",
     padding: "0 12px",
@@ -2229,7 +2222,7 @@ const s = {
     border: "1px solid rgba(255,255,255,0.1)",
     background: "rgba(255,255,255,0.05)",
     color: "#94a3b8",
-    fontWeight: 800,
+    fontWeight: 700,
     fontSize: 13,
     cursor: "pointer",
     transition: "all 0.2s",
@@ -2285,7 +2278,7 @@ const s = {
   coachBtn: {
     height: 38,
     borderRadius: 12,
-    fontWeight: 800,
+    fontWeight: 700,
     fontSize: 13,
     cursor: "pointer",
     padding: "0 14px",
@@ -2353,7 +2346,7 @@ const s = {
     gap: 6,
     padding: "8px 14px 10px",
     fontSize: 11,
-    fontWeight: 900,
+    fontWeight: 750,
     textTransform: "uppercase",
     letterSpacing: 0,
     borderBottom: "1px solid rgba(255,255,255,0.08)",
@@ -2387,8 +2380,8 @@ const s = {
   },
   roleChip: {
     fontSize: 10,
-    fontWeight: 800,
-    color: "#64748b",
+    fontWeight: 700,
+    color: "#94a6be",
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.1)",
     padding: "2px 7px",
@@ -2396,7 +2389,7 @@ const s = {
   },
   statusCell: {
     fontSize: 11,
-    fontWeight: 900,
+    fontWeight: 750,
     alignSelf: "center",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -2404,7 +2397,7 @@ const s = {
   },
   tagGoal: {
     fontSize: 10,
-    fontWeight: 900,
+    fontWeight: 750,
     textTransform: "uppercase",
     color: "#86efac",
     background: "rgba(34,197,94,0.14)",
@@ -2414,7 +2407,7 @@ const s = {
   },
   tagMinutes: {
     fontSize: 10,
-    fontWeight: 900,
+    fontWeight: 750,
     textTransform: "uppercase",
     color: "#fde68a",
     background: "rgba(234,179,8,0.14)",
@@ -2501,7 +2494,7 @@ const s = {
     color: "#94a3b8",
     textTransform: "uppercase",
     letterSpacing: 0,
-    fontWeight: 900,
+    fontWeight: 750,
     lineHeight: 1.2,
   },
 
@@ -2533,9 +2526,9 @@ const s = {
   },
   mobileStatLabel: {
     fontSize: 11,
-    fontWeight: 800,
+    fontWeight: 700,
     textTransform: "uppercase",
-    color: "#64748b",
+    color: "#94a6be",
   },
   mobileStatValue: {
     fontSize: 14,
