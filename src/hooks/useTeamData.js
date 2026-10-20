@@ -25,7 +25,7 @@ import {
   mergeEntityArrayWithRemote,
 } from "../utils/syncHelpers";
 
-const REMOTE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const REMOTE_REFRESH_INTERVAL_MS = 60 * 1000;
 const MIN_FOCUS_REFRESH_INTERVAL_MS = 60 * 1000;
 const REMOTE_SAVE_DEBOUNCE_MS = 1500;
 
@@ -53,6 +53,8 @@ export function useTeamData({ teamId } = {}) {
   const [storageSource, setStorageSource] = useState("local");
   const [storageError, setStorageError] = useState(null);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const [localSaveError, setLocalSaveError] = useState(null);
+  const [remoteSaving, setRemoteSaving] = useState(false);
   const hydrated = useRef(false);
   const remoteSyncReady = useRef(false);
   const skipNextRemoteSave = useRef(false);
@@ -105,6 +107,7 @@ export function useTeamData({ teamId } = {}) {
     if (pendingSaveCount.current > 0) return { source: "pending-upload" };
 
     setRefreshing(true);
+    try {
     await saveQueueRef.current.catch(() => {});
     if (teamIdRef.current !== teamId) {
       setRefreshing(false);
@@ -172,6 +175,15 @@ export function useTeamData({ teamId } = {}) {
     applyLoadedState(result);
     setRefreshing(false);
     return result;
+    } catch (error) {
+      if (teamIdRef.current === teamId) {
+        setStorageSource("partial");
+        setStorageError(error.message || "Sincronizzazione non riuscita");
+      }
+      return { source: "partial", error };
+    } finally {
+      if (teamIdRef.current === teamId) setRefreshing(false);
+    }
   }, [teamId, applyLoadedState]);
 
   // Carica dati al mount / cambio team
@@ -186,6 +198,9 @@ export function useTeamData({ teamId } = {}) {
     hasUnsyncedLocalChanges.current = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
+    setRemoteSaving(false);
+    setLocalSaveError(null);
+    setLastSyncedAt(null);
 
     loadRemoteState({ teamId }).then((result) => {
       if (!active) return;
@@ -208,7 +223,7 @@ export function useTeamData({ teamId } = {}) {
     let refreshing = false;
 
     async function refreshFromRemote() {
-      if (!active || refreshing) return;
+      if (!active || refreshing || !hydrated.current) return;
       // Skip refresh while a debounced Supabase save is pending — the local
       // state is newer than what remote would return.
       if (pendingSaveCount.current > 0) return;
@@ -216,9 +231,12 @@ export function useTeamData({ teamId } = {}) {
       if (dirtyKeysRef.current.size) return;
       const revision = editRevisionRef.current;
       refreshing = true;
-      const result = await loadRemoteState({ teamId });
-      if (active && revision === editRevisionRef.current && !hasUnsyncedLocalChanges.current) applyLoadedState(result);
-      refreshing = false;
+      try {
+        const result = await loadRemoteState({ teamId });
+        if (active && revision === editRevisionRef.current && !hasUnsyncedLocalChanges.current) applyLoadedState(result);
+      } catch (error) {
+        if (active) { setStorageSource("partial"); setStorageError(error.message); }
+      } finally { refreshing = false; }
     }
 
     function handleVisibleRefresh() {
@@ -228,6 +246,8 @@ export function useTeamData({ teamId } = {}) {
       }
     }
 
+    const handleOnline = () => { refreshTeamData().catch(() => {}); };
+    window.addEventListener("online", handleOnline);
     window.addEventListener("focus", refreshFromRemote);
     document.addEventListener("visibilitychange", handleVisibleRefresh);
 
@@ -239,11 +259,12 @@ export function useTeamData({ teamId } = {}) {
 
     return () => {
       active = false;
+      window.removeEventListener("online", handleOnline);
       window.removeEventListener("focus", refreshFromRemote);
       document.removeEventListener("visibilitychange", handleVisibleRefresh);
       window.clearInterval(intervalId);
     };
-  }, [teamId, applyLoadedState]);
+  }, [teamId, applyLoadedState, refreshTeamData]);
 
   // Persistenza: localStorage IMMEDIATAMENTE (previene perdita dati su chiusura tab),
   // Supabase con debounce; the per-tab journal protects unacknowledged edits.
@@ -251,7 +272,8 @@ export function useTeamData({ teamId } = {}) {
     if (!hydrated.current) return;
 
     // Salvataggio localStorage sincrono — non perdiamo nulla se il tab chiude ora
-    saveLocalState(state);
+    const localResult = saveLocalState(state);
+    setLocalSaveError(localResult?.saved === false ? localResult.error?.message || "Copia locale non disponibile" : null);
     const keysToSave = Array.from(dirtyKeysRef.current);
     if (teamId && keysToSave.length) {
       try {
@@ -348,7 +370,12 @@ export function useTeamData({ teamId } = {}) {
     let started = false;
     const timeoutId = window.setTimeout(() => {
       started = true;
-      saveQueueRef.current = saveQueueRef.current.catch(() => {}).then(savePending).catch((error) => {
+      saveQueueRef.current = saveQueueRef.current.catch(() => {}).then(async () => {
+        if (teamIdRef.current !== teamId) return;
+        setRemoteSaving(true);
+        try { await savePending(); }
+        finally { if (teamIdRef.current === teamId) setRemoteSaving(false); }
+      }).catch((error) => {
         if (teamIdRef.current !== teamId) return;
         hasUnsyncedLocalChanges.current = true;
         setStorageSource("partial");
@@ -457,6 +484,8 @@ export function useTeamData({ teamId } = {}) {
     storageSource,
     storageError,
     lastSyncedAt,
+    localSaveError,
+    remoteSaving,
     refreshTeamData,
     teamId,
     ...actions,

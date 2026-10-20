@@ -63,7 +63,7 @@ export default function PWAInstallBanner() {
   if (isInstalled || dismissed || (!installPrompt && !isIOS)) return null;
 
   return (
-    <div style={bannerStyles.wrap}>
+    <div className="pwa-install-banner" style={bannerStyles.wrap}>
       <div style={bannerStyles.inner}>
         <span style={{ fontSize: 22 }}>📱</span>
         <div style={{ flex: 1, minWidth: 0 }}>

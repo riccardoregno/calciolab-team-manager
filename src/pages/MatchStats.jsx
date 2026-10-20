@@ -6,11 +6,12 @@ import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
 import { loadMatchStatsMatrix, savePlayerMatchStats } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
-import { compareMatchDateTime, comparePlayersByName, formatDate, normalizeAppSettings } from "../utils/helpers";
+import { compareMatchDateTime, comparePlayersByName, formatDate, isGoalkeeper, isLeagueStatsMatch, normalizeAppSettings } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
 const COUNTER_FIELDS = [
   { field: "goals", label: "G", name: "Gol" },
+  { field: "goals_conceded", label: "GS", name: "Gol subiti", goalkeeperOnly: true },
   { field: "assists", label: "A", name: "Assist" },
   { field: "yellow_cards", label: "🟨", name: "Ammonizioni", max: 2 },
   { field: "red_cards", label: "🟥", name: "Espulsioni", max: 1 },
@@ -19,6 +20,7 @@ const COUNTER_FIELDS = [
 const EMPTY_ROW = {
   minutes_played: "",
   goals: "",
+  goals_conceded: "",
   assists: "",
   yellow_cards: "",
   red_cards: "",
@@ -46,10 +48,14 @@ function validateRow(row, t) {
   const goals   = parseInt(row.goals,          10);
   const assists = parseInt(row.assists,        10);
   const rating  = parseFloat(row.rating);
+  const conceded = row.goals_conceded;
 
   if (!isNaN(mins)    && (mins    < 0 || mins    > 120)) errors.push(t("pages.matchStats.errMinutes"));
   if (!isNaN(goals)   && goals   < 0)                    errors.push(t("pages.matchStats.errGoalsNeg"));
   if (!isNaN(assists) && assists < 0)                     errors.push(t("pages.matchStats.errAssistsNeg"));
+  if (conceded != null && conceded !== "" && (!Number.isInteger(Number(conceded)) || Number(conceded) < 0)) {
+    errors.push(t("pages.matchStats.errGoalsConceded"));
+  }
   if (!isNaN(yellows) && (yellows < 0 || yellows > 2))   errors.push(t("pages.matchStats.errYellows"));
   if (!isNaN(reds)    && (reds    < 0 || reds    > 1))   errors.push(t("pages.matchStats.errReds"));
   if (!isNaN(rating)  && (rating  < 0 || rating  > 10))  errors.push(t("pages.matchStats.errRating"));
@@ -61,6 +67,7 @@ function rowToStats(row) {
   return {
     minutes_played: parseNum(row.minutes_played),
     goals:          parseNum(row.goals),
+    goals_conceded: row.goals_conceded == null || row.goals_conceded === "" ? null : Number(row.goals_conceded),
     assists:        parseNum(row.assists),
     yellow_cards:   parseNum(row.yellow_cards),
     red_cards:      parseNum(row.red_cards),
@@ -93,17 +100,7 @@ function normalizeText(value) {
 }
 
 function isLeagueMatch(match) {
-  const searchable = normalizeText([
-    match?.matchKind,
-    match?.type,
-    match?.competition,
-    match?.title,
-  ].filter(Boolean).join(" "));
-
-  if (/\b(coppa|cup|amichevole|friendly|torneo)\b/.test(searchable)) return false;
-  if (!normalizeText(match?.matchKind || match?.type)) return true;
-
-  return /\b(campionato|girone|league|eccellenza|promozione|serie)\b/.test(searchable);
+  return isLeagueStatsMatch(match);
 }
 
 function getMatchHeaderInfo(match, clubName) {
@@ -174,11 +171,12 @@ function loadDraftRows(key) {
 }
 
 function saveDraftRows(key, rows) {
-  if (!key) return;
+  if (!key) return false;
   try {
     localStorage.setItem(key, JSON.stringify({ rows, updatedAt: new Date().toISOString() }));
+    return true;
   } catch {
-    /* localStorage may be unavailable in restricted browsers */
+    return false;
   }
 }
 
@@ -240,8 +238,12 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   const [scrollMax, setScrollMax] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryLoad, setRetryLoad] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState(null); // "ok" | "error"
+  const [savedSnapshot, setSavedSnapshot] = useState({});
+  const [draftSaved, setDraftSaved] = useState(true);
   const [validationErrors, setValidationErrors] = useState({}); // { [`${matchId}:${pid}`]: string[] }
   const [playerFilter, setPlayerFilter] = useState("all");
   const draftKey = teamId ? `${MATRIX_DRAFT_PREFIX}:${teamId}:${activeSeason}` : "";
@@ -281,6 +283,17 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     }
     return matrixPlayers;
   }, [currentCalledUpIds, currentStarterIds, matrixPlayers, playerFilter]);
+  const hasUnsavedRows = matrixMatches.some((item) => matrixPlayers.some((player) => {
+    const mid = String(item.id), pid = String(player.id);
+    const row = rows[mid]?.[pid];
+    const previous = savedSnapshot[`${mid}:${pid}`];
+    if (!row || (!previous && !rowHasData(row))) return false;
+    const next = rowToStats(row);
+    return ["minutes_played", "goals", "goals_conceded", "assists", "yellow_cards", "red_cards", "rating"].some((field) => {
+      const nullable = field === "goals_conceded" || field === "rating";
+      return String(next[field] ?? (nullable ? "" : 0)) !== String(previous?.[field] ?? (nullable ? "" : 0));
+    });
+  }));
 
   useEffect(() => {
     const statsMatchIds = matchIdsKey ? matchIdsKey.split("|") : [];
@@ -296,8 +309,10 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     let cancelled = false;
     rowsHydratedRef.current = false;
     if (!loadedStatsMatrixKeyRef.current) setLoading(true);
-    loadMatchStatsMatrix(auth.team.id, statsMatchIds).then(({ data }) => {
+    setLoadError(false);
+    loadMatchStatsMatrix(auth.team.id, statsMatchIds).then(({ data, error }) => {
       if (cancelled) return;
+      if (error) { setLoadError(true); setLoading(false); return; }
       const savedByCell = {};
       const savedPlayers = new Set();
       const initial = {};
@@ -312,6 +327,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
           [pid]: {
             minutes_played: row.minutes_played ?? "",
             goals:          row.goals          ?? "",
+            goals_conceded: row.goals_conceded ?? "",
             assists:        row.assists         ?? "",
             yellow_cards:   row.yellow_cards    ?? "",
             red_cards:      row.red_cards       ?? "",
@@ -322,20 +338,23 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       });
 
       savedRef.current = savedByCell;
+      setSavedSnapshot(savedByCell);
       setStatsPlayerIds([...savedPlayers]);
       rowsHydratedRef.current = true;
       loadedStatsMatrixKeyRef.current = statsMatrixKey;
       setRows(mergeRows(initial, loadDraftRows(draftKey)));
       setLoading(false);
+    }).catch(() => {
+      if (!cancelled) { setLoadError(true); setLoading(false); }
     });
     return () => {
       cancelled = true;
     };
-  }, [auth.team?.id, draftKey, matchIdsKey, statsMatrixKey]);
+  }, [auth.team?.id, draftKey, matchIdsKey, statsMatrixKey, retryLoad]);
 
   useEffect(() => {
     if (!draftKey || !rowsHydratedRef.current) return;
-    saveDraftRows(draftKey, rows);
+    setDraftSaved(saveDraftRows(draftKey, rows));
   }, [draftKey, rows]);
 
   function updateCell(matchId, playerId, field, value) {
@@ -417,7 +436,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   }, [activeMatchIndex, syncScrollState]);
 
   async function handleSave() {
-    if (!auth.team?.id) return;
+    if (!auth.team?.id || loading || loadError) return;
 
     // Validazione preventiva
     const errors = {};
@@ -449,14 +468,14 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       if (!row) continue;
 
       // Salta righe completamente vuote (nessun dato inserito)
-      if (!rowHasData(row)) continue;
+      if (!rowHasData(row) && !savedRef.current[`${mid}:${pid}`]) continue;
 
       const newStats = rowToStats(row);
         const oldStats = savedRef.current[`${mid}:${pid}`] || null;
 
       const { error } = await savePlayerMatchStats(
           auth.team.id, pid, mid, newStats, oldStats, activeSeason
-      );
+      ).catch((error) => ({ error }));
 
       if (error) {
         hasError = true;
@@ -468,6 +487,8 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     }
 
     setSaving(false);
+    setSavedSnapshot({ ...savedRef.current });
+    window.dispatchEvent(new Event("player-match-stats-updated"));
     setSaveResult(hasError ? "error" : "ok");
     if (!hasError) clearDraftRows(draftKey);
   }
@@ -489,7 +510,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     <div style={s.page}>
       <PageHeader
         title="Griglia statistiche partita"
-        subtitle={`${subtitle} · solo campionato, minuti nella cella, gol e assist con i comandi rapidi`}
+        subtitle={`${subtitle} · solo campionato, minuti nella cella e statistiche individuali`}
         badge={`${visibleMatrixPlayers.length}/${matrixPlayers.length} giocatori · ${matrixMatches.length} campionato`}
       />
 
@@ -500,10 +521,12 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         matchData={match}
       />
       <div className="match-stats-save-bar" style={s.floatingSave}>
-        <span style={s.floatingSaveText}>
-          I dati restano in bozza anche se cambi pagina
+        <span role="status" aria-live="polite" style={{ ...s.floatingSaveText, color: hasUnsavedRows && (!draftKey || !draftSaved) ? "#fca5a5" : s.floatingSaveText.color }}>
+          {t(saving ? "pages.matchStats.savingNow" : hasUnsavedRows
+            ? draftKey && draftSaved ? saveResult === "error" ? "pages.matchStats.draftRetry" : "pages.matchStats.draftSaved" : "pages.matchStats.draftFailed"
+            : saveResult === "ok" ? "pages.matchStats.savedOnline" : "pages.matchStats.noPendingChanges")}
         </span>
-        <Button onClick={handleSave} disabled={saving || loading} style={s.floatingSaveButton}>
+        <Button onClick={handleSave} disabled={saving || loading || loadError} style={s.floatingSaveButton}>
           {saving ? "Salvataggio..." : "Salva dati"}
         </Button>
       </div>
@@ -512,6 +535,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         <div style={s.topBar}>
           <div style={s.quickGuide}>
             <span style={s.muted}>Inserisci i minuti nell'intersezione. La riga in alto mostra casa/trasferta e ordine delle squadre.</span>
+            <span style={s.muted}>{t("pages.matchStats.goalsConcededHint")}</span>
             <div style={s.filterBar} aria-label="Filtro giocatori">
               {[
                 ["all", "Tutti"],
@@ -542,7 +566,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
               </button>
             </div>
             <Button variant="ghost" onClick={() => navigate("/matches")}>{t("pages.matchStats.btnBack")}</Button>
-            <Button onClick={handleSave} disabled={saving || loading} style={s.saveButton}>
+            <Button onClick={handleSave} disabled={saving || loading || loadError} style={s.saveButton}>
               {saving ? "Salvataggio..." : "Salva dati"}
             </Button>
           </div>
@@ -556,7 +580,11 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         )}
       </AppCard>
 
-      {loading ? (
+      {loadError ? (
+        <AppCard><p role="alert" style={s.errorMsg}>{t("pages.matchStats.loadError")}</p>
+          <Button onClick={() => setRetryLoad((value) => value + 1)}>{t("pages.matchStats.retryLoad")}</Button>
+        </AppCard>
+      ) : loading ? (
         <AppCard><p style={s.muted}>{t("pages.matchStats.loading")}</p></AppCard>
       ) : matrixPlayers.length === 0 ? (
         <AppCard>
@@ -657,6 +685,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                         >
                           <input
                             style={s.minutesInput}
+                            disabled={saving}
                             type="number"
                             min="0"
                             max="120"
@@ -666,20 +695,22 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                             aria-label={`${displayName} minuti ${matchItem.opponent || ""}`}
                           />
                           <div className="no-mobile-override" style={s.cellCounters}>
-                            {COUNTER_FIELDS.map(({ field, label, name, max }) => (
+                            {COUNTER_FIELDS.filter((field) => !field.goalkeeperOnly || isGoalkeeper(player)).map(({ field, label, name, max, goalkeeperOnly }) => (
                               <Counter
                                 key={field}
                                 label={label}
                                 ariaLabel={`${name}: ${displayName}, ${matchItem.opponent || ""}, ${formatDate(matchItem.date)}`}
                                 value={row[field]}
                                 max={max}
+                                allowUnknown={goalkeeperOnly}
+                                disabled={saving}
                                 onMinus={() => bumpCellNumber(mid, pid, field, -1, max)}
                                 onPlus={() => bumpCellNumber(mid, pid, field, 1, max)}
                                 onChange={(value) => updateCell(mid, pid, field, value)}
                               />
                             ))}
                           </div>
-                          {hasError && <span style={s.cellErrorMark}>!</span>}
+                          {hasError && <span role="alert" style={{ color: "#f87171", fontSize: 11, lineHeight: 1.4 }}>{validationErrors[cellKey].join(". ")}</span>}
                         </div>
                       );
                     })}
@@ -694,15 +725,26 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   );
 }
 
-function Counter({ label, ariaLabel, value, max, onMinus, onPlus, onChange }) {
+function Counter({ label, ariaLabel, value, max, onMinus, onPlus, onChange, allowUnknown = false, disabled = false }) {
+  if (allowUnknown) {
+    return (
+      <label className="no-mobile-override match-stat-counter" style={{ ...s.counter, gridTemplateColumns: "14px minmax(0, 1fr)" }}>
+        <span style={s.counterLabel}>{label}</span>
+        <input disabled={disabled} type="number" inputMode="numeric" min="0" step="1" aria-label={ariaLabel}
+          value={value ?? ""} placeholder="—" onChange={(event) => onChange(event.target.value)}
+          style={{ ...s.minutesInput, width: 50 }} />
+      </label>
+    );
+  }
   return (
     <div className="no-mobile-override match-stat-counter" style={s.counter}>
       <span style={s.counterLabel} aria-hidden="true">{label}</span>
-      <button className="mobile-hide" type="button" aria-label={`Riduci ${ariaLabel}`} onClick={onMinus} style={s.counterButton}>−</button>
+      <button className="mobile-hide" disabled={disabled} type="button" aria-label={`Riduci ${ariaLabel}`} onClick={onMinus} style={s.counterButton}>−</button>
       <strong className="mobile-hide" style={s.counterValue}>{value || 0}</strong>
-      <button className="mobile-hide" type="button" aria-label={`Aumenta ${ariaLabel}`} onClick={onPlus} style={s.counterButton}>+</button>
+      <button className="mobile-hide" disabled={disabled} type="button" aria-label={`Aumenta ${ariaLabel}`} onClick={onPlus} style={s.counterButton}>+</button>
       <input
         className="mobile-only match-stat-counter-input"
+        disabled={disabled}
         type="number"
         inputMode="numeric"
         min="0"

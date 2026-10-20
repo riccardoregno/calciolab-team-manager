@@ -82,11 +82,11 @@ export function saveLocalState(state) {
       // Il backup non deve mai impedire il salvataggio dello stato corrente.
       // Se la quota e esaurita, libera il backup e ritenta una sola volta.
       try {
-        localStorage.removeItem(STORAGE_BACKUP_KEY);
+        try { localStorage.removeItem(STORAGE_BACKUP_KEY); } catch { /* Primary data was saved. */ }
         localStorage.setItem(STORAGE_KEY, serialized);
       } catch (retryError) {
         if (import.meta.env.DEV) console.error("Errore salvataggio localStorage:", retryError || error);
-        return;
+        return { saved: false, error: retryError || error };
       }
     }
 
@@ -98,10 +98,11 @@ export function saveLocalState(state) {
         localStorage.removeItem(STORAGE_BACKUP_KEY);
       }
     }
+    return { saved: true, error: null };
   }
 
   // Persist before any remote read or navigation can replace this state.
-  write();
+  return write();
 }
 
 // Flush the latest state synchronously when the tab is about to be hidden/closed

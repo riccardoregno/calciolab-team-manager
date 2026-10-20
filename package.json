@@ -10,15 +10,15 @@
     "test": "node scripts/run-tests.mjs && node scripts/test-local-persistence.mjs",
     "preview": "vite preview",
     "build:mobile": "vite build --mode mobile",
-    "cap:sync": "npx cap sync",
+    "cap:sync": "node scripts/mobile-release.mjs sync",
     "cap:ios": "npx cap open ios",
     "cap:android": "npx cap open android",
-    "deploy:ios": "npm run build:mobile && npx cap sync ios",
-    "deploy:android": "npm run build:mobile && npx cap sync android",
+    "deploy:ios": "npm run build:mobile && node scripts/mobile-release.mjs sync ios",
+    "deploy:android": "npm run build:mobile && node scripts/mobile-release.mjs sync android",
     "gen:icons": "node scripts/gen-icons.mjs",
-    "release:android": "npm run build:mobile && npx cap sync android && cd android && ./gradlew bundleRelease",
-    "release:android:apk": "npm run build:mobile && npx cap sync android && cd android && ./gradlew assembleRelease",
-    "release:ios": "npm run build:mobile && npx cap sync ios && xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -archivePath ios/App/CalcioLab.xcarchive archive"
+    "release:android": "node scripts/mobile-release.mjs release android aab",
+    "release:android:apk": "node scripts/mobile-release.mjs release android apk",
+    "release:ios": "node scripts/mobile-release.mjs release ios"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",

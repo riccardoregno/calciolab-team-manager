@@ -182,82 +182,59 @@ export async function loadPlayerStats(teamId, playerId) {
 /** @param {string} teamId
  * @param {string[]} matchIds
  * @returns {Promise<{data: any[], error: any}>} */
+async function readMatchRows(teamId, matchIds = null, playerId = null) {
+  if (!isSupabaseConfigured || !teamId) return { data: [], error: null };
+  const ids = matchIds === null ? null : [...new Set(matchIds.map(String).filter(Boolean))];
+  if (ids?.length === 0) return { data: [], error: null };
+  const rows = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    let query = supabase.from("player_matches")
+      .select("player_id, match_id, goals, assists, minutes_played, yellow_cards, red_cards, rating, goals_conceded")
+      .eq("team_id", teamId);
+    if (ids) query = query.in("match_id", ids);
+    if (playerId !== null) query = query.eq("player_id", String(playerId));
+    query = query.order("match_id");
+    if (playerId === null) query = query.order("player_id");
+    const { data, error } = await query
+      .range(offset, offset + pageSize - 1);
+    // An interrupted download must never masquerade as a complete season.
+    if (error) return { data: [], error };
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) return { data: rows, error: null };
+  }
+}
+
 export async function loadPlayerMatchesForPeriod(teamId, matchIds) {
-  if (!isSupabaseConfigured || !teamId || !matchIds?.length) return { data: [], error: null };
-
-  const { data, error } = await supabase
-    .from("player_matches")
-    .select("player_id, match_id, minutes_played, goals, assists, yellow_cards, red_cards, rating")
-    .eq("team_id", teamId)
-    .in("match_id", matchIds);
-
-  if (error && import.meta.env.DEV) console.error("[playerProfile] loadPlayerMatchesForPeriod:", error.message);
-  return { data: data || [], error };
+  return readMatchRows(teamId, matchIds || []);
 }
 
 /** @param {string} teamId
  * @returns {Promise<{data: any[], error: any}>} */
 export async function loadTeamPlayerMatches(teamId) {
-  if (!isSupabaseConfigured || !teamId) return { data: [], error: null };
-
-  const { data, error } = await supabase
-    .from("player_matches")
-    .select("player_id, match_id, goals, assists, minutes_played, yellow_cards, red_cards, rating")
-    .eq("team_id", teamId)
-    .limit(1000);
-
-  if (error && import.meta.env.DEV) console.error("[playerProfile] loadTeamPlayerMatches:", error.message);
-  return { data: data || [], error };
+  return readMatchRows(teamId);
 }
 
 /** @param {string} teamId
  * @param {string} playerId
  * @returns {Promise<{data: any[], error: any}>} */
 export async function loadPlayerMatches(teamId, playerId) {
-  if (!isSupabaseConfigured || !teamId || !playerId) return { data: [], error: null };
-
-  const { data, error } = await supabase
-    .from("player_matches")
-    .select("player_id, match_id, goals, assists, minutes_played, yellow_cards, red_cards, rating")
-    .eq("team_id", teamId)
-    .eq("player_id", playerId)
-    .limit(200);
-
-  if (error && import.meta.env.DEV) console.error("[playerProfile] loadPlayerMatches:", error.message);
-  return { data: data || [], error };
+  if (!playerId) return { data: [], error: null };
+  return readMatchRows(teamId, null, playerId);
 }
 
 /** @param {string} teamId
  * @param {string} matchId
  * @returns {Promise<{data: any[], error: any}>} */
 export async function loadMatchStats(teamId, matchId) {
-  if (!isSupabaseConfigured || !teamId || !matchId) return { data: [], error: null };
-
-  const { data, error } = await supabase
-    .from("player_matches")
-    .select("player_id, match_id, goals, assists, minutes_played, yellow_cards, red_cards, rating")
-    .eq("team_id", teamId)
-    .eq("match_id", String(matchId));
-
-  if (error && import.meta.env.DEV) console.error("[playerProfile] loadMatchStats:", error.message);
-  return { data: data || [], error };
+  return readMatchRows(teamId, matchId ? [matchId] : []);
 }
 
 /** @param {string} teamId
  * @param {string[]} matchIds
  * @returns {Promise<{data: any[], error: any}>} */
 export async function loadMatchStatsMatrix(teamId, matchIds = []) {
-  const ids = [...new Set(matchIds.map(String).filter(Boolean))];
-  if (!isSupabaseConfigured || !teamId || ids.length === 0) return { data: [], error: null };
-
-  const { data, error } = await supabase
-    .from("player_matches")
-    .select("player_id, match_id, goals, assists, minutes_played, yellow_cards, red_cards, rating")
-    .eq("team_id", teamId)
-    .in("match_id", ids);
-
-  if (error && import.meta.env.DEV) console.error("[playerProfile] loadMatchStatsMatrix:", error.message);
-  return { data: data || [], error };
+  return readMatchRows(teamId, matchIds);
 }
 
 // FIX #4: savePlayerMatchStats ora usa la DB function increment_player_stats se disponibile,
@@ -282,6 +259,9 @@ export async function savePlayerMatchStats(teamId, playerId, matchId, newStats, 
     red_cards:      newStats.red_cards ?? 0,
     rating:         newStats.rating ?? null,
   };
+  if (Object.hasOwn(newStats, "goals_conceded")) {
+    matchStatsPayload.goals_conceded = newStats.goals_conceded;
+  }
 
   // 1. Salva/aggiorna player_matches
   const { error: matchError } = await supabase

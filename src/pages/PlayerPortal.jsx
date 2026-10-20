@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { usePlayerMatches } from "../hooks/usePlayerMatches";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { respondRsvpAsPlayer } from "../services/rsvp";
@@ -11,6 +12,7 @@ import { upsertWellness, getPlayerWellness } from "../services/wellness";
 import { deleteTeamAttachment, uploadTeamAttachment } from "../services/attachments";
 import { localDateString } from "../utils/helpers";
 
+import GoalkeeperMetrics from "../components/statistics/GoalkeeperMetrics";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -23,6 +25,8 @@ import {
   getCurrentUserRole,
   getPhysicalReference,
   getPlayerSummary,
+  getPlayerMatchEntries,
+  getGoalkeeperGoalsConceded,
   normalizeAppSettings,
   normalizeComm,
 } from "../utils/helpers";
@@ -58,7 +62,8 @@ export default function PlayerPortal({
     : players.find((p) => sameId(p.id, selectedPlayerId || players[0]?.id));
   const invalidPlayerAccess = isPlayerView && !selectedPlayer;
 
-  const summary          = getPlayerSummary(selectedPlayer, { sessions, matches, physicalTests });
+  const matchData = usePlayerMatches(teamId, String(selectedPlayer?.id || ""), matches);
+  const summary = getPlayerSummary(selectedPlayer, { sessions, matches, physicalTests, playerMatchesDB: matchData.rows, players });
   const latestTest       = summary.latestTests[0];
   const physicalReference = getPhysicalReference(latestTest, settings.coachParameters);
 
@@ -197,8 +202,10 @@ export default function PlayerPortal({
         </AppCard>
       ) : isPlayerView ? (
         <PlayerView
+          key={`${teamId}:${selectedPlayer?.id}`}
           selectedPlayer={selectedPlayer}
           summary={summary}
+          matchData={matchData}
           latestTest={latestTest}
           physicalReference={physicalReference}
           nextEvents={nextEvents}
@@ -392,7 +399,7 @@ function StaffView({
 // Vista GIOCATORE
 // ─────────────────────────────────────────────
 function PlayerView({
-  selectedPlayer, summary, latestTest, physicalReference,
+  selectedPlayer, summary, matchData, latestTest, physicalReference,
   nextEvents, myConvocations,
   players, portal, comms, physicalTests, sessions = [], matches = [],
   activeProgram, activeGoal, activeNote, isMobile,
@@ -404,7 +411,6 @@ function PlayerView({
   const today = new Date();
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth());
-  const [myMatchStats, setMyMatchStats] = useState(null); // null = non ancora caricato
   const [rsvpMap, setRsvpMap] = useState({});
   const [rpeMap, setRpeMap] = useState({});    // eventId → rpe record
   const [rpeSaving, setRpeSaving] = useState(null); // eventId saving
@@ -418,6 +424,8 @@ function PlayerView({
   const [wellnessSaving, setWellnessSaving] = useState(false);
   const [wellnessHistory, setWellnessHistory] = useState([]);
   const mountedRef = useRef(true);
+  const myMatchStats = matchData.loading ? null : matchData.rows;
+  const visibleSummary = summary;
 
   const injuryHistory = useMemo(
     () => [...(selectedPlayer?.injuries || [])].sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0)),
@@ -446,58 +454,58 @@ function PlayerView({
     setRsvpMap(map);
   }, [teamId, myPlayerId]);
 
-  const fetchAvailability = useCallback(async () => {
+  const fetchAvailability = useCallback(async (restoreReason = true) => {
     if (!teamId || !myPlayerId) return;
     const today = localDateString();
     const { data } = await fetchPlayerAvailability({ teamId, playerId: myPlayerId });
     if (!mountedRef.current) return;
     const current = (data || []).find((r) => r.date_from === today && !r.date_to) || null;
     setAvailability(current);
-    setAvailReason(current?.reason || "");
+    if (restoreReason) setAvailReason(current?.reason || "");
   }, [teamId, myPlayerId]);
 
   useEffect(() => {
     mountedRef.current = true;
-    fetchRsvps();
-    fetchAvailability();
-    if (teamId && myPlayerId) {
-      fetchPlayerRpe({ teamId, playerId: myPlayerId }).then(({ data }) => {
-        if (!mountedRef.current) return;
+    let active = true;
+    function refresh(restoreInputs = false) {
+      fetchRsvps().catch(() => {});
+      fetchAvailability(restoreInputs).catch(() => {});
+      if (!teamId || !myPlayerId) return;
+      fetchPlayerRpe({ teamId, playerId: myPlayerId }).then(({ data, error }) => {
+        if (!active || error) return;
         const map = {};
         (data || []).forEach((r) => { map[r.event_id] = r; });
         setRpeMap(map);
       }).catch(() => {});
       const today = localDateString();
-      getPlayerWellness({ teamId, playerId: myPlayerId, days: 7 }).then(({ data }) => {
-        if (!mountedRef.current) return;
+      getPlayerWellness({ teamId, playerId: myPlayerId, days: 7 }).then(({ data, error }) => {
+        if (!active || error) return;
         const rows = data || [];
         setWellnessHistory(rows);
         const todayEntry = rows.find((r) => r.date === today);
-        if (todayEntry) {
+        if (todayEntry && restoreInputs) {
           setWellness({ sleep: todayEntry.sleep || 0, fatigue: todayEntry.fatigue || 0, mood: todayEntry.mood || 0 });
           setWellnessSaved(true);
         }
       }).catch(() => {});
     }
-    return () => { mountedRef.current = false; };
+    function refreshVisible() {
+      if (document.visibilityState === "visible") refresh();
+    }
+    refresh(true);
+    window.addEventListener("focus", refreshVisible);
+    window.addEventListener("online", refreshVisible);
+    document.addEventListener("visibilitychange", refreshVisible);
+    const interval = window.setInterval(refreshVisible, 60000);
+    return () => {
+      active = false;
+      mountedRef.current = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshVisible);
+      window.removeEventListener("online", refreshVisible);
+      document.removeEventListener("visibilitychange", refreshVisible);
+    };
   }, [fetchRsvps, fetchAvailability, teamId, myPlayerId]);
-
-  useEffect(() => {
-    if (activeTab !== "statistiche" || !teamId || !myPlayerId || !isSupabaseConfigured) return;
-    let cancelled = false;
-    supabase
-      .from("player_matches")
-      .select("match_id, minutes_played, goals, assists, yellow_cards, red_cards, rating")
-      .eq("team_id", teamId)
-      .eq("player_id", String(myPlayerId))
-      .order("match_id", { ascending: false })
-      // match_id non è cronologico — il sort per data avviene lato client dopo join con matches
-      .limit(60)
-      .then(({ data }) => {
-        if (!cancelled) setMyMatchStats(data || []);
-      });
-    return () => { cancelled = true; };
-  }, [activeTab, teamId, myPlayerId]);
 
   useEffect(() => {
     if (!teamId || !myPlayerId) return undefined;
@@ -649,11 +657,11 @@ function PlayerView({
       {/* ── KPI strip ── */}
       <div style={ps.kpiStrip}>
         {[
-          { label: "Presenze",  value: summary.stats.presences },
-          { label: "Minuti",    value: summary.stats.minutes   },
-          { label: "Gol",       value: summary.stats.goals     },
-          { label: "Assist",    value: summary.stats.assists   },
-          { label: "Carico",    value: summary.stats.load      },
+          { label: "Presenze",  value: visibleSummary.stats.presences },
+          { label: "Minuti",    value: visibleSummary.stats.minutes   },
+          { label: visibleSummary.stats.isGoalkeeper ? "Gol subiti" : "Gol", value: visibleSummary.stats.isGoalkeeper ? (visibleSummary.stats.goalsConceded ?? "—") : visibleSummary.stats.goals },
+          { label: "Assist",    value: visibleSummary.stats.assists   },
+          { label: "Carico",    value: visibleSummary.stats.load      },
         ].map(({ label, value }) => (
           <div key={label} style={ps.kpiItem}>
             <p style={{ margin: "0 0 2px", color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>{label}</p>
@@ -662,10 +670,10 @@ function PlayerView({
         ))}
         <div style={ps.kpiItem}>
           <p style={{ margin: "0 0 2px", color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>Allenamenti</p>
-          <strong style={{ fontSize: 20, lineHeight: 1 }}>{summary.stats.trainingPresences}/{summary.stats.totalTrainings}</strong>
-          {summary.stats.trainingPct !== null && (
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: summary.stats.trainingPct >= 80 ? "#4ade80" : summary.stats.trainingPct >= 50 ? "#fb923c" : "#f87171" }}>
-              {summary.stats.trainingPct}%
+          <strong style={{ fontSize: 20, lineHeight: 1 }}>{visibleSummary.stats.trainingPresences}/{visibleSummary.stats.totalTrainings}</strong>
+          {visibleSummary.stats.trainingPct !== null && (
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: visibleSummary.stats.trainingPct >= 80 ? "#4ade80" : visibleSummary.stats.trainingPct >= 50 ? "#fb923c" : "#f87171" }}>
+              {visibleSummary.stats.trainingPct}%
             </p>
           )}
         </div>
@@ -825,9 +833,9 @@ function PlayerView({
             {/* Rendimento recente */}
             <AppCard>
               <h3 style={{ ...ps.sectionTitle, marginBottom: 10 }}>Rendimento recente</h3>
-              {summary.recentEvents.length ? (
+              {visibleSummary.recentEvents.length ? (
                 <div style={ps.list}>
-                  {summary.recentEvents.slice(0, 5).map(({ event, data }) => (
+                  {visibleSummary.recentEvents.slice(0, 5).map(({ event, data }) => (
                     <div key={`${event.id}-${selectedPlayer?.id}`} style={ps.eventRow}>
                       <div>
                         <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>{event.title}</p>
@@ -1057,16 +1065,13 @@ function PlayerView({
 
         {/* STATISTICHE */}
         {activeTab === "statistiche" && (() => {
-          // KPI calcolati da player_matches (più precisi per partite) con fallback a summary
-          const hasMatchData = myMatchStats !== null && myMatchStats.length > 0;
-          const matchGoals   = hasMatchData ? myMatchStats.reduce((s, r) => s + Number(r.goals || 0), 0) : summary.stats.goals;
-          const matchAssists = hasMatchData ? myMatchStats.reduce((s, r) => s + Number(r.assists || 0), 0) : summary.stats.assists;
-          const matchMinutes = hasMatchData ? myMatchStats.reduce((s, r) => s + Number(r.minutes_played || 0), 0) : summary.stats.minutes;
-          const ratings      = (myMatchStats || []).map((r) => Number(r.rating)).filter((v) => v > 0);
-          const avgRating    = ratings.length ? (ratings.reduce((s, v) => s + v, 0) / ratings.length).toFixed(1) : null;
+          const matchGoals = visibleSummary.stats.isGoalkeeper ? (visibleSummary.stats.goalsConceded ?? "—") : visibleSummary.stats.goals;
+          const matchAssists = visibleSummary.stats.assists;
+          const matchMinutes = visibleSummary.stats.minutes;
+          const avgRating = visibleSummary.stats.avgRating;
 
           // Storico ordinato per data partita (decrescente)
-          const sortedStats = [...(myMatchStats || [])].sort((a, b) => {
+          const sortedStats = (getPlayerMatchEntries(selectedPlayer, matches, myMatchStats || []).map(({ event, data }) => ({ ...data, match_id: event.id, minutes_played: data.minutes, yellow_cards: data.yellowCards, red_cards: data.redCards }))).sort((a, b) => {
             const ma = matches.find((m) => String(m.id) === String(a.match_id));
             const mb = matches.find((m) => String(m.id) === String(b.match_id));
             return (mb?.date || "").localeCompare(ma?.date || "");
@@ -1079,9 +1084,9 @@ function PlayerView({
                 <h3 style={{ ...ps.sectionTitle, marginBottom: 14 }}>La mia stagione</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(90px,1fr))", gap: 10 }}>
                   {[
-                    { label: "Presenze",  value: summary.stats.presences, color: "#38bdf8" },
+                    { label: "Presenze",  value: visibleSummary.stats.presences, color: "#38bdf8" },
                     { label: "Minuti",    value: matchMinutes,             color: "#38bdf8" },
-                    { label: "Gol",       value: matchGoals,               color: "#4ade80" },
+                    { label: visibleSummary.stats.isGoalkeeper ? "Gol subiti" : "Gol", value: matchGoals,               color: "#4ade80" },
                     { label: "Assist",    value: matchAssists,             color: "#a78bfa" },
                     ...(avgRating ? [{ label: "Voto medio", value: avgRating, color: "#fbbf24" }] : []),
                   ].map(({ label, value, color }) => (
@@ -1093,14 +1098,17 @@ function PlayerView({
                 </div>
               </AppCard>
 
+              <GoalkeeperMetrics stats={visibleSummary.stats} />
+
               {/* Storico partite */}
               <AppCard>
                 <h3 style={{ ...ps.sectionTitle, marginBottom: 14 }}>Storico partite</h3>
+                {matchData.error && <p role="alert" style={ps.muted}>Statistiche non aggiornate. Riprova quando la connessione torna disponibile.</p>}
                 {myMatchStats === null && <p style={ps.muted}>Caricamento…</p>}
-                {myMatchStats !== null && myMatchStats.length === 0 && (
+                {myMatchStats !== null && sortedStats.length === 0 && (
                   <p style={ps.muted}>Nessuna statistica di partita registrata per te ancora.</p>
                 )}
-                {myMatchStats !== null && myMatchStats.length > 0 && (
+                {myMatchStats !== null && sortedStats.length > 0 && (
                   <div style={{ display: "grid", gap: 8 }}>
                     {sortedStats.map((row) => {
                       const match = matches.find((m) => String(m.id) === String(row.match_id));
@@ -1114,7 +1122,9 @@ function PlayerView({
                           </div>
                           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
                             {row.minutes_played > 0 && <StatPill label="min" value={row.minutes_played} />}
-                            {row.goals > 0 && <StatPill label="⚽" value={row.goals} color="#4ade80" />}
+                            {visibleSummary.stats.isGoalkeeper
+                              ? <StatPill label="Gol subiti" value={getGoalkeeperGoalsConceded(selectedPlayer, match ? [match] : [], players, myMatchStats || []) ?? "—"} color="#f87171" />
+                              : row.goals > 0 && <StatPill label="⚽" value={row.goals} color="#4ade80" />}
                             {row.assists > 0 && <StatPill label="🅰️" value={row.assists} color="#a78bfa" />}
                             {row.yellow_cards > 0 && <StatPill label="🟨" value={row.yellow_cards} color="#fbbf24" />}
                             {row.red_cards > 0 && <StatPill label="🟥" value={row.red_cards} color="#f87171" />}
@@ -1588,7 +1598,7 @@ function PlayerPreviewCard({
           <div style={ps.kpiGrid}>
             <MiniMetric label={t("pages.playerPortal.kpiPresences")} value={summary.stats.presences} />
             <MiniMetric label={t("pages.playerPortal.kpiMinutes")}   value={summary.stats.minutes} />
-            <MiniMetric label={t("pages.playerPortal.kpiGoals")}      value={summary.stats.goals} />
+            <MiniMetric label={t(summary.stats.isGoalkeeper ? "pages.dashboard.goalsConcededLabel" : "pages.playerPortal.kpiGoals")} value={summary.stats.isGoalkeeper ? (summary.stats.goalsConceded ?? "—") : summary.stats.goals} />
             <MiniMetric label={t("pages.playerPortal.kpiAssists")}   value={summary.stats.assists} />
             <MiniMetric label={t("pages.playerPortal.kpiLoad")}   value={summary.stats.load} />
           </div>

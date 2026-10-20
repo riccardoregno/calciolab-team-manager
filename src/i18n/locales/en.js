@@ -1,4 +1,54 @@
 export const en = {
+  coachTasks: {
+  "title": "To complete",
+  "scope": "Next match and data from the last 14 days.",
+  "callup": "Prepare the call-up",
+  "result": "Enter the result",
+  "stats": "Complete minutes for {{count}} players",
+  "attendance": "Review attendance for {{count}} players",
+  "empty": "No reminders available.",
+  "checking": "Checking match data…",
+  "remaining": "{{count}} more reminders will appear as you complete those shown.",
+  "reviewConfirmations": "Review confirmations"
+},
+
+  navigationPrefs: {
+  "searchLabel": "Search menu",
+  "searchPlaceholder": "Statistics, attendance…",
+  "favorites": "Favorites",
+  "results": "Results",
+  "noResults": "No sections found.",
+  "empty": "Use the star beside a section to find it here.",
+  "add": "Add {{label}} to favorites",
+  "remove": "Remove {{label}} from favorites",
+  "limit": "You can save up to 8 favorites.",
+  "device": "Personal preference on this device",
+  "temporary": "Storage unavailable: these favorites are temporary."
+},
+
+  goalkeeperStats: {
+  "cleanSheetsLabel": "Clean sheets",
+  "rateLabel": "Goals conceded / 90 min",
+  "coverage": "Goals-conceded records: {{known}}/{{total}} · Games used for the average: {{rate}}",
+  "partial": "Partial data: missing games do not count as zero.",
+  "none": "No appearances recorded.",
+  "definition": "Clean sheets require a full game without conceding. The average accounts for minutes played.",
+  "comparisonIncomplete": "Incomplete data: averages use only known games and do not award comparison points."
+},
+
+  saveStatus: {
+  "loading": "Loading data…",
+  "saving": "Syncing…",
+  "online": "Saved online",
+  "device": "Saved on this device",
+  "pending": "Saved on device · waiting to sync",
+  "retry": "Device copy · sync needs retrying",
+  "localError": "Local copy unavailable: keep this open until saved online",
+  "onlineNoLocal": "Saved online · local copy unavailable",
+  "lastSaved": "Last online confirmation at {{time}}",
+  "retryAction": "Sync now"
+},
+
   objectiveStatus: {
     todo:   "To work on",
     worked: "Worked on",
@@ -2401,7 +2451,7 @@ export const en = {
       btnSave: "Save statistics",
       btnSaving: "Saving...",
       successMsg: "Statistics saved successfully.",
-      errorMsg: "Error during save. Check the console.",
+      errorMsg: "Online save failed. Check your connection and retry.",
       loading: "Loading...",
       noPlayersMsg: "No players in the lineup.",
       matchSheetLink: "Match sheet",
@@ -2425,6 +2475,16 @@ export const en = {
       notesPlaceholder: "Free note",
       errMinutes: "Minutes out of range (0–120)",
       errGoalsNeg: "Goals cannot be negative",
+      errGoalsConceded: "Goals conceded must be a whole number of zero or more",
+      savingNow: "Saving match statistics…",
+      draftSaved: "Statistics draft saved on this device",
+      draftRetry: "Draft on device · online save needs retrying",
+      draftFailed: "Draft not saved: keep this open until saved online",
+      savedOnline: "Statistics saved online",
+      noPendingChanges: "Statistics: no pending changes",
+      goalsConcededHint: "Goalkeepers: GS means individual goals conceded. Enter 0 for no goals conceded; leave blank when unknown.",
+      loadError: "Unable to load saved statistics. Retry before editing; your drafts are preserved.",
+      retryLoad: "Retry",
       errAssistsNeg: "Assists cannot be negative",
       errYellows: "Yellows: max 2 per match",
       errReds: "Reds: max 1 per match",

@@ -28,6 +28,7 @@ try {
   const { uploadTeamAttachment } = await server.ssrLoadModule('/src/services/attachments.js');
   const { persistPendingChanges, restorePendingChanges, acknowledgePendingChanges } = await server.ssrLoadModule('/src/services/pendingChanges.js');
   const { normalizeAppState } = await server.ssrLoadModule('/src/utils/helpers.js');
+  const { loadPlayerMatches } = await server.ssrLoadModule('/src/services/playerProfile.js');
   const baseline = normalizeAppState({
     matches: [{ id: 'match-reload', date: '2026-10-04', _updatedAt: 'version-1' }],
     sessions: [{ id: 'attendance-reload', date: '2026-10-06', attendance: {} }],
@@ -93,6 +94,14 @@ try {
   saveLocalState({ ...snapshot, matches: [{ ...snapshot.matches[0], result: '3-0' }] });
   assert.equal(JSON.parse(values.get(key)).matches[0].result, '3-0');
   assert.equal(JSON.parse(values.get(backupKey)).matches[0].result, '2-0');
+  const originalSetItem = localStorage.setItem;
+  try {
+    localStorage.setItem = () => { throw new Error('quota exhausted'); };
+    const failedSave = saveLocalState(snapshot);
+    assert.equal(failedSave.saved, false, 'Storage failures must reach the save-status indicator');
+    assert.equal(failedSave.error.message, 'quota exhausted');
+  } finally { localStorage.setItem = originalSetItem; }
+  assert.equal(saveLocalState(snapshot).saved, true, 'Local-save status recovers when storage becomes writable again');
 
   assert.ok(supabase, 'Remote-read regression requires the configured Supabase client');
   const originalFrom = supabase.from;
@@ -132,6 +141,46 @@ try {
   } finally {
     supabase.storage.from = originalStorageFrom;
   }
+  const matchRows = Array.from({ length: 1201 }, (_, index) => ({ match_id: `match-${String(index).padStart(4, '0')}`, minutes_played: 90 }));
+  const previousFrom = supabase.from;
+  const ranges = [];
+  let failSecondPage = false;
+  supabase.from = (table) => {
+    assert.equal(table, 'player_matches');
+    return {
+      select() { return this; },
+      eq(field, value) {
+        assert.equal(value, field === 'team_id' ? 'history-team' : 'history-player');
+        return this;
+      },
+      order(field) { assert.equal(field, 'match_id'); return this; },
+      async range(from, to) {
+        ranges.push([from, to]);
+        return failSecondPage && from > 0
+          ? { data: null, error: new Error('offline') }
+          : { data: matchRows.slice(from, to + 1), error: null };
+      },
+    };
+  };
+  try {
+    const completeHistory = await loadPlayerMatches('history-team', 'history-player');
+    assert.equal(completeHistory.data.length, 1201, 'Both portals must load the complete player history');
+    assert.deepEqual(ranges, [[0, 499], [500, 999], [1000, 1499]]);
+    failSecondPage = true;
+    const interrupted = await loadPlayerMatches('history-team', 'history-player');
+    assert.equal(interrupted.error.message, 'offline');
+    assert.deepEqual(interrupted.data, [], 'Do not display partial statistics on a failed page');
+  } finally {
+    supabase.from = previousFrom;
+  }
+
+  values.clear();
+  const sharedGoals = { teamGoals: [{ id: 'goal-team', target: 40 }], playerGoals: [{ id: 'goal-player', playerId: 'p1', target: 10 }] };
+  saveLocalState({ appSettings: { seasonGoals: sharedGoals, playerPortal: { playerPrefs: { p1: { preferredRole: 'Punta' } } } } });
+  assert.deepEqual(loadLocalState().appSettings.seasonGoals, sharedGoals, 'Shared goals survive local recovery before cloud sync');
+  assert.equal(loadLocalState().appSettings.playerPortal.playerPrefs.p1.preferredRole, 'Punta');
+  saveLocalState({ appSettings: { seasonGoals: { teamGoals: [], playerGoals: [] } } });
+  assert.deepEqual(loadLocalState().appSettings.seasonGoals, { teamGoals: [], playerGoals: [] }, 'Deleted goals must not come back from the backup');
   console.log('Local persistence regression tests passed');
 } finally {
   await server.close();

@@ -103,6 +103,35 @@ textarea:focus-visible {
   display: none;
 }
 
+.save-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 16px; border: 1px solid rgba(148,163,184,.12); border-radius: 12px; background: rgba(15,23,42,.5); }
+.save-status-retry { min-height: 36px; padding: 6px 12px; border-radius: 8px; color: #bfdbfe; border: 1px solid rgba(96,165,250,.25); background: rgba(59,130,246,.1); cursor: pointer; font-size: 12px; font-weight: 700; }
+.save-status-spinner { animation: save-status-spin 1.5s linear infinite; }
+.coach-action-task { width: 100%; min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; padding: 12px; border: 1px solid rgba(148,163,184,.13); border-radius: 10px; background: rgba(255,255,255,.025); color: #e2e8f0; cursor: pointer; }
+.coach-action-task strong { display: block; font-size: 13px; }
+.coach-action-task small { display: block; color: #94a3b8; font-size: 11px; line-height: 1.5; margin-top: 4px; overflow-wrap: anywhere; }
+@keyframes save-status-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .save-status-spinner { animation: none; } }
+
+@media (hover: hover) {
+  .sidebar-navigation-link:hover,
+  .mobile-navigation-tile:hover {
+    background-color: rgba(148, 163, 184, 0.08) !important;
+  }
+}
+
+.pwa-install-banner {
+  bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+@media (min-width: 1025px) {
+  .pwa-install-banner {
+    left: auto !important;
+    right: 24px !important;
+    bottom: 24px !important;
+    max-width: 420px;
+  }
+}
+
 @media (max-width: 1024px) {
   .desktop-sidebar,
   .app-shell > aside {

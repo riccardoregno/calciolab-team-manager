@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import "./test-player-statistics.mjs";
+import "./test-app-improvements.mjs";
 import { diffEntityArray, mergeEntityArrayWithRemote } from "../src/utils/syncHelpers.js";
 import {
   getAvailabilityGroups,
@@ -152,9 +154,39 @@ const playerSummary = getPlayerSummary(
     physicalTests: [{ id: 1, playerId: 1, date: "2026-01-02", gaconLevel: 20 }],
   }
 );
-assert.equal(playerSummary.stats.minutes, 60);
-assert.equal(playerSummary.stats.assists, 2);
+assert.equal(playerSummary.stats.minutes, 0, "Training minutes must not enter match totals");
+assert.equal(playerSummary.stats.assists, 0, "Training assists must not enter match totals");
 assert.equal(playerSummary.latestTests.length, 1);
+
+const coherentSummary = getPlayerSummary({ id: "player" }, {
+  matches: [
+    { id: "league", type: "Partita", matchKind: "Campionato", date: "2020-01-01", attendance: { player: { minutes: 10, goals: 9 } } },
+    { id: "friendly", type: "Partita", matchKind: "Campionato", isFriendly: true, date: "2020-01-02" },
+    { id: "cup", type: "Partita", matchKind: "Coppa", date: "2020-01-03" },
+    { id: "future", type: "Partita", matchKind: "Campionato", date: "2999-01-01" },
+  ],
+  playerMatchesDB: [
+    { match_id: "league", minutes_played: 90, goals: 2, assists: 1, rating: 7 },
+    { match_id: "friendly", minutes_played: 45, goals: 3, rating: 10 },
+    { match_id: "cup", minutes_played: 90, goals: 4, rating: 10 },
+    { match_id: "future", minutes_played: 90, goals: 5, rating: 10 },
+    { match_id: "other-season", minutes_played: 90, goals: 6, rating: 10 },
+  ],
+});
+assert.equal(coherentSummary.stats.presences, 1);
+assert.equal(coherentSummary.stats.minutes, 90, "Use official minutes and exclude other competitions, future games and unrelated seasons");
+assert.equal(coherentSummary.stats.goals, 2, "Official rows override stale attendance goals");
+assert.equal(coherentSummary.stats.assists, 1);
+assert.equal(coherentSummary.stats.avgRating, "7.0");
+assert.equal(coherentSummary.recentEvents.length, 1);
+assert.equal(getPlayerSummary(null).stats.trainingPct, null);
+
+const sharedGoals = { teamGoals: [{ id: "team-goal", target: 30 }], playerGoals: [{ id: "player-goal", playerId: "player", target: 10 }] };
+const sharedPrefs = { player: { preferredRole: "Attaccante" } };
+const sharedSettings = normalizeAppSettings({ seasonGoals: sharedGoals, playerPortal: { playerPrefs: sharedPrefs } });
+assert.deepEqual(normalizeAppSettings(sharedSettings).seasonGoals, sharedGoals, "Team goals must survive every normalization before cloud sync");
+assert.deepEqual(normalizeAppSettings(sharedSettings).playerPortal.playerPrefs, sharedPrefs);
+assert.deepEqual(normalizeAppSettings({ seasonGoals: { teamGoals: null, playerGoals: "broken" } }).seasonGoals, { teamGoals: [], playerGoals: [] });
 
 const reward = getCoachRewardProfile({
   players: [{ id: 1 }, { id: 2 }],

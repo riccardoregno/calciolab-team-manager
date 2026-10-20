@@ -72,10 +72,10 @@ if [[ "$TARGET" == "ios" || "$TARGET" == "both" ]]; then
     echo "   ⚠️  xcodebuild non trovato (macOS + Xcode richiesto per iOS)"
   else
     echo "   → iOS Archive (TestFlight / App Store)..."
-    WORKSPACE="$ROOT/ios/App/App.xcworkspace"
+    IOS_PROJECT="$ROOT/ios/App/App.xcodeproj"
     ARCHIVE="$ROOT/ios/App/CalcioLab.xcarchive"
     xcodebuild \
-      -workspace "$WORKSPACE" \
+      -project "$IOS_PROJECT" \
       -scheme App \
       -configuration Release \
       -archivePath "$ARCHIVE" \

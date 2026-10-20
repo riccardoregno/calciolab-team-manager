@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import FilterChips from "../components/ui/FilterChips";
+import GoalkeeperMetrics from "../components/statistics/GoalkeeperMetrics";
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -9,12 +10,13 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 
-import { formatDate, getPlayerUnavailabilityOnDate, localDateString, normalizeAppSettings } from "../utils/helpers";
+import { getPlayerMatchEntries, getPlayerMatchTotals, isLeagueStatsMatch, formatDate, getPlayerUnavailabilityOnDate, localDateString, normalizeAppSettings } from "../utils/helpers";
 import { styles } from "../styles/index.js";
-import { loadAllPlayerStats, loadPlayerMatches, loadPlayerMatchesForPeriod } from "../services/playerProfile";
+import { loadPlayerMatches, loadPlayerMatchesForPeriod, loadMatchStatsMatrix } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { isGoalkeeper } from "../utils/goalkeeperStats";
 
 const StatisticsCharts = lazy(() => import("../components/statistics/StatisticsCharts"));
 const MinutaggioMatrix = lazy(() => import("../components/statistics/MinutaggioMatrix"));
@@ -63,7 +65,6 @@ function Statistics({
   const [eventType, setEventType] = useState("Tutti");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [playerStatsMap, setPlayerStatsMap] = useState({});
   const [playerMatchStatsRows, setPlayerMatchStatsRows] = useState([]);
   const [statsLoading, setStatsLoading] = useState(false);
   const [playerMatchesDB, setPlayerMatchesDB] = useState([]);
@@ -89,7 +90,7 @@ function Statistics({
   const effectiveSelectedPlayerId = selectedPlayerId || players[0]?.id || "";
 
   function exportCSV() {
-    const headers = t("pages.statistics.csvHeaders").split(",");
+    const headers = [...t("pages.statistics.csvHeaders").split(","), t("pages.dashboard.goalsConcededLabel")];
     const rows = stats.map((r) => [
       r.name,
       r.role || "",
@@ -108,6 +109,7 @@ function Statistics({
       r.minutesPerContribution || "—",
       r.yellowCards,
       r.redCards,
+      isGoalkeeper(r) ? (r.goalsConceded ?? "—") : "—",
     ]);
 
     const csv = [headers, ...rows]
@@ -183,7 +185,7 @@ function Statistics({
       return;
     }
     const matchEvents = events.filter(
-      (e) => e.type === "Partita" && !isFriendlyMatch(e) && (!from || e.date >= from) && (!to || e.date <= to)
+      (e) => e.type === "Partita" && isLeagueStatsMatch(e) && (!from || e.date >= from) && (!to || e.date <= to)
     );
     setCaricoMatchCount(matchEvents.length);
     if (!auth.team?.id || matchEvents.length === 0) {
@@ -211,9 +213,7 @@ function Statistics({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caricoPreset, caricoFrom, caricoTo, events, auth.team?.id]);
 
-  // FIX #10: tracciamo la fonte dati delle statistiche per mostrare un badge all'utente
-  // e prevenire la situazione in cui playerStatsMap è vuoto (Supabase offline) e
-  // l'intera colonna gol/assist/minuti appare a 0 senza spiegazione.
+  // Keep the source badge honest when official match rows cannot be loaded.
   const [statsSource, setStatsSource] = useState("local"); // "supabase" | "local"
 
   useEffect(() => {
@@ -224,28 +224,24 @@ function Statistics({
     }
     setStatsLoading(true);
     const leagueMatchIds = events
-      .filter((event) => event.type === "Partita" && !isFriendlyMatch(event))
+      .filter((event) => event.type === "Partita" && isLeagueStatsMatch(event))
       .map((event) => String(event.id))
       .filter(Boolean);
 
-    Promise.all([
-      loadAllPlayerStats(auth.team.id, activeSeason),
-      leagueMatchIds.length
-        ? loadPlayerMatchesForPeriod(auth.team.id, leagueMatchIds)
-        : Promise.resolve({ data: [], error: null }),
-    ]).then(([summaryResult, matchRowsResult]) => {
-      const summaryData = summaryResult?.data || {};
-      const matchRows = matchRowsResult?.data || [];
-      setPlayerStatsMap(summaryData);
-      setPlayerMatchStatsRows(matchRows);
-      setStatsSource(matchRows.length > 0 || Object.keys(summaryData).length > 0 ? "supabase" : "local");
-      setStatsLoading(false);
-    }).catch(() => {
-      setStatsSource("local");
-      setPlayerStatsMap({});
-      setPlayerMatchStatsRows([]);
-      setStatsLoading(false);
-    });
+    let active = true;
+    (leagueMatchIds.length ? loadMatchStatsMatrix(auth.team.id, leagueMatchIds) : Promise.resolve({ data: [], error: null }))
+      .then(({ data, error }) => {
+        if (!active) return;
+        setPlayerMatchStatsRows(data || []);
+        setStatsSource(error || !data?.length ? "local" : "supabase");
+        setStatsLoading(false);
+      }).catch(() => {
+        if (!active) return;
+        setStatsSource("local");
+        setPlayerMatchStatsRows([]);
+        setStatsLoading(false);
+      });
+    return () => { active = false; };
   }, [auth.team?.id, activeSeason, events]);
 
   useEffect(() => {
@@ -263,7 +259,7 @@ function Statistics({
     return events.filter((event) => {
       const matchesType =
         eventType === "Tutti" ||
-        (eventType === "Partita" && event.type === "Partita" && !isFriendlyMatch(event)) ||
+        (eventType === "Partita" && event.type === "Partita" && isLeagueStatsMatch(event)) ||
         (eventType !== "Partita" && event.type === eventType) ||
         (eventType === "Allenamento" && isFriendlyMatch(event));
       const afterStart = !fromDate || event.date >= fromDate;
@@ -282,7 +278,7 @@ function Statistics({
       : players;
     const filteredMatchIds = new Set(
       filteredEvents
-        .filter((event) => event.type === "Partita" && !isFriendlyMatch(event))
+        .filter((event) => event.type === "Partita" && isLeagueStatsMatch(event))
         .map((event) => String(event.id))
         .filter(Boolean)
     );
@@ -298,7 +294,7 @@ function Statistics({
           groupPlayers.some((item) => String(item.id) === String(player.id)) ||
           statPlayerIds.has(String(player.id))
         ));
-    const baseStats = getStatsSummary(filteredEvents, filteredPlayers, playerStatsMap, playerMatchStatsRows);
+    const baseStats = getStatsSummary(filteredEvents, filteredPlayers, playerMatchStatsRows, players);
 
     return [...baseStats]
       .filter((player) =>
@@ -373,7 +369,6 @@ function Statistics({
     filteredEvents,
     players,
     playerMatchStatsRows,
-    playerStatsMap,
     sortBy,
     sortOrder,
     searchPlayer,
@@ -395,7 +390,7 @@ function Statistics({
     (s) => String(s.id) === String(effectiveSelectedPlayerId)
   );
 
-  const history = getPlayerHistory(filteredEvents, selectedPlayer, playerMatchesDB);
+  const history = getPlayerHistory(filteredEvents, selectedPlayer, playerMatchesDB, players, playerMatchStatsRows);
 
   const topScorer = getTopPlayerByStat(stats, "goals");
   const mostMinutes = getTopPlayerByStat(stats, "minutes");
@@ -753,7 +748,7 @@ function Statistics({
                 <div style={s.compareMetrics}>
                   <CompareMetric label={t("pages.statistics.minAbbr")} value={player.minutes} />
                   <CompareMetric label={t("pages.statistics.avgAbbr")} value={player.avgMinutes} />
-                  <CompareMetric label={t("common.goals")} value={player.goals} color="#4ade80" />
+                  <CompareMetric label={t(isGoalkeeper(player) ? "pages.dashboard.goalsConcededLabel" : "common.goals")} value={isGoalkeeper(player) ? (player.goalsConceded ?? "—") : player.goals} color={isGoalkeeper(player) ? "#f87171" : "#4ade80"} />
                   <CompareMetric label={t("common.assists")} value={player.assists} color="#38bdf8" />
                   <CompareMetric label={t("pages.statistics.gaAbbr")} value={player.goalContributions} color="#a78bfa" />
                   <CompareMetric label={t("pages.statistics.trainingPctAbbr")} value={player.trainingPct !== null ? `${player.trainingPct}%` : "—"} />
@@ -998,8 +993,8 @@ function Statistics({
                         <span style={s.mobileStatValue}>{row.minutes}</span>
                       </div>
                       <div style={s.mobileStatRow}>
-                        <span style={s.mobileStatLabel}>{t("common.goals")}</span>
-                        <span style={{ ...s.mobileStatValue, color: row.goals > 0 ? "#4ade80" : "#94a3b8" }}>{row.goals}</span>
+                        <span style={s.mobileStatLabel}>{t(isGoalkeeper(row) ? "pages.dashboard.goalsConcededLabel" : "common.goals")}</span>
+                        <span style={{ ...s.mobileStatValue, color: isGoalkeeper(row) ? "#f87171" : "#4ade80" }}>{isGoalkeeper(row) ? (row.goalsConceded ?? "—") : row.goals}</span>
                       </div>
                       <div style={s.mobileStatRow}>
                         <span style={s.mobileStatLabel}>{t("common.assists")}</span>
@@ -1068,6 +1063,9 @@ function Statistics({
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "goals" ? "#4ade80" : "#64748b" }}
                 >
                   {t("common.goals")} {sortArrow("goals")}
+                </span>
+                <span style={{ ...s.thNum, color: "#f87171" }} title={t("pages.dashboard.goalsConcededLabel")}>
+                  {t("pages.dashboard.goalsConcededLabel")}
                 </span>
                 <span
                   onClick={() => handleSort("assists")}
@@ -1178,6 +1176,9 @@ function Statistics({
                     <span style={{ ...s.tdNum, color: row.goals > 0 ? "#4ade80" : "inherit", fontWeight: row.goals > 0 ? 800 : 400 }}>
                       {row.goals}
                     </span>
+                    <span style={{ ...s.tdNum, color: isGoalkeeper(row) ? "#f87171" : "#64748b" }}>
+                      {isGoalkeeper(row) ? (row.goalsConceded ?? "—") : "—"}
+                    </span>
                     <span style={{ ...s.tdNum, color: row.assists > 0 ? "#38bdf8" : "inherit", fontWeight: row.assists > 0 ? 800 : 400 }}>
                       {row.assists}
                     </span>
@@ -1249,9 +1250,15 @@ function Statistics({
                 <div style={s.miniGrid}>
                   <MiniStat label={t("pages.statistics.presences")} value={selectedStats?.presences || 0} icon="📋" />
                   <MiniStat label={t("common.minutes")} value={selectedStats?.minutes || 0} icon="⏱️" />
-                  <MiniStat label={t("common.goals")} value={selectedStats?.goals || 0} icon="⚽" color="#4ade80" />
+                  <MiniStat
+                    label={t(isGoalkeeper(selectedPlayer) ? "pages.dashboard.goalsConcededLabel" : "common.goals")}
+                    value={isGoalkeeper(selectedPlayer) ? (selectedStats?.goalsConceded ?? "—") : (selectedStats?.goals || 0)}
+                    icon="⚽"
+                    color={isGoalkeeper(selectedPlayer) ? "#f87171" : "#4ade80"}
+                  />
                   <MiniStat label={t("common.assists")} value={selectedStats?.assists || 0} icon="🅰️" color="#38bdf8" />
                 </div>
+                <GoalkeeperMetrics stats={selectedStats} />
               </div>
             )}
           </AppCard>
@@ -1284,7 +1291,7 @@ function Statistics({
 
                     <div style={s.historyMeta}>
                       <StatChip label="min" value={item.minutes} />
-                      <StatChip label="gol" value={item.goals} color={item.goals > 0 ? "#4ade80" : undefined} />
+                      <StatChip label={t(isGoalkeeper(selectedPlayer) ? "pages.dashboard.goalsConcededLabel" : "common.goals")} value={isGoalkeeper(selectedPlayer) ? (item.goalsConceded ?? "—") : item.goals} color={isGoalkeeper(selectedPlayer) ? "#f87171" : "#4ade80"} />
                       <StatChip label="ast" value={item.assists} color={item.assists > 0 ? "#38bdf8" : undefined} />
                       {item.yellowCards > 0 && <StatChip label="🟨" value={item.yellowCards} color="#fbbf24" />}
                       {item.redCards > 0 && <StatChip label="🟥" value={item.redCards} color="#f87171" />}
@@ -1792,44 +1799,15 @@ function isCompletedTrainingSession(session, today, nowTime) {
   return getTrainingTime(session) <= nowTime;
 }
 
-function getStatsSummary(events, players, playerStatsMap = {}, playerMatchStatsRows = []) {
+function getStatsSummary(events, players, playerMatchStatsRows = [], roster = players) {
   const today = localDateString();
   const now = new Date();
   const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  const matchEvents = events.filter((e) => e.type === "Partita" && !isFriendlyMatch(e));
-  const matchIdSet = new Set(matchEvents.map((e) => String(e.id)).filter(Boolean));
-  const useMatchRows = playerMatchStatsRows.length > 0 && matchIdSet.size > 0;
+  const matchEvents = events.filter((e) => e.type === "Partita" && isLeagueStatsMatch(e));
   const trainingSessions = events
     .filter(isTrainingStatsEvent)
     .map((e) => ({ ...e, date: normalizeStatsDate(e.date) }))
     .filter((e) => isCompletedTrainingSession(e, today, nowTime));
-
-  const matchStatsByPlayer = playerMatchStatsRows.reduce((acc, row) => {
-    const matchId = String(row.match_id || "");
-    if (!matchIdSet.has(matchId)) return acc;
-
-    const pid = String(row.player_id);
-    if (!acc[pid]) {
-      acc[pid] = { appearances: 0, minutes_played: 0, goals: 0, assists: 0, yellow_cards: 0, red_cards: 0 };
-    }
-
-    const minutes = Number(row.minutes_played || 0);
-    const goals = Number(row.goals || 0);
-    const assists = Number(row.assists || 0);
-    const yellowCards = Number(row.yellow_cards || 0);
-    const redCards = Number(row.red_cards || 0);
-
-    acc[pid].minutes_played += minutes;
-    acc[pid].goals += goals;
-    acc[pid].assists += assists;
-    acc[pid].yellow_cards += yellowCards;
-    acc[pid].red_cards += redCards;
-    if (minutes > 0 || goals > 0 || assists > 0 || yellowCards > 0 || redCards > 0) {
-      acc[pid].appearances += 1;
-    }
-
-    return acc;
-  }, {});
 
   return players.map((player) => {
     const attendance = events.reduce(
@@ -1860,36 +1838,8 @@ function getStatsSummary(events, players, playerStatsMap = {}, playerMatchStatsR
       ? Math.round((trainingPresences / effectiveDenominator) * 100)
       : null;
 
-    const playerKey = String(player.id);
-    const ps = playerStatsMap[playerKey] || {};
-
-    // FIX #10: se playerStatsMap è vuoto (Supabase offline), calcola le stats
-    // aggregate dalle partite locali (attendance blob) come fallback.
-    // Nota: questa è una fonte secondaria — può divergere da player_stats su Supabase
-    // se i dati non sono stati sincronizzati. Il badge "Dati locali" in UI avvisa l'utente.
-    const hasSummaryStats = Object.keys(ps).length > 0;
-    const localMatchStats = useMatchRows || hasSummaryStats ? null : matchEvents
-      .filter((e) => e.type === "Partita" && !isFriendlyMatch(e))
-      .reduce(
-        (acc, event) => {
-          const d = event.attendance?.[player.id];
-          if (!d || d.status === "Assente") return acc;
-          acc.appearances += 1;
-          acc.minutes_played  += Number(d.minutes_played ?? d.minutes ?? 0);
-          acc.goals           += Number(d.goals || 0);
-          acc.assists         += Number(d.assists || 0);
-          acc.yellow_cards    += Number(d.yellow_cards ?? d.yellowCards ?? 0);
-          acc.red_cards       += Number(d.red_cards ?? d.redCards ?? 0);
-          return acc;
-        },
-        { appearances: 0, minutes_played: 0, goals: 0, assists: 0, yellow_cards: 0, red_cards: 0 }
-      );
-
-    const src = useMatchRows ? (matchStatsByPlayer[playerKey] || {}) : (hasSummaryStats ? ps : (localMatchStats || {}));
-    const presences = Number(src.appearances ?? 0);
-    const minutes = Number(src.minutes_played ?? 0);
-    const goals = Number(src.goals ?? 0);
-    const assists = Number(src.assists ?? 0);
+    const totals = getPlayerMatchTotals(player, matchEvents, playerMatchStatsRows, roster);
+    const { presences, minutes, goals, assists } = totals;
     const goalContributions = goals + assists;
 
       return {
@@ -1897,17 +1847,19 @@ function getStatsSummary(events, players, playerStatsMap = {}, playerMatchStatsR
         name: getDisplayPlayerName(player),
       lastName: player.lastName || player.last_name || "",
       status: player.status || "Disponibile",
-      role: player.role || "",
+      role: player.role || player.position || "",
       presences,
       minutes,
       goals,
+      goalsConceded: totals.goalsConceded,
+      goalkeeperRecord: totals.goalkeeperRecord,
       assists,
       goalContributions,
       avgMinutes: presences ? Math.round(minutes / presences) : 0,
       minutesPerGoal: goals ? Math.round(minutes / goals) : 0,
       minutesPerContribution: goalContributions ? Math.round(minutes / goalContributions) : 0,
-      yellowCards:  Number(src.yellow_cards   ?? 0),
-      redCards:     Number(src.red_cards      ?? 0),
+      yellowCards: totals.yellowCards,
+      redCards: totals.redCards,
       absences: attendance.absences,
       injuries: attendance.injuries,
       trainingPresences,
@@ -1918,42 +1870,29 @@ function getStatsSummary(events, players, playerStatsMap = {}, playerMatchStatsR
   });
 }
 
-function getPlayerHistory(events, player, playerMatchesDB = []) {
+function getPlayerHistory(events, player, playerMatchesDB = [], roster = [], teamRows = []) {
   if (!player) return [];
 
-  // Mappa match_id → riga player_matches (dati reali Supabase)
-  const dbMap = {};
-  playerMatchesDB.forEach((row) => {
-    dbMap[String(row.match_id)] = row;
-  });
-
+  const matchEntries = new Map(getPlayerMatchEntries(player, events.filter((event) => event.type === "Partita"), playerMatchesDB).map((entry) => [String(entry.event.id), entry.data]));
   return [...events]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .map((event) => {
       if (event.type === "Partita") {
-        // Partite: usa player_matches da Supabase
-        const db = dbMap[String(event.id)];
-        const playerId = String(player.id);
-        const lineup = event.lineup || {};
-        const involved = [
-          ...(lineup.calledUpIds || []),
-          ...(lineup.starterIds || []),
-          ...(lineup.benchIds || []),
-        ].map(String).includes(playerId);
-        const attendanceData = event.attendance?.[player.id] ?? event.attendance?.[playerId];
-        if (!db && !involved && !attendanceData) return null;
+        const matchData = matchEntries.get(String(event.id));
+        if (!matchData) return null;
         return {
           sessionId: event.id,
           title: event.title,
           date: event.date,
           type: event.type,
-          status: db || involved ? "Presente" : attendanceData?.status,
-          minutes: Number(db?.minutes_played ?? attendanceData?.minutes_played ?? attendanceData?.minutes ?? 0),
-          goals: Number(db?.goals ?? attendanceData?.goals ?? 0),
-          assists: Number(db?.assists ?? attendanceData?.assists ?? 0),
-          yellowCards: Number(db?.yellow_cards ?? attendanceData?.yellow_cards ?? attendanceData?.yellowCards ?? 0),
-          redCards: Number(db?.red_cards ?? attendanceData?.red_cards ?? attendanceData?.redCards ?? 0),
-          rating: db?.rating != null ? db.rating : attendanceData?.rating ?? null,
+          status: matchData.status,
+          goalsConceded: matchData.goalsConceded ?? getPlayerMatchTotals(player, [event], teamRows.length ? teamRows : playerMatchesDB, roster).goalsConceded,
+          minutes: matchData.minutes,
+          goals: matchData.goals,
+          assists: matchData.assists,
+          yellowCards: matchData.yellowCards,
+          redCards: matchData.redCards,
+          rating: matchData.rating,
         };
       } else {
         // Allenamenti: usa event.attendance (sistema locale)
@@ -2342,7 +2281,7 @@ const s = {
   },
   colHeader: {
     display: "grid",
-    gridTemplateColumns: "1.6fr 0.8fr repeat(15, 0.55fr)",
+    gridTemplateColumns: "1.6fr 0.8fr repeat(16, 0.55fr)",
     gap: 6,
     padding: "8px 14px 10px",
     fontSize: 11,
@@ -2362,7 +2301,7 @@ const s = {
   },
   tableRow: {
     display: "grid",
-    gridTemplateColumns: "1.6fr 0.8fr repeat(15, 0.55fr)",
+    gridTemplateColumns: "1.6fr 0.8fr repeat(16, 0.55fr)",
     gap: 6,
     padding: "12px 14px",
     borderRadius: 10,

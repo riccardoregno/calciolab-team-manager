@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import GoalkeeperMetrics from "../statistics/GoalkeeperMetrics";
 import AppCard from "../ui/AppCard";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
@@ -163,10 +164,11 @@ export function PlayerKpiStrip({ summary }) {
     <div style={sectionStyles.kpiGrid}>
       <MiniKpi label={t("pages.playerDetail.kpi.presences")} value={summary.stats.presences} />
       <MiniKpi label={t("pages.playerDetail.kpi.minutes")}   value={summary.stats.minutes} />
-      <MiniKpi label={t("pages.playerDetail.kpi.goals")}     value={summary.stats.goals} />
+      <MiniKpi label={t(summary.stats.isGoalkeeper ? "pages.dashboard.goalsConcededLabel" : "pages.playerDetail.kpi.goals")} value={summary.stats.isGoalkeeper ? (summary.stats.goalsConceded ?? "—") : summary.stats.goals} />
       <MiniKpi label={t("pages.playerDetail.kpi.assists")}   value={summary.stats.assists} />
       <MiniKpi label={t("pages.playerDetail.kpi.avgRpe")}    value={summary.stats.avgRpe || "-"} />
       <MiniKpi label={t("pages.playerDetail.kpi.load")}      value={summary.stats.load || "-"} />
+      <GoalkeeperMetrics stats={summary.stats} />
     </div>
   );
 }
@@ -1032,7 +1034,7 @@ export function PlayerStatsTab({ summary, seasonSeries }) {
             <div key={`${event.type}-${event.id}`} style={sectionStyles.listItem}>
               <Badge tone={event.type === "Partita" ? "orange" : "green"}>{event.type}</Badge>
               <strong>{event.title}</strong>
-              <span>{formatShortDate(event.date)} · {data.status} · {data.minutes || 0} min · {data.goals || 0} {t("pages.playerDetail.kpi.goals").toLowerCase()} · {data.assists || 0} {t("pages.playerDetail.kpi.assists").toLowerCase()}</span>
+              <span>{formatShortDate(event.date)} · {data.status} · {data.minutes || 0} min · {summary.stats.isGoalkeeper && event.type === "Partita" ? (data.goalsConceded ?? "—") : (data.goals || 0)} {t(summary.stats.isGoalkeeper && event.type === "Partita" ? "pages.dashboard.goalsConcededLabel" : "pages.playerDetail.kpi.goals").toLowerCase()} · {data.assists || 0} {t("pages.playerDetail.kpi.assists").toLowerCase()}</span>
             </div>
           ))}
         </div>

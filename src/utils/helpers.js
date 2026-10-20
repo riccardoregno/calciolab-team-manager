@@ -793,6 +793,11 @@ export function normalizeAppSettings(settings = {}){
       programs: settings.playerPortal?.programs || {},
       goals: settings.playerPortal?.goals || {},
       staffNotes: settings.playerPortal?.staffNotes || {},
+      playerPrefs: settings.playerPortal?.playerPrefs || {},
+    },
+    seasonGoals: {
+      teamGoals: Array.isArray(settings.seasonGoals?.teamGoals) ? settings.seasonGoals.teamGoals : [],
+      playerGoals: Array.isArray(settings.seasonGoals?.playerGoals) ? settings.seasonGoals.playerGoals : [],
     },
     sponsorHub: {
       enabled: Boolean(settings.sponsorHub?.enabled),
@@ -1694,7 +1699,8 @@ function normalizeStatsText(value) {
     .toLowerCase();
 }
 
-function isLeagueStatsMatch(match) {
+export function isLeagueStatsMatch(match) {
+  if (match?.isFriendly === true || match?.friendly === true) return false;
   const searchable = normalizeStatsText([
     match?.matchKind,
     match?.match_kind,
@@ -1709,6 +1715,114 @@ function isLeagueStatsMatch(match) {
   if (!normalizeStatsText(match?.matchKind || match?.type)) return true;
 
   return /\b(campionato|girone|league|eccellenza|promozione|serie)\b/.test(searchable);
+}
+
+export function isGoalkeeper(player) {
+  const role = String(player?.role || player?.position || "").trim().toLowerCase();
+  return role.includes("portier") || ["por", "gk", "goalkeeper"].includes(role);
+}
+
+export function hasMatchParticipation(data = {}) {
+  return [data.minutes_played ?? data.minutes, data.goals, data.assists,
+    data.yellow_cards ?? data.yellowCards, data.red_cards ?? data.redCards,
+    data.goals_conceded ?? data.goalsConceded].some((value) => Number(value) > 0);
+}
+
+// Match rows are authoritative per player and match; missing rows use local data.
+// A saved zero-minute row is a non-appearance, even if the player was called up.
+export function getPlayerMatchEntries(player, matches = [], rows = []) {
+  if (!player) return [];
+  const byMatch = new Map(rows
+    .filter((row) => row.player_id == null || String(row.player_id) === String(player.id))
+    .map((row) => [String(row.match_id), row]));
+  const today = localDateString();
+  return matches.filter((match) => isLeagueStatsMatch(match) && normalizeStatsDate(match.date) && normalizeStatsDate(match.date) <= today)
+    .flatMap((event) => {
+      const local = event.attendance?.[player.id];
+      const db = byMatch.get(String(event.id));
+      const source = db || local;
+      if (!source) return [];
+      const played = hasMatchParticipation(source);
+      return [{ event, data: {
+        ...(local || {}),
+        status: played ? "Presente" : (local?.status === "Presente" ? "Non impiegato" : local?.status || "Non impiegato"),
+        minutes: Number(source.minutes_played ?? source.minutes ?? 0),
+        goals: Number(source.goals || 0),
+        assists: Number(source.assists || 0),
+        yellowCards: Number(source.yellow_cards ?? source.yellowCards ?? 0),
+        redCards: Number(source.red_cards ?? source.redCards ?? 0),
+        goalsConceded: source.goals_conceded ?? source.goalsConceded ?? null,
+        rating: source.rating ?? null,
+      } }];
+    });
+}
+
+export function getGoalkeeperRecord(player, matches = [], players = [], rows = []) {
+  const keepers = [...players.filter(isGoalkeeper)];
+  if (!keepers.some((keeper) => String(keeper.id) === String(player?.id))) keepers.push(player);
+  const byMatch = new Map();
+  for (const row of rows) {
+    const mid = String(row.match_id);
+    if (!byMatch.has(mid)) byMatch.set(mid, new Map());
+    byMatch.get(mid).set(String(row.player_id ?? player?.id), row);
+  }
+  let total = 0, appearances = 0, knownAppearances = 0, cleanSheets = 0;
+  let rateGoals = 0, rateMinutes = 0, rateMatches = 0;
+  for (const match of matches) {
+    if (!isLeagueStatsMatch(match) || !normalizeStatsDate(match.date) || normalizeStatsDate(match.date) > localDateString()) continue;
+    const dataFor = (keeper) => byMatch.get(String(match.id))?.get(String(keeper.id)) ?? match.attendance?.[keeper.id];
+    const played = keepers.filter((keeper) => hasMatchParticipation(dataFor(keeper)));
+    if (!played.some((keeper) => String(keeper.id) === String(player?.id))) continue;
+    appearances += 1;
+    const data = dataFor(player);
+    const minutes = Number(data?.minutes_played ?? data?.minutes ?? 0);
+    const duration = Number(match.duration) > 0 ? Number(match.duration) : 90;
+    const explicit = data?.goals_conceded ?? data?.goalsConceded;
+    let goals = null;
+    if (explicit != null && String(explicit).trim() !== "" && Number.isInteger(Number(explicit)) && Number(explicit) >= 0) {
+      goals = Number(explicit);
+    } else {
+      const result = parseMatchResult(match.result, match);
+      if (result && (result.goalsAgainst === 0 || (played.length === 1 && minutes >= duration))) goals = result.goalsAgainst;
+    }
+    if (goals === null) continue;
+    knownAppearances += 1;
+    total += goals;
+    // A clean sheet requires a complete game, not just a goalless partial stint.
+    if (goals === 0 && minutes >= duration) cleanSheets += 1;
+    if (minutes > 0) { rateGoals += goals; rateMinutes += minutes; rateMatches += 1; }
+  }
+  return {
+    appearances, knownAppearances, missingAppearances: appearances - knownAppearances,
+    goalsConceded: appearances === knownAppearances ? total : null,
+    knownGoalsConceded: total, cleanSheets, rateMatches, rateMinutes,
+    goalsAgainstPer90: rateMinutes > 0 ? Math.round(rateGoals * 90 / rateMinutes * 100) / 100 : null,
+    complete: appearances > 0 && knownAppearances === appearances && rateMatches === appearances,
+  };
+}
+
+export function getGoalkeeperGoalsConceded(player, matches = [], players = [], rows = []) {
+  return getGoalkeeperRecord(player, matches, players, rows).goalsConceded;
+}
+
+export function getPlayerMatchTotals(player, matches = [], rows = [], players = []) {
+  const entries = getPlayerMatchEntries(player, matches, rows);
+  const totals = entries.reduce((acc, { data }) => {
+    if (data.status === "Presente") acc.presences += 1;
+    acc.minutes += data.minutes;
+    acc.goals += data.goals;
+    acc.assists += data.assists;
+    acc.yellowCards += data.yellowCards;
+    acc.redCards += data.redCards;
+    if (Number(data.rating) > 0) acc.ratings.push(Number(data.rating));
+    return acc;
+  }, { presences: 0, minutes: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0, ratings: [] });
+  const { ratings, ...stats } = totals;
+  const goalkeeperRecord = isGoalkeeper(player) ? getGoalkeeperRecord(player, matches, players, rows) : null;
+  return { ...stats, isGoalkeeper: isGoalkeeper(player),
+    goalkeeperRecord, goalsConceded: goalkeeperRecord?.goalsConceded ?? null,
+    avgRating: ratings.length ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1) : null,
+  };
 }
 
 /**
@@ -1770,10 +1884,10 @@ export function getPlayerSeasonSeries(player, { sessions = [], matches = [], phy
   return { events, tests };
 }
 
-export function getPlayerSummary(player, { sessions = [], matches = [], physicalTests = [], playerMatchesDB = [] } = {}){
+export function getPlayerSummary(player, { sessions = [], matches = [], physicalTests = [], playerMatchesDB = [], players = [] } = {}){
   if(!player){
     return {
-      stats: { presences: 0, minutes: 0, goals: 0, assists: 0, avgRpe: 0, load: 0 },
+      stats: { presences: 0, minutes: 0, goals: 0, assists: 0, isGoalkeeper: false, goalsConceded: null, avgRating: null, avgRpe: 0, load: 0, trainingPresences: 0, totalTrainings: 0, trainingPct: null },
       latestTests: [],
       recentEvents: [],
       alerts: [],
@@ -1792,40 +1906,31 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
   };
   const leagueMatches = matches.filter(isLeagueStatsMatch);
   const events = [...sessions, ...leagueMatches].filter((event) => event.date && event.date <= todayStr);
-  const dbMatchesById = playerMatchesDB.reduce((acc, row) => {
-    acc[String(row.match_id)] = row;
-    return acc;
-  }, {});
-  const playerEvents = events
-    .map((event) => {
-      const db = event.type === "Partita" ? dbMatchesById[String(event.id)] : null;
-      const attendanceData = event.attendance?.[player.id] ?? event.attendance?.[String(player.id)];
-      const data = db
-        ? {
-            ...(attendanceData || {}),
-            status: "Presente",
-            minutes: Number(db.minutes_played || 0),
-            goals: Number(db.goals || 0),
-            assists: Number(db.assists || 0),
-            yellowCards: Number(db.yellow_cards || 0),
-            redCards: Number(db.red_cards || 0),
-            rating: db.rating ?? attendanceData?.rating ?? null,
-          }
-        : attendanceData;
-      if(!data) return null;
-      return { event, data };
-    })
-    .filter(Boolean);
+  const matchEntries = getPlayerMatchEntries(player, leagueMatches, playerMatchesDB)
+    .map(({ event, data }) => ({ event, data: {
+      ...data,
+      goalsConceded: isGoalkeeper(player)
+        ? getGoalkeeperGoalsConceded(player, [event], players, playerMatchesDB)
+        : null,
+    } }));
+  const matchTotals = getPlayerMatchTotals(player, leagueMatches, playerMatchesDB, players);
+  const playerEvents = [
+    ...events.filter((event) => event.type !== "Partita")
+      .map((event) => ({ event, data: event.attendance?.[player.id] }))
+      .filter(({ data }) => data),
+    ...matchEntries,
+  ];
 
   const friendlyMatches = matches.filter(isFriendlyMatch);
-  // Sessioni allenamento passate + amichevoli (strettamente < oggi)
-  const trainingSessions = [...sessions, ...friendlyMatches].filter((s) => ((s.type || "Allenamento") === "Allenamento" || isFriendlyMatch(s)) && s.date && s.date < todayStr);
+  const nowTime = new Date().toTimeString().slice(0, 5);
+  const trainingSessions = [...sessions, ...friendlyMatches]
+    .filter((session) => (session.type || "Allenamento") === "Allenamento" || isFriendlyMatch(session))
+    .map((session) => ({ ...session, date: normalizeStatsDate(session.date) }))
+    .filter((session) => isCompletedTrainingSession(session, todayStr, nowTime));
   const pid = String(player.id);
-  const isJuniores = (player.gruppo || "prima") === "juniores";
   const trainingPresences = trainingSessions.filter((s) => {
     const entry = s.attendance?.[pid] ?? s.attendance?.[player.id];
-    const status = entry?.status;
-    if (!status) return !isJuniores; // default: prima = presente, juniores = assente
+    const status = entry?.status || getTrainingDefaultStatus(player, s.date);
     return status === "Presente" || status === "Recupero";
   }).length;
   const totalTrainings = trainingSessions.length;
@@ -1834,7 +1939,6 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
   const rpeValues = playerEvents
     .map(({ data }) => Number(data.rpe || 0))
     .filter(Boolean);
-  const minutes = playerEvents.reduce((sum, { data }) => sum + Number(data.minutes || 0), 0);
   const load = playerEvents.reduce((sum, { event, data }) => {
     const duration = Number(data.minutes || event.duration || 0);
     const rpe = Number(data.rpe || 0);
@@ -1858,10 +1962,7 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
 
   return {
     stats: {
-      presences: playerEvents.filter(({ event, data }) => event.type === "Partita" && data.status === "Presente").length,
-      minutes,
-      goals: playerEvents.reduce((sum, { data }) => sum + Number(data.goals || 0), 0),
-      assists: playerEvents.reduce((sum, { data }) => sum + Number(data.assists || 0), 0),
+      ...matchTotals,
       avgRpe: rpeValues.length ? Math.round(rpeValues.reduce((sum, value) => sum + value, 0) / rpeValues.length) : 0,
       load,
       trainingPresences,

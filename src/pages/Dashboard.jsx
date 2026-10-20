@@ -6,6 +6,9 @@ import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { Activity, ArrowRight, CalendarDays, CheckCircle2, Circle, Eye, EyeOff, Settings2, Users } from "lucide-react";
 
+import { useMinuteClock } from "../hooks/useMinuteClock";
+import { buildCoachTasks, summarizeMatchRsvps } from "../utils/coachTasks";
+import CoachActionQueue from "../components/dashboard/CoachActionQueue";
 import CoachFocusCard from "../components/dashboard/CoachFocusCard";
 import CoachAlertList from "../components/dashboard/CoachAlertList";
 import { buildCoachAgenda, completeSectionOrder, prioritizeCoachAlerts } from "../utils/coachAgenda";
@@ -17,6 +20,7 @@ import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
 import { SkeletonStatCard } from "../components/ui/Skeleton";
 import { fetchMatchRsvps } from "../services/rsvp";
+import { usePlayerMatches } from "../hooks/usePlayerMatches";
 import { useAuth } from "../hooks/useAuth";
 import { loadAllPlayerStats, loadAllPlayerAvgRatings, loadTeamPlayerMatches } from "../services/playerProfile";
 import { getTeamWellnessToday } from "../services/wellness";
@@ -209,16 +213,16 @@ function Dashboard({
       loadAllPlayerStats(auth.team.id),
       loadAllPlayerAvgRatings(auth.team.id),
       loadTeamPlayerMatches(auth.team.id),
-    ]).then(([{ data, error }, { data: ratingsData }, { data: matchRows }]) => {
+    ]).then(([{ data, error }, { data: ratingsData }, { data: matchRows, error: matchError }]) => {
       if (!active) return;
-      if (error) setStatsError(error.message || t("pages.dashboard.statsLoadError"));
+      if (error || matchError) setStatsError(error?.message || matchError?.message || t("pages.dashboard.statsLoadError"));
       setPlayerStatsMap(data || {});
       setPlayerRatingsMap(ratingsData || {});
       setPlayerMatchRows(matchRows || []);
       setStatsLoading(false);
-    });
+    }).catch((error) => { if (active) { setStatsError(error.message); setStatsLoading(false); } });
     return () => { active = false; };
-  }, [auth.team?.id, t]);
+  }, [auth.team?.id, matches, t]);
 
   useEffect(() => {
     if (!auth.team?.id) return;
@@ -297,11 +301,11 @@ function Dashboard({
 
   const today = todayStart();
   const todayTime = today.getTime();
-  const agendaMinute = Math.floor(new Date().getTime() / 60000) * 60000;
+  const agendaMinute = useMinuteClock();
   const agenda = useMemo(() => buildCoachAgenda(sessions, matches, new Date(agendaMinute)), [sessions, matches, agendaMinute]);
   const { nextEvent, nextMatch } = agenda;
 
-  const [nextMatchRsvpState, setNextMatchRsvpState] = useState({ matchId: "", rsvps: [] });
+  const [nextMatchRsvpState, setNextMatchRsvpState] = useState({ matchId: "", rsvps: [], error: null });
   const nextMatchId = String(nextMatch?.id || "");
   const nextMatchRsvps = useMemo(
     () => nextMatchRsvpState.matchId === nextMatchId ? nextMatchRsvpState.rsvps : [],
@@ -310,29 +314,17 @@ function Dashboard({
   useEffect(() => {
     if (!auth.team?.id || !nextMatchId) return;
     let active = true;
-    fetchMatchRsvps({ teamId: auth.team.id, matchId: nextMatchId }).then(({ rsvps }) => {
+    fetchMatchRsvps({ teamId: auth.team.id, matchId: nextMatchId }).then(({ rsvps, error }) => {
       if (!active) return;
-      setNextMatchRsvpState({ matchId: nextMatchId, rsvps: rsvps || [] });
-    });
+      setNextMatchRsvpState({ matchId: nextMatchId, rsvps: rsvps || [], error });
+    }).catch((error) => { if (active) setNextMatchRsvpState({ matchId: nextMatchId, rsvps: [], error }); });
     return () => { active = false; };
   }, [auth.team?.id, nextMatchId]);
 
   const nextMatchRsvpSummary = useMemo(() => {
-    const convocatiIds = Array.isArray(nextMatch?.convocazione?.playerIds)
-      ? nextMatch.convocazione.playerIds.map(String)
-      : [];
-    if (!convocatiIds.length) return null;
-
-    const byPlayer = new Map(nextMatchRsvps.map((r) => [String(r.player_id), r.response]));
-    let available = 0, unavailable = 0, pending = 0;
-    for (const id of convocatiIds) {
-      const response = byPlayer.get(id);
-      if (response === "yes") available += 1;
-      else if (response === "no") unavailable += 1;
-      else pending += 1;
-    }
-    return { total: convocatiIds.length, available, unavailable, pending };
-  }, [nextMatch, nextMatchRsvps]);
+    if (nextMatchRsvpState.matchId !== nextMatchId || nextMatchRsvpState.error) return null;
+    return summarizeMatchRsvps(nextMatch, nextMatchRsvps);
+  }, [nextMatch, nextMatchRsvps, nextMatchRsvpState, nextMatchId]);
 
   const effectiveTeamId = teamId || auth.team?.id || null;
   useEffect(() => {
@@ -350,8 +342,9 @@ function Dashboard({
     const pendingRequest = futureMatches.length
       ? Promise.all(
         futureMatches.map(async (match) => {
-          const { rsvps } = await fetchMatchRsvps({ teamId: effectiveTeamId, matchId: match.id });
-          const pending = (rsvps || []).filter((rsvp) => !rsvp.response).length;
+          const { rsvps, error } = await fetchMatchRsvps({ teamId: effectiveTeamId, matchId: match.id });
+          if (error) return null;
+          const pending = summarizeMatchRsvps(match, rsvps)?.pending || 0;
           return pending > 0 ? { match, pending } : null;
         })
       )
@@ -371,6 +364,10 @@ function Dashboard({
   const upcomingWeekAgenda = agenda.weekEvents.slice(0, 5);
   const upcomingWeekEvents = agenda.weekEvents.length;
   const openCorrections = getOpenPostMatchCorrections(sessions, matches);
+  const operationalTasks = useMemo(() => buildCoachTasks({ sessions, matches, players,
+    matchRows: playerMatchRows, canCheckMatchStats: !statsLoading && !statsError,
+    now: new Date(agendaMinute),
+  }), [sessions, matches, players, playerMatchRows, statsLoading, statsError, agendaMinute]);
   const availablePlayers = primaPlayers.filter((p) => !p.status || p.status === "Disponibile").length;
   const recentActivities = agenda.pastEvents.slice(0, 4);
   const coachAlerts = useMemo(() => prioritizeCoachAlerts([
@@ -1209,6 +1206,9 @@ function Dashboard({
         />
       )}
 
+      {["owner", "headCoach", "assistantCoach"].includes(currentRole) && !loading &&
+        <CoachActionQueue tasks={operationalTasks} loading={statsLoading} onOpen={(path) => navigate(path)} />}
+
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
         <div>
           <strong style={{ display: "block", fontSize: 14 }}>{simpleView ? t("pages.dashboard.essentialMode") : t("pages.dashboard.completeMode")}</strong>
@@ -1360,7 +1360,9 @@ function PlayerRoleDashboard({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const player = players[0];
-  const summary = getPlayerSummary(player, { sessions, matches, physicalTests });
+  const auth = useAuth();
+  const { rows } = usePlayerMatches(auth.team?.id, String(player?.id || ""), matches);
+  const summary = getPlayerSummary(player, { sessions, matches, physicalTests, players, playerMatchesDB: rows });
   const latestTest = summary.latestTests[0];
   const reference = getPhysicalReference(latestTest, appSettings.coachParameters);
   const nextEvents = [...sessions, ...matches]
@@ -1394,7 +1396,7 @@ function PlayerRoleDashboard({
 
           <div style={roleDashboardStyles.kpiGrid}>
             <MiniStatus label={t("common.minutes")} value={summary.stats.minutes} tone="blue" />
-            <MiniStatus label={t("common.goals")} value={summary.stats.goals} tone="green" />
+            <MiniStatus label={t(summary.stats.isGoalkeeper ? "pages.dashboard.goalsConcededLabel" : "common.goals")} value={summary.stats.isGoalkeeper ? (summary.stats.goalsConceded ?? "—") : summary.stats.goals} tone={summary.stats.isGoalkeeper ? "red" : "green"} />
             <MiniStatus label={t("common.assists")} value={summary.stats.assists} tone="purple" />
           </div>
         </AppCard>

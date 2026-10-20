@@ -1,4 +1,54 @@
 export const it = {
+  coachTasks: {
+  "title": "Da completare",
+  "scope": "Prossima gara e dati degli ultimi 14 giorni.",
+  "callup": "Prepara la convocazione",
+  "result": "Inserisci il risultato",
+  "stats": "Minutaggi da completare: {{count}}",
+  "attendance": "Presenze da verificare: {{count}}",
+  "empty": "Nessun promemoria disponibile.",
+  "checking": "Controllo dei dati gara in corso…",
+  "remaining": "Altri {{count}} promemoria appariranno completando quelli mostrati.",
+  "reviewConfirmations": "Verifica le conferme"
+},
+
+  navigationPrefs: {
+  "searchLabel": "Cerca nel menu",
+  "searchPlaceholder": "Statistiche, presenze…",
+  "favorites": "Preferiti",
+  "results": "Risultati",
+  "noResults": "Nessuna sezione trovata.",
+  "empty": "Usa la stella accanto a una sezione per ritrovarla qui.",
+  "add": "Aggiungi {{label}} ai preferiti",
+  "remove": "Rimuovi {{label}} dai preferiti",
+  "limit": "Puoi salvare fino a 8 preferiti.",
+  "device": "Preferenza personale su questo dispositivo",
+  "temporary": "Memoria non disponibile: questi preferiti sono temporanei."
+},
+
+  goalkeeperStats: {
+  "cleanSheetsLabel": "Porte inviolate",
+  "rateLabel": "Gol subiti / 90 min",
+  "coverage": "Dati gol subiti: {{known}}/{{total}} · Gare incluse nella media: {{rate}}",
+  "partial": "Dati parziali: le gare senza dati non valgono zero.",
+  "none": "Nessuna presenza registrata.",
+  "definition": "Porte inviolate: gare intere senza subire reti. La media tiene conto dei minuti giocati.",
+  "comparisonIncomplete": "Dati incompleti: le medie sono calcolate sulle sole gare note e non assegnano punti nel confronto."
+},
+
+  saveStatus: {
+  "loading": "Caricamento dati…",
+  "saving": "Sincronizzazione in corso…",
+  "online": "Salvato online",
+  "device": "Salvato su questo dispositivo",
+  "pending": "Salvato sul dispositivo · in attesa di sincronizzazione",
+  "retry": "Copia sul dispositivo · sincronizzazione da riprovare",
+  "localError": "Copia locale non disponibile: non chiudere prima del salvataggio online",
+  "onlineNoLocal": "Salvato online · copia locale non disponibile",
+  "lastSaved": "Ultima conferma online alle {{time}}",
+  "retryAction": "Sincronizza ora"
+},
+
   objectiveStatus: {
     todo:   "Da lavorare",
     worked: "Lavorato",
@@ -2401,7 +2451,7 @@ export const it = {
       btnSave: "Salva statistiche",
       btnSaving: "Salvataggio...",
       successMsg: "Statistiche salvate correttamente.",
-      errorMsg: "Errore durante il salvataggio. Controlla la console.",
+      errorMsg: "Salvataggio online non riuscito. Controlla la connessione e riprova.",
       loading: "Caricamento...",
       noPlayersMsg: "Nessun giocatore in distinta.",
       matchSheetLink: "Scheda gara",
@@ -2425,6 +2475,16 @@ export const it = {
       notesPlaceholder: "Nota libera",
       errMinutes: "Minuti fuori range (0–120)",
       errGoalsNeg: "Gol non può essere negativo",
+      errGoalsConceded: "I gol subiti devono essere un numero intero da zero in su",
+      savingNow: "Salvataggio delle statistiche in corso…",
+      draftSaved: "Bozza delle statistiche salvata su questo dispositivo",
+      draftRetry: "Bozza sul dispositivo · salvataggio online da riprovare",
+      draftFailed: "Bozza non salvata: non chiudere prima del salvataggio online",
+      savedOnline: "Statistiche salvate online",
+      noPendingChanges: "Statistiche: nessuna modifica in attesa",
+      goalsConcededHint: "Portieri: GS indica i gol subiti individuali. Inserisci 0 se non ha subito gol; lascia vuoto se il dato non è disponibile.",
+      loadError: "Impossibile caricare le statistiche salvate. Riprova prima di modificarle; le bozze sono conservate.",
+      retryLoad: "Riprova",
       errAssistsNeg: "Assist non può essere negativo",
       errYellows: "Gialli: max 2 per partita",
       errReds: "Rossi: max 1 per partita",

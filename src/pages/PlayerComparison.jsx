@@ -5,8 +5,8 @@ import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import { styles } from "../styles/index.js";
 import { useTranslation } from "../i18n";
-import { getPlayerSummary, normalizeAppSettings } from "../utils/helpers";
-import { loadAllPlayerStats, loadTeamPlayerMatches } from "../services/playerProfile";
+import { getPlayerSummary, isGoalkeeper } from "../utils/helpers";
+import { loadTeamPlayerMatches } from "../services/playerProfile";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function age(birthDate) {
@@ -22,118 +22,8 @@ function statusTone(status) {
   return "blue";
 }
 
-function buildComparableStats(localStats, dbStats, matchRows = []) {
-  const fromRows = matchRows.reduce((acc, row) => ({
-    appearances: acc.appearances + (hasMatchContribution(row) ? 1 : 0),
-    minutes: acc.minutes + Number(row.minutes_played || 0),
-    goals: acc.goals + Number(row.goals || 0),
-    assists: acc.assists + Number(row.assists || 0),
-  }), { appearances: 0, minutes: 0, goals: 0, assists: 0 });
-
-  if (matchRows.length > 0) {
-    return {
-      ...localStats,
-      presences: fromRows.appearances,
-      minutes: fromRows.minutes,
-      goals: fromRows.goals,
-      assists: fromRows.assists,
-    };
-  }
-
-  if (!dbStats) return localStats;
-
-  return {
-    ...localStats,
-    minutes:   Number(dbStats.minutes_played ?? localStats.minutes ?? 0),
-    goals:     Number(dbStats.goals ?? localStats.goals ?? 0),
-    assists:   Number(dbStats.assists ?? localStats.assists ?? 0),
-  };
-}
-
-function hasMatchContribution(row) {
-  return [
-    row.minutes_played,
-    row.goals,
-    row.assists,
-    row.yellow_cards,
-    row.red_cards,
-    row.rating,
-  ].some((value) => Number(value || 0) > 0);
-}
-
-function isFriendlyMatch(match) {
-  if (match?.isFriendly === true || match?.friendly === true) return true;
-  const fields = [match?.matchKind, match?.match_kind, match?.competition, match?.category, match?.kind, match?.title, match?.notes];
-  return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
-}
-
-function normalizeStatus(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function isPresentStatus(value) {
-  const status = normalizeStatus(value);
-  return status === "presente" || status === "recupero" || status === "titolare" || status === "entrato";
-}
-
-function isAbsentStatus(value) {
-  const status = normalizeStatus(value);
-  return status === "assente" || status === "infortunato" || status === "squalificato" || status === "permesso";
-}
-
-function getMatchPlayerIds(match) {
-  return [...new Set([
-    ...(match?.lineup?.starterIds || []),
-    ...(match?.lineup?.benchIds || []),
-    ...(match?.lineup?.calledUpIds || []),
-  ].map(String).filter(Boolean))];
-}
-
-function getLineupAppearances(player, matches) {
-  if (!player) return 0;
-  const pid = String(player.id);
-  return matches.filter((match) => {
-    if (isFriendlyMatch(match)) return false;
-    const attendance = match?.attendance?.[pid] ?? match?.attendance?.[player.id];
-    if (isAbsentStatus(attendance?.status)) return false;
-    if (isPresentStatus(attendance?.status)) return true;
-    return getMatchPlayerIds(match).includes(pid);
-  }).length;
-}
-
-function normalizeDate(value) {
-  if (!value) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return String(value);
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
-}
-
-function getTrainingPct(player, sessions, matches) {
-  if (!player) return null;
-  const pid = String(player.id);
-  const today = new Date().toISOString().slice(0, 10);
-  const isJunior = (player.gruppo || "prima") === "juniores";
-  const trainings = [...sessions, ...matches.filter(isFriendlyMatch)]
-    .filter((event) => ((event.type || "Allenamento") === "Allenamento" || isFriendlyMatch(event)))
-    .map((event) => ({ ...event, date: normalizeDate(event.date) }))
-    .filter((event) => event.date && event.date <= today);
-
-  let present = 0;
-  let total = 0;
-  trainings.forEach((event) => {
-    const entry = event.attendance?.[pid] ?? event.attendance?.[player.id];
-    const status = entry?.status;
-    if (isJunior && !status) return;
-    total += 1;
-    if (status ? isPresentStatus(status) : true) present += 1;
-  });
-
-  return total > 0 ? Math.round((present / total) * 100) : null;
-}
-
 // ─── Confronta una singola metrica ───────────────────────────────────────────
-function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) => v, icon }) {
+function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) => v, icon, compareValues = true }) {
   const hasA = valueA !== null && valueA !== undefined && valueA !== "";
   const hasB = valueB !== null && valueB !== undefined && valueB !== "";
   const numA = hasA ? Number(valueA) : 0;
@@ -141,7 +31,7 @@ function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) 
 
   let winA = false;
   let winB = false;
-  if (hasA && hasB && numA !== numB) {
+  if (compareValues && hasA && hasB && numA !== numB) {
     if (higherIsBetter) { winA = numA > numB; winB = numB > numA; }
     else                { winA = numA < numB; winB = numB < numA; }
   }
@@ -248,52 +138,44 @@ function PlayerHeader({ player, side }) {
 }
 
 // ─── Pagina principale ────────────────────────────────────────────────────────
-export default function PlayerComparison({ players = [], sessions = [], matches = [], physicalTests = [], teamId = null, appSettings = {} }) {
+export default function PlayerComparison({ players = [], sessions = [], matches = [], physicalTests = [], teamId = null }) {
   const { t } = useTranslation();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
-  const activeSeason = normalizeAppSettings(appSettings).workspaceProfile.currentSeason;
 
   const [idA, setIdA] = useState(params.get("a") || players[0]?.id || "");
   const [idB, setIdB] = useState(params.get("b") || players[1]?.id || "");
-  const [seasonStats, setSeasonStats] = useState({});
   const [playerMatchRows, setPlayerMatchRows] = useState([]);
 
   const playerA = useMemo(() => players.find((p) => String(p.id) === String(idA)), [players, idA]);
   const playerB = useMemo(() => players.find((p) => String(p.id) === String(idB)), [players, idB]);
 
   const summaryA = useMemo(
-    () => getPlayerSummary(playerA, { sessions, matches, physicalTests }),
-    [playerA, sessions, matches, physicalTests]
+    () => getPlayerSummary(playerA, { sessions, matches, physicalTests, playerMatchesDB: playerMatchRows, players }),
+    [playerA, sessions, matches, physicalTests, playerMatchRows, players]
   );
   const summaryB = useMemo(
-    () => getPlayerSummary(playerB, { sessions, matches, physicalTests }),
-    [playerB, sessions, matches, physicalTests]
+    () => getPlayerSummary(playerB, { sessions, matches, physicalTests, playerMatchesDB: playerMatchRows, players }),
+    [playerB, sessions, matches, physicalTests, playerMatchRows, players]
   );
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      teamId ? loadAllPlayerStats(teamId, activeSeason) : Promise.resolve({ data: {} }),
-      teamId ? loadTeamPlayerMatches(teamId) : Promise.resolve({ data: [] }),
-    ]).then(([statsResult, matchesResult]) => {
-      if (!active) return;
-      setSeasonStats(statsResult.data || {});
-      setPlayerMatchRows(matchesResult.data || []);
+    (teamId ? loadTeamPlayerMatches(teamId) : Promise.resolve({ data: [] })).then((result) => {
+      if (active) setPlayerMatchRows(result.data || []);
     });
 
     return () => { active = false; };
-  }, [activeSeason, teamId]);
+  }, [teamId, matches]);
 
-  const rowsA = playerMatchRows.filter((row) => String(row.player_id) === String(playerA?.id || ""));
-  const rowsB = playerMatchRows.filter((row) => String(row.player_id) === String(playerB?.id || ""));
-  const statsA = buildComparableStats(summaryA.stats, seasonStats[String(playerA?.id || "")], rowsA);
-  const statsB = buildComparableStats(summaryB.stats, seasonStats[String(playerB?.id || "")], rowsB);
-
-  const appearancesA = rowsA.length > 0 ? statsA.presences : getLineupAppearances(playerA, matches);
-  const appearancesB = rowsB.length > 0 ? statsB.presences : getLineupAppearances(playerB, matches);
-  const pctA = getTrainingPct(playerA, sessions, matches);
-  const pctB = getTrainingPct(playerB, sessions, matches);
+  const statsA = summaryA.stats;
+  const statsB = summaryB.stats;
+  const appearancesA = statsA.presences;
+  const appearancesB = statsB.presences;
+  const pctA = statsA.trainingPct;
+  const pctB = statsB.trainingPct;
+  const bothKeepers = isGoalkeeper(playerA) && isGoalkeeper(playerB);
+  const comparableKeepers = bothKeepers && statsA.goalkeeperRecord?.complete && statsB.goalkeeperRecord?.complete;
 
   // Test fisici: ultimi per tipo
   function latestTest(player, type) {
@@ -311,7 +193,7 @@ export default function PlayerComparison({ players = [], sessions = [], matches 
   const metrics = [
     { a: appearancesA,              b: appearancesB,              higher: true },
     { a: pctA,                       b: pctB,                       higher: true, requireBoth: true },
-    { a: statsA.goals,              b: statsB.goals,              higher: true },
+    { a: bothKeepers ? (comparableKeepers ? statsA.goalkeeperRecord.goalsAgainstPer90 : null) : statsA.goals, b: bothKeepers ? (comparableKeepers ? statsB.goalkeeperRecord.goalsAgainstPer90 : null) : statsB.goals, higher: !bothKeepers, requireBoth: true },
     { a: statsA.assists,            b: statsB.assists,            higher: true },
     { a: statsA.minutes,            b: statsB.minutes,            higher: true },
     { a: summaryA.stats.avgRpe,      b: summaryB.stats.avgRpe,      higher: false },
@@ -416,11 +298,25 @@ export default function PlayerComparison({ players = [], sessions = [], matches 
               format={(v) => `${v}%`}
             />
             <MetricRow
-              label={t("pages.playerComparison.metricGoals")}
+              label={t(bothKeepers ? "pages.dashboard.goalsConcededLabel" : "pages.playerComparison.metricGoals")}
               icon="🥅"
-              valueA={statsA.goals}
-              valueB={statsB.goals}
+              higherIsBetter={!bothKeepers}
+              compareValues={!bothKeepers}
+              valueA={bothKeepers ? statsA.goalsConceded : statsA.goals}
+              valueB={bothKeepers ? statsB.goalsConceded : statsB.goals}
             />
+            {bothKeepers && <>
+              <MetricRow label={t("goalkeeperStats.rateLabel")} icon="🥅" higherIsBetter={false} compareValues={Boolean(comparableKeepers)}
+                valueA={statsA.goalkeeperRecord?.goalsAgainstPer90} valueB={statsB.goalkeeperRecord?.goalsAgainstPer90} />
+              <MetricRow label={t("goalkeeperStats.cleanSheetsLabel")} icon="🧤" compareValues={Boolean(comparableKeepers)}
+                valueA={statsA.goalkeeperRecord?.cleanSheets} valueB={statsB.goalkeeperRecord?.cleanSheets} />
+              <p style={{ color: "#94a3b8", fontSize: 12 }}>{t(comparableKeepers ? "goalkeeperStats.definition" : "goalkeeperStats.comparisonIncomplete")}</p>
+            </>}
+            {!bothKeepers && (isGoalkeeper(playerA) || isGoalkeeper(playerB)) && (
+              <MetricRow label={t("pages.dashboard.goalsConcededLabel")} icon="🥅" higherIsBetter={false}
+                valueA={isGoalkeeper(playerA) ? statsA.goalsConceded : null}
+                valueB={isGoalkeeper(playerB) ? statsB.goalsConceded : null} />
+            )}
             <MetricRow
               label={t("pages.playerComparison.metricAssists")}
               icon="🎯"

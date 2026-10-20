@@ -9,10 +9,10 @@ import Topbar from "./components/layout/Topbar";
 import MobileBottomNav from "./components/layout/MobileBottomNav";
 import FeatureGate from "./components/premium/FeatureGate";
 import RoleGate from "./components/auth/RoleGate";
-import Badge from "./components/ui/Badge";
 import AppCard from "./components/ui/AppCard";
 import Button from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
+import SaveStatus from "./components/ui/SaveStatus";
 import PWAInstallBanner from "./components/ui/PWAInstallBanner";
 import PWAUpdateBanner from "./components/ui/PWAUpdateBanner";
 import PushBanner from "./components/ui/PushBanner";
@@ -130,20 +130,6 @@ function extractRemoteSubscription(team) {
   };
 }
 
-function formatSyncAge(iso, t) {
-  if (!iso) return "";
-  const seconds = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
-  if (seconds < 10) return t("common.syncJustNow");
-  if (seconds < 60) return t("common.syncSecondsAgo", { count: seconds });
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return t("common.syncMinutesAgo", { count: minutes });
-  return t("common.syncAt", {
-    time: new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-  });
-}
-
-// React Router v6 chiama cloneElement() sull'element prop della Route,
-// quindi null causa un crash. Questo componente ritorna null in modo sicuro.
 function Blank() { return null; }
 
 function App() {
@@ -191,6 +177,8 @@ function App() {
     storageSource,
     storageError,
     lastSyncedAt,
+    localSaveError,
+    remoteSaving,
     refreshTeamData,
     setPlayers,
     setExercises,
@@ -512,6 +500,7 @@ function App() {
           <div className="desktop-sidebar">
             <Sidebar
               appSettings={previewAppSettings}
+              navigationKey={`${auth.user?.id || "guest"}:${auth.team?.id || "none"}`}
               currentRole={auth.team?.role || null}
               chatUnread={chatUnread}
               onboardingCompleted={onboardingDone}
@@ -541,54 +530,9 @@ function App() {
           {/* Banner globale trial / billing — visibile su tutte le pagine */}
           <BillingBanner appSettings={previewAppSettings} />
 
-          {/* Banner mobile: avvisa quando i dati non sono sincronizzati con Supabase */}
-          {!loading && storageSource && storageSource !== "supabase" && (
-            <div className="mobile-only" style={styles.offlineBannerMobile}>
-              <span>
-                {storageSource === "partial"
-                  ? t("common.syncPartial")
-                  : storageSource === "pending-upload"
-                  ? t("common.syncPendingUpload")
-                  : t("common.offlineHint")}
-              </span>
-              {auth.team?.id && (
-                <button
-                  type="button"
-                  onClick={refreshTeamData}
-                  disabled={refreshing}
-                  style={styles.offlineBannerAction}
-                >
-                  {refreshing ? t("common.syncingNow") : t("common.syncNow")}
-                </button>
-              )}
-            </div>
-          )}
-
-          <div className="mobile-hide" style={styles.storageStatus}>
-            <Badge tone={storageSource === "supabase" ? "green" : storageSource === "partial" || storageSource === "pending-upload" ? "orange" : "red"}>
-              {loading || auth.authLoading
-                ? t("common.loadingData")
-                : storageSource === "supabase"
-                ? `Sync ${auth.team?.name || "Supabase"}`
-                : storageSource === "partial"
-                ? t("common.syncPartial")
-                : storageSource === "pending-upload"
-                ? t("common.syncPendingUpload")
-                : `⚡ ${t("common.localSave")}`}
-            </Badge>
-
-            {lastSyncedAt && storageSource === "supabase" && (
-              <span className="mobile-hide" style={styles.storageStatusText}>
-                {formatSyncAge(lastSyncedAt, t)}
-              </span>
-            )}
-
-            {storageError && storageSource !== "supabase" && (
-              <span style={{ ...styles.storageStatusText, maxWidth: 320 }}>
-                {storageSource === "partial" ? storageError : t("common.offlineHint")}
-              </span>
-            )}
-          </div>
+          <SaveStatus loading={loading || auth.authLoading} source={storageSource}
+            error={storageError} localError={localSaveError} saving={remoteSaving} refreshing={refreshing}
+            lastSyncedAt={lastSyncedAt} onRetry={auth.team?.id ? refreshTeamData : null} />
 
           <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>
@@ -767,6 +711,8 @@ function App() {
                   gate(coachRoles, <SeasonGoals
                     matches={matches}
                     players={players}
+                    appSettings={previewAppSettings}
+                    setAppSettings={setAppSettings}
                   />, "statistics")
                 }
               />
@@ -1126,7 +1072,7 @@ function App() {
       <DeepLinkHandler />
 
       {auth.team?.role !== "player" && (
-        <MobileBottomNav appSettings={previewAppSettings} onboardingCompleted={onboardingDone} currentRole={auth.team?.role || null} storageSource={storageSource} chatUnread={chatUnread} />
+        <MobileBottomNav navigationKey={`${auth.user?.id || "guest"}:${auth.team?.id || "none"}`} appSettings={previewAppSettings} onboardingCompleted={onboardingDone} currentRole={auth.team?.role || null} storageSource={storageSource} chatUnread={chatUnread} />
       )}
       <PWAInstallBanner />
       <PWAUpdateBanner />

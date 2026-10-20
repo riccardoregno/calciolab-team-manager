@@ -1,9 +1,9 @@
 /**
- * useSeasonGoals — persistenza obiettivi stagione in localStorage.
+ * useSeasonGoals — obiettivi condivisi nelle impostazioni della squadra.
  * Struttura: { teamGoals: [...], playerGoals: [...] }
  */
 import { useState, useCallback } from "react";
-import { createId } from "../utils/helpers";
+import { createId, normalizeAppSettings } from "../utils/helpers";
 
 const STORAGE_KEY = "calciolab_season_goals_v1";
 
@@ -11,28 +11,37 @@ function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { teamGoals: [], playerGoals: [] };
-    return JSON.parse(raw);
+    const data = JSON.parse(raw);
+    return {
+      teamGoals: Array.isArray(data?.teamGoals) ? data.teamGoals.filter((goal) => goal?.id) : [],
+      playerGoals: Array.isArray(data?.playerGoals) ? data.playerGoals.filter((goal) => goal?.id) : [],
+    };
   } catch {
     return { teamGoals: [], playerGoals: [] };
   }
 }
 
-function save(data) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch { /* no-op — localStorage unavailable (private mode or quota exceeded) */ }
-}
-
-export function useSeasonGoals() {
-  const [data, setData] = useState(() => load());
+export function useSeasonGoals(appSettings, setAppSettings, players = []) {
+  const data = normalizeAppSettings(appSettings).seasonGoals;
+  const [legacyData] = useState(load);
+  const playerIds = new Set(players.map((player) => String(player.id)));
+  const legacyTeamGoals = legacyData.teamGoals.filter((goal) => !data.teamGoals.some((item) => String(item.id) === String(goal.id)));
+  const legacyPlayerGoals = legacyData.playerGoals.filter((goal) => playerIds.has(String(goal.playerId)) && !data.playerGoals.some((item) => String(item.id) === String(goal.id)));
 
   const update = useCallback((updater) => {
-    setData((prev) => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      save(next);
-      return next;
+    setAppSettings((prev) => {
+      const settings = normalizeAppSettings(prev);
+      const next = typeof updater === "function" ? updater(settings.seasonGoals) : updater;
+      return { ...settings, seasonGoals: next };
     });
-  }, []);
+  }, [setAppSettings]);
+
+  function importLegacyGoals() {
+    update((prev) => ({
+      teamGoals: [...prev.teamGoals, ...legacyTeamGoals.filter((goal) => !prev.teamGoals.some((item) => String(item.id) === String(goal.id)))],
+      playerGoals: [...prev.playerGoals, ...legacyPlayerGoals.filter((goal) => !prev.playerGoals.some((item) => String(item.id) === String(goal.id)))],
+    }));
+  }
 
   // ── Team goals ──────────────────────────────────────────────────────────────
   function addTeamGoal(goal) {
@@ -81,6 +90,8 @@ export function useSeasonGoals() {
   return {
     teamGoals: data.teamGoals,
     playerGoals: data.playerGoals,
+    hasLegacyGoals: legacyTeamGoals.length + legacyPlayerGoals.length > 0,
+    importLegacyGoals,
     addTeamGoal,
     updateTeamGoal,
     deleteTeamGoal,

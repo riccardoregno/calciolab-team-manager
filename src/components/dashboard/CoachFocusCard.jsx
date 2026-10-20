@@ -33,7 +33,7 @@ export default function CoachFocusCard({ event, todayEvents = [], weekCount = 0,
           <Button onClick={event ? () => onOpenEvent(event) : onCreateSession}>{t(event ? isMatch ? "pages.dashboard.openMatch" : "pages.dashboard.focus.openTraining" : "pages.dashboard.newSession")}<ArrowRight size={17} aria-hidden="true" /></Button>
           <Button variant="ghost" onClick={onOpenCalendar}><CalendarDays size={16} aria-hidden="true" />{t("pages.dashboard.openCalendar")}</Button>
         </div>
-        {rsvpSummary && isMatch && <p className="coach-focus-rsvp">{t("pages.dashboard.rsvpAvailable", { count: rsvpSummary.available })} · {t("pages.dashboard.rsvpPending", { count: rsvpSummary.pending })} · {t("pages.dashboard.rsvpUnavailable", { count: rsvpSummary.unavailable })}</p>}
+        {rsvpSummary && isMatch && <p className="coach-focus-rsvp">{t("pages.dashboard.rsvpAvailable", { count: rsvpSummary.available })} · {t("pages.dashboard.rsvpPending", { count: rsvpSummary.pending })} · {t("pages.dashboard.rsvpUnavailable", { count: rsvpSummary.unavailable })}{rsvpSummary.pending > 0 && <button type="button" className="coach-agenda-all" onClick={() => onOpenAlert(`/match-convocation/${event.id}`)}>{t("coachTasks.reviewConfirmations")}<ArrowRight size={14} aria-hidden="true" /></button>}</p>}
         {children && <details className="coach-focus-details"><summary>{t("pages.dashboard.focus.matchDetails")}</summary><div>{children}</div></details>}
       </div>
       {showAgenda && nextEvents.length > 0 && <aside className="coach-focus-agenda" aria-label={t("pages.dashboard.focus.upNext")}>

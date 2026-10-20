@@ -252,14 +252,15 @@ function AddPlayerGoalModal({ onClose, onAdd, players }) {
 }
 
 // ─── Componente principale ────────────────────────────────────────────────────
-export default function SeasonGoals({ matches = [], players = [] }) {
+export default function SeasonGoals({ matches = [], players = [], appSettings, setAppSettings }) {
   const { t } = useTranslation();
   const { showToast, ToastContainer } = useToast();
   const {
     teamGoals, playerGoals,
     addTeamGoal, deleteTeamGoal,
     addPlayerGoal, updatePlayerGoal, deletePlayerGoal,
-  } = useSeasonGoals();
+    hasLegacyGoals, importLegacyGoals,
+  } = useSeasonGoals(appSettings, setAppSettings, players);
 
   const stats = getSeasonStats(matches);
   const [showTeamModal, setShowTeamModal]     = useState(false);
@@ -308,6 +309,17 @@ export default function SeasonGoals({ matches = [], players = [] }) {
         title={t("pages.seasonGoals.title")}
         subtitle={t("pages.seasonGoals.subtitle")}
       />
+
+      {hasLegacyGoals && (
+        <div style={{ marginBottom: 18 }}>
+          <button style={btnAdd} onClick={() => {
+            importLegacyGoals();
+            showToast("Obiettivi importati nella squadra corrente", "ok");
+          }}>
+            Importa in questa squadra gli obiettivi del dispositivo
+          </button>
+        </div>
+      )}
 
       {/* ── KPI stagione ── */}
       <AppCard style={{ marginBottom: 24 }}>

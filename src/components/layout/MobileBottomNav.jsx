@@ -1,5 +1,9 @@
+import { useNavigationFavorites } from "../../hooks/useNavigationFavorites";
+import { searchNavigationItems } from "../../utils/navigationSearch";
+import FavoriteButton from "./FavoriteButton";
 import { useState, useMemo, useRef } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { navigationAccent, navigationItemIsActive } from "../../constants/navigationAppearance";
 import { Activity, ChevronDown, ChevronUp, ClipboardList, LogOut, Menu, Search, Settings, Trophy, Users } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { isRoleAllowed } from "../../utils/helpers";
@@ -16,8 +20,9 @@ const CATEGORIES = [
   { id: "gestione",label: "Gestione", icon: Settings },
 ];
 
-export default function MobileBottomNav({ currentRole = "headCoach", storageSource = null, chatUnread = 0, onboardingCompleted = false, appSettings = {} }) {
+export default function MobileBottomNav({ currentRole = "headCoach", storageSource = null, chatUnread = 0, onboardingCompleted = false, appSettings = {}, navigationKey = "local" }) {
   const { t } = useTranslation();
+  const { favorites, toggleFavorite, limit, persistent } = useNavigationFavorites(navigationKey);
   const [open, setOpen] = useState(false);
   const isCompact = useIsMobile(1025);
   const drawerOpen = open && isCompact;
@@ -27,6 +32,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
   const [search, setSearch] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const effectiveRole = currentRole || "headCoach";
   const primaryItems = PRIMARY.filter((item) => isRoleAllowed(effectiveRole, item.roles));
   const coreItems = useMemo(
@@ -48,9 +54,12 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
     const allItems = [...coreItems, ...advancedItems];
 
     return q
-      ? allItems.filter((item) => t(item.labelKey).toLowerCase().includes(q))
+      ? searchNavigationItems(allItems, q, (item) => item.label || t(item.labelKey))
       : visibleItems;
   }, [advancedItems, coreItems, q, showAdvanced, t]);
+
+  const favoriteOptions = [...new Map([...primaryItems, ...coreItems, ...advancedItems].map((item) => [item.to, item])).values()];
+  const favoriteItems = favorites.map((path) => favoriteOptions.find((item) => item.to === path)).filter(Boolean);
 
   function goTo(path) {
     navigate(path);
@@ -73,9 +82,13 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
 
   function renderItem(item) {
     const Icon = item.icon;
+    const accent = navigationAccent(item.cat);
+    const active = navigationItemIsActive(item, location);
     return (
+      <div key={item.to} style={{ position: "relative", minWidth: 0, display: "flex" }}>
       <button
-        key={item.to}
+        className="mobile-navigation-tile"
+        aria-current={active ? "page" : undefined}
         onClick={() => goTo(item.to)}
         style={{
           display: "flex",
@@ -83,16 +96,17 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
           alignItems: "center",
           gap: 6,
           padding: "12px 8px",
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 8,
-          color: "#cbd5e1",
+          background: active ? accent.soft : "rgba(255,255,255,0.025)",
+          border: active ? `1px solid ${accent.color}` : "1px solid rgba(255,255,255,0.06)",
+          borderRadius: 12,
+          color: active ? "#ffffff" : "#cbd5e1",
           cursor: "pointer",
-          minHeight: 72,
+          minHeight: 92,
+          width: "100%",
           justifyContent: "center",
         }}
       >
-        <span style={{ position: "relative", width: 22, height: 22, display: "grid", placeItems: "center" }}>
+        <span style={{ position: "relative", width: 34, height: 34, borderRadius: 10, background: accent.soft, color: accent.color, display: "grid", placeItems: "center" }}>
           <Icon size={21} strokeWidth={2} aria-hidden="true" />
           {item.badge === "chat" && chatUnread > 0 && (
             <span style={{
@@ -118,6 +132,9 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
           {t(item.labelKey)}
         </span>
       </button>
+      <FavoriteButton active={favorites.includes(item.to)} label={item.label || t(item.labelKey)} onToggle={() => toggleFavorite(item.to, favoriteOptions.map((option) => option.to))} disabled={favoriteItems.length >= limit}
+        style={{ position: "absolute", top: 0, right: 0, minHeight: 36, background: "rgba(15,23,42,.6)" }} />
+      </div>
     );
   }
 
@@ -181,6 +198,12 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
               />
             </div>
 
+            {!q && <section aria-label={t("navigationPrefs.favorites")} style={{ marginBottom: 18 }}>
+              <p style={{ margin: "0 0 8px", color: "#f2c47d", fontSize: 11, fontWeight: 700 }}>{t("navigationPrefs.favorites")}</p>
+              {favoriteItems.length ? <div className="no-mobile-override" style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 8 }}>{favoriteItems.map(renderItem)}</div>
+                : <p style={{ color: "#94a3b8", fontSize: 12 }}>{t("navigationPrefs.empty")}</p>}
+              {!persistent && <p role="status" style={{ color: "#f2c47d", fontSize: 12 }}>{t("navigationPrefs.temporary")}</p>}
+            </section>}
             {q ? (
               /* ── risultati ricerca ── */
               filteredItems.length === 0 ? (
@@ -204,7 +227,7 @@ export default function MobileBottomNav({ currentRole = "headCoach", storageSour
                       <p style={{
                         margin: "0 0 8px",
                         fontSize: 11, fontWeight: 700,
-                        color: "#64748b", textTransform: "uppercase", letterSpacing: 0.6,
+                        color: navigationAccent(cat.id).color, textTransform: "uppercase", letterSpacing: 0.6,
                       }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
                           <CategoryIcon size={13} /> {cat.label}
