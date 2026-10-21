@@ -1,4 +1,14 @@
 export const en = {
+  productPolish: {
+  "taskCount": "{{count}} tasks to complete",
+  "showMoreTasks": "Show more tasks ({{count}})",
+  "showLessTasks": "Show less",
+  "playerSummary": "Player statistics",
+  "openProfile": "Open profile",
+  "openPlayer": "Open {{name}}’s profile",
+  "charts": "Trends and charts",
+  "chartsHint": "Goals, minutes and attendance"
+},
   coachTasks: {
   "title": "To complete",
   "scope": "Next match and data from the last 14 days.",

@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { useTranslation } from "../../i18n";
+import { normalizeNavigationQuery } from "../../utils/navigationSearch";
 import { supabase } from "../../lib/supabaseClient";
 import { styles } from "../../styles/index.js";
 import DevelopmentPlanSwitcher from "./DevelopmentPlanSwitcher";
@@ -63,11 +64,11 @@ export default function Topbar({
   }
 
   const results = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = normalizeNavigationQuery(search);
     if (!q) return [];
 
     const playerResults = players
-      .filter((p) => `${p.name} ${p.role} ${p.status}`.toLowerCase().includes(q))
+      .filter((p) => normalizeNavigationQuery(`${p.name} ${p.role} ${p.status}`).includes(q))
       .map((p) => ({
         id: `player-${p.id}`,
         label: p.name,
@@ -76,7 +77,7 @@ export default function Topbar({
       }));
 
     const exerciseResults = exercises
-      .filter((e) => `${e.title} ${e.category} ${e.objective}`.toLowerCase().includes(q))
+      .filter((e) => normalizeNavigationQuery(`${e.title} ${e.category} ${e.objective}`).includes(q))
       .map((e) => ({
         id: `exercise-${e.id}`,
         label: e.title,
@@ -85,23 +86,24 @@ export default function Topbar({
       }));
 
     const sessionResults = sessions
-      .filter((s) => `${s.title} ${s.date} ${s.objective}`.toLowerCase().includes(q))
+      .filter((s) => normalizeNavigationQuery(`${s.title} ${s.date} ${s.objective}`).includes(q))
       .map((s) => ({
         id: `session-${s.id}`,
         label: s.title || t("navigation.items.trainings"),
         meta: t("topbar.resultMeta.session", { date: s.date || t("topbar.resultMeta.undefinedDate") }),
         to: "/trainings",
+        state: { editSessionId: s.id },
       }));
 
     const matchResults = matches
       .filter((m) =>
-        `${m.opponent} ${m.date} ${m.competition} ${m.location}`.toLowerCase().includes(q)
+        normalizeNavigationQuery(`${m.opponent} ${m.date} ${m.competition} ${m.location}`).includes(q)
       )
       .map((m) => ({
         id: `match-${m.id}`,
         label: m.opponent || t("navigation.items.matches"),
         meta: t("topbar.resultMeta.match", { date: m.date || t("topbar.resultMeta.undefinedDate") }),
-        to: "/matches",
+        to: `/match-day/${m.id}`,
       }));
 
     return [...playerResults, ...exerciseResults, ...sessionResults, ...matchResults].slice(0, 8);
@@ -197,6 +199,9 @@ export default function Topbar({
             <Search size={17} style={styles.topbarSearchIcon} aria-hidden="true" />
 
             <input
+              type="search"
+              aria-label={t("topbar.searchPlaceholder")}
+              onKeyDown={(event) => { if (event.key === "Escape") setSearch(""); }}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("topbar.searchPlaceholder")}
@@ -211,6 +216,7 @@ export default function Topbar({
                   <Link
                     key={item.id}
                     to={item.to}
+                    state={item.state}
                     style={styles.topbarSearchResult}
                     onClick={() => setSearch("")}
                   >

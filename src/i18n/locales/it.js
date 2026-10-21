@@ -1,4 +1,14 @@
 export const it = {
+  productPolish: {
+  "taskCount": "{{count}} attività da completare",
+  "showMoreTasks": "Mostra altre attività ({{count}})",
+  "showLessTasks": "Mostra meno",
+  "playerSummary": "Statistiche individuali",
+  "openProfile": "Apri scheda",
+  "openPlayer": "Apri la scheda di {{name}}",
+  "charts": "Andamento e grafici",
+  "chartsHint": "Gol, minutaggi e partecipazione"
+},
   coachTasks: {
   "title": "Da completare",
   "scope": "Prossima gara e dati degli ultimi 14 giorni.",

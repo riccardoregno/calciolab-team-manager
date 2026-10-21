@@ -2,9 +2,10 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import FilterChips from "../components/ui/FilterChips";
-import GoalkeeperMetrics from "../components/statistics/GoalkeeperMetrics";
+import PlayerStatisticsCard from "../components/statistics/PlayerStatisticsCard";
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
+import MetricStrip from "../components/ui/MetricStrip";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
@@ -436,13 +437,96 @@ function Statistics({
         </div>
       </div>
 
+      {/* ── Filtri ── */}
+      <AppCard>
+        <p style={s.sectionLabel}>{t("pages.statistics.filters")}</p>
+        <div className="statistics-filters-grid">
+          <label style={s.filterLabel}>
+            {t("pages.statistics.playerFilter")}
+            <select
+              value={effectiveSelectedPlayerId}
+              onChange={(e) => setSelectedPlayerId(e.target.value)}
+              style={styles.input}
+            >
+              {players.map((player) => (
+                <option key={player.id} value={player.id}>
+                  {player.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label style={s.filterLabel}>
+            {t("pages.statistics.eventType")}
+            <select
+              value={eventType}
+              onChange={(e) => setEventType(e.target.value)}
+              style={styles.input}
+            >
+              <option value="Tutti">{t("pages.statistics.allEvents")}</option>
+              <option value="Allenamento">{t("pages.statistics.training")}</option>
+              <option value="Partita">{t("pages.statistics.match")}</option>
+            </select>
+          </label>
+
+          <label style={s.filterLabel}>
+            {t("pages.statistics.from")}
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              style={styles.input}
+            />
+          </label>
+
+          <label style={s.filterLabel}>
+            {t("pages.statistics.to")}
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              style={styles.input}
+            />
+          </label>
+
+
+
+          <div style={{ display: "flex", alignItems: "flex-end" }}>
+            <button
+              type="button"
+              onClick={() => {
+                setEventType("Tutti");
+                setFromDate("");
+                setToDate("");
+                setSearchPlayer("");
+                setOnlyWithStats(false);
+                setRoleFilter("Tutti");
+                setCoachMode(false);
+                setMinMinutes("");
+                setMinGoals("");
+                setMinPresences("");
+                setMinAvgMinutes("");
+                setSortBy("goals");
+                setSortOrder("desc");
+                setSelectedPlayerId(players[0]?.id || "");
+              }}
+              style={s.resetBtn}
+            >
+              {t("pages.statistics.resetFilters")}
+            </button>
+          </div>
+        </div>
+      </AppCard>
+
+
+      <PlayerStatisticsCard player={selectedPlayer} stats={selectedStats} />
+
       {/* ── KPI ── */}
-      <div style={s.kpiGrid} className="no-mobile-override">
-        <KpiCard label={t("pages.statistics.totalEvents")} value={filteredEvents.length} icon="📅" accent="#38bdf8" />
-        <KpiCard label={t("common.players")} value={players.length} icon="👥" accent="#a78bfa" />
-        <KpiCard label={t("pages.statistics.topScorerGoals")} value={topScorer?.goals || 0} icon="⚽" accent="#4ade80" />
-        <KpiCard label={t("pages.statistics.topMinutes")} value={mostMinutes?.minutes || 0} icon="⏱️" accent="#fbbf24" />
-      </div>
+      <MetricStrip items={[
+        { key: "events", label: t("pages.statistics.totalEvents"), value: filteredEvents.length },
+        { key: "players", label: t("common.players"), value: players.length },
+        { key: "goals", label: t("pages.statistics.topScorerGoals"), value: topScorer?.goals || 0, color: "#86d9b4" },
+        { key: "minutes", label: t("pages.statistics.topMinutes"), value: mostMinutes?.minutes || 0 },
+      ]} />
 
       <div style={s.summaryGrid}>
         <SummaryCard
@@ -594,9 +678,9 @@ function Statistics({
 
       {/* ── Matrice Minutaggio ── */}
       <AppCard>
-        <div
+        <button type="button" aria-expanded={showMatrix} aria-controls="statistics-minutes-matrix"
           onClick={() => setShowMatrix((v) => !v)}
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" }}
+          className="statistics-matrix-toggle"
         >
           <div>
             <p style={{ ...s.sectionLabel, marginBottom: 2 }}>📋 Tabella Minutaggio</p>
@@ -607,10 +691,10 @@ function Statistics({
           <span style={{ fontSize: 18, color: "#60a5fa", fontWeight: 750, lineHeight: 1 }}>
             {showMatrix ? "▲" : "▼"}
           </span>
-        </div>
+        </button>
 
         {showMatrix && (
-          <div style={{ marginTop: 20 }}>
+          <div id="statistics-minutes-matrix" style={{ marginTop: 20 }}>
             <Suspense fallback={<div style={{ padding: "24px 0", textAlign: "center", color: "#94a6be", fontSize: 13 }}>Caricamento…</div>}>
               <MinutaggioMatrix players={players} matches={filteredEvents} />
             </Suspense>
@@ -619,88 +703,12 @@ function Statistics({
       </AppCard>
 
       {/* ── Grafici ── */}
+      <details className="statistics-analysis" open={!isMobile}>
+        <summary>{t("productPolish.charts")}<span>{t("productPolish.chartsHint")}</span></summary>
       <Suspense fallback={<div style={s.chartFallback}>{t("pages.statistics.loadingCharts")}</div>}>
         <StatisticsCharts stats={stats} history={history} selectedPlayer={selectedPlayer} events={filteredEvents} players={players} />
       </Suspense>
-
-      {/* ── Filtri ── */}
-      <AppCard>
-        <p style={s.sectionLabel}>{t("pages.statistics.filters")}</p>
-        <div style={s.filtersGrid}>
-          <label style={s.filterLabel}>
-            {t("pages.statistics.eventType")}
-            <select
-              value={eventType}
-              onChange={(e) => setEventType(e.target.value)}
-              style={styles.input}
-            >
-              <option value="Tutti">{t("pages.statistics.allEvents")}</option>
-              <option value="Allenamento">{t("pages.statistics.training")}</option>
-              <option value="Partita">{t("pages.statistics.match")}</option>
-            </select>
-          </label>
-
-          <label style={s.filterLabel}>
-            {t("pages.statistics.from")}
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              style={styles.input}
-            />
-          </label>
-
-          <label style={s.filterLabel}>
-            {t("pages.statistics.to")}
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              style={styles.input}
-            />
-          </label>
-
-          <label style={s.filterLabel}>
-            {t("pages.statistics.playerFilter")}
-            <select
-              value={effectiveSelectedPlayerId}
-              onChange={(e) => setSelectedPlayerId(e.target.value)}
-              style={styles.input}
-            >
-              {players.map((player) => (
-                <option key={player.id} value={player.id}>
-                  {player.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div style={{ display: "flex", alignItems: "flex-end" }}>
-            <button
-              type="button"
-              onClick={() => {
-                setEventType("Tutti");
-                setFromDate("");
-                setToDate("");
-                setSearchPlayer("");
-                setOnlyWithStats(false);
-                setRoleFilter("Tutti");
-                setCoachMode(false);
-                setMinMinutes("");
-                setMinGoals("");
-                setMinPresences("");
-                setMinAvgMinutes("");
-                setSortBy("goals");
-                setSortOrder("desc");
-                setSelectedPlayerId(players[0]?.id || "");
-              }}
-              style={s.resetBtn}
-            >
-              {t("pages.statistics.resetFilters")}
-            </button>
-          </div>
-        </div>
-      </AppCard>
+      </details>
 
       <AppCard>
         <div style={s.compareHeader}>
@@ -1205,64 +1213,6 @@ function Statistics({
         {/* ── Colonna destra ── */}
         <div style={s.sideColumn}>
 
-          {/* Scheda rapida */}
-          <AppCard>
-            <h3 style={s.sideTitle}>
-              {t("pages.statistics.quickCard")}
-            </h3>
-
-            <select
-              value={effectiveSelectedPlayerId}
-              onChange={(e) => setSelectedPlayerId(e.target.value)}
-              style={styles.input}
-            >
-              {players.map((player) => (
-                <option key={player.id} value={player.id}>
-                  {player.name}
-                </option>
-              ))}
-            </select>
-
-            {selectedPlayer && (
-              <div style={{ marginTop: 18 }}>
-                <div style={s.quickProfile}>
-                  <div style={s.avatar}>
-                    {selectedPlayer.photo ? (
-                      <img
-                        src={selectedPlayer.photo}
-                        alt={selectedPlayer.name}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    ) : (
-                      <span style={{ fontSize: 26, fontWeight: 750 }}>
-                        {selectedPlayer.name?.[0]}
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <h2 style={{ margin: 0, fontSize: 18, lineHeight: 1.2 }}>{selectedPlayer.name}</h2>
-                    <p style={{ color: "#94a6be", margin: "4px 0 0", fontSize: 13, lineHeight: 1.35 }}>
-                      {selectedPlayer.role || t("pages.statistics.roleNotSet")}
-                    </p>
-                  </div>
-                </div>
-
-                <div style={s.miniGrid}>
-                  <MiniStat label={t("pages.statistics.presences")} value={selectedStats?.presences || 0} icon="📋" />
-                  <MiniStat label={t("common.minutes")} value={selectedStats?.minutes || 0} icon="⏱️" />
-                  <MiniStat
-                    label={t(isGoalkeeper(selectedPlayer) ? "pages.dashboard.goalsConcededLabel" : "common.goals")}
-                    value={isGoalkeeper(selectedPlayer) ? (selectedStats?.goalsConceded ?? "—") : (selectedStats?.goals || 0)}
-                    icon="⚽"
-                    color={isGoalkeeper(selectedPlayer) ? "#f87171" : "#4ade80"}
-                  />
-                  <MiniStat label={t("common.assists")} value={selectedStats?.assists || 0} icon="🅰️" color="#38bdf8" />
-                </div>
-                <GoalkeeperMetrics stats={selectedStats} />
-              </div>
-            )}
-          </AppCard>
-
           {/* Storico eventi */}
           <AppCard>
             <h3 style={s.sideTitle}>
@@ -1507,36 +1457,6 @@ function PartitelleStats({ events, players, squadraFilter }) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function KpiCard({ icon, label, value, accent = "#38bdf8" }) {
-  return (
-    <AppCard>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-        <div>
-          <p style={{ color: "#94a6be", margin: 0, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0, lineHeight: 1.2 }}>
-            {label}
-          </p>
-          <h2 style={{ margin: "9px 0 0", fontSize: 32, fontWeight: 750, letterSpacing: 0, lineHeight: 1 }}>
-            {value}
-          </h2>
-        </div>
-        <div style={{
-          width: 48,
-          height: 48,
-          borderRadius: 12,
-          background: `${accent}22`,
-          border: `1px solid ${accent}44`,
-          display: "grid",
-          placeItems: "center",
-          fontSize: 22,
-          flexShrink: 0,
-        }}>
-          {icon}
-        </div>
-      </div>
-    </AppCard>
-  );
-}
-
 function SummaryCard({ label, value, detail, accent = "#38bdf8" }) {
   return (
     <div className="cl-summary-card" style={{ ...s.summaryCard, borderColor: "var(--cl-border)", background: "var(--cl-surface)" }}>
@@ -1544,20 +1464,6 @@ function SummaryCard({ label, value, detail, accent = "#38bdf8" }) {
       <p style={s.summaryLabel}>{label}</p>
       <strong style={s.summaryValue}>{value}</strong>
       <span style={s.summaryDetail}>{detail}</span>
-    </div>
-  );
-}
-
-function MiniStat({ label, value, icon, color }) {
-  return (
-    <div style={s.miniStat}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-        <span style={{ fontSize: 14 }}>{icon}</span>
-        <span style={{ color: "#94a6be", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0 }}>
-          {label}
-        </span>
-      </div>
-      <strong style={{ fontSize: 22, fontWeight: 750, color: color || "white", lineHeight: 1 }}>{value}</strong>
     </div>
   );
 }
@@ -2366,38 +2272,6 @@ const s = {
     color: "#475569",
     textAlign: "center",
     fontSize: 14,
-  },
-
-  // Scheda rapida
-  quickProfile: {
-    display: "flex",
-    gap: 14,
-    alignItems: "center",
-    marginBottom: 16,
-    padding: "14px 0",
-    borderBottom: "1px solid rgba(255,255,255,0.06)",
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 14,
-    background: "linear-gradient(135deg, rgba(56,189,248,0.3), rgba(37,99,235,0.18))",
-    border: "2px solid rgba(56,189,248,0.25)",
-    display: "grid",
-    placeItems: "center",
-    overflow: "hidden",
-    flexShrink: 0,
-  },
-  miniGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: 10,
-  },
-  miniStat: {
-    borderRadius: 10,
-    padding: "12px 14px",
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.07)",
   },
 
   // Storico

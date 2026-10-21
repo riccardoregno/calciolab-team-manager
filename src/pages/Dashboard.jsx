@@ -184,6 +184,8 @@ function Dashboard({
 
   const widgets = settings.dashboardWidgets;
   const currentRole = getCurrentUserRole(settings);
+  const showOperationalQueue = ["owner", "headCoach", "assistantCoach"].includes(currentRole) && !loading;
+  const queueWithFocus = showOperationalQueue && (widgets.hero || widgets.nextEvent) && (simpleView || !isMobile || dashTab === "oggi");
 
   const reward = useMemo(() => getCoachRewardProfile({
     players, exercises, sessions, matches, physicalTests,
@@ -454,6 +456,7 @@ function Dashboard({
       case "nextEvent":
         if (!widgets.hero && !widgets.nextEvent) return null;
         return (
+          <div className={queueWithFocus ? "coach-priority-layout" : undefined}>
           <CoachFocusCard event={nextEvent} todayEvents={todayEvents} weekCount={upcomingWeekEvents}
             available={availablePlayers} playerCount={primaPlayers.length} alerts={coachAlerts}
             clubName={settings.workspaceProfile?.clubName || t("common.appName")}
@@ -463,6 +466,8 @@ function Dashboard({
             showMetrics={widgets.hero} showAgenda={widgets.nextEvent}>
             {nextEvent?.type === "Partita" && <NextMatchCard match={nextEvent} navigate={navigate} clubName={settings.workspaceProfile?.clubName || t("common.appName")} rsvpSummary={nextMatchRsvpSummary} />}
           </CoachFocusCard>
+          {queueWithFocus && <CoachActionQueue tasks={operationalTasks} loading={statsLoading} onOpen={(path) => navigate(path)} />}
+          </div>
         );
 
       case "kpis":
@@ -1206,7 +1211,7 @@ function Dashboard({
         />
       )}
 
-      {["owner", "headCoach", "assistantCoach"].includes(currentRole) && !loading &&
+      {showOperationalQueue && !queueWithFocus &&
         <CoachActionQueue tasks={operationalTasks} loading={statsLoading} onOpen={(path) => navigate(path)} />}
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
