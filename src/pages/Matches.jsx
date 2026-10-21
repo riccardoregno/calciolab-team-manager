@@ -18,8 +18,9 @@ import { useIsMobile } from "../hooks/useIsMobile";
 import { styles } from "../styles/index.js";
 import { createId, formatDate, localDateString, normalizeAppSettings, parseMatchResult } from "../utils/helpers";
 import { sendTeamNotification } from "../services/notifications";
-import { upsertPlayerMatch } from "../services/playerProfile";
-import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import SearchBar from "../components/ui/SearchBar";
+import { searchNavigationItems } from "../utils/navigationSearch";
+import { isValidMatchScore } from "../utils/matchScore";
 
 const MATCH_MODAL_QUERY = "match";
 const MATCH_DRAFT_KEY = "calciolab_match_draft_v1";
@@ -78,9 +79,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   const [editingId, setEditingId] = useState(null);
   const [resultEditId, setResultEditId] = useState(null);
   const [resultDraft, setResultDraft] = useState({ home: "", away: "" });
-  const [quickStatsMatchId, setQuickStatsMatchId] = useState(null);
-  const [quickStatsDraft, setQuickStatsDraft] = useState({});
-  const [quickStatsSaving, setQuickStatsSaving] = useState(false);
+  const [matchSearch, setMatchSearch] = useState("");
   const [matchView, setMatchView] = useState("all");
   const [form, setForm] = useState(() => loadMatchDraft(`${MATCH_DRAFT_KEY}:new`, emptyMatch(clubLogo)));
   const [formErrors, setFormErrors] = useState({});
@@ -100,16 +99,14 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
     () => new Set(matches.filter((match) => parseMatchResult(match.result, match)).map((match) => String(match.id))),
     [matches]
   );
-  const visibleMatches = useMemo(() => {
-    const focusId = String(focusMatch?.id || "");
-    return sortedMatches.filter((match) => {
-      if (focusId && String(match.id) === focusId) return false;
-      const played = playedMatchIds.has(String(match.id));
-      if (matchView === "played") return played;
-      if (matchView === "upcoming") return !played;
-      return true;
-    });
-  }, [focusMatch, matchView, playedMatchIds, sortedMatches]);
+  const searching = Boolean(matchSearch.trim());
+  const archiveMatches = useMemo(() => searchNavigationItems(sortedMatches, matchSearch, (match) =>
+    [match.opponent, match.date, formatDate(match.date), match.competition, match.location].filter(Boolean).join(" ")
+  ).filter((match) => searching || String(match.id) !== String(focusMatch?.id)), [sortedMatches, matchSearch, searching, focusMatch]);
+  const visibleMatches = archiveMatches.filter((match) => {
+    const played = playedMatchIds.has(String(match.id));
+    return matchView === "played" ? played : matchView === "upcoming" ? !played : true;
+  });
 
   function openResultEdit(match) {
     const parsed = parseMatchResult(match.result, match);
@@ -120,48 +117,11 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
     setResultEditId(match.id);
   }
 
-  async function openQuickStats(match) {
-    const calledUpIds = getMatchPlayerIds(match);
-    const draft = {};
-    calledUpIds.forEach((id) => { draft[String(id)] = { goals: "", assists: "", minutes_played: "" }; });
-    if (isSupabaseConfigured && teamId && calledUpIds.length) {
-      const { data } = await supabase
-        .from("player_matches")
-        .select("player_id,goals,assists,minutes_played,yellow_cards,red_cards")
-        .eq("team_id", teamId)
-        .eq("match_id", String(match.id));
-      (data || []).forEach((r) => {
-        draft[String(r.player_id)] = {
-          goals: r.goals ?? "",
-          assists: r.assists ?? "",
-          minutes_played: r.minutes_played ?? "",
-        };
-      });
-    }
-    setQuickStatsDraft(draft);
-    setQuickStatsMatchId(match.id);
-  }
-
-  async function saveQuickStats(match) {
-    if (quickStatsSaving || !teamId) return;
-    setQuickStatsSaving(true);
-    const calledUpIds = getMatchPlayerIds(match);
-    await Promise.all(
-      calledUpIds.map((id) => {
-        const d = quickStatsDraft[String(id)] || {};
-        return upsertPlayerMatch(teamId, id, match.id, {
-          goals: Number(d.goals) || 0,
-          assists: Number(d.assists) || 0,
-          minutes_played: Number(d.minutes_played) || 0,
-        });
-      })
-    );
-    setQuickStatsSaving(false);
-    setQuickStatsMatchId(null);
-    showToast("Statistiche salvate", "ok");
-  }
-
   function saveResult(matchId) {
+    if (!canManage || !isValidMatchScore(resultDraft.home, resultDraft.away)) {
+      showToast("Inserisci entrambi i punteggi con numeri interi da zero in su, oppure lascia entrambi vuoti.", "warn");
+      return;
+    }
     const h = resultDraft.home.trim();
     const a = resultDraft.away.trim();
     setMatches((prev) => prev.map((m) => {
@@ -252,6 +212,10 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       showToast(t("pages.matches.missingOpponent"), "warn");
+      return;
+    }
+    if (!isValidMatchScore(form.goalsFor, form.goalsAgainst)) {
+      showToast("Inserisci entrambi i punteggi con numeri interi da zero in su, oppure lascia entrambi vuoti.", "warn");
       return;
     }
     setFormErrors({});
@@ -445,11 +409,11 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
       <ActionBar
         eyebrow={t("pages.matches.title")}
         title="Centro partite"
-        subtitle="Da qui aggiungi gare, aggiorni risultato e inserisci i dati giocatore senza cercare tra le altre pagine."
+        subtitle="Gestisci convocazioni e risultati. Apri il tabellino per minuti, gol, assist e gol subiti dei portieri."
         meta={<Badge tone="blue">{matches.length} {t("pages.matches.matchesCount")}</Badge>}
       />
 
-      {!loading && focusMatch && (
+      {!loading && focusMatch && !searching && (
         <MatchFocusCard
           match={focusMatch}
           clubName={clubName}
@@ -463,13 +427,6 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
           openResultEdit={openResultEdit}
           saveResult={saveResult}
           closeResultEdit={() => setResultEditId(null)}
-          openQuickStats={openQuickStats}
-          quickStatsMatchId={quickStatsMatchId}
-          quickStatsDraft={quickStatsDraft}
-          setQuickStatsDraft={setQuickStatsDraft}
-          quickStatsSaving={quickStatsSaving}
-          closeQuickStats={() => setQuickStatsMatchId(null)}
-          saveQuickStats={saveQuickStats}
           editMatch={editMatch}
           deleteMatch={deleteMatch}
         />
@@ -526,10 +483,12 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
             t={t}
             activeView={matchView}
             onChange={setMatchView}
+            search={matchSearch}
+            onSearch={setMatchSearch}
             counts={{
-              all: Math.max(0, sortedMatches.length - (focusMatch ? 1 : 0)),
-              played: visibleCount(sortedMatches, focusMatch, playedMatchIds, "played"),
-              upcoming: visibleCount(sortedMatches, focusMatch, playedMatchIds, "upcoming"),
+              all: archiveMatches.length,
+              played: archiveMatches.filter((match) => playedMatchIds.has(String(match.id))).length,
+              upcoming: archiveMatches.filter((match) => !playedMatchIds.has(String(match.id))).length,
             }}
           />
           {visibleMatches.map((match) => (
@@ -549,21 +508,14 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
               openResultEdit={openResultEdit}
               saveResult={saveResult}
               closeResultEdit={() => setResultEditId(null)}
-              quickStatsMatchId={quickStatsMatchId}
-              quickStatsDraft={quickStatsDraft}
-              setQuickStatsDraft={setQuickStatsDraft}
-              quickStatsSaving={quickStatsSaving}
-              openQuickStats={openQuickStats}
-              closeQuickStats={() => setQuickStatsMatchId(null)}
-              saveQuickStats={saveQuickStats}
               editMatch={editMatch}
               deleteMatch={deleteMatch}
-              suppressQuickStatsPanel={String(focusMatch?.id || "") === String(match.id)}
             />
           ))}
           {visibleMatches.length === 0 && (
             <AppCard>
               <p style={{ color: "#94a3b8", margin: 0 }}>{t("pages.matches.noViewMatches")}</p>
+              {matchSearch && <Button variant="ghost" onClick={() => setMatchSearch("")}>Cancella ricerca</Button>}
             </AppCard>
           )}
         </div>
@@ -831,7 +783,7 @@ function PreviewStat({ label, value, tone = "#e2e8f0" }) {
   );
 }
 
-function MatchListToolbar({ t, activeView, onChange, counts }) {
+function MatchListToolbar({ t, activeView, onChange, counts, search, onSearch }) {
   const views = [
     ["all", t("pages.matches.viewAll"), counts.all],
     ["played", t("pages.matches.viewPlayed"), counts.played],
@@ -839,17 +791,19 @@ function MatchListToolbar({ t, activeView, onChange, counts }) {
   ];
 
   return (
-    <div style={matchStyles.listToolbar}>
+    <div className="daily-archive-toolbar" style={matchStyles.listToolbar}>
       <div>
         <h3 style={matchStyles.listTitle}>{t("pages.matches.historyAccessTitle")}</h3>
         <p style={matchStyles.listSubtitle}>{t("pages.matches.historyAccessSubtitle")}</p>
       </div>
-      <div style={matchStyles.segmented}>
+      <SearchBar value={search} onChange={onSearch} placeholder="Cerca avversario, competizione o data…" />
+      <div style={matchStyles.segmented} role="group" aria-label="Filtra partite">
         {views.map(([key, label, count]) => (
           <button
             key={key}
             type="button"
             onClick={() => onChange(key)}
+            aria-pressed={activeView === key}
             style={{
               ...matchStyles.segmentButton,
               ...(activeView === key ? matchStyles.segmentButtonActive : {}),
@@ -866,7 +820,6 @@ function MatchListToolbar({ t, activeView, onChange, counts }) {
 function MatchFocusCard({
   match,
   clubName,
-  players,
   t,
   canManage,
   resultEditId,
@@ -875,18 +828,10 @@ function MatchFocusCard({
   openResultEdit,
   saveResult,
   closeResultEdit,
-  openQuickStats,
-  quickStatsMatchId,
-  quickStatsDraft,
-  setQuickStatsDraft,
-  quickStatsSaving,
-  closeQuickStats,
-  saveQuickStats,
   editMatch,
   deleteMatch,
 }) {
   const status = getMatchStatus(match);
-  const playerCount = getMatchPlayerIds(match).length;
   const isPast = String(match.date || "") <= localDateString();
   const actionTitle = isPast ? "Ultima partita" : "Prossima partita";
   const matchTitle = getMatchTitle(match, clubName);
@@ -927,7 +872,7 @@ function MatchFocusCard({
                 <input
                   type="number"
                   min="0"
-                  value={resultDraft.home}
+                  aria-label="Gol fatti" inputMode="numeric" step="1" value={resultDraft.home}
                   onChange={(e) => setResultDraft((draft) => ({ ...draft, home: e.target.value }))}
                   style={matchStyles.scoreInput}
                 />
@@ -935,7 +880,7 @@ function MatchFocusCard({
                 <input
                   type="number"
                   min="0"
-                  value={resultDraft.away}
+                  aria-label="Gol subiti" inputMode="numeric" step="1" value={resultDraft.away}
                   onChange={(e) => setResultDraft((draft) => ({ ...draft, away: e.target.value }))}
                   style={matchStyles.scoreInput}
                 />
@@ -973,29 +918,9 @@ function MatchFocusCard({
               </Button>
             </>
           )}
-          {canManage && match.result && playerCount > 0 && (
-            <Button
-              variant="ghost"
-              onClick={() => quickStatsMatchId === match.id ? closeQuickStats() : openQuickStats(match)}
-              style={{ width: "100%" }}
-            >
-              Stats veloci
-            </Button>
-          )}
         </div>
       </div>
 
-      {canManage && match.result && playerCount > 0 && quickStatsMatchId === match.id && (
-        <QuickStatsPanel
-          match={match}
-          players={players}
-          quickStatsDraft={quickStatsDraft}
-          setQuickStatsDraft={setQuickStatsDraft}
-          quickStatsSaving={quickStatsSaving}
-          onClose={closeQuickStats}
-          onSave={() => saveQuickStats(match)}
-        />
-      )}
     </AppCard>
   );
 }
@@ -1015,16 +940,8 @@ function MatchCard({
   openResultEdit,
   saveResult,
   closeResultEdit,
-  quickStatsMatchId,
-  quickStatsDraft,
-  setQuickStatsDraft,
-  quickStatsSaving,
-  openQuickStats,
-  closeQuickStats,
-  saveQuickStats,
   editMatch,
   deleteMatch,
-  suppressQuickStatsPanel = false,
 }) {
   const status = getMatchStatus(match);
   const calledUpCount = getMatchPlayerIds(match).length;
@@ -1130,7 +1047,7 @@ function MatchCard({
                 <input
                   type="number"
                   min="0"
-                  value={resultDraft.home}
+                  aria-label="Gol fatti" inputMode="numeric" step="1" value={resultDraft.home}
                   onChange={(e) => setResultDraft((draft) => ({ ...draft, home: e.target.value }))}
                   style={matchStyles.scoreInput}
                 />
@@ -1138,7 +1055,7 @@ function MatchCard({
                 <input
                   type="number"
                   min="0"
-                  value={resultDraft.away}
+                  aria-label="Gol subiti" inputMode="numeric" step="1" value={resultDraft.away}
                   onChange={(e) => setResultDraft((draft) => ({ ...draft, away: e.target.value }))}
                   style={matchStyles.scoreInput}
                 />
@@ -1178,15 +1095,6 @@ function MatchCard({
           <Link to={`/match-stats/${match.id}`} style={{ textDecoration: "none", minWidth: 0 }}>
             <Button variant="ghost" style={{ width: "100%" }}>{t("pages.matches.statistics")}</Button>
           </Link>
-          {canManage && match.result && (
-            <Button
-              variant="ghost"
-              onClick={() => quickStatsMatchId === match.id ? closeQuickStats() : openQuickStats(match)}
-              style={{ minWidth: 0 }}
-            >
-              Stats veloci
-            </Button>
-          )}
           {canManage && (
             <>
               <Button variant="ghost" onClick={() => editMatch(match)} style={{ minWidth: 0 }}>
@@ -1200,17 +1108,6 @@ function MatchCard({
         </div>
       </div>
 
-      {canManage && match.result && quickStatsMatchId === match.id && !suppressQuickStatsPanel && (
-        <QuickStatsPanel
-          match={match}
-          players={players}
-          quickStatsDraft={quickStatsDraft}
-          setQuickStatsDraft={setQuickStatsDraft}
-          quickStatsSaving={quickStatsSaving}
-          onClose={closeQuickStats}
-          onSave={() => saveQuickStats(match)}
-        />
-      )}
     </AppCard>
   );
 }
@@ -1256,49 +1153,6 @@ function MatchDetail({ label, value, wide = false }) {
     <div style={{ minWidth: 0, gridColumn: wide ? "span 2" : undefined }}>
       <span style={matchStyles.detailLabel}>{label}</span>
       <strong style={matchStyles.detailValue} title={String(value || "")}>{value}</strong>
-    </div>
-  );
-}
-
-function QuickStatsPanel({ match, players, quickStatsDraft, setQuickStatsDraft, quickStatsSaving, onClose, onSave }) {
-  return (
-    <div style={matchStyles.quickStatsPanel}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <span style={matchStyles.quickStatsTitle}>Stats veloci</span>
-        <button onClick={onClose} style={matchStyles.iconClose} aria-label="Chiudi">×</button>
-      </div>
-      <div style={matchStyles.quickStatsGrid}>
-        <span style={matchStyles.quickStatsHead}>Giocatore</span>
-        <span style={matchStyles.quickStatsHeadCenter}>Gol</span>
-        <span style={matchStyles.quickStatsHeadCenter}>Assist</span>
-        <span style={matchStyles.quickStatsHeadCenter}>Min</span>
-      </div>
-      {getMatchPlayerIds(match).map((pid) => {
-        const player = players.find((item) => String(item.id) === String(pid));
-        if (!player) return null;
-        const draft = quickStatsDraft[String(pid)] || {};
-        return (
-          <div key={pid} style={matchStyles.quickStatsGrid} className="no-mobile-override">
-            <span style={matchStyles.quickStatsPlayer}>{player.name}</span>
-            {["goals", "assists", "minutes_played"].map((field) => (
-              <input
-                key={field}
-                type="number"
-                min="0"
-                value={draft[field] ?? ""}
-                onChange={(event) => setQuickStatsDraft((prev) => ({
-                  ...prev,
-                  [String(pid)]: { ...prev[String(pid)], [field]: event.target.value },
-                }))}
-                style={matchStyles.quickStatsInput}
-              />
-            ))}
-          </div>
-        );
-      })}
-      <Button onClick={onSave} disabled={quickStatsSaving} style={{ width: "100%", marginTop: 8 }}>
-        {quickStatsSaving ? "Salvataggio..." : "Salva statistiche"}
-      </Button>
     </div>
   );
 }
@@ -1588,15 +1442,6 @@ function compareMatchesByEncounterOrder(a, b, todayKey) {
   return direction * compareMatchDateTime(a, b);
 }
 
-function visibleCount(matches, focusMatch, playedMatchIds, view) {
-  const focusId = String(focusMatch?.id || "");
-  return matches.filter((match) => {
-    if (focusId && String(match.id) === focusId) return false;
-    const played = playedMatchIds.has(String(match.id));
-    return view === "played" ? played : !played;
-  }).length;
-}
-
 function getFocusMatch(matches, todayKey) {
   const dated = matches.filter((match) => match.date);
   const past = dated
@@ -1740,6 +1585,7 @@ const matchStyles = {
     textTransform: "uppercase",
   },
   iconSave: {
+    minWidth: 44, minHeight: 44,
     background: "#22c55e",
     border: "none",
     borderRadius: 8,
@@ -1749,6 +1595,7 @@ const matchStyles = {
     cursor: "pointer",
   },
   iconClose: {
+    minWidth: 44, minHeight: 44,
     background: "rgba(255,255,255,0.08)",
     border: "none",
     borderRadius: 8,
@@ -1819,57 +1666,7 @@ const matchStyles = {
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
-  quickStatsPanel: {
-    marginTop: 14,
-    padding: 14,
-    borderRadius: 12,
-    background: "rgba(56,189,248,0.06)",
-    border: "1px solid rgba(56,189,248,0.15)",
-  },
-  quickStatsTitle: {
-    fontSize: 12,
-    fontWeight: 800,
-    color: "#38bdf8",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  quickStatsGrid: {
-    display: "grid",
-    gridTemplateColumns: "minmax(120px,1fr) 54px 54px 62px",
-    gap: 7,
-    alignItems: "center",
-    marginBottom: 5,
-  },
-  quickStatsHead: {
-    fontSize: 10,
-    color: "#64748b",
-    fontWeight: 800,
-    textTransform: "uppercase",
-  },
-  quickStatsHeadCenter: {
-    fontSize: 10,
-    color: "#64748b",
-    fontWeight: 800,
-    textTransform: "uppercase",
-    textAlign: "center",
-  },
-  quickStatsPlayer: {
-    fontSize: 12,
-    color: "#cbd5e1",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  quickStatsInput: {
-    width: "100%",
-    textAlign: "center",
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    borderRadius: 6,
-    color: "#f1f5f9",
-    fontSize: 15,
-    padding: "4px 2px",
-  },
+
 };
 
 const previewStyles = {

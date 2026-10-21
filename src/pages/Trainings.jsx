@@ -10,6 +10,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 import MetricStrip from "../components/ui/MetricStrip";
 import SearchBar from "../components/ui/SearchBar";
+import { searchNavigationItems } from "../utils/navigationSearch";
 import MiniMatchFinesView from "../components/trainings/MiniMatchFinesView";
 import SortableTrainingTimeline from "../components/trainings/SortableTrainingTimeline";
 import ExerciseDiagram from "../components/exercises/ExerciseDiagram";
@@ -77,6 +78,7 @@ function Trainings({
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
   const clubName = workspaceProfile.teamName || workspaceProfile.clubName || "CalcioLab";
   const [search, setSearch] = useState("");
+  const [sessionSearch, setSessionSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [pickerBlock, setPickerBlock] = useState("Tutti");
@@ -162,19 +164,22 @@ function Trainings({
     [sessions, friendlyMatchSessions]
   );
 
+  const visibleSessions = searchNavigationItems(sortedSessions, sessionSearch, (session) =>
+    `${session.title || ""} ${session.theme || ""} ${session.objective || ""} ${session.date || ""} ${formatDate(session.date)}`
+  );
+  const today = localDateString();
+
   // Prossima seduta disponibile (da oggi in poi, quella con data più vicina)
   const nextSession = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return sortedSessions.filter((s) => s.date >= today)[0] || null;
-  }, [sortedSessions]);
+    return sortedSessions.find((s) => s.date >= today && !s.completed) || null;
+  }, [sortedSessions, today]);
 
-  const filteredExercises = allExercises.filter((exercise) => {
-    const matchSearch = `${exercise.title} ${exercise.category} ${exercise.objective}`
-      .toLowerCase()
-      .includes(search.toLowerCase());
+  const filteredExercises = searchNavigationItems(allExercises, search, (exercise) =>
+    `${exercise.title} ${exercise.category} ${exercise.objective}`
+  ).filter((exercise) => {
     const exBlock = exercise.trainingBlock || getBlockFromCategory(exercise.category);
     const matchBlock = pickerBlock === "Tutti" || exBlock === pickerBlock;
-    return matchSearch && matchBlock;
+    return matchBlock;
   });
 
   const selectedExercises = useMemo(() => {
@@ -1217,6 +1222,7 @@ function Trainings({
               gap: 16,
               alignItems: "center",
               marginBottom: 20,
+              flexWrap: "wrap",
             }}
           >
             <div>
@@ -1226,7 +1232,7 @@ function Trainings({
               </p>
             </div>
 
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <Badge tone="blue">{t("pages.trainings.savedCount", { count: sortedSessions.length })}</Badge>
               <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: 3, gap: 2 }}>
                 {[["lista","≡"],["settimana","◫"]].map(([v, icon]) => (
@@ -1234,15 +1240,22 @@ function Trainings({
                     padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700,
                     background: sessionsView === v ? "rgba(56,189,248,0.2)" : "transparent",
                     color: sessionsView === v ? "#38bdf8" : "#64748b",
-                  }} title={v === "lista" ? "Vista lista" : "Vista settimana"}>{icon}</button>
+                  }} aria-pressed={sessionsView === v} aria-label={v === "lista" ? "Vista lista" : "Vista settimana"} title={v === "lista" ? "Vista lista" : "Vista settimana"}>{icon}</button>
                 ))}
               </div>
             </div>
           </div>
 
+          <div className="daily-archive-search">
+            <SearchBar value={sessionSearch} onChange={setSessionSearch} placeholder="Cerca seduta, tema o data…" />
+            <span role="status">{visibleSessions.length} di {sortedSessions.length} sedute</span>
+          </div>
+
+          {sessionSearch && visibleSessions.length === 0 && <p role="status">Nessuna seduta trovata. <Button variant="ghost" onClick={() => setSessionSearch("")}>Cancella ricerca</Button></p>}
+
           {sessionsView === "settimana" && (
             <WeekView
-              sessions={sortedSessions}
+              sessions={visibleSessions}
               weekOffset={weekOffset}
               onPrevWeek={() => setWeekOffset((o) => o - 1)}
               onNextWeek={() => setWeekOffset((o) => o + 1)}
@@ -1292,7 +1305,7 @@ function Trainings({
             />
           ) : (
             <div style={{ display: "grid", gap: 14 }}>
-              {sortedSessions.map((session) => {
+              {visibleSessions.map((session) => {
                 const sessionTotal =
                   (session.exercises || []).reduce((sum, item) => sum + Number(item.customDuration || 0), 0) +
                   (session.sessionBlocks || []).reduce((sum, b) => sum + (Number(b.duration) || 0), 0);

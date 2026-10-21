@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Download, Ellipsis, GitCompareArrows, Upload, UserPlus } from "lucide-react";
+import { searchNavigationItems } from "../utils/navigationSearch";
 import { useTranslation } from "../i18n";
 
 import PageHeader from "../components/ui/PageHeader";
@@ -22,8 +23,8 @@ import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
-import { createUuid, isBirthdayToday, getTeamAverageAge, getPlayerQuickStats, comparePlayersByName, normalizeAppSettings } from "../utils/helpers";
-import { loadAllPlayerStats, loadAllPlayerAvgRatings, loadTeamRecentRatings } from "../services/playerProfile";
+import { createUuid, isBirthdayToday, getTeamAverageAge, getPlayerQuickStats, comparePlayersByName, getPlayerMatchTotals, getPlayerMatchEntries, isGoalkeeper } from "../utils/helpers";
+import { useTeamMatchRows } from "../hooks/useTeamMatchRows";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
 const PLAYER_MODAL_QUERY = "new-player";
@@ -60,22 +61,6 @@ function loadNewPlayerDraft(fallback) {
 
 const SUSPENSION_THRESHOLD = 5;
 
-function numberStat(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function normalizeMatchStats(stats = {}) {
-  return {
-    appearances: numberStat(stats.appearances),
-    minutes: numberStat(stats.minutes_played ?? stats.minutes),
-    goals: numberStat(stats.goals),
-    assists: numberStat(stats.assists),
-    yellowCards: numberStat(stats.yellow_cards ?? stats.yellowCards),
-    redCards: numberStat(stats.red_cards ?? stats.redCards),
-  };
-}
-
 function exportPlayersCSV(players, gruppo) {
   const headers = ["Nome", "Ruolo", "Ruolo secondario", "Piede", "Stato", "Data di nascita", "Altezza", "Peso", "Nazionalità", "Email", "Numero maglia", "Gruppo", "Note"];
   const rows = players.map((p) => [
@@ -107,7 +92,7 @@ function exportPlayersCSV(players, gruppo) {
   URL.revokeObjectURL(url);
 }
 
-function Players({ players, setPlayers, sessions = [], matches = [], loading = false, teamId = null, appSettings = {} }) {
+function Players({ players, setPlayers, sessions = [], matches = [], loading = false, teamId = null }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const GROUP_LABELS = {
@@ -125,17 +110,15 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
 
   const { showToast, ToastContainer } = useToast();
   const [confirmState, setConfirmState] = useState(null);
-  const [playerStatsMap, setPlayerStatsMap] = useState({});
-  const [playerRatingsMap, setPlayerRatingsMap] = useState({});
-  const [playerRecentRatings, setPlayerRecentRatings] = useState({});
-  const activeSeason = normalizeAppSettings(appSettings).workspaceProfile.currentSeason;
-
-  useEffect(() => {
-    if (!teamId) return;
-    loadAllPlayerStats(teamId, activeSeason).then(({ data }) => setPlayerStatsMap(data || {}));
-    loadAllPlayerAvgRatings(teamId).then(({ data }) => setPlayerRatingsMap(data || {}));
-    loadTeamRecentRatings(teamId).then(({ data }) => setPlayerRecentRatings(data || {}));
-  }, [activeSeason, teamId]);
+  const matchRows = useTeamMatchRows(teamId);
+  const playerStatsMap = useMemo(() => Object.fromEntries(players.map((player) => {
+    const totals = getPlayerMatchTotals(player, matches, matchRows.rows, players);
+    const recentRatings = getPlayerMatchEntries(player, matches, matchRows.rows)
+      .filter(({ data }) => Number(data.rating) > 0)
+      .sort((a, b) => String(b.event.date).localeCompare(String(a.event.date)))
+      .slice(0, 5).map(({ data }) => Number(data.rating));
+    return [String(player.id), { ...totals, appearances: totals.presences, recentRatings }];
+  })), [players, matches, matchRows.rows]);
   const [showImport, setShowImport] = useState(false);
   const [showPageTools, setShowPageTools] = useState(false);
   const [search, setSearch] = useState("");
@@ -226,12 +209,10 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     (f) => f !== "tutti"
   ).length;
 
-  const filteredPlayers = players.filter((player) => {
-    const matchesSearch = `${player.first_name || player.firstName || ""} ${
+  const filteredPlayers = searchNavigationItems(players, search, (player) => `${player.first_name || player.firstName || ""} ${
       player.last_name || player.lastName || ""
     } ${player.name || ""} ${player.role || ""}`
-      .toLowerCase()
-      .includes(search.toLowerCase());
+  ).filter((player) => {
     const matchesGroup = gruppoFilter === "tutti" || (player.gruppo || "prima") === gruppoFilter;
     const matchesStatus =
       filterStatus === "tutti" || (player.status || "Disponibile") === filterStatus;
@@ -248,7 +229,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
       (filterAge === "18-23" && age !== null && age >= 18 && age <= 23) ||
       (filterAge === "24-30" && age !== null && age >= 24 && age <= 30) ||
       (filterAge === "o30" && age !== null && age > 30);
-    return matchesSearch && matchesGroup && matchesStatus && matchesRole && matchesRoleFamily && matchesFoot && matchesAge;
+    return matchesGroup && matchesStatus && matchesRole && matchesRoleFamily && matchesFoot && matchesAge;
   });
 
   // Ordinamento di default per ruolo: Portiere, Difensore, Centrocampista, Attaccante
@@ -599,6 +580,8 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
             {/* Filtri toggle */}
             <button
               onClick={() => setShowFilters((v) => !v)}
+              aria-expanded={showFilters}
+              aria-controls="roster-filters"
               style={{
                 marginTop: 8,
                 display: "inline-flex", alignItems: "center", gap: 6,
@@ -656,7 +639,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
 
         {/* Pannello filtri avanzati */}
         {showFilters && (
-          <div style={{
+          <div id="roster-filters" style={{
             marginTop: 14, padding: "14px 16px",
             background: "rgba(255,255,255,0.03)",
             border: "1px solid rgba(255,255,255,0.08)",
@@ -803,6 +786,11 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
         )}
       </AppCard>
 
+      <div className="roster-stats-status" role="status">
+        {matchRows.loading ? "Caricamento statistiche del campionato…" : matchRows.error
+          ? <>Statistiche online non aggiornate.{!matchRows.unavailable && " Mostriamo gli ultimi dati caricati."} <Button variant="ghost" onClick={matchRows.retry}>Riprova</Button></>
+          : "Statistiche del campionato · per i portieri sono indicati i gol subiti; — indica un dato non disponibile."}
+      </div>
       {filteredPlayers.length === 0 ? (
         <EmptyState
           icon={activeFilterCount > 0 || search ? "🔍" : "⚽"}
@@ -853,7 +841,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
       ) : viewMode === "list" ? (
         <div style={{ display: "grid", gap: 8 }}>
           {filteredPlayers.map((player) => {
-            const matchStats = normalizeMatchStats(playerStatsMap[String(player.id)] || {});
+            const matchStats = playerStatsMap[String(player.id)] || {};
             return (
               <PlayerListRow
                 key={player.id}
@@ -862,8 +850,9 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
                 matches={matches}
                 onDelete={canManage ? () => deletePlayer(player.id) : null}
                 matchStats={matchStats}
+                statsUnavailable={matchRows.unavailable}
                 yellowCards={matchStats.yellowCards}
-                avgRating={playerRatingsMap[String(player.id)] || null}
+                avgRating={matchRows.unavailable ? null : (Number(matchStats.avgRating) || null)}
               />
             );
           })}
@@ -877,7 +866,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
           }}
         >
           {filteredPlayers.map((player) => {
-            const matchStats = normalizeMatchStats(playerStatsMap[String(player.id)] || {});
+            const matchStats = playerStatsMap[String(player.id)] || {};
             return (
               <PlayerCard
                 key={player.id}
@@ -886,9 +875,10 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
                 matches={matches}
                 onDelete={canManage ? () => deletePlayer(player.id) : null}
                 matchStats={matchStats}
+                statsUnavailable={matchRows.unavailable}
                 yellowCards={matchStats.yellowCards}
-                avgRating={playerRatingsMap[String(player.id)] || null}
-                recentRatings={playerRecentRatings[String(player.id)] || null}
+                avgRating={matchRows.unavailable ? null : (Number(matchStats.avgRating) || null)}
+                recentRatings={matchRows.unavailable ? null : matchStats.recentRatings}
               />
             );
           })}
@@ -1052,12 +1042,13 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   );
 }
 
-function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchStats = {}, yellowCards = 0, avgRating = null }) {
+function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchStats = {}, yellowCards = 0, avgRating = null, statsUnavailable = false }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { trainingPct } = getPlayerQuickStats(player, sessions, matches);
   const trainingPctValue = trainingPct === null ? "-" : `${trainingPct}%`;
-  const cardsValue = `${matchStats.yellowCards || 0}/${matchStats.redCards || 0}`;
+  const statValue = (value) => statsUnavailable ? "—" : value;
+  const cardsValue = statValue(`${matchStats.yellowCards || 0}/${matchStats.redCards || 0}`);
   const suspensionYellowCards = yellowCards || matchStats.yellowCards || 0;
 
   const statusTone =
@@ -1075,8 +1066,10 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchSta
 
   return (
     <div
+      className="roster-list-row"
       style={{
         display: "flex",
+        flexWrap: "wrap",
         alignItems: "center",
         gap: 10,
         padding: "6px 12px",
@@ -1129,11 +1122,11 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchSta
       </div>
 
       {/* Statistiche inline */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(46px, auto))", gap: 10, alignItems: "center", flexShrink: 0 }}>
-        <InlineStat label="Pres" value={matchStats.appearances || 0} />
-        <InlineStat label="Min" value={matchStats.minutes || 0} />
-        <InlineStat label="Gol" value={matchStats.goals || 0} />
-        <InlineStat label="Ass" value={matchStats.assists || 0} />
+      <div className="roster-list-metrics no-mobile-override" style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(46px, auto))", gap: 10, alignItems: "center", flexShrink: 0 }}>
+        <InlineStat label="Pres" value={statValue(matchStats.appearances || 0)} />
+        <InlineStat label="Min" value={statValue(matchStats.minutes || 0)} />
+        <InlineStat label={isGoalkeeper(player) ? "Gol subiti" : "Gol"} value={statValue(isGoalkeeper(player) ? (matchStats.goalsConceded ?? "—") : matchStats.goals || 0)} />
+        <InlineStat label="Ass" value={statValue(matchStats.assists || 0)} />
         <InlineStat label="G/R" value={cardsValue} />
         <InlineStat label="% All." value={trainingPctValue} tone={trainingPct === 100 ? "#22c55e" : undefined} />
       </div>

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
 import Badge from "../ui/Badge";
 import { useTranslation } from "../../i18n";
-import { calcPlayerAge, getPlayerQuickStats } from "../../utils/helpers";
+import { calcPlayerAge, getPlayerQuickStats, isGoalkeeper } from "../../utils/helpers";
 
 const SUSPENSION_THRESHOLD = 5;
 
@@ -18,6 +18,7 @@ function normalizeMatchStats(stats = {}) {
     minutes: numberStat(stats.minutes_played ?? stats.minutes),
     goals: numberStat(stats.goals),
     assists: numberStat(stats.assists),
+    goalsConceded: stats.goalsConceded ?? null,
     yellowCards: numberStat(stats.yellow_cards ?? stats.yellowCards),
     redCards: numberStat(stats.red_cards ?? stats.redCards),
   };
@@ -43,7 +44,7 @@ function FormDots({ ratings }) {
   );
 }
 
-function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats = {}, yellowCards = 0, avgRating = null, recentRatings = null }) {
+function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats = {}, yellowCards = 0, avgRating = null, recentRatings = null, statsUnavailable = false }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -51,6 +52,7 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
   const ageValue = computedAge ?? player.age ?? "-";
   const { trainingPct } = getPlayerQuickStats(player, sessions, matches);
   const stats = normalizeMatchStats(matchStats);
+  const statValue = (value) => statsUnavailable ? "—" : value;
   const suspensionYellowCards = yellowCards || stats.yellowCards || 0;
   const trainingPctValue = trainingPct === null ? "-" : `${trainingPct}%`;
   const trainingPctLabelKey = "components.playerCard.trainingPctAbbr";
@@ -195,11 +197,11 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
             gap: 10,
           }}
         >
-          <MiniValue label={t("components.playerCard.appearances")} value={stats.appearances} />
-          <MiniValue label="Min" value={stats.minutes} />
-          <MiniValue label="Gol" value={stats.goals} />
-          <MiniValue label="Assist" value={stats.assists} />
-          <MiniValue label="G/R" value={`${stats.yellowCards}/${stats.redCards}`} />
+          <MiniValue label={t("components.playerCard.appearances")} value={statValue(stats.appearances)} />
+          <MiniValue label="Min" value={statValue(stats.minutes)} />
+          <MiniValue label={isGoalkeeper(player) ? "Gol subiti" : "Gol"} value={statValue(isGoalkeeper(player) ? (stats.goalsConceded ?? "—") : stats.goals)} />
+          <MiniValue label="Assist" value={statValue(stats.assists)} />
+          <MiniValue label="G/R" value={statValue(`${stats.yellowCards}/${stats.redCards}`)} />
           <MiniValue
             label={safeTrainingPctLabel}
             title={t("components.playerCard.trainingPct")}

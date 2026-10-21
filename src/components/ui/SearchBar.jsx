@@ -31,6 +31,7 @@ export default function SearchBar({ value, onChange, placeholder = "Cerca..." })
         aria-label={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Escape") onChange(""); }}
         placeholder={placeholder}
         style={{
           width: "100%",

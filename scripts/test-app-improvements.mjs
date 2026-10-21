@@ -60,3 +60,8 @@ assert.deepEqual(toggleFavoritePath(inaccessible, "/calendar", ["/calendar"]), [
 assert.deepEqual(toggleFavoritePath(inaccessible, "/calendar", [...inaccessible, "/calendar"]), inaccessible, "Keep the limit when all eight favorites remain accessible");
 assert.deepEqual(toggleFavoritePath([], "https://example.com", ["/calendar"]), [], "Never accept an arbitrary path outside the visible navigation");
 console.log("Save status, goalkeeper coverage, operational tasks and navigation search checks passed");
+
+// Invalid/partial scores previously erased or corrupted the recorded result.
+const { isValidMatchScore } = await import('../src/utils/matchScore.js');
+for (const [scored, conceded] of [['',''], ['0','0'], ['2','1'], [0,3], [' 2 ','0']]) assert.equal(isValidMatchScore(scored,conceded),true);
+for (const [scored, conceded] of [['2',''], ['',0], ['-1','0'], ['1.5','2'], ['NaN','1'], ['1e2','0'], [Infinity,0]]) assert.equal(isValidMatchScore(scored,conceded),false);

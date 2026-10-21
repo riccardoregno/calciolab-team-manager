@@ -87,3 +87,11 @@
 
 .player-statistics-loading { color:var(--cl-muted); font-size:12px; margin:14px 0 0; }
 .player-statistics-loading.is-goalkeeper { min-height:130px; display:grid; place-items:center; border:1px solid rgba(56,189,248,.15); border-radius:10px; background:rgba(56,189,248,.035); }
+
+.daily-archive-search { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.daily-archive-search [role="status"] { color: var(--text-muted, #94a3b8); font-size: 13px; }
+.daily-archive-toolbar .cl-search { flex: 1 1 240px; }
+@media (max-width: 640px) { .daily-archive-search .cl-search, .daily-archive-toolbar .cl-search { max-width: none !important; } }
+
+.roster-stats-status { font-size: 13px; color: #94a3b8; margin: 0 0 16px; line-height: 1.5; }
+@media (max-width: 640px) { .roster-list-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; width: 100%; flex-shrink: 1 !important; order: 3; } }
