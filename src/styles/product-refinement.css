@@ -98,4 +98,4 @@
 
 /* SearchBar provides its own labelled clear control. */
 .cl-search input[type='search']::-webkit-search-cancel-button,
-.cl-search input[type='search']::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+.cl-search input[type='search']::-webkit-search-decoration { display: none; -webkit-appearance: none; appearance: none; }
