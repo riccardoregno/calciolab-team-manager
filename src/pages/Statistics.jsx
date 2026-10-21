@@ -67,7 +67,7 @@ function Statistics({
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [playerMatchStatsRows, setPlayerMatchStatsRows] = useState([]);
-  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(Boolean(auth.team?.id));
   const [playerMatchesDB, setPlayerMatchesDB] = useState([]);
   const [sortBy, setSortBy] = useState("role");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -221,6 +221,8 @@ function Statistics({
     if (!auth.team?.id) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatsSource("local");
+      setStatsLoading(false);
+      setPlayerMatchStatsRows([]);
       return;
     }
     setStatsLoading(true);
@@ -518,7 +520,7 @@ function Statistics({
       </AppCard>
 
 
-      <PlayerStatisticsCard player={selectedPlayer} stats={selectedStats} />
+      <PlayerStatisticsCard player={selectedPlayer} stats={selectedStats} loading={statsLoading} />
 
       {/* ── KPI ── */}
       <MetricStrip items={[

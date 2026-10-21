@@ -5,7 +5,7 @@ import { isGoalkeeper } from "../../utils/helpers";
 import AppCard from "../ui/AppCard";
 import GoalkeeperMetrics from "./GoalkeeperMetrics";
 
-export default function PlayerStatisticsCard({ player, stats }) {
+export default function PlayerStatisticsCard({ player, stats, loading = false }) {
   const { t, language } = useTranslation();
   if (!player) return null;
   const goalkeeper = isGoalkeeper(player);
@@ -17,7 +17,7 @@ export default function PlayerStatisticsCard({ player, stats }) {
     { label: t("common.assists"), value: stats?.assists || 0, Icon: HandHelping, tone: "assists" },
   ];
   return <AppCard className="player-statistics-card">
-    <section aria-label={t("productPolish.playerSummary")}>
+    <section aria-label={t("productPolish.playerSummary")} aria-busy={loading}>
       <div className="player-statistics-heading">
         <div className="player-statistics-identity">
           <div className="player-statistics-avatar">{player.photo ? <img src={player.photo} alt="" /> : <span>{player.name?.[0] || "?"}</span>}</div>
@@ -25,8 +25,8 @@ export default function PlayerStatisticsCard({ player, stats }) {
         </div>
         <Link to={"/players/" + player.id} className="player-statistics-profile" aria-label={t("productPolish.openPlayer", { name: player.name })}>{t("productPolish.openProfile")}<ArrowUpRight size={16} aria-hidden="true" /></Link>
       </div>
-      <dl className="player-statistics-metrics">{metrics.map(({ label, value, Icon, tone }) => <div key={label} data-tone={tone}><dt><Icon size={15} aria-hidden="true" />{label}</dt><dd>{typeof value === "number" ? number.format(value) : value}</dd></div>)}</dl>
-      {goalkeeper && <GoalkeeperMetrics stats={stats} />}
+      <dl className="player-statistics-metrics">{metrics.map(({ label, value, Icon, tone }) => <div key={label} data-tone={tone}><dt><Icon size={15} aria-hidden="true" />{label}</dt><dd>{loading ? "—" : typeof value === "number" ? number.format(value) : value}</dd></div>)}</dl>
+      {loading ? <p role="status" className={"player-statistics-loading" + (goalkeeper ? " is-goalkeeper" : "")}>{t("common.loadingData")}</p> : goalkeeper && <GoalkeeperMetrics stats={stats} />}
     </section>
   </AppCard>;
 }

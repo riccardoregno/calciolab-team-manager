@@ -22,3 +22,7 @@
 ## Limiti
 
 Le prove responsive nel browser non equivalgono a un collaudo su Android/iPhone fisici. La compilazione iOS richiede macOS/Xcode e configurazione Apple. Nessun caricamento negli store: l'utente ha richiesto di lasciare i pacchetti pronti. Non sono state alterate le statistiche o le presenze reali per eseguire i test.
+
+## Caricamento delle statistiche
+
+La scheda individuale indica esplicitamente il caricamento, con aria-busy e segnaposto al posto dei valori numerici. Verificata con risposta del backend ritardata: inizialmente nessun falso zero, poi valori corretti e aria-busy disattivato. Uscendo da una squadra viene azzerato anche lo stato di caricamento.
