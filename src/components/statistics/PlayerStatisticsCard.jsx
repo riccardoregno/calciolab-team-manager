@@ -1,3 +1,4 @@
+import { getPlayerPhotoStyle } from "../../utils/playerPhoto";
 import { ArrowUpRight, Clock3, ClipboardCheck, Goal, HandHelping } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "../../i18n";
@@ -20,7 +21,7 @@ export default function PlayerStatisticsCard({ player, stats, loading = false })
     <section aria-label={t("productPolish.playerSummary")} aria-busy={loading}>
       <div className="player-statistics-heading">
         <div className="player-statistics-identity">
-          <div className="player-statistics-avatar">{player.photo ? <img src={player.photo} alt="" /> : <span>{player.name?.[0] || "?"}</span>}</div>
+          <div className="player-statistics-avatar">{player.photo ? <img src={player.photo} alt="" style={getPlayerPhotoStyle(player)} /> : <span>{player.name?.[0] || "?"}</span>}</div>
           <div><p className="cl-field-caption">{t("productPolish.playerSummary")}</p><h2>{player.name}</h2><p>{player.role || t("pages.statistics.roleNotSet")}</p></div>
         </div>
         <Link to={"/players/" + player.id} className="player-statistics-profile" aria-label={t("productPolish.openPlayer", { name: player.name })}>{t("productPolish.openProfile")}<ArrowUpRight size={16} aria-hidden="true" /></Link>

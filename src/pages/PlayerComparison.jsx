@@ -1,3 +1,4 @@
+import { getPlayerPhotoStyle } from "../utils/playerPhoto";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import PageHeader from "../components/ui/PageHeader";
@@ -118,7 +119,7 @@ function PlayerHeader({ player, side }) {
           : "linear-gradient(135deg, #6d28d9, #7c3aed)",
       }}>
         {player?.photo
-          ? <img src={player.photo} alt={player.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+          ? <img src={player.photo} alt={player.name} style={getPlayerPhotoStyle(player)} />
           : (player?.name?.[0] || "?").toUpperCase()
         }
       </div>

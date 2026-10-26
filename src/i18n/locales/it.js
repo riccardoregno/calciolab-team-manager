@@ -1103,6 +1103,9 @@ export const it = {
       mobileInsertExercise: "Esercizio",
     },
     playerDetail: {
+      photoSize: 'Zoom foto {{value}}%',
+      photoOffsetX: 'Posizione orizzontale {{value}}',
+      photoOffsetY: 'Posizione verticale {{value}}',
       title: "Scheda giocatore",
       notFound: "Giocatore non trovato",
       back: "← Torna alla rosa",

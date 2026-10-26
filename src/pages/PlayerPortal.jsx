@@ -1,3 +1,4 @@
+import { getPlayerPhotoStyle } from "../utils/playerPhoto";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -604,7 +605,7 @@ function PlayerView({
       <div style={ps.playerHeader2}>
         {selectedPlayer?.photo ? (
           <div style={ps.avatarFrame}>
-            <img src={selectedPlayer.photo} alt={selectedPlayer.name} style={ps.avatarImg} />
+            <img src={selectedPlayer.photo} alt={selectedPlayer.name} style={getPlayerPhotoStyle(selectedPlayer)} />
           </div>
         ) : (
           <div style={ps.avatar}>{selectedPlayer?.name?.slice(0, 1) || "P"}</div>

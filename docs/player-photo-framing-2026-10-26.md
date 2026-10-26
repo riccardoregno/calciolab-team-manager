@@ -1,0 +1,7 @@
+# Player photo framing — 26 October 2026
+
+A shared photo utility now supplies the same zoom, offsets, object fit and transform origin for roster cards and rows, the profile editor and upload preview, match lists, comparison, statistics, the player portal and the formation screen/printout. Existing valid framing values are preserved; invalid numeric values fall back to a valid crop. Images render as blocks inside the existing clipped frames to avoid baseline spacing. The comparison clips at the circular frame rather than rounding the image before its transform.
+
+The profile crop controls now have their missing Italian and English labels. Framing remains a per-player setting, rather than hardcoded name-specific CSS. Adjustments to team data are made through the existing profile editor and synchronization flow; no roster images or private team records are included in this commit.
+
+Validation: ESLint, the existing test suite, web/mobile production builds and Capacitor sync completed. A local visual comparison used unchanged reference portraits plus before/after crops and the actual formation component. Final native build/signatures and production deployment status are recorded in the local release report. No store upload is part of this change.

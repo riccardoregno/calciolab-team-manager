@@ -1,3 +1,4 @@
+import { getPlayerPhotoStyle, getPlayerPhotoSettings } from "../../utils/playerPhoto";
 import React, { useState } from "react";
 import {
   CartesianGrid,
@@ -50,9 +51,7 @@ function formatBirthDateDisplay(raw) {
 
 export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange, onPhotoOffsetChange, summary }) {
   const { t } = useTranslation();
-  const photoSize    = Math.min(180, Math.max(60,  Number(form.photoSize    || 100)));
-  const photoOffsetX = Math.min(50,  Math.max(-50, Number(form.photoOffsetX || 0)));
-  const photoOffsetY = Math.min(50,  Math.max(-50, Number(form.photoOffsetY || 0)));
+  const { size: photoSize, x: photoOffsetX, y: photoOffsetY } = getPlayerPhotoSettings(form);
   return (
     <>
       <AppCard>
@@ -62,10 +61,7 @@ export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange,
               <img
                 src={form.photo}
                 alt={form.name}
-                style={{
-                  ...sectionStyles.avatarImage,
-                  transform: `scale(${photoSize / 100}) translate(${photoOffsetX}%, ${photoOffsetY}%)`,
-                }}
+                style={getPlayerPhotoStyle(form)}
               />
             </div>
           ) : (

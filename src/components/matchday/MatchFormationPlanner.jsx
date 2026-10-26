@@ -1,3 +1,4 @@
+import { getPlayerPhotoTransform as getPhotoTransform } from "../../utils/playerPhoto";
 import { useMemo, useState } from "react";
 
 import AppCard from "../ui/AppCard";
@@ -103,16 +104,6 @@ function formatLeader(player, lineup = {}) {
   if (!player) return "Da definire";
   const shirtNumber = getShirtNumber(player, lineup);
   return `${shirtNumber ? `#${shirtNumber} ` : ""}${playerName(player)}`;
-}
-
-function getPhotoTransform(player = {}) {
-  const sizeValue = player.photoSize ?? 100;
-  const offsetXValue = player.photoOffsetX ?? 0;
-  const offsetYValue = player.photoOffsetY ?? 0;
-  const size = Math.min(180, Math.max(60, Number(sizeValue)));
-  const offsetX = Math.min(50, Math.max(-50, Number(offsetXValue)));
-  const offsetY = Math.min(50, Math.max(-50, Number(offsetYValue)));
-  return `scale(${size / 100}) translate(${offsetX}%, ${offsetY}%)`;
 }
 
 function escapeHtml(value = "") {
@@ -360,7 +351,7 @@ export default function MatchFormationPlanner({
         const photoNode = player?.photo
           ? `<foreignObject x="${cx - (photoSize / 2)}" y="${cy - (photoSize / 2)}" width="${photoSize}" height="${photoSize}">
               <div xmlns="http://www.w3.org/1999/xhtml" style="width:${photoSize}px;height:${photoSize}px;border-radius:50%;overflow:hidden">
-                <img src="${escapeHtml(player.photo)}" alt="${escapeHtml(playerName(player))}" style="width:100%;height:100%;object-fit:cover;transform-origin:center;transform:${escapeHtml(photoTransform)}"/>
+                <img src="${escapeHtml(player.photo)}" alt="${escapeHtml(playerName(player))}" style="width:100%;height:100%;max-width:none;display:block;object-fit:cover;object-position:center;transform-origin:center;transform:${escapeHtml(photoTransform)}"/>
               </div>
             </foreignObject>`
           : `<circle cx="${cx}" cy="${cy}" r="${photoSize / 2}" fill="${player ? color : "rgba(255,255,255,0.10)"}"/>`;
@@ -681,7 +672,10 @@ function FormationField({ slots, plan, lineup, playerMap, selectedSlot, onSlotCl
                           style={{
                             width: "100%",
                             height: "100%",
+                            maxWidth: "none",
+                            display: "block",
                             objectFit: "cover",
+                            objectPosition: "center",
                             transformOrigin: "center",
                             transform: photoTransform,
                           }}

@@ -1,3 +1,4 @@
+import { getPlayerPhotoStyle } from "../../utils/playerPhoto";
 import AppCard from "../ui/AppCard";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
@@ -34,7 +35,7 @@ export function PlayerList({
         <div key={player.id} style={{ ...matchDayStyles.playerRow, gridTemplateColumns: rowGrid }}>
           <div style={matchDayStyles.playerAvatar}>
             {player.photo ? (
-              <img src={player.photo} alt={player.name} style={matchDayStyles.avatarImg} />
+              <img src={player.photo} alt={player.name} style={getPlayerPhotoStyle(player)} />
             ) : (
               player.name?.[0] || "?"
             )}

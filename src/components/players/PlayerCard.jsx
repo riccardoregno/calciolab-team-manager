@@ -1,3 +1,4 @@
+import { getPlayerPhotoStyle } from "../../utils/playerPhoto";
 import { useNavigate } from "react-router-dom";
 
 import Button from "../ui/Button";
@@ -67,9 +68,6 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
         .slice(0, 2)
         .toUpperCase()
     : "?";
-  const photoSize    = Math.min(180, Math.max(60,  Number(player.photoSize    || 100)));
-  const photoOffsetX = Math.min(50,  Math.max(-50, Number(player.photoOffsetX || 0)));
-  const photoOffsetY = Math.min(50,  Math.max(-50, Number(player.photoOffsetY || 0)));
 
   return (
     <div
@@ -114,12 +112,7 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
               <img
                 src={player.photo}
                 alt={player.name}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  transform: `scale(${photoSize / 100}) translate(${photoOffsetX}%, ${photoOffsetY}%)`,
-                }}
+                style={getPlayerPhotoStyle(player)}
               />
             ) : (
               initials

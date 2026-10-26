@@ -1,3 +1,4 @@
+import { getPlayerPhotoStyle } from "../utils/playerPhoto";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Download, Ellipsis, GitCompareArrows, Upload, UserPlus } from "lucide-react";
@@ -1001,11 +1002,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
                 <img
                   src={form.photo}
                   alt="preview"
-                  style={{
-                    width: `${Number(form.photoSize || 100)}%`,
-                    height: `${Number(form.photoSize || 100)}%`,
-                    objectFit: "cover",
-                  }}
+                  style={getPlayerPhotoStyle(form)}
                 />
               </div>
               <label style={{ width: "min(320px, 100%)", display: "grid", gap: 6, color: "#94a3b8", fontSize: 12, fontWeight: 800, textTransform: "uppercase" }}>
@@ -1091,7 +1088,7 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchSta
           }}
         >
           {player.photo ? (
-            <img src={player.photo} alt={player.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={player.photo} alt={player.name} style={getPlayerPhotoStyle(player)} />
           ) : (
             (player.name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
           )}

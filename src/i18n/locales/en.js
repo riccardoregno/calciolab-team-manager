@@ -1103,6 +1103,9 @@ export const en = {
       mobileInsertExercise: "Exercise",
     },
     playerDetail: {
+      photoSize: 'Photo zoom {{value}}%',
+      photoOffsetX: 'Horizontal position {{value}}',
+      photoOffsetY: 'Vertical position {{value}}',
       title: "Player profile",
       notFound: "Player not found",
       back: "← Back to squad",
