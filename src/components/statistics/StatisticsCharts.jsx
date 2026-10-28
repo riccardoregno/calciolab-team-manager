@@ -16,7 +16,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { normalizeRoleToGroup, parseMatchResult } from "../../utils/helpers";
+import { normalizeRoleToGroup } from "../../utils/helpers";
+import { buildLeagueSeasonTrend } from "../../utils/seasonTrend.js";
 
 /* ─── Tooltip style ─────────────────────────────────────────── */
 const TT = {
@@ -52,12 +53,6 @@ function normalizeRole(role = "") {
   return normalizeRoleToGroup(role) || "Altro";
 }
 
-function isFriendlyMatch(event) {
-  if (event?.type !== "Partita") return false;
-  if (event.isFriendly === true || event.friendly === true) return true;
-  const fields = [event.matchKind, event.match_kind, event.competition, event.category, event.kind, event.title, event.notes];
-  return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
-}
 
 function chartPlayerLabel(player = {}) {
   const lastName = String(player.lastName || player.last_name || "").trim();
@@ -121,31 +116,7 @@ export default function StatisticsCharts({ stats, history, selectedPlayer, event
   };
 
   /* ── Nuovo — Andamento stagione + Gol fatti/subiti ── */
-  const matchEvents = [...events]
-    .filter((e) => e.type === "Partita" && e.date && !isFriendlyMatch(e))
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-  const seasonTrend = matchEvents.reduce((acc, m, i) => {
-    const parsed = parseMatchResult(m.result, m);
-    if (!parsed) return acc;
-    const { goalsFor, goalsAgainst } = parsed;
-    const outcome = goalsFor > goalsAgainst ? "W" : goalsFor === goalsAgainst ? "D" : "L";
-    const pts = outcome === "W" ? 3 : outcome === "D" ? 1 : outcome === "L" ? 0 : null;
-    const prev = acc[i - 1];
-    const cumulativePoints = pts !== null
-      ? (prev?.cumPts ?? 0) + pts
-      : (prev?.cumPts ?? 0);
-    acc.push({
-      match: i + 1,
-      label: m.opponent ? String(m.opponent).slice(0, 10) : `G${i + 1}`,
-      outcome,
-      pts,
-      cumPts: pts !== null ? cumulativePoints : null,
-      goalsFor,
-      goalsAgainst,
-    });
-    return acc;
-  }, []);
+  const seasonTrend = buildLeagueSeasonTrend(events);
 
   const hasMatchData = seasonTrend.some((m) => m.outcome !== null);
   const hasGoalData  = seasonTrend.some((m) => m.goalsFor > 0 || m.goalsAgainst > 0);
@@ -307,7 +278,7 @@ export default function StatisticsCharts({ stats, history, selectedPlayer, event
       {/* ── 6. Andamento stagione (punti cumulativi + W/D/L) ── */}
       {hasMatchData && seasonTrend.length >= 2 && (
         <AppCard style={{ minWidth: 0, overflow: "hidden" }}>
-          <p style={sectionLabel}>Andamento stagione</p>
+          <p style={sectionLabel}>Andamento campionato</p>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
             <h3 style={{ margin: 0, fontSize: 15, lineHeight: 1.2 }}>Punti cumulativi</h3>
             <div style={{ display: "flex", gap: 8 }}>

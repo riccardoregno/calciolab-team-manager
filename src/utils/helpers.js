@@ -1328,11 +1328,20 @@ export function generatePhysicalWorkout(players = [], tests = [], parameters = {
 // Se viene passato il match, interpreta la stringa come casa-trasferta e restituisce
 // i gol dal punto di vista della squadra; in trasferta quindi inverte i valori.
 export function parseMatchResult(result, match = null) {
+  // The displayed home-away result is canonical; older numeric copies may be stale.
+  const score = typeof result === "string" ? result.trim().match(/^(\d+)\s*[-:]\s*(\d+)$/) : null;
+  if (score) {
+    const homeGoals = Number(score[1]), awayGoals = Number(score[2]);
+    return match?.location === "Trasferta"
+      ? { goalsFor: awayGoals, goalsAgainst: homeGoals, homeGoals, awayGoals }
+      : { goalsFor: homeGoals, goalsAgainst: awayGoals, homeGoals, awayGoals };
+  }
+
   const teamGoals = match?.goalsScored ?? match?.goals_scored;
   const opponentGoals = match?.goalsConceded ?? match?.goals_conceded;
   const hasTeamScore =
-    teamGoals !== undefined &&
-    opponentGoals !== undefined &&
+    teamGoals != null &&
+    opponentGoals != null &&
     String(teamGoals).trim() !== "" &&
     String(opponentGoals).trim() !== "";
   const parsedTeamGoals = Number(teamGoals);
@@ -1350,8 +1359,8 @@ export function parseMatchResult(result, match = null) {
   const structuredHomeGoals = match?.goalsFor ?? match?.goals_for;
   const structuredAwayGoals = match?.goalsAgainst ?? match?.goals_against;
   const hasStructuredScore =
-    structuredHomeGoals !== undefined &&
-    structuredAwayGoals !== undefined &&
+    structuredHomeGoals != null &&
+    structuredAwayGoals != null &&
     String(structuredHomeGoals).trim() !== "" &&
     String(structuredAwayGoals).trim() !== "";
   const parsedHomeGoals = hasStructuredScore ? Number(structuredHomeGoals) : null;
