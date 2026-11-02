@@ -21,6 +21,8 @@ import {
   SectionHeader, MatchCommandCenter,
 } from "../components/matchday/MatchDayElements";
 import MatchFormationPlanner from "../components/matchday/MatchFormationPlanner";
+import OpponentLineupImport from "../components/matchday/OpponentLineupImport";
+import { ageAtMatch, mergeImportedPlayers } from "../utils/opponentLineupImport.js";
 import { getOpponentScouting, getMatchVenue, syncFormationLineup } from "../utils/matchDayHelpers";
 
 function MatchDay({
@@ -34,6 +36,7 @@ function MatchDay({
   const [showOpponentLineupEditor, setShowOpponentLineupEditor] = useState(false);
   const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [attachmentError, setAttachmentError] = useState(null);
+  const [autoReadPath, setAutoReadPath] = useState("");
 
   const isMobile = useIsMobile();
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
@@ -259,6 +262,7 @@ function MatchDay({
     setAttachmentUploading(true);
     setAttachmentError(null);
     try {
+      setAutoReadPath("");
       const attachment = await uploadTeamAttachment({
         teamId: auth.team?.id,
         folder: `matches/${matchId}/opponent-lineup`,
@@ -268,6 +272,7 @@ function MatchDay({
       setMatches((current) => current.map((match) => match.id === matchId
         ? { ...match, opponentScouting: { ...getOpponentScouting(match), attachment } }
         : match));
+      setAutoReadPath(attachment.path);
     } catch (error) {
       const message = error?.message || t("pages.matchDay.uploadFailed");
       setAttachmentError(message);
@@ -675,6 +680,27 @@ function MatchDay({
             <AttachmentPreview attachment={opponentScouting.attachment} />
           )}
 
+          {opponentScouting.attachment && <OpponentLineupImport
+            key={String(selectedMatch.id) + ":" + opponentScouting.attachment.path}
+            attachment={opponentScouting.attachment}
+            teamId={auth.team?.id}
+            matchDate={selectedMatch.date}
+            autoReadPath={autoReadPath}
+            onConfirm={(rows) => {
+              const matchId = selectedMatch.id;
+              const path = opponentScouting.attachment.path;
+              setMatches((current) => current.map((match) => {
+                if (match.id !== matchId || match.opponentScouting?.attachment?.path !== path) return match;
+                const scouting = getOpponentScouting(match);
+                return { ...match, opponentScouting: { ...scouting,
+                  lineup: mergeImportedPlayers(scouting.lineup, rows, () => createId("opponent-player")),
+                } };
+              }));
+              setShowOpponentLineupEditor(true);
+              setAutoReadPath("");
+            }}
+          />}
+
           <div style={matchDayStyles.opponentHeader}>
             <h4 style={{ margin: 0, lineHeight: 1.2 }}>
               {opponentScouting.attachment ? "Trascrizione giocatori" : t("pages.matchDay.opponentLineupTitle")}
@@ -692,7 +718,7 @@ function MatchDay({
 
           {(showOpponentLineupEditor || opponentScouting.lineup.length > 0 || !opponentScouting.attachment) && (
             <div style={{ overflowX: "auto" }}>
-              <div style={{ ...matchDayStyles.opponentList, minWidth: 560 }}>
+              <div style={{ ...matchDayStyles.opponentList, minWidth: 950 }}>
                 {opponentScouting.lineup.length === 0 ? (
                   <p style={matchDayStyles.muted}>
                     {opponentScouting.attachment
@@ -718,16 +744,22 @@ function MatchDay({
                         }
                         style={matchDayStyles.compactInput}
                       />
+                      <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
                       <input
-                        placeholder={t("pages.matchDay.birthYearPlaceholder")}
-                        inputMode="numeric"
-                        maxLength={4}
-                        value={player.birthYear || ""}
-                        onChange={(event) =>
-                          updateOpponentPlayer(player.id, "birthYear", event.target.value.replace(/\D/g, "").slice(0, 4))
-                        }
+                        aria-label="Data di nascita"
+                        type="date"
+                        value={player.birthDate || ""}
+                        onChange={(event) => {
+                          const birthDate = event.target.value;
+                          updateOpponentScouting({ lineup: opponentScouting.lineup.map((item) => item.id === player.id
+                            ? { ...item, birthDate, birthYear: birthDate.slice(0, 4) } : item) });
+                        }}
                         style={matchDayStyles.compactInput}
                       />
+                      <span>{ageAtMatch(player.birthDate, selectedMatch.date) != null
+                        ? ageAtMatch(player.birthDate, selectedMatch.date) + " anni alla partita"
+                        : player.birthYear ? "Anno: " + player.birthYear : "Data di nascita"}</span>
+                      </label>
                       <input
                         placeholder={t("pages.matchDay.rolePlaceholder")}
                         value={player.role}

@@ -1,0 +1,24 @@
+import assert from "node:assert/strict";
+import { normalizeBirthDate, ageAtMatch, normalizeExtractedPlayers, mergeImportedPlayers } from "../src/utils/opponentLineupImport.js";
+assert.equal(normalizeBirthDate("2001-02-29"), "");
+assert.equal(normalizeBirthDate("2000-02-29"), "2000-02-29");
+assert.equal(normalizeBirthDate("2000-13-01"), "");
+assert.equal(ageAtMatch("2009-02-05", "2026-10-24"), 17);
+assert.equal(ageAtMatch("2009-10-25", "2026-10-24"), 16);
+assert.equal(ageAtMatch("2009-10-24", "2026-10-24"), 17);
+assert.equal(ageAtMatch("", "2026-10-24"), null);
+assert.equal(ageAtMatch("2030-01-01", "2026-10-24"), null);
+const rows = normalizeExtractedPlayers([{ number: "1", firstName: "Edoardo", lastName: "Mattei", birthDate: "2009-02-05", needsReview: false }, { firstName: "Luca", lastName: "De Luca", birthDate: "2009-02-30", needsReview: false }]);
+assert.equal(rows[1].birthDate, "");
+assert.equal(rows[1].needsReview, true);
+assert.throws(() => normalizeExtractedPlayers({}));
+let id = 0;
+const existing = [{ id: "old", name: " MATTEI   EDOARDO ", birthYear: "2009", notes: "Keep" }];
+const imported = mergeImportedPlayers(existing, [...rows, rows[0]], () => String(++id));
+assert.equal(imported.length, 2);
+assert.equal(imported[0].notes, "Keep");
+assert.equal(imported[1].name, "De Luca Luca");
+assert.equal(existing.length, 1);
+assert.equal(mergeImportedPlayers([], [rows[0], { ...rows[0], birthDate: "2008-02-05" }], () => String(++id)).length, 2);
+console.log("Opponent lineup import: all checks passed.");
+

@@ -407,7 +407,7 @@ export const matchDayStyles = {
   },
   opponentRow: {
     display: "grid",
-    gridTemplateColumns: "70px 1fr 90px 130px 130px 1fr auto",
+    gridTemplateColumns: "70px minmax(140px, 1fr) 160px 130px 130px minmax(120px, 1fr) auto",
     gap: 8,
     alignItems: "center",
   },

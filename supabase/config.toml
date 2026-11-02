@@ -438,3 +438,8 @@ entrypoint = "./functions/stripe-webhook/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/update-vip/index.ts"
+
+[functions.extract-opponent-lineup]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/extract-opponent-lineup/index.ts"

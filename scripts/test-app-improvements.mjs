@@ -62,6 +62,24 @@ assert.deepEqual(toggleFavoritePath([], "https://example.com", ["/calendar"]), [
 console.log("Save status, goalkeeper coverage, operational tasks and navigation search checks passed");
 
 // Invalid/partial scores previously erased or corrupted the recorded result.
-const { isValidMatchScore } = await import('../src/utils/matchScore.js');
+const { buildHomeAwayScorePayload, isValidMatchScore } = await import('../src/utils/matchScore.js');
+const { parseMatchResult } = await import('../src/utils/helpers.js');
+for (const location of ['Casa', 'Trasferta', 'Neutro']) {
+  for (const [home, away] of [['2', '1'], ['0', '0'], ['0', '3']]) {
+    const match = { location, ...buildHomeAwayScorePayload({ location }, home, away) };
+    const parsed = parseMatchResult(match.result, match);
+    assert.equal(match.result, `${home}-${away}`);
+    assert.equal(parsed.homeGoals, Number(home));
+    assert.equal(parsed.awayGoals, Number(away));
+    assert.equal(parsed.goalsFor, Number(location === 'Trasferta' ? away : home));
+    assert.equal(parsed.goalsAgainst, Number(location === 'Trasferta' ? home : away));
+    assert.equal(Number(match.goalsScored), parsed.goalsFor);
+    assert.equal(Number(match.goalsConceded), parsed.goalsAgainst);
+    assert.deepEqual(buildHomeAwayScorePayload(match, parsed.homeGoals, parsed.awayGoals), buildHomeAwayScorePayload({ location }, home, away));
+  }
+}
+assert.deepEqual(buildHomeAwayScorePayload({ location: 'Trasferta' }, '', ''), {
+  result: '', goalsFor: '', goalsAgainst: '', goalsScored: '', goalsConceded: '',
+});
 for (const [scored, conceded] of [['',''], ['0','0'], ['2','1'], [0,3], [' 2 ','0']]) assert.equal(isValidMatchScore(scored,conceded),true);
 for (const [scored, conceded] of [['2',''], ['',0], ['-1','0'], ['1.5','2'], ['NaN','1'], ['1e2','0'], [Infinity,0]]) assert.equal(isValidMatchScore(scored,conceded),false);

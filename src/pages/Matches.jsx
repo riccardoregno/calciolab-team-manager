@@ -20,10 +20,10 @@ import { createId, formatDate, localDateString, normalizeAppSettings, parseMatch
 import { sendTeamNotification } from "../services/notifications";
 import SearchBar from "../components/ui/SearchBar";
 import { searchNavigationItems } from "../utils/navigationSearch";
-import { isValidMatchScore } from "../utils/matchScore";
+import { buildHomeAwayScorePayload, isValidMatchScore } from "../utils/matchScore";
 
 const MATCH_MODAL_QUERY = "match";
-const MATCH_DRAFT_KEY = "calciolab_match_draft_v1";
+const MATCH_DRAFT_KEY = "calciolab_match_draft_v2";
 const STATUS_LABEL_KEYS = {
   Vinta: "pages.matches.statusWon",
   Persa: "pages.matches.statusLost",
@@ -111,8 +111,8 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   function openResultEdit(match) {
     const parsed = parseMatchResult(match.result, match);
     setResultDraft({
-      home: parsed ? String(parsed.goalsFor) : "",
-      away: parsed ? String(parsed.goalsAgainst) : "",
+      home: parsed ? String(parsed.homeGoals) : "",
+      away: parsed ? String(parsed.awayGoals) : "",
     });
     setResultEditId(match.id);
   }
@@ -128,7 +128,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
       if (m.id !== matchId) return m;
       return {
         ...m,
-        ...buildTeamScorePayload(m, h, a),
+        ...buildHomeAwayScorePayload(m, h, a),
       };
     }));
     setResultEditId(null);
@@ -222,7 +222,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
     savingRef.current = true;
 
     // Calcola result dalla coppia strutturata; se i campi sono vuoti la partita è "In programma"
-    const scorePayload = buildTeamScorePayload(form, form.goalsFor, form.goalsAgainst);
+    const scorePayload = buildHomeAwayScorePayload(form, form.goalsFor, form.goalsAgainst);
 
     const payload = {
       ...form,
@@ -583,7 +583,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
 
             {/* Risultato strutturato: due campi numerici separati da "–" */}
             <label style={{ display: "grid", gap: 6, color: "#94a3b8", fontSize: 12, fontWeight: 700, textTransform: "uppercase" }}>
-              <span>{t("pages.matches.scoreLabel")}</span>
+              <span>{t("pages.matches.scoreHomeAwayLabel")}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <input
                   type="number"
@@ -868,19 +868,19 @@ function MatchFocusCard({
           <div style={matchStyles.focusScoreBox}>
             {resultEditId === match.id ? (
               <div style={matchStyles.scoreEditWrap}>
-                <span style={matchStyles.scoreEditLabel}>{t("pages.matches.scoreForShort")}</span>
+                <span style={matchStyles.scoreEditLabel}>{t("pages.matches.scoreHomeShort")}</span>
                 <input
                   type="number"
                   min="0"
-                  aria-label="Gol fatti" inputMode="numeric" step="1" value={resultDraft.home}
+                  aria-label={t("pages.matches.scoreHome")} inputMode="numeric" step="1" value={resultDraft.home}
                   onChange={(e) => setResultDraft((draft) => ({ ...draft, home: e.target.value }))}
                   style={matchStyles.scoreInput}
                 />
-                <span style={matchStyles.scoreEditLabel}>{t("pages.matches.scoreAgainstShort")}</span>
+                <span style={matchStyles.scoreEditLabel}>{t("pages.matches.scoreAwayShort")}</span>
                 <input
                   type="number"
                   min="0"
-                  aria-label="Gol subiti" inputMode="numeric" step="1" value={resultDraft.away}
+                  aria-label={t("pages.matches.scoreAway")} inputMode="numeric" step="1" value={resultDraft.away}
                   onChange={(e) => setResultDraft((draft) => ({ ...draft, away: e.target.value }))}
                   style={matchStyles.scoreInput}
                 />
@@ -1043,19 +1043,19 @@ function MatchCard({
           >
             {resultEditId === match.id ? (
               <div style={matchStyles.scoreEditWrap}>
-                <span style={matchStyles.scoreEditLabel}>{t("pages.matches.scoreForShort")}</span>
+                <span style={matchStyles.scoreEditLabel}>{t("pages.matches.scoreHomeShort")}</span>
                 <input
                   type="number"
                   min="0"
-                  aria-label="Gol fatti" inputMode="numeric" step="1" value={resultDraft.home}
+                  aria-label={t("pages.matches.scoreHome")} inputMode="numeric" step="1" value={resultDraft.home}
                   onChange={(e) => setResultDraft((draft) => ({ ...draft, home: e.target.value }))}
                   style={matchStyles.scoreInput}
                 />
-                <span style={matchStyles.scoreEditLabel}>{t("pages.matches.scoreAgainstShort")}</span>
+                <span style={matchStyles.scoreEditLabel}>{t("pages.matches.scoreAwayShort")}</span>
                 <input
                   type="number"
                   min="0"
-                  aria-label="Gol subiti" inputMode="numeric" step="1" value={resultDraft.away}
+                  aria-label={t("pages.matches.scoreAway")} inputMode="numeric" step="1" value={resultDraft.away}
                   onChange={(e) => setResultDraft((draft) => ({ ...draft, away: e.target.value }))}
                   style={matchStyles.scoreInput}
                 />
@@ -1222,8 +1222,8 @@ function matchToForm(match) {
     time: match.time || "",
     location: match.location || "Casa",
     result: match.result || "",
-    goalsFor:     parsed ? String(parsed.goalsFor)     : "",
-    goalsAgainst: parsed ? String(parsed.goalsAgainst) : "",
+    goalsFor:     parsed ? String(parsed.homeGoals)     : "",
+    goalsAgainst: parsed ? String(parsed.awayGoals) : "",
     formation: match.formation || "4-2-3-1",
     notes: match.notes || "",
     matchKind: match.matchKind || "Campionato",
@@ -1240,35 +1240,9 @@ function matchToForm(match) {
   };
 }
 
-function buildTeamScorePayload(match, goalsForRaw, goalsAgainstRaw) {
-  const goalsFor = String(goalsForRaw ?? "").trim();
-  const goalsAgainst = String(goalsAgainstRaw ?? "").trim();
-  if (goalsFor === "" || goalsAgainst === "") {
-    return {
-      result: "",
-      goalsFor: "",
-      goalsAgainst: "",
-      goalsScored: "",
-      goalsConceded: "",
-    };
-  }
-
-  const scored = Number(goalsFor);
-  const conceded = Number(goalsAgainst);
-  const homeGoals = match.location === "Trasferta" ? conceded : scored;
-  const awayGoals = match.location === "Trasferta" ? scored : conceded;
-  return {
-    result: `${homeGoals}-${awayGoals}`,
-    goalsFor: String(homeGoals),
-    goalsAgainst: String(awayGoals),
-    goalsScored: String(scored),
-    goalsConceded: String(conceded),
-  };
-}
-
 function formatTeamScore(match) {
   const parsed = parseMatchResult(match.result, match);
-  return parsed ? `${parsed.goalsFor}-${parsed.goalsAgainst}` : (match.result || "-");
+  return parsed ? `${parsed.homeGoals}-${parsed.awayGoals}` : (match.result || "-");
 }
 
 function emptyMatch(homeLogo = "") {

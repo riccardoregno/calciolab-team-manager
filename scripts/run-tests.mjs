@@ -1,4 +1,5 @@
 import "./test-season-trend.mjs";
+import "./test-opponent-lineup-import.mjs";
 import assert from "node:assert/strict";
 import "./test-player-statistics.mjs";
 import "./test-app-improvements.mjs";
