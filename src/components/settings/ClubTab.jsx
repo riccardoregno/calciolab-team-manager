@@ -169,6 +169,10 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
 
   async function sendInvite(e) {
     e.preventDefault();
+    if (inviteForm.role === "sponsor") {
+      showToast?.(t("pages.settings.selectStaffRole"), "warn");
+      return;
+    }
     if (!inviteForm.email) return;
     const token = inviteToken || generateInviteToken();
 
@@ -416,13 +420,12 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
       <AppCard style={{ marginBottom: 18 }}>
         <div style={sharedStyles.clubIntro}>
           <div>
-            <Badge tone="blue">Profilo società</Badge>
+            <Badge tone="blue">{t("pages.settings.clubProfile")}</Badge>
             <h2 style={{ margin: "12px 0 6px", lineHeight: 1.15 }}>
               {t("pages.settings.clubIntroTitle")}
             </h2>
             <p style={{ color: "#94a3b8", margin: 0, lineHeight: 1.5 }}>
-              Qui configuri i dati che rendono CalcioLab riconoscibile per staff, giocatori,
-              sponsor ed export: società, squadra, categoria, membri, inviti e checklist iniziale.
+              Qui configuri squadra, logo, campo di casa, categoria e accessi dello staff.
             </p>
           </div>
           <div style={sharedStyles.clubIntroStats}>
@@ -929,7 +932,7 @@ export function ClubTab({ appSettings, setAppSettings, team, showToast, players 
                 onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
                 style={styles.input}
               >
-                {Object.entries(memberRoles).map(([key, role]) => (
+                {Object.entries(memberRoles).filter(([key]) => key !== "sponsor").map(([key, role]) => (
                   <option key={key} value={key}>{role.label} — {role.description || ""}</option>
                 ))}
               </select>

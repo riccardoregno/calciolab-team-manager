@@ -1017,7 +1017,7 @@ function Dashboard({
   }
 
   if (currentRole === "sponsor") {
-    return <SponsorRoleDashboard appSettings={settings} matches={matches} />;
+    return <LegacyAccountNotice />;
   }
 
   if (currentRole === "athleticTrainer") {
@@ -1442,78 +1442,14 @@ function PlayerRoleDashboard({
   );
 }
 
-function SponsorRoleDashboard({ appSettings, matches }) {
+function LegacyAccountNotice() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const hub = appSettings.sponsorHub;
-  const activeSponsors = hub.sponsors.filter((sponsor) => sponsor.active);
-  const mainSponsor = hub.sponsors.find(
-    (sponsor) => String(sponsor.id) === String(hub.mainSponsorId)
-  );
-  const recentMatches = [...matches]
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .slice(0, 3);
-
   return (
-    <div>
-      <PageHeader
-        title={t("pages.dashboard.sponsorDashboardTitle")}
-        subtitle={t("pages.dashboard.sponsorDashboardSubtitle")}
-        badge={t("pages.dashboard.sponsorView")}
-      />
-
-      <div style={roleDashboardStyles.heroGrid}>
-        <AppCard>
-          <Badge tone="purple">{t("pages.dashboard.partnerClub")}</Badge>
-
-          <h2 style={roleDashboardStyles.heroTitle}>
-            {mainSponsor?.name || t("pages.dashboard.noMainSponsor")}
-          </h2>
-
-          <p style={roleDashboardStyles.muted}>
-            {t("pages.dashboard.activeSponsorsCount", { count: activeSponsors.length })}
-          </p>
-
-          <Button onClick={() => navigate("/sponsors")}>{t("pages.dashboard.openSponsorHub")}</Button>
-        </AppCard>
-
-        <AppCard>
-          <SectionTitle
-            title={t("pages.dashboard.communityOffer")}
-            subtitle={t("pages.dashboard.communityOfferSubtitle")}
-          />
-
-          <p style={roleDashboardStyles.bodyText}>
-            {mainSponsor?.offer ||
-              activeSponsors[0]?.offer ||
-              t("pages.dashboard.noSponsorOffer")}
-          </p>
-        </AppCard>
-      </div>
-
-      <div style={roleDashboardStyles.twoColumns}>
-        <AppCard>
-          <SectionTitle
-            title={t("pages.dashboard.promisedVisibility")}
-            subtitle={t("pages.dashboard.promisedVisibilitySubtitle")}
-          />
-
-          <p style={roleDashboardStyles.bodyText}>
-            {mainSponsor?.visibility ||
-              t("pages.dashboard.defaultVisibility")}
-          </p>
-        </AppCard>
-
-        <AppCard>
-          <SectionTitle
-            title={t("pages.dashboard.recentMatchesTitle")}
-            subtitle={t("pages.dashboard.recentMatchesSubtitle")}
-          />
-
-          <EventList events={recentMatches} emptyText={t("pages.dashboard.noMatchesRecorded")} />
-        </AppCard>
-      </div>
-    </div>
+    <AppCard>
+      <PageHeader title={t("pages.dashboard.coachVersionTitle")} subtitle={t("pages.dashboard.coachVersionAccess")} />
+      <Button variant="ghost" onClick={() => navigate("/settings")}>{t("navigation.items.settings")}</Button>
+    </AppCard>
   );
 }
 

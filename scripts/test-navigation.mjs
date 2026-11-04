@@ -20,7 +20,7 @@ for (const role of roles) {
   }
 }
 for (const items of [desktopItems, mobileItems]) {
-  assert.equal(items.some((item) => item.to === "/exercises" || item.to === "/exercise-library" || item.to === "/ai-session-builder" || item.to === "/microcycle"), false, "Paused exercise pages must not appear on either device");
+  assert.equal(items.some((item) => item.to === "/exercises" || item.to === "/exercise-library" || item.to === "/ai-session-builder" || item.to === "/microcycle" || item.to === "/sponsors"), false, "Removed sections must not appear on either device");
   const fines = items.find((item) => item.to === "/fines");
   assert.ok(fines, "Fines must be reachable on desktop and mobile");
   assert.deepEqual(fines.roles, ["owner", "headCoach", "assistantCoach"]);

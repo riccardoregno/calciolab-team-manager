@@ -199,7 +199,7 @@ export const en = {
       premium: "Premium",
       coach: "Coach",
       settings: "Settings",
-      clubProfile: "Club profile",
+      clubProfile: "Team and staff",
       playerPortal: "Player area",
       sponsors: "Sponsors",
       juniorRoster: "Junior squad",
@@ -277,6 +277,8 @@ export const en = {
       goBack: "Go back",
     },
     dashboard: {
+      coachVersionTitle: "CalcioLab for coaches",
+      coachVersionAccess: "This account has no coaching role in the team. You can manage your account in settings.",
       focus: {
         today: "Your focus today",
         next: "Your next commitment",
@@ -1529,11 +1531,12 @@ export const en = {
       },
     },
     settings: {
+      selectStaffRole: "Select a staff or player role to continue.",
       title: "Settings",
       subtitle: "Configure your workspace and profile",
       account: "Account",
       coachParams: "Coach parameters",
-      clubProfile: "Club profile",
+      clubProfile: "Team and staff",
       notifications: "🔔 Notifications",
       dashboardWidgets: "Dashboard widgets",
       introOperational: "Operational intro",
@@ -1614,7 +1617,7 @@ export const en = {
       coachBtnCustomize: "Customise blocks",
       coachBlocksComingSoon: "Advanced block editor coming soon",
       // Club tab
-      clubIntroTitle: "Identity, access and club operational setup",
+      clubIntroTitle: "Team details and staff access",
       clubLabelSetup: "Setup",
       clubLabelMembers: "Members",
       clubLabelInvites: "Invites",

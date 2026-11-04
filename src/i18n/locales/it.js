@@ -199,7 +199,7 @@ export const it = {
       premium: "Premium",
       coach: "Coach",
       settings: "Impostazioni",
-      clubProfile: "Profilo società",
+      clubProfile: "Squadra e staff",
       playerPortal: "Area giocatori",
       sponsors: "Sponsor",
       juniorRoster: "Rosa Juniores",
@@ -277,6 +277,8 @@ export const it = {
       goBack: "Torna indietro",
     },
     dashboard: {
+      coachVersionTitle: "CalcioLab per allenatori",
+      coachVersionAccess: "Questo account non ha un ruolo tecnico nella squadra. Puoi gestire il tuo account dalle impostazioni.",
       focus: {
         today: "Il tuo focus di oggi",
         next: "Il prossimo impegno",
@@ -1529,11 +1531,12 @@ export const it = {
       },
     },
     settings: {
+      selectStaffRole: "Seleziona un ruolo dello staff o giocatore per continuare.",
       title: "Impostazioni",
       subtitle: "Configura il tuo workspace e profilo",
       account: "Account",
       coachParams: "Parametri Coach",
-      clubProfile: "Profilo società",
+      clubProfile: "Squadra e staff",
       notifications: "🔔 Notifiche",
       dashboardWidgets: "Widget Dashboard",
       introOperational: "Introduzione operativa",
@@ -1614,7 +1617,7 @@ export const it = {
       coachBtnCustomize: "Personalizza blocchi",
       coachBlocksComingSoon: "Editor avanzato blocchi in arrivo",
       // Club tab
-      clubIntroTitle: "Identità, accessi e setup operativo del club",
+      clubIntroTitle: "Dati della squadra e accessi dello staff",
       clubLabelSetup: "Setup",
       clubLabelMembers: "Membri",
       clubLabelInvites: "Inviti",

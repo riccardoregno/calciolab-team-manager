@@ -64,7 +64,6 @@ const ExportCenter = lazy(() => import("./pages/ExportCenter"));
 const StaffTasks = lazy(() => import("./pages/StaffTasks"));
 const Premium = lazy(() => import("./pages/Premium"));
 const PlayerPortal = lazy(() => import("./pages/PlayerPortal"));
-const Sponsors = lazy(() => import("./pages/Sponsors"));
 // const ExerciseLibrary = lazy(() => import("./pages/ExerciseLibrary")); // temporaneamente disabilitato
 const TeamGenerator    = lazy(() => import("./pages/TeamGenerator"));
 const Onboarding  = lazy(() => import("./pages/Onboarding"));
@@ -798,16 +797,7 @@ function App() {
               />
 
               <Route
-                path="/sponsors"
-                element={
-                  gate(["owner", "director", "sponsor"], <FeatureGate featureKey="sponsors" appSettings={previewAppSettings}>
-                    <Sponsors
-                      appSettings={previewAppSettings}
-                      setAppSettings={setAppSettings}
-                    />
-                  </FeatureGate>, "sponsors")
-                }
-              />
+                path="/sponsors" element={<Navigate to="/" replace />} />
 
               {/* /week-plan rimosso — vista Settimana integrata in /calendar */}
 

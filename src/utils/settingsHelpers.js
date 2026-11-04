@@ -46,7 +46,6 @@ export const PERMISSION_AREAS = [
   { key: "staffTasks", icon: "🗂️" },
   { key: "staffChat",  icon: "💬" },
   { key: "playerPortal", icon: "📱" },
-  { key: "sponsors",   icon: "🤝" },
   { key: "exports",    icon: "📤" },
   { key: "settings",   icon: "⚙️" },
   { key: "billing",    icon: "💳" },
