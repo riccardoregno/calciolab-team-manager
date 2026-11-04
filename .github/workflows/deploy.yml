@@ -53,6 +53,7 @@ jobs:
         env:
           VITE_SUPABASE_URL:                    ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY:               ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_STRIPE_PRICE_COACH_MONTHLY:      ${{ secrets.VITE_STRIPE_PRICE_COACH_MONTHLY }}
           VITE_STRIPE_PRICE_PREMIUM_MONTHLY:    ${{ secrets.VITE_STRIPE_PRICE_PREMIUM_MONTHLY }}
           VITE_STRIPE_PRICE_PREMIUM_YEARLY:     ${{ secrets.VITE_STRIPE_PRICE_PREMIUM_YEARLY }}
           VITE_STRIPE_PRICE_CLUB_MONTHLY:       ${{ secrets.VITE_STRIPE_PRICE_CLUB_MONTHLY }}

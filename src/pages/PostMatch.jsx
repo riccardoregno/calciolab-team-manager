@@ -332,7 +332,7 @@ export default function PostMatch({
         <div style={s.actionRow}>
           <Button variant="ghost" onClick={() => navigate(`/match-stats/${match.id}`)}>{t("pages.postMatch.btnStats")}</Button>
           <Button variant="ghost" onClick={() => navigate(`/match-day/${match.id}`)}>{t("pages.postMatch.btnMatchDay")}</Button>
-          <Button variant="ghost" onClick={() => navigate("/microcycle")}>{t("pages.postMatch.btnMicrocycle")}</Button>
+          <Button variant="ghost" onClick={() => navigate("/calendar")}>{t("navigation.items.calendar")}</Button>
           <Button variant="ghost" onClick={exportMatchReportPDF}>{t("pages.postMatch.btnPrint")}</Button>
           <Button variant="ghost" onClick={createStaffTasksFromReport}>{t("pages.postMatch.btnCreateTasks")}</Button>
           <Button onClick={createTrainingFromReport}>{t("pages.postMatch.btnCreateSession")}</Button>

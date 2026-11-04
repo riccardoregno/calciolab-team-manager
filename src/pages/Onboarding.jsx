@@ -40,9 +40,7 @@ const MODULE_OPTIONS = [
   { id: "trainings", label: "Sedute allenamento",  icon: "📋", desc: "Pianifica, registra presenze e carico", plan: "free" },
   { id: "matchDay",  label: "Match Day",           icon: "⚽", desc: "Distinta, piano gara e scouting avversario", plan: "premium" },
   { id: "physical",  label: "Test fisici",         icon: "⏱️", desc: "Gacon, Yo-Yo, sprint e lavori individuali", plan: "premium" },
-  { id: "ai",        label: "AI Session Builder",  icon: "✨", desc: "Sedute generate dall'intelligenza artificiale", plan: "premium" },
-  { id: "portal",    label: "Area giocatori",      icon: "🎽", desc: "Convocazioni, comunicazioni e rendimento", plan: "club" },
-  { id: "sponsors",  label: "Gestione Sponsor",    icon: "🤝", desc: "Hub sponsor, offerte e visibilità brand", plan: "club" },
+  { id: "portal",    label: "Area giocatori",      icon: "🎽", desc: "Convocazioni, comunicazioni e rendimento", plan: "premium" },
 ];
 
 // Labels resolved at render time via t() inside the component — see stepLabels below
@@ -65,8 +63,7 @@ const QUICKSTART_ACTIONS = [
 ];
 
 function recommendPlan(modules) {
-  if (modules.some((m) => ["portal", "sponsors"].includes(m))) return "club";
-  if (modules.some((m) => ["matchDay", "physical", "ai"].includes(m))) return "premium";
+  if (modules.some((m) => ["matchDay", "physical", "portal"].includes(m))) return "premium";
   return "free";
 }
 
@@ -508,9 +505,8 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
   const planColors = {
     free:    { bg: "rgba(34,197,94,0.12)",  border: "rgba(34,197,94,0.3)",  text: "#22c55e", label: "Free" },
     premium: { bg: "rgba(251,146,60,0.12)", border: "rgba(251,146,60,0.3)", text: "#fb923c", label: "Premium" },
-    club:    { bg: "rgba(168,85,247,0.12)", border: "rgba(168,85,247,0.3)", text: "#a855f7", label: "Club" },
   };
-  const planBadgeTone = { free: "green", premium: "orange", club: "purple" };
+  const planBadgeTone = { free: "green", premium: "orange" };
 
   return (
     <div style={ob.stepContent}>
@@ -540,7 +536,7 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
                   fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 999,
                   background: pColor.bg, border: `1px solid ${pColor.border}`, color: pColor.text,
                 }}>
-                  {mod.plan === "free" ? t("pages.onboarding.planLabelFree") : mod.plan === "premium" ? t("pages.onboarding.planLabelPremium") : t("pages.onboarding.planLabelClub")}
+                  {mod.plan === "free" ? t("pages.onboarding.planLabelFree") : t("pages.onboarding.planLabelPremium")}
                 </span>
               </div>
               <div style={{ flex: 1, textAlign: "left" }}>
@@ -573,7 +569,6 @@ function Step3({ form, toggleModule, onBack, onComplete, saving, isMobile }) {
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#cbd5e1" }}>
             {plan === "free"    && t("pages.onboarding.planFreeDesc")}
             {plan === "premium" && t("pages.onboarding.planPremiumDesc")}
-            {plan === "club"    && t("pages.onboarding.planClubDesc")}
           </p>
         </div>
         <Badge tone={planBadgeTone[plan]}>

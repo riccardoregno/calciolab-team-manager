@@ -88,6 +88,7 @@ export async function requireAuth(
 
 /** Known CalcioLab price IDs — validated server-side to prevent abuse */
 const ALLOWED_PRICE_IDS = new Set([
+  Deno.env.get("STRIPE_PRICE_COACH_MONTHLY"),
   Deno.env.get("STRIPE_PRICE_PREMIUM_MONTHLY") ?? "",
   Deno.env.get("STRIPE_PRICE_PREMIUM_YEARLY")  ?? "",
   Deno.env.get("STRIPE_PRICE_CLUB_MONTHLY")    ?? "",

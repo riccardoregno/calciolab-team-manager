@@ -455,7 +455,6 @@ function Trainings({
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <Button variant="ghost" onClick={() => navigate("/exports")}>{t("pages.trainings.exportPdf")}</Button>
             <Button variant="ghost" onClick={() => navigate("/attendance-register")}>{t("pages.trainings.attendanceRegister")}</Button>
-            {canManage && <Button onClick={() => navigate("/ai-session-builder")}>{t("pages.trainings.generateAi")}</Button>}
           </div>
         }
       />

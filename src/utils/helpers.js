@@ -1,3 +1,5 @@
+import { COACH_PREMIUM_MONTHLY_CENTS } from "../../supabase/functions/_shared/coachSubscription.js";
+
 /** Restituisce la data odierna come stringa YYYY-MM-DD nel fuso orario locale.
  *  toISOString() usa UTC: in Italia (UTC+2) dopo le 22:00 restituisce domani. */
 export function localDateString(d = new Date()) {
@@ -540,19 +542,20 @@ export const subscriptionPlans = {
     id: "free",
     name: "Free",
     price: "0",
-    description: "Per iniziare a gestire rosa, calendario e sedute base.",
+    description: "Rosa, partite, presenze e statistiche della squadra.",
   },
   premium: {
     id: "premium",
     name: "Premium Coach",
-    price: "14,90",
-    description: "Per allenatori che vogliono automatizzare, esportare e lavorare sui dati.",
+    price: (COACH_PREMIUM_MONTHLY_CENTS / 100).toFixed(2).replace(".", ","),
+    description: "Per approfondire le partite con report tecnici, scouting e dati fisici.",
   },
   club: {
     id: "club",
     name: "Club",
     price: "49,90",
-    description: "Per societa' con staff, sponsor, area giocatori e moduli condivisi.",
+    yearlyTotal: "449",
+    description: "Per condividere il lavoro della squadra con giocatori e sponsor.",
   },
 };
 
@@ -652,7 +655,7 @@ export const premiumFeatures = {
   },
   playerPortal: {
     label: "Area giocatori",
-    plan: "club",
+    plan: "premium",
     description: "Accesso giocatori a rendimento, obiettivi e programmi.",
   },
   sponsors: {

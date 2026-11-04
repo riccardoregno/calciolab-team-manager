@@ -3,13 +3,12 @@ import { useNavigate } from "react-router-dom";
 import AppCard from "../ui/AppCard";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
-import { getBillingStatus, getSetupProgress, getSubscriptionPlan, isFeatureUnlocked, premiumFeatures } from "../../utils/helpers";
+import { getBillingStatus, getSubscriptionPlan, isFeatureUnlocked, premiumFeatures } from "../../utils/helpers";
 
 export default function FeatureGate({ featureKey, appSettings, children }) {
   const navigate = useNavigate();
   const feature = premiumFeatures[featureKey];
   const currentPlan = getSubscriptionPlan(appSettings);
-  const setup = getSetupProgress({ appSettings });
   const billing = getBillingStatus(appSettings);
 
   if (!feature || isFeatureUnlocked(featureKey, appSettings)) {
@@ -28,19 +27,11 @@ export default function FeatureGate({ featureKey, appSettings, children }) {
             Piano attuale: <strong>{currentPlan.name}</strong>.
             {billing.trialExpired
               ? " Il trial e' scaduto: scegli un piano attivo per riaprire questa sezione."
-              : " Sblocca questa sezione con trial, Premium o Club."}
+              : " Questa sezione è inclusa in Premium a €9,90 al mese."}
           </p>
-          <div style={gateStyles.trialBox}>
-            <strong>{billing.trialExpired ? "Trial scaduto" : "Trial consigliato"}</strong>
-            <span>
-              {billing.trialExpired
-                ? "Riattiva un piano dalla pagina Premium o simula un abbonamento attivo."
-                : `Configurazione al ${setup.percent}%. Puoi avviare una prova di 14 giorni dalla pagina Premium.`}
-            </span>
-          </div>
           <div style={gateStyles.actions}>
             <Button onClick={() => navigate("/premium")}>
-              {billing.trialExpired ? "Riattiva piano" : "Avvia trial"}
+              {billing.trialExpired ? "Gestisci abbonamento" : "Scopri Premium"}
             </Button>
             <Button variant="ghost" onClick={() => navigate("/onboarding")}>Completa onboarding</Button>
             <Button variant="ghost" onClick={() => navigate("/")}>Torna alla dashboard</Button>

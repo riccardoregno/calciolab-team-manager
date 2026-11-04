@@ -50,7 +50,6 @@ const Sessions = lazy(() => import("./pages/Sessions"));
 const Matches = lazy(() => import("./pages/Matches"));
 const MatchDay = lazy(() => import("./pages/MatchDay"));
 const MatchLive = lazy(() => import("./pages/MatchLive"));
-const Microcycle = lazy(() => import("./pages/Microcycle"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Statistics = lazy(() => import("./pages/Statistics"));
 const TacticalBoard = lazy(() => import("./pages/TacticalBoard"));
@@ -67,7 +66,6 @@ const Premium = lazy(() => import("./pages/Premium"));
 const PlayerPortal = lazy(() => import("./pages/PlayerPortal"));
 const Sponsors = lazy(() => import("./pages/Sponsors"));
 // const ExerciseLibrary = lazy(() => import("./pages/ExerciseLibrary")); // temporaneamente disabilitato
-const AiSessionBuilder = lazy(() => import("./pages/AiSessionBuilder"));
 const TeamGenerator    = lazy(() => import("./pages/TeamGenerator"));
 const Onboarding  = lazy(() => import("./pages/Onboarding"));
 const StaffChat        = lazy(() => import("./pages/StaffChat"));
@@ -749,18 +747,7 @@ function App() {
               <Route path="/exercise-library" element={<Navigate to="/statistics" replace />} />
 
               <Route
-                path="/ai-session-builder"
-                element={
-                  gate(technicalRoles, <FeatureGate featureKey="aiSessionBuilder" appSettings={previewAppSettings}>
-                    <AiSessionBuilder
-                      exercises={exercises}
-                      sessions={sessions}
-                      setSessions={setSessions}
-                      players={players}
-                    />
-                  </FeatureGate>, "sessions")
-                }
-              />
+                path="/ai-session-builder" element={<Navigate to="/trainings" replace />} />
 
               <Route
                 path="/team-generator"
@@ -1031,17 +1018,7 @@ function App() {
               />
 
               <Route
-                path="/microcycle"
-                element={
-                  gate(technicalRoles, <Microcycle
-                    sessions={sessions}
-                    matches={matches}
-                    players={players}
-                    gpsSessions={gpsSessions}
-                    teamId={auth.team?.id || null}
-                  />, "sessions")
-                }
-              />
+                path="/microcycle" element={<Navigate to="/calendar" replace />} />
 
               <Route
                 path="/matches"

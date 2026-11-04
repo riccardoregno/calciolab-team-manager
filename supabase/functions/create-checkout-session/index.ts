@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { requireAuth, isAllowedPriceId, isAllowedReturnUrl } from "../_shared/requireAuth.ts";
+import { isCoachPremiumMonthlyPrice } from "../_shared/coachSubscription.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,6 +30,10 @@ Deno.serve(async (req) => {
 
   if (!priceId)  return json({ error: "priceId mancante" }, 400);
   if (!teamId)   return json({ error: "teamId mancante" }, 400);
+  if (planId !== "premium") return json({ error: "È disponibile solo il piano Premium mensile per allenatori." }, 400);
+  if (priceId !== Deno.env.get("STRIPE_PRICE_COACH_MONTHLY")) {
+    return json({ error: "Le nuove attivazioni Premium saranno disponibili a breve." }, 503);
+  }
 
   // Validate priceId server-side — client cannot inject arbitrary price IDs
   if (!isAllowedPriceId(priceId)) {
@@ -47,6 +52,13 @@ Deno.serve(async (req) => {
   if (auth.error) return json({ error: auth.error }, auth.status!);
 
   try {
+    const priceResponse = await fetch(`https://api.stripe.com/v1/prices/${encodeURIComponent(priceId)}`, {
+      headers: { Authorization: `Bearer ${stripeSecretKey}` },
+    });
+    const price = await priceResponse.json();
+    if (!priceResponse.ok || !isCoachPremiumMonthlyPrice(price)) {
+      return json({ error: "Il prezzo Premium non è ancora allineato a €9,90 al mese. Riprova più tardi." }, 503);
+    }
     // FIX (audit Codex — "Stripe checkout: sessioni duplicate"): senza una
     // Idempotency-Key, un doppio click o un retry di rete sul bottone
     // "abbonati" può creare due checkout session distinte per lo stesso

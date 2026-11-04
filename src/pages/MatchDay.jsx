@@ -342,7 +342,6 @@ function MatchDay({
         steps={commandSteps}
         completed={completedSteps}
         total={commandSteps.length}
-        onMicrocycle={() => navigate("/microcycle")}
         onSetPlays={() => navigate("/set-plays")}
         onOpponents={() => navigate("/opponents")}
       />

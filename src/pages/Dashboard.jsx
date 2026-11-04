@@ -931,11 +931,6 @@ function Dashboard({
                 icon="📅"
                 onClick={() => navigate("/calendar")}
               />
-              <QuickAction
-                label={t("navigation.items.aiBuilder")}
-                icon="✨"
-                onClick={() => navigate("/ai-session-builder")}
-              />
             </div>
           </AppCard>
         );

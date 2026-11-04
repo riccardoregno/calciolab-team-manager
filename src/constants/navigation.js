@@ -1,16 +1,13 @@
 import {
   BarChart3,
-  Bot,
   BrainCircuit,
   CalendarDays,
-  CalendarRange,
   ClipboardCheck,
   ClipboardList,
   Coins,
   Dumbbell,
   Gem,
   GitCompareArrows,
-  Handshake,
   HeartPulse,
   Home,
   ListChecks,
@@ -44,16 +41,16 @@ export const PRIMARY = [
   { to: "/players",   labelKey: "navigation.mobile.roster", icon: Users, roles: coachRoles },
   { to: "/trainings", labelKey: "navigation.mobile.trainings", icon: ClipboardList, roles: technicalRoles },
   { to: "/matches",   labelKey: "navigation.mobile.matches", icon: Trophy, roles: coachRoles },
-  { to: "/calendar",  labelKey: "navigation.mobile.calendar", icon: CalendarDays, roles: playerCalendarRoles },
+  { to: "/statistics", labelKey: "navigation.items.statistics", icon: BarChart3, roles: coachRoles },
 ];
 
 // ── Drawer "Altro": poche scorciatoie operative, il resto sotto avanzate ──
 export const CORE_SECONDARY = [
+  { to: "/calendar", labelKey: "navigation.items.calendar", icon: CalendarDays, roles: playerCalendarRoles },
   { to: "/fines", labelKey: "navigation.items.fines", icon: Coins, roles: technicalRoles, cat: "gestione" },
   { to: "/availability",        labelKey: "navigation.items.availability",        icon: HeartPulse, roles: ["owner","headCoach","assistantCoach","athleticTrainer","player"], cat: "squadra" },
   { to: "/staff-chat",          labelKey: "navigation.items.staffChat",           icon: MessagesSquare, roles: coachRoles, cat: "squadra", badge: "chat" },
   { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister",  icon: ClipboardCheck, roles: technicalRoles, cat: "campo" },
-  { to: "/statistics",          labelKey: "navigation.items.statistics",          icon: BarChart3, roles: coachRoles, cat: "analisi" },
   { to: "/exports",             labelKey: "navigation.items.exports",             icon: Printer, roles: managementRoles, cat: "gestione" },
   { to: "/settings",            labelKey: "navigation.items.settings",            icon: Settings, roles: allRoles, cat: "gestione" },
 ];
@@ -65,15 +62,12 @@ export const ADVANCED_SECONDARY = [
   { to: "/physical-tests",      labelKey: "navigation.items.physicalTests",       icon: Timer, roles: physicalRoles, cat: "analisi" },
   { to: "/physical-workouts",   labelKey: "navigation.items.physicalWorkouts",    icon: Dumbbell, roles: physicalRoles, cat: "analisi" },
   { to: "/gps-load",            labelKey: "navigation.items.gpsLoad",             icon: RadioTower, roles: physicalRoles, cat: "analisi" },
-  { to: "/microcycle",          labelKey: "navigation.items.microcycle",          icon: CalendarRange, roles: technicalRoles, cat: "campo" },
   { to: "/set-plays",           labelKey: "navigation.items.setPlays",            icon: Ruler, roles: technicalRoles, cat: "campo" },
   { to: "/tactical-board",      labelKey: "navigation.items.tacticalBoard",       icon: BrainCircuit, roles: technicalRoles, cat: "campo" },
-  { to: "/ai-session-builder",  labelKey: "navigation.items.aiBuilder",           icon: Bot, roles: technicalRoles, cat: "campo" },
   { to: "/team-generator",      labelKey: "navigation.items.teamGenerator",       icon: Scale, roles: technicalRoles, cat: "campo" },
   { to: "/opponents",           labelKey: "navigation.items.opponents",           icon: Search, roles: technicalRoles, cat: "gara" },
   { to: "/player-portal",       labelKey: "navigation.items.playerPortal",        icon: Shirt, roles: coachRoles, cat: "gestione" },
   { to: "/staff-tasks",         labelKey: "navigation.items.staffTasks",          icon: ListChecks, roles: ["owner","headCoach","assistantCoach","athleticTrainer","director"], cat: "gestione" },
-  { to: "/sponsors",            labelKey: "navigation.items.sponsors",            icon: Handshake, roles: ["owner","director","sponsor"], cat: "gestione" },
   { to: "/premium",             labelKey: "navigation.items.premium",             icon: Gem, roles: managementRoles, cat: "gestione" },
 ];
 
@@ -99,6 +93,7 @@ export const primaryMenuGroups = [
   { titleKey: "navigation.groups.team", items: [navigationItem("/players", { label: "Squadra" })] },
   { titleKey: "navigation.groups.field", items: [navigationItem("/trainings", { label: "Allenamenti" })] },
   { titleKey: "navigation.groups.match", items: [navigationItem("/matches", { label: "Centro partite" })] },
+  { titleKey: "navigation.groups.analysis", items: [navigationItem("/statistics")] },
 ];
 export const toolboxGroups = [
   { titleKey: "navigation.groups.home", items: [navigationItem("/calendar"), navigationItem("/onboarding")] },
@@ -109,14 +104,13 @@ export const toolboxGroups = [
     navigationItem("/player-portal"),
   ] },
   { titleKey: "navigation.groups.field", items: [
-    ...["/attendance-register", "/microcycle", "/tactical-board", "/set-plays", "/ai-session-builder", "/team-generator"].map((path) => navigationItem(path)),
+    ...["/attendance-register", "/tactical-board", "/set-plays", "/team-generator"].map((path) => navigationItem(path)),
     navigationItem("/opponents", { featureKey: "opponents" }),
   ] },
   { titleKey: "navigation.groups.system", items: [
-    ...["/fines", "/statistics", "/staff-tasks", "/staff-chat"].map((path) => navigationItem(path)),
+    ...["/fines", "/staff-tasks", "/staff-chat"].map((path) => navigationItem(path)),
     navigationItem("/exports", { featureKey: "exports" }), navigationItem("/premium"), navigationItem("/settings"),
   ] },
-  { titleKey: "navigation.groups.club", items: [navigationItem("/sponsors", { featureKey: "sponsors" })] },
 ];
 
 export function juniorNavigationItems(appSettings = {}) {

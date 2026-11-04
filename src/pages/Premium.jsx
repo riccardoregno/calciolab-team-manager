@@ -21,68 +21,10 @@ import {
   getSubscriptionPlan,
   normalizeAppSettings,
 } from "../utils/helpers";
+import { COACH_PLANS as PLANS } from "../constants/coachPlans.js";
 import { useTranslation } from "../i18n";
 
 /* ─── Plan definitions ──────────────────────────────────────── */
-const PLANS = [
-  {
-    id: "free",
-    name: "Starter",
-    price: "0",
-    priceNote: "Sempre gratuito",
-    color: "#334155",
-    colorEnd: "#1e293b",
-    badge: null,
-    description: "Per iniziare a gestire rosa, calendario e sedute base.",
-    features: [
-      "Rosa completa con disponibilità",
-      "Calendario stagione",
-      "Sedute base e libreria esercizi",
-      "Lavagna tattica",
-      "Dashboard operativa",
-    ],
-  },
-  {
-    id: "premium",
-    name: "Premium Coach",
-    price: "14,90",
-    yearlyTotal: "149",
-    priceNote: "o 3 rate da € 4,97 senza interessi",
-    color: "#1d4ed8",
-    colorEnd: "#1e40af",
-    badge: "Più scelto",
-    description: "Per allenatori che vogliono automatizzare, esportare e lavorare sui dati.",
-    features: [
-      "Tutto il piano Starter",
-      "Match Day avanzato (distinta, piano gara)",
-      "Report post gara e analisi tecnica",
-      "Test fisici e lavori personalizzati",
-      "Scouting avversari e archivio",
-      "Generatore sedute intelligente",
-      "Export PDF professionali",
-    ],
-  },
-  {
-    id: "club",
-    name: "Club",
-    price: "49,90",
-    yearlyTotal: "449",
-    priceNote: "o 3 rate da € 16,63 senza interessi",
-    color: "#15803d",
-    colorEnd: "#166534",
-    badge: "Completo",
-    description: "Per società con staff, sponsor, area giocatori e condivisione dati.",
-    features: [
-      "Tutto il piano Premium",
-      "Accesso staff multi-utente condiviso",
-      "Area giocatori (programmi individuali)",
-      "Portale sponsor con report visibilità",
-      "Statistiche avanzate e classifiche",
-      "AI session builder",
-      "Export e branding societario",
-    ],
-  },
-];
 
 const CHECKOUT_FUNCTION_URL =
   import.meta.env.VITE_STRIPE_CHECKOUT_URL ||
@@ -100,16 +42,7 @@ const BILLING_PORTAL_URL =
   import.meta.env.VITE_STRIPE_BILLING_PORTAL_URL ||
   "https://sglevvqhlzpllrjrgbod.functions.supabase.co/billing-portal";
 
-const STRIPE_PRICE_IDS = {
-  premium: {
-    monthly: import.meta.env.VITE_STRIPE_PRICE_PREMIUM_MONTHLY || "",
-    yearly:  import.meta.env.VITE_STRIPE_PRICE_PREMIUM_YEARLY  || "",
-  },
-  club: {
-    monthly: import.meta.env.VITE_STRIPE_PRICE_CLUB_MONTHLY || "",
-    yearly:  import.meta.env.VITE_STRIPE_PRICE_CLUB_YEARLY  || "",
-  },
-};
+const STRIPE_PRICE_IDS = { premium: { monthly: import.meta.env.VITE_STRIPE_PRICE_COACH_MONTHLY || "" } };
 
 /* ─── Component ─────────────────────────────────────────────── */
 export default function Premium({
@@ -124,7 +57,7 @@ export default function Premium({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const auth = useAuth();
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(1100);
   const settings        = normalizeAppSettings(appSettings);
   const currentPlan     = getSubscriptionPlan(settings);
   const billing         = getBillingStatus(settings);
@@ -132,7 +65,7 @@ export default function Premium({
   const reward          = getCoachRewardProfile({ players, exercises, sessions, matches, physicalTests });
 
   const [pendingPlan, setPendingPlan]   = useState(null);
-  const [activePeriod, setActivePeriod] = useState("monthly"); // "monthly" | "yearly"
+  const activePeriod = "monthly";
   const [checkoutError, setCheckoutError] = useState("");
   const [billingMessage, setBillingMessage] = useState("");
   const [vipState, setVipState] = useState(null);
@@ -334,15 +267,6 @@ export default function Premium({
     return `€ ${plan.price}`;
   }
 
-  /** Returns { total, monthlyEq, discountPct } for yearly plans, null otherwise */
-  function getYearlyMeta(plan) {
-    if (activePeriod !== "yearly" || !plan.yearlyTotal) return null;
-    const total   = parseFloat(plan.yearlyTotal.replace(",", "."));
-    const monthly = parseFloat(plan.price.replace(",", "."));
-    const monthlyEq   = (total / 12).toFixed(2).replace(".", ",");
-    const discountPct = Math.round((1 - total / (monthly * 12)) * 100);
-    return { total: `€ ${plan.yearlyTotal}`, monthlyEq: `€ ${monthlyEq}`, discountPct };
-  }
 
   return (
     <div style={ps.page}>
@@ -409,6 +333,213 @@ export default function Premium({
         </div>
       )}
 
+      {hasActiveSubscription && (
+        <AppCard title={t("pages.premium.manageSubscription")}>
+          <p style={{ color: "#94a3b8", lineHeight: 1.6 }}>{t("pages.premium.existingBillingNote")}</p>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <Button onClick={openBillingPortal} disabled={pendingPlan !== null}>{t("pages.premium.manageSubscription")}</Button>
+            <Button variant="ghost" onClick={cancelSubscription} disabled={pendingPlan !== null}>{t("pages.premium.cancelSubscription")}</Button>
+          </div>
+        </AppCard>
+      )}
+
+      {/* ── Pricing cards ── */}
+      <div style={{ ...ps.cardGrid, gridTemplateColumns: isMobile ? "1fr" : ps.cardGrid.gridTemplateColumns }}>
+        {PLANS.map((plan) => {
+          const isActive    = currentPlan.id === plan.id;
+          const isPending   = pendingPlan?.includes(plan.id);
+          const isFeatured  = plan.id === "premium";
+          const hasCheckoutPrice = plan.id === "free" || Boolean(STRIPE_PRICE_IDS[plan.id]?.[activePeriod]);
+          const isCheckoutDisabled = isActive || hasActiveSubscription || pendingPlan !== null || (!developerUnlocked && !hasCheckoutPrice);
+
+          return (
+            <div
+              key={plan.id}
+              style={{
+                ...ps.planCard,
+                ...(isFeatured && !isMobile ? ps.planCardFeatured : {}),
+              }}
+            >
+              {/* Colored header */}
+              <div style={{
+                ...ps.planHeader,
+                background: `linear-gradient(145deg, ${plan.color}, ${plan.colorEnd})`,
+              }}>
+                <div style={ps.planHeaderTop}>
+                  <span style={ps.planName}>{plan.name}</span>
+                  {plan.badge && (
+                    <span style={ps.planBadge}>{plan.badge}</span>
+                  )}
+                  {isActive && !plan.badge && (
+                    <span style={{ ...ps.planBadge, background: "rgba(255,255,255,0.25)" }}>
+                      {t("pages.premium.activeBadge")}
+                    </span>
+                  )}
+                  {isActive && plan.badge && (
+                    <span style={{ ...ps.planBadge, background: "rgba(255,255,255,0.25)", marginLeft: 0 }}>
+                      {t("pages.premium.activeBadge")}
+                    </span>
+                  )}
+                </div>
+
+                <div style={ps.priceBlock}>
+                  <strong style={ps.priceAmount}>{displayPrice(plan)}</strong>
+                  {plan.price !== "0" && <span style={ps.pricePer}>{t("pages.premium.perMonth")}</span>}
+                </div>
+                {plan.price !== "0" && <p style={ps.priceNote}>{t("pages.premium.monthlyBillingNote")}</p>}
+
+              </div>
+
+              {/* Body */}
+              <div style={ps.planBody}>
+                <p style={ps.planDesc}>{plan.description}</p>
+
+                <ol style={ps.featureList}>
+                  {plan.features.map((f, i) => (
+                    <li key={i} style={ps.featureItem}>
+                      <span style={ps.featureCheck}>✓</span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ol>
+
+                <div style={ps.planActions}>
+                  {plan.id !== "free" && (
+                    <>
+                      <button
+                        type="button"
+                        style={{
+                          ...ps.ctaBtn,
+                          background: `linear-gradient(135deg, ${plan.color}, ${plan.colorEnd})`,
+                          opacity: isCheckoutDisabled ? 0.6 : 1,
+                          cursor: isCheckoutDisabled ? "not-allowed" : "pointer",
+                        }}
+                        onClick={() => activatePlan(plan.id)}
+                        disabled={isCheckoutDisabled}
+                        title={!hasCheckoutPrice ? t("pages.premium.configurePriceIdTitle") : undefined}
+                      >
+                        {isPending
+                          ? t("pages.premium.loading")
+                          : isActive
+                          ? t("pages.premium.activePlan")
+                          : developerUnlocked
+                          ? t("pages.premium.activatePlan")
+                          : t("pages.premium.goToCheckout")}
+                      </button>
+                      {!developerUnlocked && !isActive && !hasCheckoutPrice && (
+                        <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", margin: "6px 0 0" }}>
+                          {t("pages.premium.configurePriceId")}
+                        </p>
+                      )}
+                    </>
+                  )}
+
+                  {developerUnlocked && plan.id !== "free" && !billing.trialUsed && !isActive && (
+                    <>
+                      <button
+                        type="button"
+                        style={{
+                          ...ps.trialBtn,
+                          opacity: (!developerUnlocked || pendingPlan !== null) ? 0.55 : 1,
+                          cursor: !developerUnlocked ? "not-allowed" : "pointer",
+                        }}
+                        onClick={() => startTrial(plan.id)}
+                        disabled={!developerUnlocked || pendingPlan !== null}
+                      >
+                        {pendingPlan === `trial-${plan.id}` ? t("pages.premium.loading") : !developerUnlocked ? t("pages.premium.waitingDevMode") : t("pages.premium.trialFree")}
+                      </button>
+                      {!developerUnlocked && (
+                        <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", margin: "6px 0 0" }}>
+                          {t("pages.premium.checkoutNotAvailable")}
+                        </p>
+                      )}
+                    </>
+                  )}
+
+                  {developerUnlocked && plan.id === "free" && currentPlan.id !== "free" && (
+                    <>
+                      <button
+                        type="button"
+                        style={{ ...ps.trialBtn, opacity: !developerUnlocked ? 0.55 : 1, cursor: !developerUnlocked ? "not-allowed" : "pointer" }}
+                        onClick={() => activatePlan("free")}
+                        disabled={!developerUnlocked || pendingPlan !== null}
+                      >
+                        {!developerUnlocked ? t("pages.premium.waitingDevMode") : t("pages.premium.returnFree")}
+                      </button>
+                      {!developerUnlocked && (
+                        <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", margin: "6px 0 0" }}>
+                          {t("pages.premium.checkoutNotAvailable")}
+                        </p>
+                      )}
+                    </>
+                  )}
+
+                  {isActive && (
+                    <>
+                      <p style={{ color: "#22c55e", fontSize: 12, fontWeight: 700, margin: "8px 0 0", textAlign: "center" }}>
+                        {t("pages.premium.currentPlanActive")}
+                      </p>
+
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Dev note ── */}
+      {developerUnlocked && (
+        <div style={ps.devNote}>
+          {t("pages.premium.devModeNote")}
+        </div>
+      )}
+
+      {/* ── Feature comparison table ── */}
+      <AppCard>
+        <h3 style={{ marginTop: 0, marginBottom: 18, lineHeight: 1.2 }}>{t("pages.premium.featureComparison")}</h3>
+        <div style={{ overflowX: "auto" }}>
+          <table style={ps.table}>
+            <thead>
+              <tr>
+                <th style={ps.thLabel}>{t("pages.premium.featureLabel")}</th>
+                {PLANS.map((p) => (
+                  <th key={p.id} style={{ ...ps.th, color: p.id === "free" ? "#94a3b8" : p.id === "premium" ? "#60a5fa" : "#4ade80" }}>
+                    {p.name}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                [t("pages.premium.featureRoster"),     true,  true],
+                [t("pages.premium.featureCalendar"),   true,  true],
+                [t("pages.premium.featureTactical"),   true,  true],
+                [t("pages.premium.featureMatchDay"),   false, true],
+                [t("pages.premium.featurePostMatch"),  false, true],
+                [t("pages.premium.featurePhysical"),   false, true],
+                [t("pages.premium.featureScouting"),   false, true],
+                [t("pages.premium.featureExport"),     false, true],
+                [t("pages.premium.featureStatistics"), true, true],
+                [t("pages.premium.featureAttendanceFines"), true, true],
+                [t("pages.premium.featureStaff"),      true, true],
+                [t("pages.premium.featurePlayerArea"), false, true],
+              ].map(([label, free, premium]) => (
+                <tr key={label} style={ps.tableRow}>
+                  <td style={ps.tdLabel}>{label}</td>
+                  <td style={ps.td}>{free  ? <span style={ps.tick}>✓</span> : <span style={ps.cross}>–</span>}</td>
+                  <td style={ps.td}>{premium ? <span style={ps.tick}>✓</span> : <span style={ps.cross}>–</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </AppCard>
+
+      <details>
+        <summary style={{ cursor: "pointer", color: "#94a3b8", padding: "12px 0" }}>{t("pages.premium.loyaltyDetails")}</summary>
+        <div style={{ display: "grid", gap: 22 }}>
       <AppCard>
         <div style={ps.vipHeader}>
           <div>
@@ -471,272 +602,6 @@ export default function Premium({
         </div>
       </AppCard>
 
-      {/* ── Toggle mensile / annuale ── */}
-      <div style={ps.periodToggle}>
-        <button
-          type="button"
-          onClick={() => setActivePeriod("monthly")}
-          style={{ ...ps.periodBtn, ...(activePeriod === "monthly" ? ps.periodBtnActive : {}) }}
-        >
-          {t("pages.premium.monthly")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setActivePeriod("yearly")}
-          style={{ ...ps.periodBtn, ...(activePeriod === "yearly" ? ps.periodBtnActive : {}) }}
-        >
-          {t("pages.premium.yearly")}
-          <span style={ps.discountChip}>{t("pages.premium.yearlyDiscount")}</span>
-        </button>
-      </div>
-
-      {/* ── Pricing cards ── */}
-      <div style={{ ...ps.cardGrid, gridTemplateColumns: isMobile ? "1fr" : ps.cardGrid.gridTemplateColumns }}>
-        {PLANS.map((plan) => {
-          const isActive    = currentPlan.id === plan.id;
-          const isPending   = pendingPlan?.includes(plan.id);
-          const isFeatured  = plan.id === "premium";
-          const hasCheckoutPrice = plan.id === "free" || Boolean(STRIPE_PRICE_IDS[plan.id]?.[activePeriod]);
-          const isCheckoutDisabled = isActive || pendingPlan !== null || (!developerUnlocked && !hasCheckoutPrice);
-
-          return (
-            <div
-              key={plan.id}
-              style={{
-                ...ps.planCard,
-                ...(isFeatured && !isMobile ? ps.planCardFeatured : {}),
-              }}
-            >
-              {/* Colored header */}
-              <div style={{
-                ...ps.planHeader,
-                background: `linear-gradient(145deg, ${plan.color}, ${plan.colorEnd})`,
-              }}>
-                <div style={ps.planHeaderTop}>
-                  <span style={ps.planName}>{plan.name}</span>
-                  {plan.badge && (
-                    <span style={ps.planBadge}>{plan.badge}</span>
-                  )}
-                  {isActive && !plan.badge && (
-                    <span style={{ ...ps.planBadge, background: "rgba(255,255,255,0.25)" }}>
-                      {t("pages.premium.activeBadge")}
-                    </span>
-                  )}
-                  {isActive && plan.badge && (
-                    <span style={{ ...ps.planBadge, background: "rgba(255,255,255,0.25)", marginLeft: 0 }}>
-                      {t("pages.premium.activeBadge")}
-                    </span>
-                  )}
-                </div>
-
-                {(() => {
-                  const yearlyMeta = getYearlyMeta(plan);
-                  if (yearlyMeta) {
-                    return (
-                      <>
-                        <div style={ps.priceBlock}>
-                          <strong style={ps.priceAmount}>{yearlyMeta.total}</strong>
-                          <span style={ps.pricePer}>{t("pages.premium.perYear")}</span>
-                          <span style={{ ...ps.discountChipInline }}>–{yearlyMeta.discountPct}%</span>
-                        </div>
-                        <p style={ps.priceMonthlyEq}>≈ {yearlyMeta.monthlyEq} {t("pages.premium.perMonth")}</p>
-                      </>
-                    );
-                  }
-                  return (
-                    <>
-                      <div style={ps.priceBlock}>
-                        <strong style={ps.priceAmount}>{displayPrice(plan)}</strong>
-                        {plan.price !== "0" && (
-                          <span style={ps.pricePer}>{t("pages.premium.perMonth")}</span>
-                        )}
-                      </div>
-                      {plan.price !== "0" && (
-                        <p style={ps.priceNote}>{plan.priceNote}</p>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-
-              {/* Body */}
-              <div style={ps.planBody}>
-                <p style={ps.planDesc}>{plan.description}</p>
-
-                <ol style={ps.featureList}>
-                  {plan.features.map((f, i) => (
-                    <li key={i} style={ps.featureItem}>
-                      <span style={ps.featureCheck}>✓</span>
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ol>
-
-                <div style={ps.planActions}>
-                  {plan.id !== "free" && (
-                    <>
-                      <button
-                        type="button"
-                        style={{
-                          ...ps.ctaBtn,
-                          background: `linear-gradient(135deg, ${plan.color}, ${plan.colorEnd})`,
-                          opacity: isCheckoutDisabled ? 0.6 : 1,
-                          cursor: isCheckoutDisabled ? "not-allowed" : "pointer",
-                        }}
-                        onClick={() => activatePlan(plan.id)}
-                        disabled={isCheckoutDisabled}
-                        title={!hasCheckoutPrice ? t("pages.premium.configurePriceIdTitle") : undefined}
-                      >
-                        {isPending
-                          ? t("pages.premium.loading")
-                          : isActive
-                          ? t("pages.premium.activePlan")
-                          : developerUnlocked
-                          ? t("pages.premium.activatePlan")
-                          : t("pages.premium.goToCheckout")}
-                      </button>
-                      {!developerUnlocked && !isActive && !hasCheckoutPrice && (
-                        <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", margin: "6px 0 0" }}>
-                          {t("pages.premium.configurePriceId")}
-                        </p>
-                      )}
-                    </>
-                  )}
-
-                  {plan.id !== "free" && !billing.trialUsed && !isActive && (
-                    <>
-                      <button
-                        type="button"
-                        style={{
-                          ...ps.trialBtn,
-                          opacity: (!developerUnlocked || pendingPlan !== null) ? 0.55 : 1,
-                          cursor: !developerUnlocked ? "not-allowed" : "pointer",
-                        }}
-                        onClick={() => startTrial(plan.id)}
-                        disabled={!developerUnlocked || pendingPlan !== null}
-                      >
-                        {pendingPlan === `trial-${plan.id}` ? t("pages.premium.loading") : !developerUnlocked ? t("pages.premium.waitingDevMode") : t("pages.premium.trialFree")}
-                      </button>
-                      {!developerUnlocked && (
-                        <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", margin: "6px 0 0" }}>
-                          {t("pages.premium.checkoutNotAvailable")}
-                        </p>
-                      )}
-                    </>
-                  )}
-
-                  {plan.id === "free" && currentPlan.id !== "free" && (
-                    <>
-                      <button
-                        type="button"
-                        style={{ ...ps.trialBtn, opacity: !developerUnlocked ? 0.55 : 1, cursor: !developerUnlocked ? "not-allowed" : "pointer" }}
-                        onClick={() => activatePlan("free")}
-                        disabled={!developerUnlocked || pendingPlan !== null}
-                      >
-                        {!developerUnlocked ? t("pages.premium.waitingDevMode") : t("pages.premium.returnFree")}
-                      </button>
-                      {!developerUnlocked && (
-                        <p style={{ fontSize: 12, color: "#64748b", textAlign: "center", margin: "6px 0 0" }}>
-                          {t("pages.premium.checkoutNotAvailable")}
-                        </p>
-                      )}
-                    </>
-                  )}
-
-                  {isActive && (
-                    <>
-                      <p style={{ color: "#22c55e", fontSize: 12, fontWeight: 700, margin: "8px 0 0", textAlign: "center" }}>
-                        {t("pages.premium.currentPlanActive")}
-                      </p>
-                      {hasActiveSubscription && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
-                          <button
-                            type="button"
-                            style={{
-                              padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700,
-                              cursor: pendingPlan !== null ? "not-allowed" : "pointer",
-                              opacity: pendingPlan !== null ? 0.55 : 1,
-                              background: "rgba(96,165,250,0.12)",
-                              border: "1px solid rgba(96,165,250,0.35)",
-                              color: "#93c5fd",
-                            }}
-                            onClick={openBillingPortal}
-                            disabled={pendingPlan !== null}
-                          >
-                            {pendingPlan === "billing-portal" ? t("pages.premium.loading") : t("pages.premium.manageSubscription")}
-                          </button>
-                          <button
-                            type="button"
-                            style={{
-                              ...ps.trialBtn,
-                              opacity: pendingPlan !== null ? 0.55 : 1,
-                              cursor: pendingPlan !== null ? "not-allowed" : "pointer",
-                            }}
-                            onClick={cancelSubscription}
-                            disabled={pendingPlan !== null}
-                          >
-                            {pendingPlan === "cancel-subscription" ? t("pages.premium.loading") : t("pages.premium.cancelSubscription")}
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── Dev note ── */}
-      {developerUnlocked && (
-        <div style={ps.devNote}>
-          {t("pages.premium.devModeNote")}
-        </div>
-      )}
-
-      {/* ── Feature comparison table ── */}
-      <AppCard>
-        <h3 style={{ marginTop: 0, marginBottom: 18, lineHeight: 1.2 }}>{t("pages.premium.featureComparison")}</h3>
-        <div style={{ overflowX: "auto" }}>
-          <table style={ps.table}>
-            <thead>
-              <tr>
-                <th style={ps.thLabel}>{t("pages.premium.featureLabel")}</th>
-                {PLANS.map((p) => (
-                  <th key={p.id} style={{ ...ps.th, color: p.id === "free" ? "#94a3b8" : p.id === "premium" ? "#60a5fa" : "#4ade80" }}>
-                    {p.name}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                [t("pages.premium.featureRoster"),     true,  true,  true],
-                [t("pages.premium.featureCalendar"),   true,  true,  true],
-                [t("pages.premium.featureTactical"),   true,  true,  true],
-                [t("pages.premium.featureMatchDay"),   false, true,  true],
-                [t("pages.premium.featurePostMatch"),  false, true,  true],
-                [t("pages.premium.featurePhysical"),   false, true,  true],
-                [t("pages.premium.featureScouting"),   false, true,  true],
-                [t("pages.premium.featureExport"),     false, true,  true],
-                [t("pages.premium.featureGenerator"),  false, true,  true],
-                [t("pages.premium.featureStaff"),      false, false, true],
-                [t("pages.premium.featurePlayerArea"), false, false, true],
-                [t("pages.premium.featureSponsor"),    false, false, true],
-                [t("pages.premium.featureAi"),         false, false, true],
-              ].map(([label, free, premium, club]) => (
-                <tr key={label} style={ps.tableRow}>
-                  <td style={ps.tdLabel}>{label}</td>
-                  <td style={ps.td}>{free  ? <span style={ps.tick}>✓</span> : <span style={ps.cross}>–</span>}</td>
-                  <td style={ps.td}>{premium ? <span style={ps.tick}>✓</span> : <span style={ps.cross}>–</span>}</td>
-                  <td style={ps.td}>{club  ? <span style={ps.tick}>✓</span> : <span style={ps.cross}>–</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </AppCard>
 
       {/* ── Reward coach ── */}
       <div style={{ ...ps.heroGrid, gridTemplateColumns: isMobile ? "1fr" : ps.heroGrid.gridTemplateColumns }}>
@@ -781,6 +646,8 @@ export default function Premium({
           </Button>
         </AppCard>
       </div>
+        </div>
+      </details>
     </div>
   );
 }
@@ -850,7 +717,7 @@ const ps = {
   },
   cardGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     gap: 18,
     alignItems: "stretch",
   },

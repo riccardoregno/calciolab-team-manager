@@ -6,19 +6,20 @@
 import { useState } from "react";
 import {
   Activity, ArrowRight, BarChart3, ClipboardList, Dumbbell, Menu,
-  Network, Sparkles, Target, Users, X,
+  Network, Target, Users, X,
 } from "lucide-react";
+
+import { COACH_PLANS } from "../constants/coachPlans.js";
 
 /* ─── Dati ────────────────────────────────────────────────────── */
 const FEATURES = [
   { icon: Users, title: "Gestione rosa", desc: "Anagrafica, ruoli, disponibilità e schede individuali sempre aggiornate." },
-  { icon: ClipboardList, title: "Allenamenti", desc: "Pianifica sedute, registra presenze e carico con una libreria esercizi pronta all'uso." },
+  { icon: ClipboardList, title: "Allenamenti", desc: "Registra sedute, presenze e carico per leggere la continuità dei giocatori." },
   { icon: Network, title: "Match day", desc: "Distinta, piano gara, scouting avversario e report post-partita nello stesso flusso." },
   { icon: BarChart3, title: "Statistiche", desc: "Rendimento, marcatori, minutaggio e andamento stagionale leggibili a colpo d'occhio." },
   { icon: Activity, title: "Test fisici", desc: "Gacon, Yo-Yo, sprint e storico dei progressi di ogni atleta." },
   { icon: Target, title: "Obiettivi stagione", desc: "Traguardi di squadra e individuali aggiornati dai dati partita." },
   { icon: Dumbbell, title: "Staff multi-utente", desc: "Assistenti, preparatori e dirigenti accedono alle aree pertinenti al proprio ruolo." },
-  { icon: Sparkles, title: "AI Session Builder", desc: "Crea proposte di seduta coerenti con obiettivi, durata e disponibilità." },
 ];
 
 const WORKFLOW = [
@@ -27,49 +28,12 @@ const WORKFLOW = [
   { step: "03", title: "Analizza", text: "Trasforma partite e allenamenti in report, statistiche e prossime decisioni operative." },
 ];
 
-const PLANS = [
-  {
-    id: "free",
-    name: "Starter",
-    monthlyPrice: "0",
-    yearlyPrice: null,
-    badge: null,
-    color: "#334155",
-    colorEnd: "#1e293b",
-    cta: "Inizia gratis",
-    ctaVariant: "ghost",
-    features: ["Rosa completa con disponibilità", "Calendario stagione", "Sedute base e libreria esercizi", "Lavagna tattica", "Dashboard operativa"],
-  },
-  {
-    id: "premium",
-    name: "Premium Coach",
-    monthlyPrice: "14,90",
-    yearlyPrice: "149",
-    badge: "Più scelto",
-    color: "#1d4ed8",
-    colorEnd: "#1e40af",
-    cta: "Prova gratis 14 giorni",
-    ctaVariant: "primary",
-    features: ["Tutto il piano Starter", "Match Day avanzato", "Report post gara", "Test fisici", "Scouting avversari", "Export PDF", "Statistiche avanzate"],
-  },
-  {
-    id: "club",
-    name: "Club",
-    monthlyPrice: "49,90",
-    yearlyPrice: "449",
-    badge: "Completo",
-    color: "#15803d",
-    colorEnd: "#166534",
-    cta: "Contattaci",
-    ctaVariant: "ghost",
-    features: ["Tutto il piano Premium", "Staff multi-utente", "Area giocatori", "Portale sponsor", "AI Session Builder", "Branding societario"],
-  },
-];
+const PLANS = COACH_PLANS.map((plan) => ({ ...plan, monthlyPrice: plan.price, cta: plan.id === "free" ? "Inizia gratis" : "Scopri Premium", ctaVariant: plan.id === "free" ? "ghost" : "primary" }));
 
 const FAQS = [
   {
     q: "Posso usare CalcioLab gratis?",
-    a: "Sì. Il piano Starter è gratuito e include rosa completa, calendario, sedute base e lavagna tattica. Non serve carta di credito.",
+    a: "Sì. Free include rosa, partite, presenze, statistiche e confronti. Non serve carta di credito. Premium aggiunge report tecnici, scouting, test fisici ed esportazioni.",
   },
   {
     q: "Funziona su smartphone?",
@@ -85,7 +49,7 @@ const FAQS = [
   },
   {
     q: "Posso invitare il mio staff?",
-    a: "Sì, dal piano Club puoi invitare assistenti, preparatori e dirigenti. Ogni membro vede solo le sezioni pertinenti al suo ruolo.",
+    a: "Sì, puoi invitare assistenti, preparatori e dirigenti anche nel piano Free. Ogni membro vede solo le sezioni pertinenti al suo ruolo.",
   },
 ];
 
@@ -93,12 +57,11 @@ const STATS = [
   { value: "7+",    label: "moduli integrati" },
   { value: "100%",  label: "dati nelle tue mani" },
   { value: "0€",    label: "per iniziare" },
-  { value: "14gg",  label: "di trial gratuito" },
+  { value: "9,90€", label: "Premium al mese" },
 ];
 
 /* ─── Componente principale ────────────────────────────────────── */
 export default function Landing() {
-  const [billingPeriod, setBillingPeriod] = useState("monthly");
   const [openFaq, setOpenFaq] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -167,11 +130,11 @@ export default function Landing() {
       {/* ── Hero ── */}
       <section style={l.hero}>
         <div style={l.heroInner}>
-          <div style={l.heroBadge}>Gestionale per staff di calcio</div>
+          <div style={l.heroBadge}>Dati e analisi per allenatori di calcio</div>
           <h1 style={l.heroTitle}>CalcioLab</h1>
           <p style={l.heroSubtitle}>
-            Gestisci rosa, allenamenti, convocazioni, partite e statistiche in un unico spazio,
-            dal campo alla riunione dello staff.
+            Leggi il rendimento della squadra, confronta i giocatori e tieni sotto controllo
+            partite, presenze e disponibilità in un unico spazio.
           </p>
           <div style={l.heroActions}>
             <button style={l.btnHeroPrimary} onClick={goToSignup}>
@@ -229,7 +192,7 @@ export default function Landing() {
             <span style={l.sectionEyebrow}>Funzionalità</span>
             <h2 style={l.sectionTitle}>Tutto quello che serve a bordo campo</h2>
             <p style={l.sectionSubtitle}>
-              Dalla gestione quotidiana della rosa all'analisi post-partita, CalcioLab copre ogni aspetto del lavoro di uno staff tecnico.
+              Partite, giocatori e presenze nello stesso quadro: registra i dati e usali per preparare le tue decisioni tecniche.
             </p>
           </div>
           <div style={l.featuresGrid}>
@@ -253,33 +216,9 @@ export default function Landing() {
             <p style={l.sectionSubtitle}>Inizia gratis. Upgrada solo quando ne hai bisogno.</p>
           </div>
 
-          {/* Toggle mensile / annuale */}
-          <div style={l.periodToggle}>
-            <button
-              style={{ ...l.periodBtn, ...(billingPeriod === "monthly" ? l.periodBtnActive : {}) }}
-              onClick={() => setBillingPeriod("monthly")}
-            >
-              Mensile
-            </button>
-            <button
-              style={{ ...l.periodBtn, ...(billingPeriod === "yearly" ? l.periodBtnActive : {}) }}
-              onClick={() => setBillingPeriod("yearly")}
-            >
-              Annuale
-              <span style={l.savingChip}>fino a –25%</span>
-            </button>
-          </div>
-
           <div style={l.pricingGrid}>
             {PLANS.map((plan) => {
               const isFeatured = plan.id === "premium";
-              const isYearly = billingPeriod === "yearly" && plan.yearlyPrice;
-              const monthlyEq = isYearly
-                ? `≈ €${(parseFloat(plan.yearlyPrice) / 12).toFixed(2).replace(".", ",")} / mese`
-                : null;
-              const discountPct = isYearly
-                ? Math.round((1 - parseFloat(plan.yearlyPrice) / (parseFloat(plan.monthlyPrice.replace(",", ".")) * 12)) * 100)
-                : null;
 
               return (
                 <div
@@ -302,15 +241,6 @@ export default function Landing() {
                       <div style={l.priceBlock}>
                         <strong style={l.priceAmount}>Gratis</strong>
                       </div>
-                    ) : isYearly ? (
-                      <>
-                        <div style={l.priceBlock}>
-                          <strong style={l.priceAmount}>€ {plan.yearlyPrice}</strong>
-                          <span style={l.pricePer}>/ anno</span>
-                          <span style={l.discountBadge}>–{discountPct}%</span>
-                        </div>
-                        <p style={l.priceMonthlyEq}>{monthlyEq}</p>
-                      </>
                     ) : (
                       <div style={l.priceBlock}>
                         <strong style={l.priceAmount}>€ {plan.monthlyPrice}</strong>

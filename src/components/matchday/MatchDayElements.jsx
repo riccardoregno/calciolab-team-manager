@@ -223,7 +223,7 @@ export function SectionHeader({ title, badge }) {
   );
 }
 
-export function MatchCommandCenter({ steps, completed, total, onMicrocycle, onSetPlays, onOpponents }) {
+export function MatchCommandCenter({ steps, completed, total, onSetPlays, onOpponents }) {
   const { t } = useTranslation();
   const pct = total ? Math.round((completed / total) * 100) : 0;
   const criticalOpen = steps.filter((step) => !step.done).slice(0, 2);
@@ -282,7 +282,6 @@ export function MatchCommandCenter({ steps, completed, total, onMicrocycle, onSe
           )}
         </div>
         <div style={matchDayStyles.commandLinks}>
-          <Button variant="ghost" onClick={onMicrocycle}>{t("pages.matchDay.commandMicrocycle")}</Button>
           <Button variant="ghost" onClick={onSetPlays}>{t("pages.matchDay.commandSetPlays")}</Button>
           <Button variant="ghost" onClick={onOpponents}>{t("pages.matchDay.commandOpponents")}</Button>
         </div>
