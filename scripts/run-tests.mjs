@@ -1,4 +1,5 @@
 import "./test-season-trend.mjs";
+import "./test-training-archive.mjs";
 import "./test-coach-analysis.mjs";
 import "./test-coach-subscription.mjs";
 import "./test-coach-checkout.mjs";

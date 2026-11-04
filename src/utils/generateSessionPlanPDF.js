@@ -9,6 +9,7 @@ import {
   sectionTitle,
   textBox,
 } from "./pdfExportHelpers";
+import { getTrainingDuration } from "./trainingArchive.js";
 
 const PHASE_COLORS = {
   "Riscaldamento":    [251, 146,  60],
@@ -125,7 +126,5 @@ export async function generateSessionPlanPDF({ session, appSettings, save = true
 }
 
 function totalMinutes(session) {
-  const fromBlocks = (session.sessionBlocks || []).reduce((s, b) => s + (Number(b.duration) || 0), 0);
-  if (fromBlocks > 0) return fromBlocks;
-  return (session.exercises || []).reduce((s, e) => s + (Number(e.customDuration || e.duration) || 0), 0);
+  return getTrainingDuration(session) || 0;
 }

@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import ActionBar from "../components/ui/ActionBar";
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
-import { SkeletonList } from "../components/ui/Skeleton";
-import MetricStrip from "../components/ui/MetricStrip";
 import SearchBar from "../components/ui/SearchBar";
 import { searchNavigationItems } from "../utils/navigationSearch";
+import TrainingSessionList from "../components/trainings/TrainingSessionList";
+import { getTrainingDuration } from "../utils/trainingArchive.js";
+import { getAgendaDateKey } from "../utils/coachAgenda.js";
+import "../styles/training-hub.css";
 import SortableTrainingTimeline from "../components/trainings/SortableTrainingTimeline";
 import ExerciseDiagram from "../components/exercises/ExerciseDiagram";
 import { useToast } from "../components/ui/Toast";
@@ -24,7 +25,6 @@ import { emptyExercise } from "../data/initialData";
 import { useTranslation } from "../i18n";
 import { sendTeamNotification } from "../services/notifications";
 import { OBJECTIVE_STATUS, getObjectiveStatusMeta } from "../constants/objectiveStatus";
-import { useIsMobile } from "../hooks/useIsMobile";
 
 const THEME_LABEL_KEYS = {
   Costruzione: "pages.trainings.themeCostruzione",
@@ -68,7 +68,6 @@ function Trainings({
   exercises, setExercises, sessions, setSessions, players = [], matches = [], appSettings = {}, loading = false, teamId = null }) {
 
   const { t } = useTranslation();
-  const isMobile = useIsMobile(760);
   const navigate = useNavigate();
   const location = useLocation();
   const { canManage } = useAreaPermission();
@@ -79,12 +78,15 @@ function Trainings({
   const [search, setSearch] = useState("");
   const [sessionSearch, setSessionSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const [editorOpen, setEditorOpen] = useState(() => {
+    if (location.state?.newSession || location.state?.draftTraining || location.state?.editSessionId != null) return true;
+    try { return Boolean(sessionStorage.getItem("trainings_draft")); } catch { return false; }
+  });
+  const [archiveView, setArchiveView] = useState("auto");
   const [formErrors, setFormErrors] = useState({});
   const [pickerBlock, setPickerBlock] = useState("Tutti");
-  const [sessionsView, setSessionsView] = useState("lista"); // "lista" | "settimana"
   const [libraryCollapsed, setLibraryCollapsed] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
-  const [weekOffset, setWeekOffset] = useState(0); // 0 = settimana corrente
   const formCardRef = useRef(null);
 
   const scrollToTrainingForm = useCallback(() => {
@@ -94,22 +96,23 @@ function Trainings({
   // Disponibilità giocatori dalla tabella player_availability (per includere juniores disponibili)
   const [availabilityRecords, setAvailabilityRecords] = useState([]);
   useEffect(() => {
-    if (!teamId) return;
+    if (!teamId || !editorOpen) return;
     async function load() {
       const { fetchPlayerAvailability } = await import("../services/playerAvailability");
       const { data } = await fetchPlayerAvailability({ teamId });
       if (data) setAvailabilityRecords(data);
     }
     load();
-  }, [teamId]);
+  }, [teamId, editorOpen]);
 
   // Carica catalogo FP5 in background
   const [fp5Catalog, setFp5Catalog] = useState([]);
   useEffect(() => {
+    if (!editorOpen) return;
     import("../data/eserciziarioFp5.js")
       .then(({ eserciziarioFp5 }) => setFp5Catalog(eserciziarioFp5))
       .catch(() => {});
-  }, []);
+  }, [editorOpen]);
 
   // Merge: esercizi personali + FP5 (personali hanno precedenza)
   const allExercises = useMemo(() => {
@@ -163,16 +166,6 @@ function Trainings({
     [sessions, friendlyMatchSessions]
   );
 
-  const visibleSessions = searchNavigationItems(sortedSessions, sessionSearch, (session) =>
-    `${session.title || ""} ${session.theme || ""} ${session.objective || ""} ${session.date || ""} ${formatDate(session.date)}`
-  );
-  const today = localDateString();
-
-  // Prossima seduta disponibile (da oggi in poi, quella con data più vicina)
-  const nextSession = useMemo(() => {
-    return sortedSessions.find((s) => s.date >= today && !s.completed) || null;
-  }, [sortedSessions, today]);
-
   const filteredExercises = searchNavigationItems(allExercises, search, (exercise) =>
     `${exercise.title} ${exercise.category} ${exercise.objective}`
   ).filter((exercise) => {
@@ -196,9 +189,8 @@ function Trainings({
     });
   }, [form.exercises, allExercises, t]);
 
-  const totalMinutes =
-    selectedExercises.reduce((sum, item) => sum + Number(item.customDuration || item.duration || 0), 0) +
-    (form.sessionBlocks || []).reduce((sum, b) => sum + (Number(b.duration) || 0), 0);
+  const structuredMinutes = getTrainingDuration({ exercises: selectedExercises, sessionBlocks: form.sessionBlocks || [] }) || 0;
+  const totalMinutes = structuredMinutes || Number(form.plannedDuration) || 0;
   const sessionAvailability = useMemo(
     () => getSessionAvailability(players, form.date, availabilityRecords, form.attendance),
     [players, form.date, availabilityRecords, form.attendance]
@@ -208,39 +200,6 @@ function Trainings({
     [sessionAvailability.available, form.attendance]
   );
   const objectiveStatusMeta = getObjectiveStatusMeta(form.objectiveStatus);
-  const trainingMetricItems = [
-    {
-      key: "duration",
-      label: t("pages.trainings.printMetaDuration"),
-      value: `${totalMinutes} min`,
-      color: "#60a5fa",
-    },
-    {
-      key: "exercises",
-      label: t("pages.trainings.previewMetaExercises"),
-      value: selectedExercises.length,
-      color: "#a78bfa",
-    },
-    {
-      key: "rpe",
-      label: t("pages.trainings.printRpeTarget"),
-      value: `${rpeTarget.min}-${rpeTarget.max}`,
-      color: "#fb923c",
-    },
-    {
-      key: "available",
-      label: t("pages.trainings.printAvailablePlayers"),
-      value: (() => {
-        const primaPresent = sessionAvailability.available.filter((p) => {
-          if (p._juniores) return false;
-          return form.attendance[String(p.id)]?.status !== "Assente";
-        }).length;
-        return sessionAvailability.total ? `${primaPresent}/${sessionAvailability.total}` : "-";
-      })(),
-      color: "#22c55e",
-    },
-  ];
-
   function toggleExercise(exercise) {
     if (!canManage) return;
     const alreadySelected = form.exercises.some(
@@ -286,10 +245,11 @@ function Trainings({
     if (!canManage) return;
     const errors = {};
     if (!form.title.trim()) errors.title = true;
-    if (!form.date) errors.date = true;
+    if (!getAgendaDateKey(form.date)) errors.date = true;
+    if (!Number.isFinite(Number(form.plannedDuration)) || Number(form.plannedDuration) < 0) errors.duration = true;
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-      showToast(t("pages.trainings.titleRequired"), "warn");
+      showToast(errors.duration ? t("trainingHub.durationInvalid") : errors.date ? t("pages.trainings.dateRequired") : t("pages.trainings.titleRequired"), "warn");
       return;
     }
     setFormErrors({});
@@ -318,6 +278,9 @@ function Trainings({
     }
 
     setEditingId(null);
+    setEditorOpen(false);
+    setArchiveView(payload.completed || payload.date < localDateString() ? "history" : "upcoming");
+    setSessionSearch("");
     setForm(emptyTraining());
     showToast(editingId ? t("pages.trainings.sessionUpdated") : t("pages.trainings.sessionSaved"), "ok");
   }
@@ -325,10 +288,13 @@ function Trainings({
   const editTraining = useCallback((session) => {
     if (!canManage) return;
     setEditingId(session.id);
+    setEditorOpen(true);
+    setShowPreview(false);
 
     setForm({
       title: session.title || "",
-      date: session.date || localDateString(),
+      plannedDuration: getTrainingDuration(session) ?? "",
+      date: getAgendaDateKey(session.date),
       type: session.type || "Allenamento",
       theme: session.theme || "Costruzione",
       matchDayDistance: session.matchDayDistance || "MD-3",
@@ -370,22 +336,19 @@ function Trainings({
     }
     const draftTraining = location.state?.draftTraining;
     const newSession = location.state?.newSession;
-
-    if (draftTraining) {
-      showToast(t("pages.trainings.draftLoaded"), "info");
-    }
-
-    if (newSession || draftTraining) {
-      navigate(location.pathname, { replace: true, state: null });
-    }
-
-    if (newSession) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!draftTraining && !newSession) return;
+    const frame = requestAnimationFrame(() => {
       setEditingId(null);
-      setForm(emptyTraining());
+      setForm(draftTraining ? getInitialTrainingForm(draftTraining) : emptyTraining());
+      setEditorOpen(true);
       setFormErrors({});
-      setTimeout(scrollToTrainingForm, 150);
-    }
+      setLibraryCollapsed(true);
+      setShowPreview(false);
+      if (draftTraining) showToast(t("pages.trainings.draftLoaded"), "info");
+      navigate(location.pathname, { replace: true, state: null });
+      requestAnimationFrame(scrollToTrainingForm);
+    });
+    return () => cancelAnimationFrame(frame);
   }, [location.pathname, location.state, navigate, showToast, t, sessions, editTraining, scrollToTrainingForm]);
 
   function deleteTraining(id) {
@@ -400,6 +363,7 @@ function Trainings({
         setSessions((prev) => prev.filter((s) => s.id !== id));
         if (editingId === id) {
           setEditingId(null);
+          setEditorOpen(false);
           setForm(emptyTraining());
         }
         showToast(t("pages.trainings.sessionDeleted"), "info", {
@@ -429,6 +393,7 @@ function Trainings({
   }
 
   function cancelEdit() {
+    setEditorOpen(false);
     setEditingId(null);
     setForm(emptyTraining());
     setFormErrors({});
@@ -437,72 +402,52 @@ function Trainings({
   async function exportSessionPlanPDF() {
     try {
       const { generateSessionPlanPDF } = await import("../utils/generateSessionPlanPDF");
-      await generateSessionPlanPDF({ session: form, appSettings });
+      await generateSessionPlanPDF({ session: { ...form, duration: totalMinutes }, appSettings });
     } catch (err) {
       console.error("PDF export failed:", err);
       showToast("Errore nella generazione del PDF", "error");
     }
   }
 
+  function createTraining() {
+    if (!canManage) return;
+    setEditingId(null);
+    setForm(emptyTraining());
+    setFormErrors({});
+    setLibraryCollapsed(true);
+    setShowPreview(false);
+    setEditorOpen(true);
+    requestAnimationFrame(scrollToTrainingForm);
+  }
+
+  if (!editorOpen || !canManage) return <>
+    <ToastContainer />
+    <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
+    <TrainingSessionList sessions={sortedSessions} loading={loading} canManage={canManage}
+      search={sessionSearch} onSearch={setSessionSearch} view={archiveView} onView={setArchiveView}
+      onCreate={createTraining} onEdit={editTraining} onDelete={deleteTraining} onToggleCompleted={toggleTrainingCompleted} />
+  </>;
+
   return (
     <div className="trainings-workspace" style={styles.page}>
       <ToastContainer />
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
-        title={t("pages.trainings.title")}
-        subtitle={t("pages.trainings.subtitle")}
+        title={t(editingId ? "pages.trainings.formTitleEdit" : "trainingHub.newSession")}
+        subtitle={t("trainingHub.editorHint")}
         action={
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <Button variant="ghost" onClick={() => navigate("/exports")}>{t("pages.trainings.exportPdf")}</Button>
-            <Button variant="ghost" onClick={() => navigate("/attendance-register")}>{t("pages.trainings.attendanceRegister")}</Button>
+            <Button variant="ghost" onClick={cancelEdit}>{t("trainingHub.backToList")}</Button>
+            <Button onClick={saveTraining}>{t("pages.trainings.saveSession")}</Button>
           </div>
         }
       />
 
-      {editingId && (
-        <ActionBar
-          eyebrow={clubName}
-          title={form.title || t("pages.trainings.printTitlePlaceholder")}
-          subtitle={`${getThemeLabel(form.theme, t)} · ${form.matchDayDistance}`}
-          meta={<Badge tone="blue">{t("pages.trainings.savedCount", { count: sessions.length })}</Badge>}
-        >
-          <MetricStrip items={trainingMetricItems} min={isMobile ? 118 : 132} style={{ marginTop: isMobile ? 8 : 14 }} className="mobile-scroll-x" />
-        </ActionBar>
-      )}
-
-      {/* Anteprima prossima seduta */}
-      {nextSession && !editingId && (
-        <AppCard style={{ marginBottom: 4 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <div>
-              <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#22c55e", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Prossima seduta
-              </p>
-              <h3 style={{ margin: "0 0 6px", fontSize: 20 }}>{nextSession.title || "Allenamento"}</h3>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 13, color: "#94a3b8" }}>{formatDate(nextSession.date)}</span>
-                {nextSession.theme && <span style={{ fontSize: 13, color: "#94a3b8" }}>· {nextSession.theme}</span>}
-                {nextSession.matchDayDistance && <span style={{ fontSize: 13, color: "#94a3b8" }}>· {nextSession.matchDayDistance}</span>}
-                {(nextSession.sessionBlocks?.length > 0) && (
-                  <span style={{ fontSize: 13, color: "#94a3b8" }}>· {nextSession.sessionBlocks.length} blocchi · {nextSession.sessionBlocks.reduce((s, b) => s + (Number(b.duration) || 0), 0)} min</span>
-                )}
-              </div>
-              {nextSession.objective && <p style={{ margin: "8px 0 0", fontSize: 13, color: "#94a6be" }}>{nextSession.objective}</p>}
-            </div>
-            {canManage && (
-              <Button onClick={() => editTraining(nextSession)} style={{ flexShrink: 0 }}>
-                Modifica
-              </Button>
-            )}
-          </div>
-        </AppCard>
-      )}
-
-      {(editingId || !nextSession) && <div
+      {editorOpen && <div
         className="calciolab-two-column"
         style={{
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1.1fr) minmax(320px, 0.9fr)",
+          gridTemplateColumns: "minmax(0, 1fr)",
           gap: 24,
           alignItems: "start",
           minWidth: 0,
@@ -607,63 +552,22 @@ function Trainings({
             </section>
           </div>
 
-  <div ref={formCardRef}>
+  <div ref={formCardRef} className="training-editor-basic">
   <AppCard>
-    <div style={trainingStyles.formHero}>
-      <div style={{ minWidth: 0 }}>
-        <div style={trainingStyles.stepHeader}>
-          <span style={trainingStyles.stepBadge}>1</span>
-          <span>{t("pages.trainings.step1")}</span>
-        </div>
-        <h3 style={trainingStyles.formTitle}>
-          {editingId ? t("pages.trainings.formTitleEdit") : t("pages.trainings.formTitleCreate")}
-        </h3>
-        <p style={trainingStyles.formSubtitle}>
-          {t("pages.trainings.formSubtitle")}
-        </p>
-      </div>
-
-      <div style={trainingStyles.durationBadge}>
-        <span>{t("pages.trainings.durationLabel")}</span>
-        <strong>{totalMinutes} min</strong>
-      </div>
+    <div className="training-editor-fields">
+      <FieldLabel label={t("pages.trainings.fieldTitle")}><input value={form.title} placeholder={t("pages.trainings.titlePlaceholder")} onChange={(event) => { setForm({ ...form, title: event.target.value }); setFormErrors((prev) => ({ ...prev, title: false })); }} style={styles.input} />{formErrors.title && <span style={trainingStyles.errorMsg}>{t("pages.trainings.titleRequired")}</span>}</FieldLabel>
+      <FieldLabel label={t("pages.trainings.fieldDate")}><input type="date" value={form.date} onChange={(event) => { setForm({ ...form, date: event.target.value }); setFormErrors((prev) => ({ ...prev, date: false })); }} style={styles.input} />{formErrors.date && <span style={trainingStyles.errorMsg}>{t("pages.trainings.dateRequired")}</span>}</FieldLabel>
+      <FieldLabel label={t("trainingHub.duration")}><input type="number" min="0" value={structuredMinutes || form.plannedDuration} readOnly={structuredMinutes > 0} onChange={(event) => { setForm({ ...form, plannedDuration: event.target.value }); setFormErrors((prev) => ({ ...prev, duration: false })); }} style={styles.input} />{structuredMinutes > 0 && <small>{t("trainingHub.durationFromPlan")}</small>}{formErrors.duration && <span style={trainingStyles.errorMsg}>{t("trainingHub.durationInvalid")}</span>}</FieldLabel>
     </div>
-
-    <div style={trainingStyles.sessionPreviewStrip}>
-      <SessionMeta label={t("pages.trainings.fieldDate")} value={formatDate(form.date)} />
-                <SessionMeta label={t("pages.trainings.fieldTheme")} value={getThemeLabel(form.theme, t)} />
-      <SessionMeta label={t("pages.trainings.fieldObjective")} value={form.objective || t("pages.trainings.printMetaObjectiveFallback")} />
-      <SessionMeta label={t("pages.trainings.fieldLoad")} value={form.matchDayDistance} />
-    </div>
-
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit,minmax(min(190px,100%),1fr))",
-        gap: 14,
-      }}
-    >
-      <FieldLabel label={t("pages.trainings.fieldTitle")}>
-        <input
-          placeholder={t("pages.trainings.titlePlaceholder")}
-          value={form.title}
-          onChange={(e) => { setForm({ ...form, title: e.target.value }); if (formErrors.title) setFormErrors((p) => ({ ...p, title: false })); }}
-          style={{ ...styles.input, ...(formErrors.title ? trainingStyles.inputError : {}) }}
-        />
-        {formErrors.title && <span style={trainingStyles.errorMsg}>{t("pages.trainings.titleRequired")}</span>}
-      </FieldLabel>
-
-      <FieldLabel label={t("pages.trainings.fieldDate")}>
-        <input
-          type="date"
-          value={form.date}
-          onChange={(e) => { setForm({ ...form, date: e.target.value }); if (formErrors.date) setFormErrors((p) => ({ ...p, date: false })); }}
-          style={{ ...styles.input, ...(formErrors.date ? trainingStyles.inputError : {}) }}
-        />
-        {formErrors.date && <span style={trainingStyles.errorMsg}>{t("pages.trainings.dateRequired")}</span>}
-      </FieldLabel>
-
-      <FieldLabel label={t("pages.trainings.fieldTheme")}>
+    <details className="training-editor-notes"><summary>{t("trainingHub.objectiveNotes")}</summary><div className="training-editor-fields">
+      <FieldLabel label={t("pages.trainings.fieldObjective")}><input value={form.objective} onChange={(event) => setForm({ ...form, objective: event.target.value })} style={styles.input} /></FieldLabel>
+      <FieldLabel label={t("pages.trainings.fieldNotes")}><textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} style={{ ...styles.input, minHeight: 70 }} /></FieldLabel>
+      <FieldLabel label={t("trainingHub.materials")}><input value={form.materials || ""} onChange={(event) => setForm({ ...form, materials: event.target.value })} style={styles.input} /></FieldLabel>
+    </div></details>
+  </AppCard>
+  </div>
+  <details className="training-disclosure"><summary>{t("trainingHub.loadAvailability")}</summary><div className="training-disclosure-content">
+    <div className="training-editor-fields">      <FieldLabel label={t("pages.trainings.fieldTheme")}>
         <select
           value={form.theme}
           onChange={(e) => setForm({ ...form, theme: e.target.value })}
@@ -695,38 +599,9 @@ function Trainings({
         </select>
       </FieldLabel>
 
-      <FieldLabel label={t("pages.trainings.fieldObjective")}>
-        <input
-          placeholder={t("pages.trainings.objectivePlaceholder")}
-          value={form.objective}
-          onChange={(e) => setForm({ ...form, objective: e.target.value })}
-          style={styles.input}
-        />
-      </FieldLabel>
-
-      <FieldLabel label={t("pages.trainings.fieldNotes")}>
-        <textarea
-          placeholder={t("pages.trainings.notesPlaceholder")}
-          value={form.notes}
-          onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          style={{ ...styles.input, minHeight: 44, resize: "vertical" }}
-        />
-      </FieldLabel>
-
-      <FieldLabel label="Materiali">
-        <input
-          placeholder="Es. Palloni, cinesini, casacche..."
-          value={form.materials || ""}
-          onChange={(e) => setForm({ ...form, materials: e.target.value })}
-          style={styles.input}
-        />
-      </FieldLabel>
-    </div>
-
-    {/* Pannello RPE — distanza dalla gara */}
+</div>
     <RpePanel rpe={rpeTarget} md={form.matchDayDistance} />
-
-    {/* Giocatori disponibili per questa seduta */}
+        {/* Giocatori disponibili per questa seduta */}
     {players.length > 0 && (
       <AvailablePlayers
         players={players}
@@ -744,9 +619,10 @@ function Trainings({
         })}
       />
     )}
-  </AppCard>
-  </div>
 
+  </div></details>
+
+  <details className="training-disclosure"><summary>{t("trainingHub.trainingPlan")}</summary><div className="training-disclosure-content">
   {/* ── Session Builder: blocchi strutturati ── */}
   <SessionBlockBuilder
     blocks={form.sessionBlocks || []}
@@ -1038,8 +914,10 @@ function Trainings({
               </div>
             </AppCard>
           )}
+          </div></details>
         </div>
 
+       <details className="training-disclosure"><summary>{t("trainingHub.teamsPdf")}</summary>
        <div className="no-print" style={{ display: "grid", gap: 20, minWidth: 0 }}>
   <AppCard>
     <div style={trainingStyles.stepHeader}>
@@ -1207,249 +1085,11 @@ function Trainings({
             );
           })()}
         </div>
+       </details>
       </div>}
 
 
-      <div className="no-print" style={{ marginTop: 28 }}>
-        <AppCard>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 16,
-              alignItems: "center",
-              marginBottom: 20,
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <h3 style={{ margin: 0, lineHeight: 1.2 }}>{t("pages.trainings.savedTitle")}</h3>
-              <p style={{ color: "#94a3b8", margin: "6px 0 0", lineHeight: 1.45 }}>
-                {t("pages.trainings.savedSubtitle")}
-              </p>
-            </div>
 
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <Badge tone="blue">{t("pages.trainings.savedCount", { count: sortedSessions.length })}</Badge>
-              <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: 3, gap: 2 }}>
-                {[["lista","≡"],["settimana","◫"]].map(([v, icon]) => (
-                  <button key={v} onClick={() => setSessionsView(v)} style={{
-                    padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700,
-                    background: sessionsView === v ? "rgba(56,189,248,0.2)" : "transparent",
-                    color: sessionsView === v ? "#38bdf8" : "#64748b",
-                  }} aria-pressed={sessionsView === v} aria-label={v === "lista" ? "Vista lista" : "Vista settimana"} title={v === "lista" ? "Vista lista" : "Vista settimana"}>{icon}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="daily-archive-search">
-            <SearchBar value={sessionSearch} onChange={setSessionSearch} placeholder="Cerca seduta, tema o data…" />
-            <span role="status">{visibleSessions.length} di {sortedSessions.length} sedute</span>
-          </div>
-
-          {sessionSearch && visibleSessions.length === 0 && <p role="status">Nessuna seduta trovata. <Button variant="ghost" onClick={() => setSessionSearch("")}>Cancella ricerca</Button></p>}
-
-          {sessionsView === "settimana" && (
-            <WeekView
-              sessions={visibleSessions}
-              weekOffset={weekOffset}
-              onPrevWeek={() => setWeekOffset((o) => o - 1)}
-              onNextWeek={() => setWeekOffset((o) => o + 1)}
-              onThisWeek={() => setWeekOffset(0)}
-              onEditSession={(session) => {
-                editTraining(session);
-              }}
-              onCreateSession={canManage ? (dateStr) => {
-                setEditingId(null);
-                setForm({ ...emptyTraining(), date: dateStr });
-                setFormErrors({});
-                requestAnimationFrame(scrollToTrainingForm);
-              } : null}
-              onNavigateAttendance={(id) => navigate(`/session-attendance/${id}`)}
-              onNavigateFormation={(id) => navigate(`/match-day/${id}`)}
-              canManage={canManage}
-            />
-          )}
-
-          {sessionsView === "lista" && <>
-          {loading && sortedSessions.length === 0 ? (
-            <SkeletonList rows={3} cols={2} />
-          ) : sortedSessions.length === 0 ? (
-            <EmptyState
-              icon="📋"
-              title={t("pages.trainings.noSavedTitle")}
-              text={t("pages.trainings.noSavedText")}
-              steps={canManage ? [
-                { title: "Crea una nuova seduta", text: "Usa il modulo qui sopra: scegli data, tema e giocatori." },
-                { title: "Registra le presenze", text: "Dopo l'allenamento segna chi era presente, assente o infortunato." },
-                { title: "Analizza il carico", text: "Il sistema calcola automaticamente carico e minuti per ogni giocatore." },
-              ] : undefined}
-              action={
-                <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap", justifyContent: "center" }}>
-                  {canManage && <button
-                    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                    style={{
-                      padding: "9px 20px", borderRadius: 10,
-                      background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)",
-                      color: "#93c5fd", fontSize: 13, fontWeight: 700, cursor: "pointer",
-                    }}
-                  >
-                    ⬆ {t("pages.trainings.scrollToBuilder")}
-                  </button>}
-                </div>
-              }
-            />
-          ) : (
-            <div style={{ display: "grid", gap: 14 }}>
-              {visibleSessions.map((session) => {
-                const sessionTotal =
-                  (session.exercises || []).reduce((sum, item) => sum + Number(item.customDuration || 0), 0) +
-                  (session.sessionBlocks || []).reduce((sum, b) => sum + (Number(b.duration) || 0), 0);
-                const canMarkCompleted = !session.isFriendlyMatch && Boolean(session.date && session.date < localDateString());
-                const isCompleted = session.isFriendlyMatch
-                  ? Boolean(session.date && session.date < localDateString())
-                  : Boolean(session.completed);
-
-                return (
-                  <div
-                    key={session.id}
-                    style={{
-                      borderRadius: 12,
-                      padding: 16,
-                      background:
-                        editingId === session.id
-                          ? "rgba(56,189,248,0.12)"
-                          : "rgba(255,255,255,0.045)",
-                      border:
-                        editingId === session.id
-                          ? "1px solid rgba(56,189,248,0.35)"
-                          : "1px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 16,
-                        alignItems: "flex-start",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                          <h3 style={{ margin: 0, lineHeight: 1.2 }}>{session.title}</h3>
-                          {isCompleted && <Badge tone="green">Effettuata</Badge>}
-                        </div>
-
-                        <p style={{ color: "#94a3b8", margin: "8px 0", lineHeight: 1.4 }}>
-                          {formatDate(session.date)} · {session.isFriendlyMatch ? "Amichevole" : getThemeLabel(session.theme, t)} ·{" "}
-                          {sessionTotal} min
-                        </p>
-
-                        {session.sourceType === "postMatch" && (
-                          <div style={trainingStyles.sourceInline}>
-                            <Badge tone="purple">{t("pages.trainings.sourcePostMatch")}</Badge>
-                            <Badge tone={getObjectiveStatusMeta(session.objectiveStatus).tone}>
-                              {t(getObjectiveStatusMeta(session.objectiveStatus).labelKey)}
-                            </Badge>
-                            <span>
-                              {session.sourceMatchLabel ? `vs ${session.sourceMatchLabel}` : t("pages.trainings.sourceLinked")}
-                              {session.sourceSummary ? ` · ${session.sourceSummary}` : ""}
-                            </span>
-                          </div>
-                        )}
-
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          {(session.exercises || []).map((item, index) => {
-                            const exercise = exercises.find(
-                              (ex) => ex.id === item.exerciseId
-                            );
-
-                            return (
-                              <Badge key={`${item.exerciseId}-${index}`} tone="purple">
-                                {exercise?.title || t("pages.trainings.exerciseFallback")} ·{" "}
-                                {item.customDuration} min
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        {canManage && canMarkCompleted && (
-                          <Button
-                            variant="ghost"
-                            aria-pressed={isCompleted}
-                            title={isCompleted ? "Segna come da effettuare" : "Segna come effettuata"}
-                            onClick={() => toggleTrainingCompleted(session.id)}
-                            style={{
-                              background: isCompleted ? "rgba(34,197,94,0.14)" : "rgba(255,255,255,0.06)",
-                              border: isCompleted ? "1px solid rgba(34,197,94,0.35)" : "1px solid rgba(255,255,255,0.10)",
-                              color: isCompleted ? "#86efac" : "white",
-                            }}
-                          >
-                            {isCompleted ? "✓ Effettuata" : "□ Effettuata"}
-                          </Button>
-                        )}
-
-                        <Button
-                          variant="ghost"
-                          onClick={() => navigate(`/session-attendance/${session.id}`)}
-                        >
-                          {t("pages.trainings.attendance")}
-                        </Button>
-
-                        {session.isFriendlyMatch && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              onClick={() => navigate(`/match-day/${session.id}`)}
-                            >
-                              Formazione
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              onClick={() => navigate(`/match-stats/${session.id}`)}
-                            >
-                              Minutaggi
-                            </Button>
-                          </>
-                        )}
-
-                        {canManage && !session.isFriendlyMatch && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              onClick={() => editTraining(session)}
-                            >
-                              {t("pages.trainings.edit")}
-                            </Button>
-
-                            <Button
-                              variant="danger"
-                              onClick={() => deleteTraining(session.id)}
-                            >
-                              {t("pages.trainings.delete")}
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          </>}
-        </AppCard>
-      </div>
     </div>
   );
 }
@@ -1457,6 +1097,7 @@ function Trainings({
 function emptyTraining() {
   return {
     title: "",
+    plannedDuration: "",
     date: localDateString(),
     type: "Allenamento",
     theme: "Costruzione",
@@ -1488,6 +1129,8 @@ function getInitialTrainingForm(draftTraining) {
   return {
     ...emptyTraining(),
     ...draftTraining,
+    date: draftTraining.date ? getAgendaDateKey(draftTraining.date) : localDateString(),
+    plannedDuration: draftTraining.plannedDuration ?? getTrainingDuration(draftTraining) ?? "",
     exercises: draftTraining.exercises || [],
     attendance: draftTraining.attendance || {},
   };
@@ -1763,131 +1406,6 @@ function FieldLabel({ label, children }) {
       <span>{label}</span>
       {children}
     </label>
-  );
-}
-
-// ─── WeekView ──────────────────────────────────────────────────────
-const DAYS_IT_SHORT = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
-
-function getWeekStart(offset) {
-  const d = new Date();
-  const dow = (d.getDay() + 6) % 7; // 0=Mon
-  d.setDate(d.getDate() - dow + offset * 7);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function WeekView({ sessions, weekOffset, onPrevWeek, onNextWeek, onThisWeek, onEditSession, onCreateSession, onNavigateAttendance, onNavigateFormation }) {
-  const weekStart = getWeekStart(weekOffset);
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-
-  const todayStr = localDateString();
-  const weekLabel = `${days[0].toLocaleDateString("it-IT", { day: "2-digit", month: "short" })} – ${days[6].toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })}`;
-
-  const sessionsByDay = {};
-  days.forEach((d) => { sessionsByDay[localDateString(d)] = []; });
-  sessions.forEach((s) => {
-    if (s.date && sessionsByDay[s.date]) sessionsByDay[s.date].push(s);
-  });
-
-  const navBtn = {
-    background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8,
-    color: "#94a3b8", cursor: "pointer", padding: "5px 12px", fontSize: 16,
-  };
-
-  return (
-    <div>
-      {/* Nav */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-        <button onClick={onPrevWeek} style={navBtn} aria-label="Settimana precedente">‹</button>
-        <span style={{ flex: 1, fontWeight: 700, fontSize: 14, color: "#e2e8f0" }}>{weekLabel}</span>
-        {weekOffset !== 0 && (
-          <button onClick={onThisWeek} style={{ ...navBtn, fontSize: 12, padding: "5px 10px", color: "#38bdf8", borderColor: "rgba(56,189,248,0.3)" }}>
-            Oggi
-          </button>
-        )}
-        <button onClick={onNextWeek} style={navBtn} aria-label="Settimana successiva">›</button>
-      </div>
-
-      {/* Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
-        {days.map((d, i) => {
-          const dateStr = localDateString(d);
-          const isToday = dateStr === todayStr;
-          const daySessions = sessionsByDay[dateStr] || [];
-          return (
-            <div
-              key={dateStr}
-              style={{
-                borderRadius: 10, minHeight: 90, padding: "8px 6px",
-                background: isToday ? "rgba(56,189,248,0.07)" : "rgba(255,255,255,0.025)",
-                border: `1px solid ${isToday ? "rgba(56,189,248,0.3)" : "rgba(255,255,255,0.06)"}`,
-                cursor: daySessions.length === 0 && onCreateSession ? "pointer" : "default",
-              }}
-              onClick={() => {
-                if (daySessions.length === 0 && onCreateSession) onCreateSession(dateStr);
-              }}
-              title={daySessions.length === 0 && onCreateSession ? "Crea seduta" : undefined}
-            >
-              <div style={{ marginBottom: 6, textAlign: "center" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>{DAYS_IT_SHORT[i]}</div>
-                <div style={{ fontSize: 14, fontWeight: isToday ? 900 : 600, color: isToday ? "#38bdf8" : "#cbd5e1" }}>
-                  {d.getDate()}
-                </div>
-              </div>
-              <div style={{ display: "grid", gap: 4 }}>
-                {daySessions.length === 0 && onCreateSession && (
-                  <div style={{ textAlign: "center", paddingTop: 10, color: "#334155", fontSize: 18, lineHeight: 1 }}>+</div>
-                )}
-                {daySessions.map((s) => {
-                  const openSession = () => {
-                    if (s.isFriendlyMatch) onNavigateFormation?.(s.id);
-                    else onEditSession(s);
-                  };
-                  return (
-                    <div key={s.id} style={{
-                      borderRadius: 6, padding: "5px 7px",
-                      background: "rgba(56,189,248,0.13)", border: "1px solid rgba(56,189,248,0.25)",
-                      cursor: "pointer",
-                    }}
-                      onClick={openSession}
-                      title={s.title || "Allenamento"}
-                    >
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {s.title || "Allenamento"}
-                      </div>
-                      {s.exercises?.length > 0 && (
-                        <div style={{ fontSize: 10, color: "#94a6be" }}>
-                          {s.exercises.reduce((t, e) => t + Number(e.customDuration || 0), 0)} min
-                        </div>
-                      )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onNavigateAttendance(s.id); }}
-                        style={{ marginTop: 4, width: "100%", fontSize: 11, fontWeight: 700, padding: "6px 0", borderRadius: 4, border: "1px solid rgba(56,189,248,0.3)", background: "rgba(56,189,248,0.08)", color: "#38bdf8", cursor: "pointer" }}
-                      >
-                        Presenze
-                      </button>
-                      {s.isFriendlyMatch && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onNavigateFormation?.(s.id); }}
-                          style={{ marginTop: 4, width: "100%", fontSize: 11, fontWeight: 700, padding: "6px 0", borderRadius: 4, border: "1px solid rgba(34,197,94,0.35)", background: "rgba(34,197,94,0.10)", color: "#86efac", cursor: "pointer" }}
-                        >
-                          Formazione
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 

@@ -1,0 +1,67 @@
+.training-hub{color:#eaf1fc;display:grid;gap:22px;min-width:0;padding:6px 0 20px}
+.training-hub a{color:inherit;text-decoration:none}
+.training-hub button,.training-hub input{font:inherit}
+.training-hub a:focus-visible,.training-hub button:focus-visible,.training-hub summary:focus-visible,.training-disclosure>summary:focus-visible{outline:2px solid #93c5fd;outline-offset:4px}
+.training-hub-heading{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.training-hub-eyebrow{color:#7f9bbd;font-size:10px;letter-spacing:.15em;text-transform:uppercase;font-weight:700}
+.training-hub-heading h1{font-size:30px;letter-spacing:-.04em;margin:8px 0;line-height:1.2}
+.training-hub-heading p{font-size:13px;line-height:1.6;color:#96a8bf;margin:0}
+.training-hub-heading-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.training-hub-primary,.training-hub-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 15px;border-radius:10px;min-height:44px;font-size:12px;font-weight:650;cursor:pointer;line-height:1.4}
+.training-hub-primary{border:1px solid #3e70dc;background:#315fc6;color:#fff}
+.training-hub-primary:hover{background:#3d70da}
+.training-hub-secondary{color:#b7c9e2!important;border:1px solid rgba(148,163,184,.17);background:rgba(148,163,184,.04)}
+.training-hub-archive{border:1px solid rgba(148,163,184,.15);border-radius:17px;background:linear-gradient(140deg,#131e2d,#101824);min-width:0}
+.training-hub-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 20px;border-bottom:1px solid rgba(148,163,184,.12);flex-wrap:wrap}
+.training-hub-tabs{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.training-hub-tabs button{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 12px;border:1px solid transparent;background:none;color:#8fa5bf;border-radius:9px;cursor:pointer;font-size:12px;font-weight:650}
+.training-hub-tabs button[aria-pressed=true]{background:#223753;color:#e4edfc;border-color:rgba(122,164,230,.17)}
+.training-hub-tabs button>span{font-size:10px;padding:2px 5px;border-radius:5px;background:rgba(148,163,184,.09);font-variant-numeric:tabular-nums}
+.training-hub-search{display:flex;align-items:center;gap:9px;flex:0 1 280px;min-width:160px;color:#829ab7;border:1px solid rgba(148,163,184,.13);border-radius:9px;padding:0 11px;background:rgba(6,12,22,.24)}
+.training-hub-search input{min-width:0;width:100%;min-height:40px;border:0;background:none;outline:none;color:#d9e6f8;font-size:12px}
+.training-hub-search:focus-within{border-color:#6e98d4;box-shadow:0 0 0 2px rgba(110,152,212,.13)}
+.training-hub-search input::placeholder{color:#6e85a2}
+.training-hub-list{list-style:none;padding:0;margin:0}
+.training-hub-row{display:grid;grid-template-columns:50px minmax(0,1fr) auto;align-items:center;gap:18px;padding:21px 22px;border-bottom:1px solid rgba(148,163,184,.09);position:relative}
+.training-hub-row:last-child{border-bottom:0}
+.training-hub-row.is-next{background:linear-gradient(90deg,rgba(88,137,216,.08),transparent)}
+.training-hub-date{display:grid;gap:3px;text-align:center;padding:8px 4px;border-radius:10px;border:1px solid rgba(148,163,184,.12);background:rgba(148,163,184,.04);color:#bfd0e6}
+.training-hub-date strong{font-size:21px;line-height:1;font-weight:700;letter-spacing:-.04em}
+.training-hub-date span{font-size:10px;text-transform:uppercase;color:#7792b4;font-weight:650}
+.training-hub-session{min-width:0}
+.training-hub-session-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.training-hub-title{padding:0;border:0;background:none;color:#e1ebfa!important;text-align:left;cursor:pointer;font-size:14px!important;font-weight:650!important;line-height:1.5;overflow-wrap:anywhere}
+.training-hub-title:hover{color:#b7d2ff!important}
+.training-hub-session p{margin:7px 0 0;color:#8299b5;font-size:11px;line-height:1.6}
+.training-hub-status,.training-hub-kind{font-size:9px;line-height:1.4;padding:3px 7px;border:1px solid rgba(148,163,184,.16);border-radius:6px;color:#95a9c4;white-space:nowrap}
+.training-hub-status.status-completed{background:rgba(116,213,178,.07);color:#8dccb2;border-color:rgba(116,213,178,.16)}
+.training-hub-status.status-today{background:rgba(96,165,250,.1);color:#9fc7fb;border-color:rgba(96,165,250,.22)}
+.training-hub-status.status-toCheck{color:#c6ac81;background:rgba(228,186,114,.05);border-color:rgba(228,186,114,.15)}
+.training-hub-row-actions{display:flex;gap:8px;align-items:center}
+.training-hub-attendance{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:11px;font-weight:650;color:#b7cce8!important;min-height:40px;padding:9px 12px;border:1px solid rgba(148,163,184,.14);background:rgba(148,163,184,.035);border-radius:9px;white-space:nowrap}
+.training-hub-attendance:hover{background:rgba(110,153,216,.11);border-color:rgba(110,153,216,.3)}
+.training-hub-menu{position:relative;flex-shrink:0}
+.training-hub-menu>summary{list-style:none;display:grid;place-items:center;min-width:38px;height:40px;border-radius:9px;cursor:pointer;color:#7891b0;border:1px solid transparent}
+.training-hub-menu>summary::-webkit-details-marker{display:none}
+.training-hub-menu[open]>summary,.training-hub-menu>summary:hover{background:#24364e;border-color:rgba(148,163,184,.15)}
+.training-hub-menu>div{position:absolute;z-index:20;right:0;top:calc(100% + 6px);min-width:190px;padding:6px;border-radius:11px;border:1px solid rgba(148,163,184,.24);background:#19273a;box-shadow:0 12px 35px rgba(0,0,0,.4);display:grid}
+.training-hub-menu button{border:0;border-radius:7px;background:none;color:#cfdbeb;cursor:pointer;text-align:left;padding:11px 12px;font-size:12px;min-height:40px}
+.training-hub-menu button:hover{background:#273951}.training-hub-menu button.is-delete{color:#e9a5af}
+.training-hub-empty{display:grid;justify-items:center;text-align:center;padding:48px 22px;color:#8da6c4;gap:12px;font-size:13px}
+.training-hub-empty h2{margin:0;color:#cfdef1;font-size:18px;font-weight:650;letter-spacing:-.025em}
+.training-hub-empty p{max-width:340px;line-height:1.7;font-size:12px;margin:0 0 5px;color:#8197b3}
+.training-hub-more{display:block;margin:10px auto 20px;color:#a7c3e6;background:transparent;border:1px solid rgba(148,163,184,.18);border-radius:10px;padding:11px 18px;font-size:12px;cursor:pointer;min-height:42px}
+.training-hub-footer{display:flex;justify-content:space-between;align-items:center;gap:18px;font-size:11px;color:#748ca9;padding:0 4px}
+.training-hub-footer a{display:flex;align-items:center;gap:6px;color:#a5bddc;min-height:36px}
+.training-editor-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:16px}
+.training-editor-fields small{color:#879db7;line-height:1.5;font-size:11px}
+.training-disclosure{border:1px solid rgba(148,163,184,.15);border-radius:13px;background:rgba(15,24,38,.6);min-width:0}
+.training-disclosure>summary{padding:18px 20px;cursor:pointer;color:#b5c9e3;font-size:13px;font-weight:650;min-height:54px}
+.training-disclosure[open]>summary{border-bottom:1px solid rgba(148,163,184,.12)}
+.training-disclosure-content{display:grid;gap:18px;padding:20px;min-width:0}
+.training-disclosure>.no-print{padding:20px}
+.training-editor-notes{margin-top:20px;color:#a1b8d4;font-size:12px}
+.training-editor-notes>summary{cursor:pointer;padding:10px 0;font-weight:600}
+.training-editor-notes .training-editor-fields{margin-top:12px}
+.training-editor-basic input[readonly]{color:#8ca4c3;background:rgba(148,163,184,.04)!important}
+@media(max-width:760px){.training-hub{gap:17px}.training-hub-heading{align-items:flex-start;gap:17px}.training-hub-heading h1{font-size:27px}.training-hub-heading-actions{width:100%}.training-hub-heading-actions>*{flex:1}.training-hub-toolbar{padding:13px;gap:12px}.training-hub-tabs{width:100%;justify-content:space-between;gap:2px}.training-hub-tabs button{padding:8px 9px;font-size:11px}.training-hub-search{flex:1 1 100%;min-width:0}.training-hub-row{grid-template-columns:43px minmax(0,1fr);gap:12px;padding:18px 15px}.training-hub-date strong{font-size:20px}.training-hub-title{font-size:13px!important}.training-hub-row-actions{grid-column:2;justify-content:space-between;margin-top:1px}.training-hub-attendance{font-size:11px;min-height:40px}.training-hub-menu>summary{min-width:42px}.training-hub-menu>div{min-width:180px}.training-hub-session-top{gap:6px}.training-hub-status,.training-hub-kind{font-size:9px}.training-hub-footer{font-size:10px}.training-disclosure-content,.training-disclosure>.no-print{padding:14px}.training-disclosure>summary{padding:17px 16px}.training-editor-fields{grid-template-columns:minmax(0,1fr)}.training-hub-empty{padding:38px 18px}}
