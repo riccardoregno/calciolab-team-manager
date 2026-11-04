@@ -17,7 +17,7 @@ export default function MiniMatchFinesView({ rows, weekOptions, selectedWeek, on
   const period = weekOptions.find((week) => week.value === selectedWeek)?.label || "Totale";
   const stepper = (row) => <FineStepper name={row.name} value={row.torello} editable={editable} onChange={(delta) => onTorelloChange(row.p.id, delta)} formatAmount={formatAmount} />;
   return (
-    <AppCard className="cl-fines-workspace" title="Statistiche partitelle" subtitle={`${period} · ${totalSessions} partitelle con risultato`}>
+    <AppCard className="cl-fines-workspace" title="Multe partitelle e torello" subtitle={`${period} · ${totalSessions} partitelle con risultato`}>
       <MetricStrip items={[
         { label: "Partitelle", value: totalSessions },
         { label: "Multe partitelle", value: formatAmount(totals.partitelle) },

@@ -19,6 +19,12 @@ for (const role of roles) {
     assert.deepEqual(visibleRoutes(desktopItems), visibleRoutes(mobileItems), 'Desktop/mobile navigation mismatch for ' + role);
   }
 }
+for (const items of [desktopItems, mobileItems]) {
+  assert.equal(items.some((item) => item.to === "/exercises" || item.to === "/exercise-library"), false, "Paused exercise pages must not appear on either device");
+  const fines = items.find((item) => item.to === "/fines");
+  assert.ok(fines, "Fines must be reachable on desktop and mobile");
+  assert.deepEqual(fines.roles, ["owner", "headCoach", "assistantCoach"]);
+}
 assert.deepEqual(juniorNavigationItems(), []);
 assert.deepEqual(juniorNavigationItems({ workspaceProfile: { managesJuniores: true, teamLevel: "juniores" } }), []);
 assert.equal(juniorNavigationItems({ workspaceProfile: { managesJuniores: true, teamLevel: "prima" } })[0].to, "/players?gruppo=juniores");

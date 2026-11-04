@@ -257,6 +257,7 @@ const ROUTE_PREFETCH_MAP = {
   "/matches":           () => import("../../pages/Matches"),
   "/calendar":          () => import("../../pages/Calendar"),
   "/statistics":        () => import("../../pages/Statistics"),
+  "/fines":             () => import("../../pages/Fines"),
   "/physical-tests":    () => import("../../pages/PhysicalTests"),
   "/physical-workouts": () => import("../../pages/PhysicalWorkouts"),
   "/settings":          () => import("../../pages/Settings"),

@@ -22,7 +22,6 @@ import { useInAppNotifications } from "../../hooks/useInAppNotifications";
 
 export default function Topbar({
   players = [],
-  exercises = [],
   sessions = [],
   matches = [],
   staffTasks = [],
@@ -76,15 +75,6 @@ export default function Topbar({
         to: `/players/${p.id}`,
       }));
 
-    const exerciseResults = exercises
-      .filter((e) => normalizeNavigationQuery(`${e.title} ${e.category} ${e.objective}`).includes(q))
-      .map((e) => ({
-        id: `exercise-${e.id}`,
-        label: e.title,
-        meta: t("topbar.resultMeta.exercise", { category: e.category || t("topbar.resultMeta.category") }),
-        to: "/exercises",
-      }));
-
     const sessionResults = sessions
       .filter((s) => normalizeNavigationQuery(`${s.title} ${s.date} ${s.objective}`).includes(q))
       .map((s) => ({
@@ -106,8 +96,8 @@ export default function Topbar({
         to: `/match-day/${m.id}`,
       }));
 
-    return [...playerResults, ...exerciseResults, ...sessionResults, ...matchResults].slice(0, 8);
-  }, [search, players, exercises, sessions, matches, t]);
+    return [...playerResults, ...sessionResults, ...matchResults].slice(0, 8);
+  }, [search, players, sessions, matches, t]);
 
 
   function renderProfileMenu(extraStyle = {}, onClose = () => {}) {

@@ -173,6 +173,7 @@ export const en = {
       juniors: "Juniors",
     },
     items: {
+      fines: "Fines",
       dashboard: "Dashboard",
       onboarding: "Onboarding",
       calendar: "Calendar",
@@ -267,6 +268,7 @@ export const en = {
     english: "English",
   },
   pages: {
+    fines: { subtitle: "Small-sided game and rondo fines by week and player." },
     notFound: {
       title: "Page not found",
       subtitle: "The page you're looking for doesn't exist or has been moved.",

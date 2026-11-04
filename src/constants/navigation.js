@@ -6,13 +6,13 @@ import {
   CalendarRange,
   ClipboardCheck,
   ClipboardList,
+  Coins,
   Dumbbell,
   Gem,
   GitCompareArrows,
   Handshake,
   HeartPulse,
   Home,
-  LibraryBig,
   ListChecks,
   MessagesSquare,
   Printer,
@@ -49,6 +49,7 @@ export const PRIMARY = [
 
 // ── Drawer "Altro": poche scorciatoie operative, il resto sotto avanzate ──
 export const CORE_SECONDARY = [
+  { to: "/fines", labelKey: "navigation.items.fines", icon: Coins, roles: technicalRoles, cat: "gestione" },
   { to: "/availability",        labelKey: "navigation.items.availability",        icon: HeartPulse, roles: ["owner","headCoach","assistantCoach","athleticTrainer","player"], cat: "squadra" },
   { to: "/staff-chat",          labelKey: "navigation.items.staffChat",           icon: MessagesSquare, roles: coachRoles, cat: "squadra", badge: "chat" },
   { to: "/attendance-register", labelKey: "navigation.items.attendanceRegister",  icon: ClipboardCheck, roles: technicalRoles, cat: "campo" },
@@ -64,7 +65,6 @@ export const ADVANCED_SECONDARY = [
   { to: "/physical-tests",      labelKey: "navigation.items.physicalTests",       icon: Timer, roles: physicalRoles, cat: "analisi" },
   { to: "/physical-workouts",   labelKey: "navigation.items.physicalWorkouts",    icon: Dumbbell, roles: physicalRoles, cat: "analisi" },
   { to: "/gps-load",            labelKey: "navigation.items.gpsLoad",             icon: RadioTower, roles: physicalRoles, cat: "analisi" },
-  { to: "/exercises",           labelKey: "navigation.items.exercises",           icon: LibraryBig, roles: technicalRoles, cat: "campo" },
   { to: "/microcycle",          labelKey: "navigation.items.microcycle",          icon: CalendarRange, roles: technicalRoles, cat: "campo" },
   { to: "/set-plays",           labelKey: "navigation.items.setPlays",            icon: Ruler, roles: technicalRoles, cat: "campo" },
   { to: "/tactical-board",      labelKey: "navigation.items.tacticalBoard",       icon: BrainCircuit, roles: technicalRoles, cat: "campo" },
@@ -109,11 +109,11 @@ export const toolboxGroups = [
     navigationItem("/player-portal"),
   ] },
   { titleKey: "navigation.groups.field", items: [
-    ...["/attendance-register", "/exercises", "/microcycle", "/tactical-board", "/set-plays", "/ai-session-builder", "/team-generator"].map((path) => navigationItem(path)),
+    ...["/attendance-register", "/microcycle", "/tactical-board", "/set-plays", "/ai-session-builder", "/team-generator"].map((path) => navigationItem(path)),
     navigationItem("/opponents", { featureKey: "opponents" }),
   ] },
   { titleKey: "navigation.groups.system", items: [
-    ...["/statistics", "/staff-tasks", "/staff-chat"].map((path) => navigationItem(path)),
+    ...["/fines", "/statistics", "/staff-tasks", "/staff-chat"].map((path) => navigationItem(path)),
     navigationItem("/exports", { featureKey: "exports" }), navigationItem("/premium"), navigationItem("/settings"),
   ] },
   { titleKey: "navigation.groups.club", items: [navigationItem("/sponsors", { featureKey: "sponsors" })] },

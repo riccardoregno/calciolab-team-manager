@@ -44,7 +44,7 @@ const MatchStats = lazy(() => import("./pages/MatchStats"));
 const SessionAttendance = lazy(() => import("./pages/SessionAttendance"));
 const AttendanceRegister = lazy(() => import("./pages/AttendanceRegister"));
 const MatchConvocation  = lazy(() => import("./pages/MatchConvocation"));
-const Exercises = lazy(() => import("./pages/Exercises"));
+const Fines = lazy(() => import("./pages/Fines"));
 const Trainings = lazy(() => import("./pages/Trainings"));
 const Sessions = lazy(() => import("./pages/Sessions"));
 const Matches = lazy(() => import("./pages/Matches"));
@@ -745,8 +745,8 @@ function App() {
               />
 
 
-              {/* Eserciziario FP5 temporaneamente disabilitato — redirect a /exercises */}
-              <Route path="/exercise-library" element={<Navigate to="/exercises" replace />} />
+              {/* Exercise pages are temporarily paused; saved data stays available in sessions. */}
+              <Route path="/exercise-library" element={<Navigate to="/statistics" replace />} />
 
               <Route
                 path="/ai-session-builder"
@@ -1000,7 +1000,17 @@ function App() {
 
               <Route
                 path="/exercises"
-                element={gate(technicalRoles, <Exercises exercises={exercises} setExercises={setExercises} />, "exercises")}
+                element={<Navigate to="/statistics" replace />}
+              />
+
+              <Route
+                path="/fines"
+                element={gate(technicalRoles, <Fines
+                  sessions={sessions}
+                  players={players}
+                  appSettings={previewAppSettings}
+                  setAppSettings={setAppSettings}
+                />, "sessions")}
               />
 
               <Route
@@ -1014,7 +1024,6 @@ function App() {
                     players={players}
                     matches={matches}
                     appSettings={previewAppSettings}
-                    setAppSettings={setAppSettings}
                     loading={loading}
                     teamId={auth.team?.id}
                   />, "sessions")

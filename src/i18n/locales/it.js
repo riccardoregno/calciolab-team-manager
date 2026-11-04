@@ -173,6 +173,7 @@ export const it = {
       juniors: "Juniores",
     },
     items: {
+      fines: "Multe",
       dashboard: "Dashboard",
       onboarding: "Onboarding",
       calendar: "Calendario",
@@ -267,6 +268,7 @@ export const it = {
     english: "English",
   },
   pages: {
+    fines: { subtitle: "Riepilogo delle multe di partitelle e torello, per settimana e giocatore." },
     notFound: {
       title: "Pagina non trovata",
       subtitle: "La pagina che stai cercando non esiste o è stata spostata.",

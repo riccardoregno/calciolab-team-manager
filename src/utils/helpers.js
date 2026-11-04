@@ -1021,7 +1021,6 @@ export function isRoleAllowed(role, allowedRoles = []){
 
 export function getSetupProgress({
   players = [],
-  exercises = [],
   sessions = [],
   matches = [],
   appSettings = {},
@@ -1055,13 +1054,6 @@ export function getSetupProgress({
       label: "Inserisci almeno 18 giocatori",
       done: players.length >= 18,
       path: "/players",
-    },
-    {
-      key: "exercises",
-      labelKey: "common.setupChecks.exercises",
-      label: "Crea o importa 10 esercizi",
-      done: exercises.length >= 10,
-      path: "/exercise-library",
     },
     {
       key: "sessions",

@@ -1082,10 +1082,10 @@ export default function TacticalBoard({
           </span>
           <button
             type="button"
-            onClick={() => navigate("/exercise-library?tab=miei")}
+            onClick={() => navigate("/trainings")}
             style={exStyles.bannerBack}
           >
-            {t("pages.tacticalBoard.bannerEditBack")}
+            {t("navigation.items.trainings")}
           </button>
         </div>
       )}
@@ -1147,8 +1147,8 @@ export default function TacticalBoard({
                 {t("pages.tacticalBoard.undo")}
               </button>
               {exFeedback?.ok ? (
-                <button type="button" onClick={() => navigate("/exercise-library?tab=miei")} style={exStyles.btnPrimary}>
-                  {t("pages.tacticalBoard.btnGotoLibrary")}
+                <button type="button" onClick={() => navigate("/trainings")} style={exStyles.btnPrimary}>
+                  {t("navigation.items.trainings")}
                 </button>
               ) : (
                 <button type="button" onClick={exportToExercise} style={exStyles.btnPrimary}>

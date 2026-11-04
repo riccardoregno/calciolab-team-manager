@@ -907,9 +907,9 @@ function Dashboard({
                 onClick={() => navigate("/players")}
               />
               <QuickAction
-                label={t("navigation.items.exerciseLibrary")}
-                icon="📚"
-                onClick={() => navigate("/exercise-library")}
+                label={t("navigation.items.statistics")}
+                icon="📊"
+                onClick={() => navigate("/statistics")}
               />
               <QuickAction
                 label={t("navigation.items.trainings")}
