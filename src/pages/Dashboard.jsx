@@ -8,6 +8,7 @@ import { Activity, ArrowRight, CalendarDays, CheckCircle2, Circle, Eye, EyeOff, 
 
 import { useMinuteClock } from "../hooks/useMinuteClock";
 import { buildCoachTasks, summarizeMatchRsvps } from "../utils/coachTasks";
+import CoachAnalysisDashboard from "../components/dashboard/CoachAnalysisDashboard";
 import CoachActionQueue from "../components/dashboard/CoachActionQueue";
 import CoachFocusCard from "../components/dashboard/CoachFocusCard";
 import CoachAlertList from "../components/dashboard/CoachAlertList";
@@ -167,6 +168,8 @@ function Dashboard({
   const [playerRatingsMap, setPlayerRatingsMap] = useState({});
   const [playerMatchRows, setPlayerMatchRows] = useState([]);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [statsCompletedForTeam, setStatsCompletedForTeam] = useState("");
+  const [statsReload, setStatsReload] = useState(0);
   const [statsError, setStatsError] = useState(null);
   const [teamWellnessToday, setTeamWellnessToday] = useState([]);
   const [showPersonalize, setShowPersonalize] = useState(false);
@@ -222,9 +225,10 @@ function Dashboard({
       setPlayerRatingsMap(ratingsData || {});
       setPlayerMatchRows(matchRows || []);
       setStatsLoading(false);
-    }).catch((error) => { if (active) { setStatsError(error.message); setStatsLoading(false); } });
+      setStatsCompletedForTeam(auth.team.id);
+    }).catch((error) => { if (active) { setStatsError(error.message); setStatsLoading(false); setStatsCompletedForTeam(auth.team.id); } });
     return () => { active = false; };
-  }, [auth.team?.id, matches, t]);
+  }, [auth.team?.id, matches, t, statsReload]);
 
   useEffect(() => {
     if (!auth.team?.id) return;
@@ -1029,6 +1033,13 @@ function Dashboard({
         coachAlerts={coachAlerts}
       />
     );
+  }
+
+  if (["owner", "headCoach", "assistantCoach", "director"].includes(currentRole)) {
+    return <CoachAnalysisDashboard players={players} matches={matches} sessions={sessions} rows={playerMatchRows}
+      profile={settings.workspaceProfile} loading={loading} statsLoading={Boolean(auth.team?.id) && (statsLoading || statsCompletedForTeam !== auth.team.id)} statsError={statsError}
+      onRetryStats={() => setStatsReload((value) => value + 1)}
+      now={new Date(agendaMinute)} canManage={["owner", "headCoach", "assistantCoach"].includes(currentRole)} />;
   }
 
   return (
