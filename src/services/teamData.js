@@ -1,3 +1,4 @@
+import { strToU8, strFromU8, zlibSync, unzlibSync } from "fflate";
 import {
   STORAGE_KEY,
   initialExercises,
@@ -62,85 +63,55 @@ export function loadLocalState(teamId) {
   }
 }
 
-// Last serialized state — flushed synchronously on pagehide
-let _lastSerialized = null;
+const COMPRESSED_PREFIX = "calciolab:zlib:v1:";
+const COMPRESS_AT = 128 * 1024;
 
-/** @param {object} state
- * @returns {void} */
+function compactSnapshot(json) {
+  if (json.startsWith(COMPRESSED_PREFIX)) return json;
+  const bytes = zlibSync(strToU8(json), { level: 1 });
+  const packed = COMPRESSED_PREFIX + btoa(strFromU8(bytes, true));
+  return packed.length < json.length ? packed : json;
+}
+
 export function saveLocalState(state, teamId) {
   const { primary, backup } = storageKeys(teamId);
   const normalized = normalizeAppState(state);
-  const serialized  = JSON.stringify(normalized);
-  _lastSerialized   = { serialized, teamId };
+  const json = JSON.stringify(normalized);
+  let serialized = json.length >= COMPRESS_AT ? compactSnapshot(json) : json;
   let previous = null;
 
   try {
     previous = localStorage.getItem(primary);
     const previousState = parseStoredState(previous);
     if (previousState) updateEmptyEntityIntents(normalized, previousState, teamId);
+  } catch { /* The write below reports storage access failures. */ }
+
+  try {
+    localStorage.setItem(primary, serialized);
   } catch {
-    previous = null;
-  }
-
-  function write() {
     try {
+      serialized = compactSnapshot(json);
       localStorage.setItem(primary, serialized);
-    } catch (error) {
-      // Il backup non deve mai impedire il salvataggio dello stato corrente.
-      // Se la quota e esaurita, libera il backup e ritenta una sola volta.
-      try {
-        try { localStorage.removeItem(backup); } catch { /* Primary data was saved. */ }
-        localStorage.setItem(primary, serialized);
-      } catch (retryError) {
-        if (import.meta.env.DEV) console.error("Errore salvataggio localStorage:", retryError || error);
-        return { saved: false, error: retryError || error };
-      }
-    }
-
-    if (previous && previous !== serialized) {
-      try {
-        localStorage.setItem(backup, previous);
-      } catch {
-        // Backup best-effort: lo stato principale e gia stato scritto.
-        localStorage.removeItem(backup);
-      }
-    }
-    return { saved: true, error: null };
-  }
-
-  // Persist before any remote read or navigation can replace this state.
-  return write();
-}
-
-// Flush the latest state synchronously when the tab is about to be hidden/closed
-// so we never lose a pending requestIdleCallback write.
-if (typeof window !== "undefined") {
-  window.addEventListener("pagehide", () => {
-    if (!_lastSerialized) return;
-    const { serialized, teamId } = _lastSerialized;
-    const { primary, backup } = storageKeys(teamId);
-    try {
-      const previous = localStorage.getItem(primary);
-      localStorage.setItem(primary, serialized);
-      if (previous && previous !== serialized) {
-        const nextState = parseStoredState(serialized);
-        const previousState = parseStoredState(previous);
-        if (nextState && previousState) updateEmptyEntityIntents(nextState, previousState, teamId);
-        try {
-          localStorage.setItem(backup, previous);
-        } catch {
-          localStorage.removeItem(backup);
-        }
-      }
     } catch {
       try {
+        // Preserve the primary if both attempts fail. The old backup is expendable.
         localStorage.removeItem(backup);
         localStorage.setItem(primary, serialized);
-      } catch {
-        // Best-effort on pagehide
+      } catch (error) {
+        if (import.meta.env.DEV) console.error("Errore salvataggio localStorage:", error);
+        return { saved: false, error };
       }
     }
-  });
+  }
+
+  if (previous && previous !== serialized) {
+    try {
+      localStorage.setItem(backup, previous.length >= COMPRESS_AT ? compactSnapshot(previous) : previous);
+    } catch {
+      try { localStorage.removeItem(backup); } catch { /* The primary was saved. */ }
+    }
+  }
+  return { saved: true, error: null };
 }
 
 /** @param {{ teamId?: string }} [params]
@@ -744,7 +715,10 @@ function parseStoredState(serialized) {
   if (!serialized) return null;
 
   try {
-    return normalizeAppState(JSON.parse(serialized));
+    const json = serialized.startsWith(COMPRESSED_PREFIX)
+      ? strFromU8(unzlibSync(strToU8(atob(serialized.slice(COMPRESSED_PREFIX.length)), true)))
+      : serialized;
+    return normalizeAppState(JSON.parse(json));
   } catch {
     return null;
   }

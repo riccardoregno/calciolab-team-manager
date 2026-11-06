@@ -103,6 +103,35 @@ try {
   } finally { localStorage.setItem = originalSetItem; }
   assert.equal(saveLocalState(snapshot).saved, true, 'Local-save status recovers when storage becomes writable again');
 
+  const largeTeam = 'large-team';
+  const largeKey = key + ':team:' + largeTeam;
+  const large = { matches: Array.from({ length: 300 }, (_, index) => ({
+    id: 'match-' + index, opponent: 'Società ⚽ ' + index, notes: 'Riepilogo partita. '.repeat(120),
+  })) };
+  const changedLarge = { matches: large.matches.map((match, index) => index ? match : { ...match, result: '2-1' }) };
+  // Start with a legacy, uncompressed snapshot and emulate a full browser store.
+  values.set(largeKey, JSON.stringify(large));
+  const quota = 60_000;
+  try {
+    localStorage.setItem = (entryKey, value) => {
+      const total = [...values].filter(([k]) => k !== entryKey).reduce((sum, [, v]) => sum + v.length, value.length);
+      if (total > quota) throw new Error('quota exhausted');
+      originalSetItem(entryKey, value);
+    };
+    assert.equal(saveLocalState(changedLarge, largeTeam).saved, true);
+    const restored = loadLocalState(largeTeam).matches;
+    assert.equal(restored.length, large.matches.length);
+    assert.equal(restored[0].result, '2-1');
+    assert.equal(restored[299].opponent, large.matches[299].opponent);
+    assert.equal(restored[299].notes, large.matches[299].notes);
+    values.set(largeKey, 'calciolab:zlib:v1:broken');
+    assert.equal(loadLocalState(largeTeam).matches.length, large.matches.length, 'A corrupt compressed primary can recover the previous snapshot');
+  } finally {
+    localStorage.setItem = originalSetItem;
+    values.delete(largeKey);
+    values.delete(largeKey + ':backup');
+  }
+
   assert.ok(supabase, 'Remote-read regression requires the configured Supabase client');
   const originalFrom = supabase.from;
   saveLocalState(snapshot, 'test-team');
