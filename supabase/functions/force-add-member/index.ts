@@ -68,13 +68,16 @@ Deno.serve(async (req) => {
     }
 
     // Aggiungi a team_members
-    const { error: upsertError } = await serviceClient
+    const { data: inserted, error: upsertError } = await serviceClient
       .from("team_members")
       .upsert(
         { team_id: teamId, user_id: targetUser.id, role },
-        { onConflict: "team_id,user_id" }
-      );
+        { onConflict: "team_id,user_id", ignoreDuplicates: true }
+      )
+      .select("user_id")
+      .maybeSingle();
     if (upsertError) return json({ error: upsertError.message }, 500);
+    if (!inserted) return json({ error: "Questo utente fa gia parte della squadra." }, 409);
 
     // Aggiorna settings.members e rimuovi da pendingInvites
     const { data: teamRow } = await serviceClient
@@ -85,7 +88,6 @@ Deno.serve(async (req) => {
 
     const settings = teamRow?.settings || {};
     const currentMembers: any[] = Array.isArray(settings.members) ? settings.members : [];
-    const emailLower = email.toLowerCase().trim();
     const alreadyInMembers = currentMembers.some(
       (m: any) => String(m.email || "").toLowerCase().trim() === emailLower
     );
