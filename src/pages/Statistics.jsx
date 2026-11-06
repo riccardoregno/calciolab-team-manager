@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import FilterChips from "../components/ui/FilterChips";
 import PlayerStatisticsCard from "../components/statistics/PlayerStatisticsCard";
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
@@ -55,12 +54,12 @@ function getTopPlayerByStat(players = [], statKey) {
 }
 
 function Statistics({
-  events, players, matchScope }) {
+  events, players: roster, matchScope }) {
   const { t, language } = useTranslation();
   const auth = useAuth();
   const navigate = useNavigate();
 
-  const [squadraFilter, setSquadraFilter] = useState("prima");
+  const players = useMemo(() => roster.filter((player) => String(player.gruppo || "prima").trim().toLowerCase() === "prima"), [roster]);
   const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || "");
   const [eventType, setEventType] = useState("Tutti");
   const [fromDate, setFromDate] = useState("");
@@ -278,30 +277,7 @@ function Statistics({
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const stats = useMemo(() => {
-    const groupPlayers = squadraFilter === "prima"
-      ? players.filter((p) => (p.gruppo || "prima") === "prima")
-      : squadraFilter === "juniores"
-      ? players.filter((p) => (p.gruppo || "prima") === "juniores")
-      : players;
-    const filteredMatchIds = new Set(
-      filteredEvents
-        .filter((event) => event.type === "Partita")
-        .map((event) => String(event.id))
-        .filter(Boolean)
-    );
-    const statPlayerIds = new Set(
-      playerMatchStatsRows
-        .filter((row) => filteredMatchIds.has(String(row.match_id || "")))
-        .map((row) => String(row.player_id || ""))
-        .filter(Boolean)
-    );
-    const filteredPlayers = squadraFilter === "tutti"
-      ? groupPlayers
-      : players.filter((player) => (
-          groupPlayers.some((item) => String(item.id) === String(player.id)) ||
-          statPlayerIds.has(String(player.id))
-        ));
-    const baseStats = getStatsSummary(filteredEvents, filteredPlayers, playerMatchStatsRows, players);
+    const baseStats = getStatsSummary(filteredEvents, players, playerMatchStatsRows, roster);
 
     return [...baseStats]
       .filter((player) =>
@@ -386,7 +362,7 @@ function Statistics({
     minGoals,
     minPresences,
     minAvgMinutes,
-    squadraFilter,
+    roster,
   ]);
 
   const selectedPlayer = players.find(
@@ -397,7 +373,7 @@ function Statistics({
     (s) => String(s.id) === String(effectiveSelectedPlayerId)
   );
 
-  const history = getPlayerHistory(filteredEvents, selectedPlayer, playerMatchesDB, players, playerMatchStatsRows);
+  const history = getPlayerHistory(filteredEvents, selectedPlayer, playerMatchesDB, roster, playerMatchStatsRows);
 
   const topScorer = getTopPlayerByStat(stats, "goals");
   const mostMinutes = getTopPlayerByStat(stats, "minutes");
@@ -786,7 +762,7 @@ function Statistics({
       </AppCard>
 
       {/* ── Statistiche Partitelle ── */}
-      <PartitelleStats events={events} players={players} squadraFilter={squadraFilter} />
+      <PartitelleStats events={events} players={players} />
 
       {/* ── Griglia principale ── */}
       <div style={{ ...s.mainGrid, ...(isNarrow ? s.mainGridStack : null) }}>
@@ -827,14 +803,6 @@ function Statistics({
               </button>
             </div>
           </div>
-
-          <FilterChips
-            label="Gruppo delle statistiche"
-            className="cl-statistics-groups"
-            value={squadraFilter}
-            onChange={setSquadraFilter}
-            options={[{ value: "prima", label: "Prima squadra" }, { value: "juniores", label: "Juniores" }, { value: "tutti", label: "Tutti" }]}
-          />
 
           {/* Barra ricerca + filtri secondari */}
           <div style={s.searchRow}>
@@ -1332,7 +1300,7 @@ const getMiniMatchStatsMap = (sessions) => {
   return map;
 };
 
-function PartitelleStats({ events, players, squadraFilter }) {
+function PartitelleStats({ events, players }) {
   const [selectedWeek, setSelectedWeek] = useState("all");
   const trainingEvents = events.filter((e) => isTrainingStatsEvent(e) && e.date);
   const sessions = trainingEvents.filter((e) => e.partitella?.winner != null);
@@ -1375,19 +1343,7 @@ function PartitelleStats({ events, players, squadraFilter }) {
   const stats = getMiniMatchStatsMap(selectedSessions);
   const allStats = getMiniMatchStatsMap(sessions);
 
-  const filteredPlayers = players.filter((p) => {
-    if (squadraFilter === "tutti") return true;
-    return (p.gruppo || "prima") === squadraFilter;
-  });
-
-  const playerById = new Map(players.map((p) => [String(p.id), p]));
-  const rowPlayers = new Map(filteredPlayers.map((p) => [String(p.id), p]));
-  Object.keys(stats).forEach((pid) => {
-    const player = playerById.get(pid);
-    if (player) rowPlayers.set(pid, player);
-  });
-
-  const rows = Array.from(rowPlayers.values())
+  const rows = players
     .map((p) => ({ p, ...(stats[String(p.id)] || { wins: 0, losses: 0, draws: 0, goals: 0 }) }))
     .sort((a, b) => (a.p.name || "").localeCompare(b.p.name || "", "it", { sensitivity: "base" }));
   const weeklyFines = rows.reduce((sum, row) => sum + row.losses, 0);
