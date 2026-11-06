@@ -1458,11 +1458,6 @@ export function getPlayerQuickStats(player, sessions = [], matches = []) {
   const today = localDateString();
   const now = new Date();
   const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  const isFriendlyMatch = (match) => {
-    if (match?.isFriendly === true || match?.friendly === true) return true;
-    const fields = [match?.matchKind, match?.match_kind, match?.competition, match?.category, match?.kind, match?.title, match?.notes];
-    return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
-  };
 
   const appearances = matches.reduce((count, match) => {
     if (isFriendlyMatch(match)) return count;
@@ -1471,23 +1466,7 @@ export function getPlayerQuickStats(player, sessions = [], matches = []) {
     return count + 1;
   }, 0);
 
-  const friendlyMatches = matches.filter(isFriendlyMatch);
-
-  const completedTrainings = [...sessions, ...friendlyMatches]
-    .filter((s) => ((s.type || "Allenamento") === "Allenamento" || isFriendlyMatch(s)))
-    .map((s) => ({ ...s, date: normalizeStatsDate(s.date) }))
-    .filter((s) => isCompletedTrainingSession(s, today, nowTime));
-
-  let present = 0;
-  completedTrainings.forEach((session) => {
-    const data = session?.attendance?.[pid] ?? session?.attendance?.[String(pid)];
-    const status = data?.status || getTrainingDefaultStatus(player, session.date);
-    if (status === "Presente" || status === "Recupero") present += 1;
-  });
-
-  const trainingPct = completedTrainings.length > 0
-    ? Math.round((present / completedTrainings.length) * 100)
-    : null;
+  const { trainingPct } = getTrainingAttendanceSummary(player, getCompletedTrainingEvents([...sessions, ...matches.filter(isFriendlyMatch)], today, nowTime));
 
   return { appearances, trainingPct };
 }
@@ -1527,6 +1506,42 @@ function getTrainingDefaultStatus(player, dateStr) {
   if (unavailability?.type === "absence") return "Permesso";
   if ((player?.gruppo || "prima") === "juniores") return "Assente";
   return "Presente";
+}
+
+export function isFriendlyMatch(match) {
+  if (match?.isFriendly === true || match?.friendly === true) return true;
+  const fields = [match?.matchKind, match?.match_kind, match?.competition, match?.category, match?.kind, match?.title, match?.notes];
+  return fields.some((value) => /amichevol|\bfriendly\b/.test(normalizeStatsText(value)));
+}
+
+export function isTrainingStatsEvent(event) {
+  return (event?.type || "Allenamento") === "Allenamento" || (event.type === "Partita" && isFriendlyMatch(event));
+}
+
+export function getCompletedTrainingEvents(events, today = localDateString(), nowTime = new Date().toTimeString().slice(0, 5)) {
+  return events.filter(isTrainingStatsEvent)
+    .map((event) => ({ ...event, date: normalizeStatsDate(event.date) }))
+    .filter((event) => isCompletedTrainingSession(event, today, nowTime));
+}
+
+const ATTENDANCE_STATUSES = new Set(["Presente", "Recupero", "Assente", "Permesso", "Infortunato", "Squalificato"]);
+
+export function getTrainingSessionStatus(player, event) {
+  const status = event.attendance?.[player.id]?.status;
+  return ATTENDANCE_STATUSES.has(status) ? status : getTrainingDefaultStatus(player, normalizeStatsDate(event.date));
+}
+
+export function getTrainingAttendanceSummary(player, completedEvents) {
+  let trainingPresences = 0, absences = 0, injuries = 0;
+  for (const event of completedEvents) {
+    const status = getTrainingSessionStatus(player, event);
+    if (status === "Presente" || status === "Recupero") trainingPresences++;
+    if (status === "Assente" || status === "Permesso") absences++;
+    if (status === "Infortunato") injuries++;
+  }
+  const totalTrainings = completedEvents.length;
+  return { trainingPresences, absences, injuries, totalTrainings,
+    trainingPct: totalTrainings ? Math.round(trainingPresences / totalTrainings * 100) : null };
 }
 
 export function getCoachAlerts({ players = [], matches = [], physicalTests = [], sessions = [], playerStatsMap = {}, teamWellnessToday = [], t } = {}){
@@ -1903,11 +1918,6 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
   // devono riflettere solo ciò che è realmente accaduto finora, non gli
   // allenamenti futuri già marcati di default.
   const todayStr = localDateString();
-  const isFriendlyMatch = (match) => {
-    if (match?.isFriendly === true || match?.friendly === true) return true;
-    const fields = [match?.matchKind, match?.match_kind, match?.competition, match?.category, match?.kind, match?.title, match?.notes];
-    return fields.some((value) => normalizeStatsText(value).includes("amichevol"));
-  };
   const leagueMatches = matches.filter(isLeagueStatsMatch);
   const events = [...sessions, ...leagueMatches].filter((event) => event.date && event.date <= todayStr);
   const matchEntries = getPlayerMatchEntries(player, leagueMatches, playerMatchesDB)
@@ -1925,20 +1935,8 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
     ...matchEntries,
   ];
 
-  const friendlyMatches = matches.filter(isFriendlyMatch);
-  const nowTime = new Date().toTimeString().slice(0, 5);
-  const trainingSessions = [...sessions, ...friendlyMatches]
-    .filter((session) => (session.type || "Allenamento") === "Allenamento" || isFriendlyMatch(session))
-    .map((session) => ({ ...session, date: normalizeStatsDate(session.date) }))
-    .filter((session) => isCompletedTrainingSession(session, todayStr, nowTime));
-  const pid = String(player.id);
-  const trainingPresences = trainingSessions.filter((s) => {
-    const entry = s.attendance?.[pid] ?? s.attendance?.[player.id];
-    const status = entry?.status || getTrainingDefaultStatus(player, s.date);
-    return status === "Presente" || status === "Recupero";
-  }).length;
-  const totalTrainings = trainingSessions.length;
-  const trainingPct = totalTrainings > 0 ? Math.round((trainingPresences / totalTrainings) * 100) : null;
+  const { trainingPresences, totalTrainings, trainingPct } = getTrainingAttendanceSummary(player,
+    getCompletedTrainingEvents([...sessions, ...matches.filter(isFriendlyMatch)], todayStr));
 
   const rpeValues = playerEvents
     .map(({ data }) => Number(data.rpe || 0))

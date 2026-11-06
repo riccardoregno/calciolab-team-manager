@@ -11,7 +11,7 @@ import SearchBar from "../components/ui/SearchBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { useAuth } from "../hooks/useAuth";
 import { styles } from "../styles/index.js";
-import { comparePlayersByName, formatShortDate, getPlayerSortKey, getPlayerUnavailabilityOnDate } from "../utils/helpers";
+import { comparePlayersByName, formatShortDate, getPlayerSortKey, getPlayerUnavailabilityOnDate, getTrainingSessionStatus, isFriendlyMatch } from "../utils/helpers";
 import { fetchTeamRpe } from "../services/sessionRpe";
 import { useTranslation } from "../i18n";
 
@@ -68,16 +68,6 @@ function getUnavailabilityStatus(player, dateStr) {
   return null;
 }
 
-function getDefaultStatus(player, dateStr) {
-  const unavailableStatus = getUnavailabilityStatus(player, dateStr);
-  if (unavailableStatus) return unavailableStatus;
-  // I Juniores non fanno parte del gruppo base: di default risultano Assenti
-  // per ogni seduta, finché il mister non li marca manualmente Presenti
-  // (a quel punto contano come un disponibile aggiuntivo rispetto alla prima squadra).
-  if ((player.gruppo || "prima") === "juniores") return "Assente";
-  return "Presente";
-}
-
 function getMatchPlayerIds(match) {
   return [...new Set([
     ...(match?.convocazione?.playerIds || []),
@@ -104,12 +94,7 @@ function getMatchStatus(player, session) {
 
 function getSessionStatus(player, session) {
   if (session.isMatch && !session.isFriendly) return getMatchStatus(player, session);
-  const entry = session.attendance?.[String(player.id)] || {};
-  // Uno status salvato ma non riconosciuto (dato corrotto/malformato) non deve
-  // mai "vincere" silenziosamente: si ricalcola il default come se non fosse
-  // stato impostato, così resta coerente con le statistiche aggregate.
-  if (entry.status && STATUS_META[entry.status]) return entry.status;
-  return getDefaultStatus(player, session.date);
+  return getTrainingSessionStatus(player, session);
 }
 
 function findOverlappingAbsence(player, dateStr, { type, excludeType } = {}) {
@@ -234,9 +219,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
         title: match.opponent || match.title || "Partita",
         type: "Partita",
         isMatch: true,
-        // Case-insensitive: il valore arriva dal select della pagina Partite,
-        // ma normalizziamo comunque per non rompersi su dati importati o futuri.
-        isFriendly: String(match.matchKind || "").trim().toLowerCase() === "amichevole",
+        isFriendly: isFriendlyMatch(match),
         convocationPublished: Boolean(match.convocazione?.published),
         convocatiIds: getMatchPlayerIds(match),
         attendance: match.attendance || {},
@@ -371,7 +354,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   function cycleStatus(session, player) {
     if (!canManage || (session.isMatch && !session.isFriendly)) return;
     const playerId = String(player.id);
-    const current = session.attendance?.[playerId]?.status || getDefaultStatus(player, session.date);
+    const current = getTrainingSessionStatus(player, session);
     const currentIndex = STATUS_FLOW.indexOf(current);
     const nextStatus = STATUS_FLOW[(currentIndex + 1) % STATUS_FLOW.length] || "Presente";
     updateAttendance(session, playerId, { status: nextStatus });

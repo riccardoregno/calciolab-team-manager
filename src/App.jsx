@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-
 
 import { styles } from "./styles/index.js";
 import { useTranslation } from "./i18n";
-import { buildMatchScope, getMatchSeason } from "./utils/matchScope.js";
+import { buildMatchScope, buildStatisticsEvents } from "./utils/matchScope.js";
 import RouteScrollReset from "./components/layout/RouteScrollReset";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
@@ -240,10 +240,7 @@ function App() {
       previewAppSettings.workspaceProfile?.currentSeason);
     return { ...scope, onChange: (selection) => setMatchSelection({ ...selection, teamId }) };
   }, [matches, matchSelection, previewAppSettings.workspaceProfile?.currentSeason, teamId]);
-  const statisticsEvents = useMemo(() => [
-    ...sessions.filter((session) => matchScope.season === "all" || getMatchSeason(session) === matchScope.season),
-    ...matchScope.matches,
-  ], [sessions, matchScope]);
+  const statisticsEvents = useMemo(() => buildStatisticsEvents(sessions, matches, matchScope), [sessions, matches, matchScope]);
 
   // FIX #9: active flag previene setState su componente smontato (memory leak)
   useEffect(() => {

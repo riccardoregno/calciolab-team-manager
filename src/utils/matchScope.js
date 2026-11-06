@@ -1,5 +1,5 @@
 import { getAgendaDateKey } from "./coachAgenda.js";
-import { isLeagueStatsMatch } from "./helpers.js";
+import { isFriendlyMatch, isLeagueStatsMatch } from "./helpers.js";
 
 export function normalizeSeason(value) {
   const label = String(value ?? "").trim();
@@ -39,4 +39,15 @@ export function buildMatchScope(matches, selection, currentSeason) {
     competition === "all" || (competition === "league" ? isLeagueStatsMatch(match) : "name:" + competitionName(match) === competition)
   );
   return { seasons, season, competitions, competition, matches: scopedMatches };
+}
+
+export function buildStatisticsEvents(sessions, matches, scope) {
+  const inSeason = (event) => scope.season === "all" || getMatchSeason(event) === scope.season;
+  const scopedMatchIds = new Set(scope.matches.map((match) => String(match.id)));
+  return [
+    ...sessions.filter(inSeason),
+    ...scope.matches,
+    ...matches.filter((match) => inSeason(match) && isFriendlyMatch(match) && !scopedMatchIds.has(String(match.id)))
+      .map((match) => ({ ...match, attendanceOnly: true })),
+  ];
 }

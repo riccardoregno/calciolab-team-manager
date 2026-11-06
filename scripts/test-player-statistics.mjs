@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { getGoalkeeperGoalsConceded, getPlayerMatchEntries, getPlayerMatchTotals, getPlayerSummary, isGoalkeeper } from "../src/utils/helpers.js";
+import { buildMatchScope, buildStatisticsEvents } from "../src/utils/matchScope.js";
+import { getCompletedTrainingEvents, getTrainingAttendanceSummary, getGoalkeeperGoalsConceded, getPlayerMatchEntries, getPlayerMatchTotals, getPlayerSummary, isGoalkeeper } from "../src/utils/helpers.js";
 
 const keeper = { id: "gk", role: "Portiere" };
 const reserve = { id: "reserve", position: "GK" };
@@ -45,3 +46,26 @@ assert.equal(getPlayerMatchEntries(striker, matches, rows).find(({ event }) => e
 assert.equal(getPlayerSummary(keeper, { matches: [shared], players,
   playerMatchesDB: [{ player_id: "gk", match_id: "home", minutes_played: 45, goals_conceded: 1 }] }).recentEvents[0].data.goalsConceded, 1);
 console.log("Player statistics regression checks passed");
+
+const summerPlayer = { id: "summer", absences: [{ dateStart: "2020-07-20", dateEnd: "2020-07-22" }] };
+const sessions = [
+  { id: "a", date: "2020-07-20" },
+  { id: "b", date: "2020-07-22", attendance: { summer: { rpe: 6 } } },
+  { id: "c", date: "2020-07-24", attendance: { summer: { status: "Recupero" } } },
+  { id: "d", date: "2020-07-25", attendance: { summer: { status: "Infortunato" } } },
+  { id: "future", date: "2020-08-03", attendance: { summer: { status: "Assente" } } },
+];
+const summerMatches = [
+  { ...match, date: "2020-08-01" },
+  { id: "friendly", type: "Partita", matchKind: "Amichevole", date: "2020-07-31", attendance: { summer: { status: "Assente" } } },
+  { id: "other-season", type: "Partita", matchKind: "Amichevole", date: "2020-06-30" },
+];
+const scope = buildMatchScope(summerMatches, { season: "2020/21", competition: "league" });
+const scoped = buildStatisticsEvents(sessions, summerMatches, scope);
+assert.equal(scoped.find((event) => event.id === "friendly")?.attendanceOnly, true);
+assert.equal(scoped.some((event) => event.id === "other-season"), false);
+const all = buildStatisticsEvents(sessions, summerMatches, buildMatchScope(summerMatches, { season: "2020/21", competition: "all" }));
+assert.equal(all.filter((event) => event.id === "friendly").length, 1);
+const completed = getCompletedTrainingEvents(scoped, "2020-08-01", "21:00");
+assert.deepEqual(getTrainingAttendanceSummary(summerPlayer, completed), { trainingPresences: 1, absences: 3, injuries: 1, totalTrainings: 5, trainingPct: 20 });
+assert.equal(getTrainingAttendanceSummary({ ...summerPlayer, absences: [] }, completed).absences, 1);

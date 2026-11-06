@@ -6,7 +6,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
-import { formatDate, getPlayerUnavailabilityOnDate } from "../utils/helpers";
+import { formatDate, getTrainingSessionStatus, isFriendlyMatch } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
 const STATUS_OPTIONS = ["Presente", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"];
@@ -19,38 +19,6 @@ const STATUS_TONE = {
   Permesso:   "blue",
   Squalificato:"purple",
 };
-
-function normalizeDateStr(value) {
-  if (!value) return "";
-  const direct = String(value).slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(direct)) return direct;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
-  const year = parsed.getFullYear();
-  const month = String(parsed.getMonth() + 1).padStart(2, "0");
-  const day = String(parsed.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getDefaultStatus(player, dateStr) {
-  const unavailability = getPlayerUnavailabilityOnDate(player, dateStr);
-  if (unavailability?.type === "injury") return "Infortunato";
-  if (unavailability?.type === "absence") return "Permesso";
-  if ((player.gruppo || "prima") === "juniores") return "Assente";
-  return "Presente";
-}
-
-function getPlayerSessionStatus(player, session, attendance) {
-  const entry = attendance[String(player.id)] || {};
-  return STATUS_TONE[entry.status] ? entry.status : getDefaultStatus(player, normalizeDateStr(session.date));
-}
-
-function isFriendlyMatch(match) {
-  if (match?.type !== "Partita") return false;
-  if (match.isFriendly === true || match.friendly === true) return true;
-  const fields = [match.matchKind, match.match_kind, match.competition, match.category, match.kind, match.title, match.notes];
-  return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
-}
 
 function getFriendlySession(match) {
   if (!match) return null;
@@ -146,7 +114,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   // Contatori per status
   const counts = players.reduce(
     (acc, p) => {
-      const st = getPlayerSessionStatus(p, session, attendance);
+      const st = getTrainingSessionStatus(p, session);
       acc[st] = (acc[st] || 0) + 1;
       return acc;
     },
@@ -232,8 +200,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
           if (ra !== rb) return ra - rb;
           return getSortKey(a).localeCompare(getSortKey(b), "it");
         });
-        const presentiList = sortByRole(players.filter((p) => getPlayerSessionStatus(p, session, attendance) === "Presente"));
-        const assentiList  = sortByGruppoRole(players.filter((p) => getPlayerSessionStatus(p, session, attendance) !== "Presente"));
+        const presentiList = sortByRole(players.filter((p) => getTrainingSessionStatus(p, session) === "Presente"));
+        const assentiList  = sortByGruppoRole(players.filter((p) => getTrainingSessionStatus(p, session) !== "Presente"));
         return (
           <AppCard>
             <button
@@ -261,7 +229,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                 <div>
                   <p style={{ color: "#f87171", fontWeight: 800, fontSize: 13, marginBottom: 8 }}>✖ Assenti ({assentiList.length})</p>
                   {assentiList.map((p) => {
-                    const st = getPlayerSessionStatus(p, session, attendance);
+                    const st = getTrainingSessionStatus(p, session);
                     const stColor = { Assente: "#f87171", Infortunato: "#fb923c", Recupero: "#38bdf8", Permesso: "#38bdf8", Squalificato: "#c084fc" }[st] || "#94a3b8";
                     const isJuniores = (p.gruppo || "prima") === "juniores";
                     return (
@@ -301,7 +269,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
             }).map((player) => {
               const pid    = String(player.id);
               const data   = attendance[pid] || {};
-              const status = getPlayerSessionStatus(player, session, attendance);
+              const status = getTrainingSessionStatus(player, session);
               const rpe    = data.rpe ?? "";
               const displayName =
                 [player.firstName, player.lastName].filter(Boolean).join(" ") ||

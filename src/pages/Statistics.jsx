@@ -11,7 +11,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 
 import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
-import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getPlayerUnavailabilityOnDate, localDateString, parseMatchResult } from "../utils/helpers";
+import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getCompletedTrainingEvents, getTrainingAttendanceSummary, getTrainingSessionStatus, isTrainingStatsEvent, localDateString, parseMatchResult } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { loadPlayerMatches, loadPlayerMatchesForPeriod, loadMatchStatsMatrix } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
@@ -21,17 +21,6 @@ import { isGoalkeeper } from "../utils/goalkeeperStats";
 
 const StatisticsCharts = lazy(() => import("../components/statistics/StatisticsCharts"));
 const MinutaggioMatrix = lazy(() => import("../components/statistics/MinutaggioMatrix"));
-
-function isFriendlyMatch(event) {
-  if (event?.type !== "Partita") return false;
-  if (event.isFriendly === true || event.friendly === true) return true;
-  const fields = [event.matchKind, event.match_kind, event.competition, event.category, event.kind, event.title, event.notes];
-  return fields.some((value) => String(value || "").trim().toLowerCase().includes("amichevol"));
-}
-
-function isTrainingStatsEvent(event) {
-  return (event?.type || "Allenamento") === "Allenamento" || isFriendlyMatch(event);
-}
 
 function getDisplayPlayerName(player = {}) {
   return player.name || [player.firstName, player.lastName].filter(Boolean).join(" ") || "-";
@@ -265,9 +254,8 @@ function Statistics({
     return events.filter((event) => {
       const matchesType =
         eventType === "Tutti" ||
-        (eventType === "Partita" && event.type === "Partita") ||
-        (eventType !== "Partita" && event.type === eventType) ||
-        (eventType === "Allenamento" && isFriendlyMatch(event));
+        (eventType === "Partita" && event.type === "Partita" && !event.attendanceOnly) ||
+        (eventType === "Allenamento" && isTrainingStatsEvent(event));
       const afterStart = !fromDate || event.date >= fromDate;
       const beforeEnd = !toDate || event.date <= toDate;
 
@@ -679,7 +667,7 @@ function Statistics({
         {showMatrix && (
           <div id="statistics-minutes-matrix" style={{ marginTop: 20 }}>
             <Suspense fallback={<div style={{ padding: "24px 0", textAlign: "center", color: "#94a6be", fontSize: 13 }}>Caricamento…</div>}>
-              <MinutaggioMatrix players={players} matches={filteredEvents} />
+              <MinutaggioMatrix players={players} matches={filteredEvents.filter((event) => !event.attendanceOnly)} />
             </Suspense>
           </div>
         )}
@@ -1583,61 +1571,6 @@ function getTeamSummary(stats) {
   };
 }
 
-const VALID_ATTENDANCE_STATUSES = new Set(["Presente", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"]);
-const TRAINING_PRESENT_STATUSES = new Set(["Presente", "Recupero"]);
-
-function normalizeStatsDate(value) {
-  if (!value) return "";
-  const raw = String(value);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return "";
-  const year = parsed.getFullYear();
-  const month = String(parsed.getMonth() + 1).padStart(2, "0");
-  const day = String(parsed.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getTrainingUnavailabilityStatus(player, dateStr) {
-  const unavailability = getPlayerUnavailabilityOnDate(player, dateStr);
-  if (unavailability?.type === "injury") return "Infortunato";
-  if (unavailability?.type === "absence") return "Permesso";
-  return null;
-}
-
-function getTrainingDefaultStatus(player, dateStr) {
-  const unavailableStatus = getTrainingUnavailabilityStatus(player, dateStr);
-  if (unavailableStatus) return unavailableStatus;
-  if ((player.gruppo || "prima") === "juniores") return "Assente";
-  return "Presente";
-}
-
-function getTrainingSessionStatus(player, session) {
-  const entry = session.attendance?.[String(player.id)] || {};
-  if (entry.status && VALID_ATTENDANCE_STATUSES.has(entry.status)) return entry.status;
-  return getTrainingDefaultStatus(player, session.date);
-}
-
-function normalizeStatsTime(value) {
-  const raw = String(value || "").trim();
-  const match = raw.match(/^(\d{1,2}):(\d{2})/);
-  if (!match) return "";
-  const hours = Math.min(23, Number(match[1]));
-  const minutes = Math.min(59, Number(match[2]));
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-}
-
-function getTrainingTime(session) {
-  return normalizeStatsTime(session.time || session.startTime || session.start_time) || "20:00";
-}
-
-function isCompletedTrainingSession(session, today, nowTime) {
-  if (!session.date) return false;
-  if (session.date < today) return true;
-  if (session.date > today) return false;
-  return getTrainingTime(session) <= nowTime;
-}
-
 function formatPer90(total, minutes, language) {
   return minutes > 0 ? (total * 90 / minutes).toLocaleString(language === "en" ? "en-GB" : "it-IT", {
     minimumFractionDigits: 2, maximumFractionDigits: 2,
@@ -1646,44 +1579,13 @@ function formatPer90(total, minutes, language) {
 
 function getStatsSummary(events, players, playerMatchStatsRows = [], roster = players) {
   const today = localDateString();
-  const now = new Date();
-  const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  const matchEvents = events.filter((e) => e.type === "Partita");
+  const matchEvents = events.filter((e) => e.type === "Partita" && !e.attendanceOnly);
   const recordedFormations = matchEvents.filter((match) => match.date <= today &&
     parseMatchResult(match.result, match) && match.lineup?.starterIds?.length);
-  const trainingSessions = events
-    .filter(isTrainingStatsEvent)
-    .map((e) => ({ ...e, date: normalizeStatsDate(e.date) }))
-    .filter((e) => isCompletedTrainingSession(e, today, nowTime));
+  const trainingSessions = getCompletedTrainingEvents(events, today);
 
   return players.map((player) => {
-    const attendance = events.reduce(
-      (acc, event) => {
-        const data = event.attendance?.[player.id];
-        if (!data) return acc;
-
-        if (data.status === "Assente" || data.status === "Permesso") {
-          acc.absences += 1;
-        }
-
-        if (data.status === "Infortunato") {
-          acc.injuries += 1;
-        }
-
-        return acc;
-      },
-      { absences: 0, injuries: 0 }
-    );
-
-    const trainingPresences = trainingSessions.filter((s) => {
-      const status = getTrainingSessionStatus(player, s);
-      return TRAINING_PRESENT_STATUSES.has(status);
-    }).length;
-    const effectiveDenominator = trainingSessions.length;
-
-    const trainingPct = effectiveDenominator > 0
-      ? Math.round((trainingPresences / effectiveDenominator) * 100)
-      : null;
+    const training = getTrainingAttendanceSummary(player, trainingSessions);
 
     const totals = getPlayerMatchTotals(player, matchEvents, playerMatchStatsRows, roster, false);
     const { presences, minutes, goals, assists } = totals;
@@ -1710,12 +1612,7 @@ function getStatsSummary(events, players, playerMatchStatsRows = [], roster = pl
       minutesPerContribution: goalContributions ? Math.round(minutes / goalContributions) : 0,
       yellowCards: totals.yellowCards,
       redCards: totals.redCards,
-      absences: attendance.absences,
-      injuries: attendance.injuries,
-      trainingPresences,
-      trainingPct,
-      totalTrainings: effectiveDenominator,
-      registeredTrainings: effectiveDenominator,
+      ...training,
     };
   });
 }
@@ -1724,10 +1621,10 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = [], tea
   if (!player) return [];
 
   const matchEntries = new Map(getPlayerMatchEntries(player, events.filter((event) => event.type === "Partita"), playerMatchesDB, false).map((entry) => [String(entry.event.id), entry.data]));
-  return [...events]
+  return [...events.filter((event) => !isTrainingStatsEvent(event)), ...getCompletedTrainingEvents(events)]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .map((event) => {
-      if (event.type === "Partita") {
+      if (event.type === "Partita" && !isTrainingStatsEvent(event)) {
         const matchData = matchEntries.get(String(event.id));
         if (!matchData) return null;
         return {
@@ -1745,20 +1642,21 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = [], tea
           rating: matchData.rating,
         };
       } else {
-        // Allenamenti: usa event.attendance (sistema locale)
-        const data = event.attendance?.[player.id];
-        if (!data) return null;
+        if (!isTrainingStatsEvent(event)) return null;
+        const data = event.attendance?.[player.id] || {};
+        const status = getTrainingSessionStatus(player, event);
+        const present = status === "Presente" || status === "Recupero";
         return {
           sessionId: event.id,
           title: event.title,
           date: event.date,
           type: event.type,
-          status: data.status,
-          minutes: data.status === "Presente" ? Number(data.minutes || 0) : 0,
-          goals: data.status === "Presente" ? Number(data.goals || 0) : 0,
-          assists: data.status === "Presente" ? Number(data.assists || 0) : 0,
-          yellowCards: data.status === "Presente" ? Number(data.yellowCards || 0) : 0,
-          redCards: data.status === "Presente" ? Number(data.redCards || 0) : 0,
+          status,
+          minutes: present ? Number(data.minutes || 0) : 0,
+          goals: present ? Number(data.goals || 0) : 0,
+          assists: present ? Number(data.assists || 0) : 0,
+          yellowCards: present ? Number(data.yellowCards || 0) : 0,
+          redCards: present ? Number(data.redCards || 0) : 0,
           rating: null,
         };
       }
