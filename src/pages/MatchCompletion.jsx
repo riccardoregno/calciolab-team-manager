@@ -10,6 +10,28 @@ import { formatDate, parseMatchResult } from "../utils/helpers";
 import { buildHomeAwayScorePayload, isValidMatchScore } from "../utils/matchScore";
 import { getMatchCompletionPlayerIds, hasRecordedMinutes } from "../utils/matchCompletion";
 
+const emptyDraft = { score: {}, starters: [], minutes: {} };
+
+function readDraft(key) {
+  try {
+    const draft = JSON.parse(localStorage.getItem(key));
+    if (draft?.score && Array.isArray(draft.starters) && draft.minutes) return draft;
+  } catch {
+    // Storage may be unavailable on this device.
+  }
+  return emptyDraft;
+}
+
+function writeDraft(key, draft) {
+  try {
+    if (draft === emptyDraft) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(draft));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function playerName(player) {
   return player.name || [player.firstName, player.lastName].filter(Boolean).join(" ");
 }
@@ -28,13 +50,14 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
   const { canManage } = useAreaPermission();
   const remote = Boolean(teamId && isSupabaseConfigured);
   const score = parseMatchResult(match.result, match);
-  const [scoreDraft, setScoreDraft] = useState({});
+  const draftKey = "calciolab:match-completion:v1:" + JSON.stringify([teamId, match.id]);
+  const [draft, setDraft] = useState(() => readDraft(draftKey));
+  const [draftError, setDraftError] = useState(false);
+  const { score: scoreDraft, starters: starterDraft, minutes: edits } = draft;
   const home = scoreDraft.home ?? String(score?.homeGoals ?? "");
   const away = scoreDraft.away ?? String(score?.awayGoals ?? "");
-  const [starterDraft, setStarters] = useState([]);
   const missingSavedLineup = !match.lineup?.starterIds?.length;
   const starters = missingSavedLineup ? starterDraft : match.lineup.starterIds.map(String);
-  const [edits, setEdits] = useState({});
   const [saved, setSaved] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -54,19 +77,31 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
     return () => { active = false; };
   }, [matchId, remote, revision, teamId]);
 
-  const expected = new Set([...getMatchCompletionPlayerIds(match), ...starters]);
+  const registeredIds = getMatchCompletionPlayerIds(match);
+  const expected = new Set([...registeredIds, ...starters]);
   const savedStarterNames = starters.map((id) => {
     const player = players.find((item) => String(item.id) === id);
     return player ? playerName(player) : id;
   });
-  const lineupPlayers = expected.size ? players.filter((player) => expected.has(String(player.id))) : players;
-  const minutesPlayers = lineupPlayers.filter((player) => expected.has(String(player.id)));
+  const lineupPlayers = registeredIds.length ? players.filter((player) => expected.has(String(player.id))) : players;
+  const minutesPlayers = players.filter((player) => expected.has(String(player.id)));
   const awayFixture = match.location === "Trasferta";
 
   function getMinutes(id) {
     if (Object.hasOwn(edits, id)) return edits[id];
     if (saved && Object.hasOwn(saved, id)) return saved[id] ?? "";
     return match.attendance?.[id]?.minutes ?? "";
+  }
+
+  const missingMinutes = minutesPlayers.filter((player) => {
+    const value = getMinutes(String(player.id));
+    return !hasRecordedMinutes(value) || Number(value) > 120;
+  }).length;
+
+  function updateDraft(next) {
+    setDraft(next);
+    setDraftError(!writeDraft(draftKey, next));
+    setError("");
   }
 
   async function save(event) {
@@ -80,11 +115,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
       setError("Seleziona i titolari prima di salvare.");
       return;
     }
-    const pending = minutesPlayers.filter((player) => {
-      const value = getMinutes(String(player.id));
-      return !hasRecordedMinutes(value) || Number(value) > 120;
-    });
-    if (pending.length) {
+    if (missingMinutes) {
       setError("Completa i minuti di tutti i giocatori. Inserisci 0 per chi non ha giocato.");
       return;
     }
@@ -118,6 +149,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
         const result = Object.keys(scoreDraft).length ? buildHomeAwayScorePayload(item, home, away) : {};
         return { ...item, ...result, lineup, attendance };
       }));
+      writeDraft(draftKey, emptyDraft);
       window.dispatchEvent(new Event("player-match-stats-updated"));
       navigate("/matches?view=pending");
     } catch {
@@ -134,13 +166,21 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
       <Link to="/matches?view=pending">Torna alle gare da completare</Link>
       <form onSubmit={save}>
         <fieldset disabled={!canManage || saving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: "grid", gap: 14 }}>
+          {(draft !== emptyDraft || draftError) && (
+            <AppCard>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                <span role="status">{draftError ? "Impossibile aggiornare la bozza sul dispositivo." : "Bozza salvata su questo dispositivo"}</span>
+                {draft !== emptyDraft && <Button type="button" variant="ghost" onClick={() => updateDraft(emptyDraft)}>Scarta bozza</Button>}
+              </div>
+            </AppCard>
+          )}
           <AppCard title="1. Risultato">
             <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
               <label style={{ display: "grid", gap: 6 }}>{awayFixture ? match.opponent : clubName} (casa)
-                <input style={control} type="number" inputMode="numeric" min="0" step="1" value={home} onChange={(e) => setScoreDraft((previous) => ({ ...previous, home: e.target.value }))} required />
+                <input style={control} type="number" inputMode="numeric" min="0" step="1" value={home} onChange={(e) => updateDraft({ ...draft, score: { ...scoreDraft, home: e.target.value } })} required />
               </label>
               <label style={{ display: "grid", gap: 6 }}>{awayFixture ? clubName : match.opponent} (trasferta)
-                <input style={control} type="number" inputMode="numeric" min="0" step="1" value={away} onChange={(e) => setScoreDraft((previous) => ({ ...previous, away: e.target.value }))} required />
+                <input style={control} type="number" inputMode="numeric" min="0" step="1" value={away} onChange={(e) => updateDraft({ ...draft, score: { ...scoreDraft, away: e.target.value } })} required />
               </label>
             </div>
           </AppCard>
@@ -151,7 +191,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
                 return <label key={id} style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 40 }}>
                   <input type="checkbox" checked={starters.includes(id)} onChange={(e) => {
                     const selected = e.target.checked;
-                    setStarters((previous) => selected ? [...previous, id] : previous.filter((value) => value !== id));
+                    updateDraft({ ...draft, starters: selected ? [...starterDraft, id] : starterDraft.filter((value) => value !== id) });
                   }} />
                   {playerName(player)}
                 </label>;
@@ -159,6 +199,9 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
             </div> : <p>{savedStarterNames.join(", ")}</p>}
           </AppCard>
           <AppCard title="3. Minuti" subtitle="Inserisci 0 per chi non ha giocato.">
+            {(!remote || saved) && minutesPlayers.length > 0 && (
+              <p role="status">{minutesPlayers.length - missingMinutes} di {minutesPlayers.length} con minuti registrati o compilati</p>
+            )}
             {loadError ? <div role="alert">Impossibile caricare il tabellino.{" "}
               <Button type="button" onClick={() => { setLoadError(false); setRevision((value) => value + 1); }}>Riprova</Button>
             </div> : remote && !saved ? <p role="status">Caricamento del tabellino…</p> :
@@ -167,7 +210,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
                 return <label key={id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
                   <span>{playerName(player)}{starters.includes(id) ? " · Titolare" : ""}</span>
                   <input style={control} type="number" inputMode="numeric" min="0" max="120" step="1" required
-                    value={getMinutes(id)} onChange={(e) => setEdits((previous) => ({ ...previous, [id]: e.target.value }))} />
+                    value={getMinutes(id)} onChange={(e) => updateDraft({ ...draft, minutes: { ...edits, [id]: e.target.value } })} />
                 </label>;
               })}
           </AppCard>
