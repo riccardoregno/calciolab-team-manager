@@ -677,7 +677,7 @@ function Statistics({
             <h3 style={{ margin: "4px 0 0", fontSize: 18, lineHeight: 1.2 }}>
               {t("pages.statistics.compareSubtitle")}
             </h3>
-            <small>{language === "en" ? "Starts come from recorded lineups." : "Titolarit\u00e0 calcolate dalle formazioni salvate."}</small>
+            <small>{language === "en" ? "Starts are based on saved lineups. Missing roles are shown as unknown." : "Titolarit\u00e0 dalle formazioni salvate. Le gare senza un ruolo registrato sono indicate a parte."}</small>
           </div>
           <div style={s.compareSelectors}>
             {[0, 1].map((slot) => (
@@ -718,7 +718,7 @@ function Statistics({
                 <div style={s.compareMetrics}>
                   <CompareMetric label={t("pages.statistics.minAbbr")} value={player.minutes} />
                   <CompareMetric label={language === "en" ? "Appearances" : "Presenze"} value={player.presences} />
-                  <CompareMetric label={language === "en" ? "Starts" : "Titolarit\u00e0"} value={player.starts ?? "\u2014"} />
+                  <CompareMetric label={language === "en" ? "Recorded starts" : "Titolarit\u00e0 note"} value={player.starts ?? "\u2014"} />
                   <CompareMetric label={language === "en" ? "Goals / 90" : "Gol / 90"} value={formatPer90(player.goals, player.minutes, language)} />
                   <CompareMetric label="Assist / 90" value={formatPer90(player.assists, player.minutes, language)} />
                   <CompareMetric label={t(isGoalkeeper(player) ? "pages.dashboard.goalsConcededLabel" : "common.goals")} value={isGoalkeeper(player) ? (player.goalsConceded ?? "—") : player.goals} color={isGoalkeeper(player) ? "#f87171" : "#4ade80"} />
@@ -726,6 +726,9 @@ function Statistics({
                   <CompareMetric label={t("pages.statistics.gaAbbr")} value={player.goalContributions} color="#a78bfa" />
                   <CompareMetric label={t("pages.statistics.trainingPctAbbr")} value={player.trainingPct !== null ? `${player.trainingPct}%` : "—"} />
                 </div>
+                {player.unknownLineupRoles > 0 && <small>
+                  {language === "en" ? "Appearances with unknown lineup role" : "Presenze con ruolo in formazione da verificare"}: {player.unknownLineupRoles}/{player.presences}
+                </small>}
               </div>
             ))}
           </div>
@@ -1194,6 +1197,10 @@ function Statistics({
 
                     <p style={{ color: "#94a6be", margin: "5px 0 8px", fontSize: 12, lineHeight: 1.35 }}>
                       {formatDate(item.date)} · {item.type}
+                      {item.lineupRole !== undefined && " · " + (item.lineupRole === "starter"
+                        ? (language === "en" ? "Starter" : "Titolare")
+                        : item.lineupRole === "bench" ? (language === "en" ? "Substitute" : "Subentrato")
+                          : (language === "en" ? "Lineup role unknown" : "Ruolo in formazione da verificare"))}
                     </p>
 
                     <div style={s.historyMeta}>
@@ -1566,11 +1573,17 @@ function formatPer90(total, minutes, language) {
   }) : "\u2014";
 }
 
+function getRecordedLineupRole(match, playerId) {
+  const starters = match.lineup?.starterIds;
+  if (!Array.isArray(starters) || !starters.length) return null;
+  const includesPlayer = (ids) => Array.isArray(ids) && ids.some((id) => String(id) === String(playerId));
+  if (includesPlayer(starters)) return "starter";
+  return includesPlayer(match.lineup?.benchIds) ? "bench" : null;
+}
+
 function getStatsSummary(events, players, playerMatchStatsRows = [], roster = players) {
   const today = localDateString();
   const matchEvents = events.filter((e) => e.type === "Partita" && !e.attendanceOnly);
-  const recordedFormations = matchEvents.filter((match) => match.date <= today &&
-    parseMatchResult(match.result, match) && match.lineup?.starterIds?.length);
   const trainingSessions = getCompletedTrainingEvents(events, today);
 
   return players.map((player) => {
@@ -1578,6 +1591,10 @@ function getStatsSummary(events, players, playerMatchStatsRows = [], roster = pl
 
     const totals = getPlayerMatchTotals(player, matchEvents, playerMatchStatsRows, roster, false);
     const { presences, minutes, goals, assists } = totals;
+    const lineupRoles = getPlayerMatchEntries(player, matchEvents, playerMatchStatsRows, false)
+      .filter(({ data }) => data.status === "Presente")
+      .map(({ event }) => getRecordedLineupRole(event, player.id));
+    const unknownLineupRoles = lineupRoles.filter((role) => role === null).length;
     const goalContributions = goals + assists;
 
       return {
@@ -1591,9 +1608,8 @@ function getStatsSummary(events, players, playerMatchStatsRows = [], roster = pl
       goals,
       goalsConceded: totals.goalsConceded,
       goalkeeperRecord: totals.goalkeeperRecord,
-      starts: recordedFormations.length ? recordedFormations.filter((match) =>
-        match.lineup.starterIds.some((id) => String(id) === String(player.id))
-      ).length : null,
+      starts: lineupRoles.some(Boolean) ? lineupRoles.filter((role) => role === "starter").length : null,
+      unknownLineupRoles,
       assists,
       goalContributions,
       avgMinutes: presences ? Math.round(minutes / presences) : 0,
@@ -1622,6 +1638,7 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = []) {
           date: event.date,
           type: event.type,
           status: matchData.status,
+          lineupRole: matchData.status === "Presente" ? getRecordedLineupRole(event, player.id) : undefined,
           goalsConceded: matchData.status === "Presente"
             ? (matchData.goalsConceded ?? getPlayerMatchTotals(player, [event], playerMatchesDB, roster, false).goalsConceded)
             : null,
