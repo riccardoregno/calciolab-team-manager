@@ -49,3 +49,12 @@ export function buildEntityChanges(baseline, localState, keys) {
       .map((key) => [key, diffEntityArray(baseline?.[key], localState[key])])
   );
 }
+
+// Acknowledge the exact snapshot sent, with versions from the write response.
+// Rows from another device must not enter the baseline before the UI sees them.
+export function acknowledgeEntityVersions(snapshot, versions = {}) {
+  return { ...snapshot, ...Object.fromEntries(Object.entries(versions).map(([key, byId]) => [
+    key, snapshot[key].map((item) => byId.has(String(item.id))
+      ? { ...item, _updatedAt: byId.get(String(item.id)) } : item),
+  ])) };
+}

@@ -17,26 +17,18 @@ import {
   normalizeSetPlays,
   normalizeStaffTask,
 } from "../utils/helpers";
+import { classifyLocalSaveError } from "../utils/saveStatus";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { persistPendingChanges, restorePendingChanges, acknowledgePendingChanges } from "../services/pendingChanges";
 import {
-  ARRAY_ENTITY_KEYS,
+  acknowledgeEntityVersions,
   buildEntityChanges,
-  mergeEntityArrayWithRemote,
 } from "../utils/syncHelpers";
 
 const REMOTE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const MIN_FOCUS_REFRESH_INTERVAL_MS = 60 * 1000;
 const REMOTE_SAVE_DEBOUNCE_MS = 1500;
 
-// Merge a 3 vie per id: confronta lo stato locale con l'ultimo stato
-// sincronizzato (baseline) per capire SOLO quali record sono stati davvero
-// aggiunti/modificati/eliminati in questa scheda, poi applica solo quella
-// differenza sopra al remoto fresco. Usare "locale vince sempre" sarebbe
-// sbagliato: lo stato locale contiene comunque TUTTI i record (anche quelli
-// mai toccati in questa scheda), quindi sovrascriverebbe alla cieca le
-// modifiche fatte nel frattempo da un'altra scheda/dispositivo su record
-// diversi da quello appena modificato qui.
 export function useTeamData({ teamId } = {}) {
   const [state, setState] = useState(() => normalizeAppState({
     players: [],
@@ -266,6 +258,12 @@ export function useTeamData({ teamId } = {}) {
     };
   }, [teamId, applyLoadedState, refreshTeamData]);
 
+  const retryLocalSave = useCallback(() => {
+    if (!hydrated.current) return;
+    const result = saveLocalState(stateRef.current, teamId);
+    setLocalSaveError(result.saved ? null : classifyLocalSaveError(result.error));
+  }, [teamId]);
+
   // Persistenza: localStorage IMMEDIATAMENTE (previene perdita dati su chiusura tab),
   // Supabase con debounce; the per-tab journal protects unacknowledged edits.
   useEffect(() => {
@@ -273,7 +271,7 @@ export function useTeamData({ teamId } = {}) {
 
     // Salvataggio localStorage sincrono — non perdiamo nulla se il tab chiude ora
     const localResult = saveLocalState(state, teamId);
-    setLocalSaveError(localResult?.saved === false ? localResult.error?.message || "Copia locale non disponibile" : null);
+    setLocalSaveError(localResult.saved ? null : classifyLocalSaveError(localResult.error));
     const keysToSave = Array.from(dirtyKeysRef.current);
     if (teamId && keysToSave.length) {
       try {
@@ -307,48 +305,11 @@ export function useTeamData({ teamId } = {}) {
       if (!keysToSave.length) return;
       let journalToken = null;
       try { journalToken = persistPendingChanges(teamId, lastSyncedSnapshotRef.current, snapshot, keysToSave); } catch { /* Cloud save can still succeed. */ }
-      // Prima di sovrascrivere la tabella remota, rilegge lo stato attuale e
-      // unisce le modifiche locali sopra: se un'altra scheda/dispositivo ha
-      // salvato nel frattempo (es. un'altra seduta modificata), quei record
-      // restano invece di essere cancellati dal salvataggio di questa scheda.
-      let toSave = normalized;
-      const baseline = lastSyncedSnapshotRef.current;
-      const entityChanges = buildEntityChanges(baseline, normalized, keysToSave);
-      try {
-        const dirtyEntityKeys = keysToSave.filter((key) => ARRAY_ENTITY_KEYS.includes(key));
-        const remoteResult = dirtyEntityKeys.length > 0
-          ? await loadRemoteState({ teamId, entityKeys: dirtyEntityKeys })
-          : null;
-        if (remoteResult?.state) {
-          const merged = { ...normalized };
-          dirtyEntityKeys.forEach((key) => {
-            merged[key] = mergeEntityArrayWithRemote(baseline?.[key], normalized[key], remoteResult.state[key]);
-          });
-          toSave = merged;
-        }
-      } catch {
-        // Se il refresh fallisce si procede comunque con il solo stato locale,
-        // come accadeva prima di questa modifica.
-      }
-      const result = await saveTeamTablesState(toSave, teamId, { keys: keysToSave, entityChanges });
+      const entityChanges = buildEntityChanges(lastSyncedSnapshotRef.current, normalized, keysToSave);
+      const result = await saveTeamTablesState(normalized, teamId, { keys: keysToSave, entityChanges });
       if (teamIdRef.current !== teamId) return;
       if (result.source === "supabase" && !result.error) {
-        const dirtyEntityKeys = keysToSave.filter((key) => ARRAY_ENTITY_KEYS.includes(key));
-        if (dirtyEntityKeys.length > 0) {
-          const refreshed = await loadRemoteState({ teamId, entityKeys: dirtyEntityKeys });
-          if (teamIdRef.current !== teamId) return;
-          if (refreshed?.state && !refreshed.error) {
-            lastSyncedSnapshotRef.current = {
-              ...toSave,
-              ...Object.fromEntries(dirtyEntityKeys.map((key) => [key, refreshed.state[key]])),
-            };
-          } else {
-            lastSyncedSnapshotRef.current = toSave;
-          }
-        } else {
-          lastSyncedSnapshotRef.current = toSave;
-        }
-        if (teamIdRef.current !== teamId) return;
+        lastSyncedSnapshotRef.current = acknowledgeEntityVersions(normalized, result.versions);
         const unchanged = revision === editRevisionRef.current;
         hasUnsyncedLocalChanges.current = !unchanged;
         if (unchanged) {
@@ -487,6 +448,7 @@ export function useTeamData({ teamId } = {}) {
     localSaveError,
     remoteSaving,
     refreshTeamData,
+    retryLocalSave,
     teamId,
     ...actions,
   };

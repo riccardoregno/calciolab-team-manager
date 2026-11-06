@@ -7,7 +7,7 @@ import "./test-opponent-lineup-import.mjs";
 import assert from "node:assert/strict";
 import "./test-player-statistics.mjs";
 import "./test-app-improvements.mjs";
-import { diffEntityArray, mergeEntityArrayWithRemote } from "../src/utils/syncHelpers.js";
+import { acknowledgeEntityVersions, diffEntityArray, mergeEntityArrayWithRemote } from "../src/utils/syncHelpers.js";
 import {
   getAvailabilityGroups,
   getLineup,
@@ -245,6 +245,11 @@ const repeatedEdit = diffEntityArray(
 );
 assert.equal(repeatedEdit.changedOrAdded[0]._updatedAt, savedVersion);
 assert.equal(repeatedEdit.changedOrAdded[0].opponentScouting.attachment.path, "team/distinta.pdf");
+
+const acknowledged = acknowledgeEntityVersions({ matches: [{ id: "a", result: "1-0", _updatedAt: "old" }] },
+  { matches: new Map([["a", "server-version"]]) });
+assert.deepEqual(diffEntityArray(acknowledged.matches, [{ id: "a", result: "2-0", _updatedAt: "old" }]),
+  { changedOrAdded: [{ id: "a", result: "2-0", _updatedAt: "server-version" }], deleted: [] });
 
 console.log("All tests passed");
 

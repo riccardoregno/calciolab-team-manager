@@ -7,3 +7,9 @@ export function getSaveStatus({ loading, source, error, localError, saving, refr
   if (source === "pending-upload") return "pending";
   return "device";
 }
+
+export function classifyLocalSaveError(error) {
+  if (["QuotaExceededError", "NS_ERROR_DOM_QUOTA_REACHED"].includes(error?.name)) return "space";
+  if (["SecurityError", "NotAllowedError"].includes(error?.name)) return "blocked";
+  return "unknown";
+}

@@ -197,6 +197,12 @@ export const en = {
   "localError": "Local copy unavailable: keep this open until saved online",
   "onlineNoLocal": "Saved online · local copy unavailable",
   "lastSaved": "Last online confirmation at {{time}}",
+  "retryLocal": "Retry device copy",
+  "localDetails": {
+    "space": "The browser has no storage space left for CalcioLab.",
+    "blocked": "The browser blocks saving on this device.",
+    "unknown": "The browser could not write the copy."
+  },
   "retryAction": "Sync now"
 },
 

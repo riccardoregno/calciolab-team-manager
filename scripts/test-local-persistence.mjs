@@ -23,7 +23,7 @@ globalThis.window = {
 
 const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
 try {
-  const { loadLocalState, saveLocalState, loadRemoteState } = await server.ssrLoadModule('/src/services/teamData.js');
+  const { loadLocalState, saveLocalState, loadRemoteState, saveTeamTablesState } = await server.ssrLoadModule('/src/services/teamData.js');
   const { supabase } = await server.ssrLoadModule('/src/lib/supabaseClient.js');
   const { uploadTeamAttachment } = await server.ssrLoadModule('/src/services/attachments.js');
   const { persistPendingChanges, restorePendingChanges, acknowledgePendingChanges } = await server.ssrLoadModule('/src/services/pendingChanges.js');
@@ -134,6 +134,32 @@ try {
 
   assert.ok(supabase, 'Remote-read regression requires the configured Supabase client');
   const originalFrom = supabase.from;
+  const writes = [];
+  let conflict = false;
+  const writeQuery = {
+    eq: (column, value) => { writes.push([column, value]); return writeQuery; },
+    select: (column) => {
+      assert.equal(column, "updated_at");
+      return Promise.resolve({ data: conflict ? [] : [{ updated_at: "ack-update" }], error: null });
+    },
+  };
+  try {
+    supabase.from = (table) => {
+      assert.equal(table, "matches");
+      return {
+        update: () => writeQuery,
+        insert: () => ({ select: () => ({ single: async () => ({ data: { updated_at: "ack-insert" }, error: null }) }) }),
+      };
+    };
+    const writeState = { matches: [{ id: "one", _updatedAt: "old" }, { id: "two" }] };
+    const options = { keys: ["matches"], entityChanges: { matches: { changedOrAdded: writeState.matches } } };
+    const saved = await saveTeamTablesState(writeState, "test-team", options);
+    assert.equal(saved.source, "supabase");
+    assert.deepEqual([...saved.versions.matches], [["one", "ack-update"], ["two", "ack-insert"]]);
+    assert.deepEqual(writes, [["team_id", "test-team"], ["id", "one"], ["updated_at", "old"]]);
+    conflict = true;
+    assert.equal((await saveTeamTablesState(writeState, "test-team", options)).source, "partial");
+  } finally { supabase.from = originalFrom; }
   saveLocalState(snapshot, 'test-team');
   assert.equal(loadLocalState('test-team').matches[0].result, snapshot.matches[0].result);
   assert.deepEqual(loadLocalState('another-team').matches, [], 'An empty team cannot inherit another team or a legacy cache');

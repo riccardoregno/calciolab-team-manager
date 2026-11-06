@@ -139,15 +139,15 @@ export async function saveTeamTablesState(state, teamId, { keys, entityChanges }
         .filter(([stateKey]) => shouldSyncKey(stateKey))
         .map(async ([stateKey, table]) => {
           try {
-            await syncEntityTable(table, teamId, normalized[stateKey] || [], {
+            const versions = await syncEntityTable(table, teamId, normalized[stateKey] || [], {
               allowEmptyDelete: hasEmptyEntityIntent(stateKey, teamId),
               changes: entityChanges?.[stateKey],
             });
+            return { key: stateKey, table, versions };
           } catch (error) {
             error._syncTable = table;
             throw error;
           }
-          return { key: stateKey, table };
         })
     );
 
@@ -180,7 +180,9 @@ export async function saveTeamTablesState(state, teamId, { keys, entityChanges }
       return { source: "partial", error, failures };
     }
 
-    return { source: "supabase" };
+    const versions = Object.fromEntries(entityResults.flatMap(({ value }) =>
+      value?.versions ? [[value.key, value.versions]] : []));
+    return { source: "supabase", versions };
   } catch (error) {
     if (import.meta.env.DEV) {
       console.warn("Sync tabelle Supabase fallita, mantenuto localStorage:", error.message);
@@ -586,8 +588,7 @@ function hasArrayItems(value) {
 // ─── Sync singola tabella ──────────────────────────────────────────────────
 async function syncEntityTable(table, teamId, records, { allowEmptyDelete = false, changes } = {}) {
   if (changes) {
-    await syncEntityChanges(table, teamId, changes);
-    return;
+    return syncEntityChanges(table, teamId, changes);
   }
 
   if (!Array.isArray(records) || records.length === 0) {
@@ -648,6 +649,7 @@ async function syncEntityTable(table, teamId, records, { allowEmptyDelete = fals
 }
 
 async function syncEntityChanges(table, teamId, { changedOrAdded = [], deleted = [] } = {}) {
+  const versions = new Map();
   for (const record of changedOrAdded) {
     const originalId = String(record?.id || "");
     const id = normalizeRecordIdForTable(table, originalId);
@@ -665,15 +667,17 @@ async function syncEntityChanges(table, teamId, { changedOrAdded = [], deleted =
         .eq("team_id", teamId)
         .eq("id", id)
         .eq("updated_at", _updatedAt)
-        .select("id");
+        .select("updated_at");
       if (error) throw error;
       if (!updated?.length) throw new Error(`Conflitto di sincronizzazione su ${table}:${id}`);
+      versions.set(originalId, updated[0].updated_at);
     } else {
-      const { error } = await supabase.from(table).insert(row);
+      const { data: inserted, error } = await supabase.from(table).insert(row).select("updated_at").single();
       if (error) {
         if (error.code === "23505") throw new Error(`Conflitto di sincronizzazione su ${table}:${id}`);
         throw error;
       }
+      versions.set(originalId, inserted.updated_at);
     }
   }
 
@@ -688,6 +692,7 @@ async function syncEntityChanges(table, teamId, { changedOrAdded = [], deleted =
       throw new Error(`Conflitto di sincronizzazione su ${table}:${id}`);
     }
   }
+  return versions;
 }
 
 function loadEmptyEntityIntents(teamId) {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { getSaveStatus } from "../src/utils/saveStatus.js";
+import { classifyLocalSaveError, getSaveStatus } from "../src/utils/saveStatus.js";
 import { summarizeMatchRsvps, buildCoachTasks } from "../src/utils/coachTasks.js";
 import { getGoalkeeperRecord } from "../src/utils/helpers.js";
 import { searchNavigationItems } from "../src/utils/navigationSearch.js";
@@ -15,6 +15,10 @@ assert.equal(getSaveStatus({ source: "supabase", error: "offline", localError: "
 assert.equal(getSaveStatus({ source: "local" }), "device");
 assert.equal(getSaveStatus({ loading: true, source: "supabase" }), "loading");
 assert.equal(getSaveStatus({ refreshing: true, source: "supabase" }), "saving");
+
+assert.equal(classifyLocalSaveError(new DOMException("storage full", "QuotaExceededError")), "space");
+assert.equal(classifyLocalSaveError(new DOMException("denied", "SecurityError")), "blocked");
+assert.equal(classifyLocalSaveError(new Error("unrecognized")), "unknown");
 
 const callup = { convocazione: { playerIds: ["1", "2", "3", "3"] } };
 assert.deepEqual(summarizeMatchRsvps(callup, [{ player_id: "1", response: "yes" }]), { total: 3, available: 1, unavailable: 0, pending: 2 }, "Missing token rows still mean a missing confirmation");

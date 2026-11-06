@@ -197,6 +197,12 @@ export const it = {
   "localError": "Copia locale non disponibile: non chiudere prima del salvataggio online",
   "onlineNoLocal": "Salvato online · copia locale non disponibile",
   "lastSaved": "Ultima conferma online alle {{time}}",
+  "retryLocal": "Riprova copia locale",
+  "localDetails": {
+    "space": "Lo spazio per CalcioLab nel browser è esaurito.",
+    "blocked": "Il browser blocca il salvataggio sul dispositivo.",
+    "unknown": "Il browser non ha potuto scrivere la copia."
+  },
   "retryAction": "Sincronizza ora"
 },
 

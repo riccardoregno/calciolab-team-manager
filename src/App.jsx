@@ -181,6 +181,7 @@ function App() {
     localSaveError,
     remoteSaving,
     refreshTeamData,
+    retryLocalSave,
     setPlayers,
     setExercises,
     setSessions,
@@ -542,7 +543,7 @@ function App() {
 
           <SaveStatus loading={loading || auth.authLoading} source={storageSource}
             error={storageError} localError={localSaveError} saving={remoteSaving} refreshing={refreshing}
-            lastSyncedAt={lastSyncedAt} onRetry={auth.team?.id ? refreshTeamData : null} />
+            lastSyncedAt={lastSyncedAt} onRetryLocal={retryLocalSave} onRetry={auth.team?.id ? refreshTeamData : null} />
 
           <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>
