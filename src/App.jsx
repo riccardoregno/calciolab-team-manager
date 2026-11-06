@@ -41,6 +41,7 @@ const Landing = lazy(() => import("./pages/Landing"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Players = lazy(() => import("./pages/Players"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail"));
+const MatchCompletion = lazy(() => import("./pages/MatchCompletion"));
 const MatchStats = lazy(() => import("./pages/MatchStats"));
 const SessionAttendance = lazy(() => import("./pages/SessionAttendance"));
 const AttendanceRegister = lazy(() => import("./pages/AttendanceRegister"));
@@ -877,6 +878,12 @@ function App() {
                   />, "matches")
                 }
               />
+
+              <Route path="/match-completion/:id" element={
+                gate(technicalRoles, <MatchCompletion matches={matches} setMatches={setMatches}
+                  players={players} teamId={teamId}
+                  clubName={previewAppSettings.workspaceProfile?.teamName || previewAppSettings.workspaceProfile?.clubName || "CalcioLab"} />, "matches")
+              } />
 
               <Route
                 path="/match-stats/:id"

@@ -5,6 +5,8 @@ import { useTranslation } from "../../i18n";
 import { formatDate } from "../../utils/helpers";
 import MatchScopeFilters from "../statistics/MatchScopeFilters";
 import { isLeagueStatsMatch } from "../../utils/helpers.js";
+import { buildCoachTasks } from "../../utils/coachTasks";
+import { getMatchCompletionTasks } from "../../utils/matchCompletion";
 import { buildCoachAnalysis } from "../../utils/coachAnalysis.js";
 import "../../styles/coach-analysis.css";
 
@@ -24,6 +26,14 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
   const count = (value) => loading ? "—" : number(value);
   const formPoints = model.form.reduce((total, item) => total + item.earned, 0);
   const calledUp = new Set([...(model.nextMatch?.convocazione?.playerIds || []), ...(model.nextMatch?.lineup?.calledUpIds || [])].map(String)).size;
+  const minuteTask = canManage && !statsPending && !statsError
+    ? getMatchCompletionTasks({ matches, players, rows, now, canCheckMinutes: true })
+      .filter((task) => task.missingMinutes > 0)
+      .sort((a, b) => String(b.match.date).localeCompare(String(a.match.date)))[0]
+    : null;
+  const attendanceTask = canManage && !loading
+    ? buildCoachTasks({ sessions, players, now }).find((task) => task.kind === "attendance")
+    : null;
   const showPoints = !matchScope || matches.every(isLeagueStatsMatch);
   const metrics = [
     ["points", count(model.points), text("pointsNote"), TrendingUp],
@@ -37,7 +47,7 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
     const isAway = match?.location === "Trasferta";
     const home = isAway ? match.opponent : teamName;
     const away = isAway ? teamName : match?.opponent;
-    const path = previous ? (score ? `/match-stats/${match?.id}` : canManage ? `/matches?modal=match&edit=${encodeURIComponent(match?.id || "")}` : "/matches") : (canManage ? `/match-convocation/${match?.id}` : "/matches");
+    const path = previous ? (score ? `/match-stats/${match?.id}` : canManage ? `/match-completion/${encodeURIComponent(match?.id || "")}` : "/matches") : (canManage ? `/match-convocation/${match?.id}` : "/matches");
     return <section className={`analysis-panel analysis-fixture ${previous ? "is-previous" : "is-next"}`} aria-label={text(previous ? "lastMatch" : "nextMatch")}>
       <div className="analysis-panel-head"><span className="analysis-overline">{text(previous ? "lastMatch" : "nextMatch")}</span><CalendarDays size={17} aria-hidden="true" /></div>
       {!match ? <div className="analysis-fixture-empty"><h3>{text(previous ? "noLastMatch" : "noNextMatch")}</h3><p>{text(previous ? "noLastMatchHint" : "noNextMatchHint")}</p><Link to="/matches" className="analysis-text-link">{text("matchArchive")} <ArrowUpRight size={16} /></Link></div> : <>
@@ -93,8 +103,20 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
 
       <section className="analysis-panel analysis-quality"><div className="analysis-panel-head"><div><span className="analysis-overline">{text("dataQuality")}</span><h2>{text("toComplete")}</h2></div><ClipboardList size={20} aria-hidden="true" /></div>
         <p className="analysis-muted">{text("qualityHint")}</p>
+        {(minuteTask || attendanceTask) && (
+          <ul className="analysis-quality-list">
+            {minuteTask && <li><Link to={`/match-completion/${encodeURIComponent(minuteTask.match.id)}`}>
+              <span><strong>{t("coachOverview.recordMinutes", { count: minuteTask.missingMinutes })}</strong>
+                <small>{minuteTask.match.opponent} / {formatDate(minuteTask.match.date)}</small></span><ArrowUpRight size={16} />
+            </Link></li>}
+            {attendanceTask && <li><Link to={attendanceTask.to} state={{ pendingOnly: true }}>
+              <span><strong>{t("coachOverview.recordAttendance", { count: attendanceTask.count })}</strong>
+                <small>{attendanceTask.event.title || text("nextTraining")} / {formatDate(attendanceTask.event.date)}</small></span><ArrowUpRight size={16} />
+            </Link></li>}
+          </ul>
+        )}
         <div className="analysis-quality-numbers"><Link to="/matches?view=pending"><strong>{count(model.missingResults.length)}</strong><span>{text("missingResults")}</span></Link><Link to="/matches?view=pending"><strong>{statsPending || statsError ? "—" : model.missingLineups.length}</strong><span>{text("missingLineups")}</span></Link></div>
-        {statsPending || statsError ? <p className="analysis-muted" role="status">{text(statsError ? "unavailableStats" : "checking")}</p> : !model.missingResults.length && !model.missingLineups.length ? <p className="analysis-all-set"><CheckCircle2 size={18} />{text(model.record.played ? "allSet" : "noPlayedData")}</p> : <ul className="analysis-quality-list">{[...model.missingResults.map((match) => ({ match, kind: "result", to: `/matches?view=pending&modal=match&edit=${encodeURIComponent(match.id)}` })), ...model.missingLineups.map((match) => ({ match, kind: "lineup", to: `/match-stats/${match.id}` }))].slice(0, 3).map(({ match, kind, to }) => <li key={`${kind}-${match.id}`}><Link to={canManage ? to : "/matches?view=pending"}><span><strong>{match.opponent || text("opponent")}</strong><small>{formatDate(match.date)} · {text(kind === "result" ? "resultMissing" : "lineupMissing")}</small></span><ArrowUpRight size={16} /></Link></li>)}</ul>}
+        {statsPending || statsError ? <p className="analysis-muted" role="status">{text(statsError ? "unavailableStats" : "checking")}</p> : !model.missingResults.length && !model.missingLineups.length ? <p className="analysis-all-set"><CheckCircle2 size={18} />{text(model.record.played ? "allSet" : "noPlayedData")}</p> : <ul className="analysis-quality-list">{[...model.missingResults.map((match) => ({ match, kind: "result", to: `/match-completion/${encodeURIComponent(match.id)}` })), ...model.missingLineups.map((match) => ({ match, kind: "lineup", to: `/match-stats/${match.id}` }))].slice(0, 3).map(({ match, kind, to }) => <li key={`${kind}-${match.id}`}><Link to={canManage ? to : "/matches?view=pending"}><span><strong>{match.opponent || text("opponent")}</strong><small>{formatDate(match.date)} · {text(kind === "result" ? "resultMissing" : "lineupMissing")}</small></span><ArrowUpRight size={16} /></Link></li>)}</ul>}
         <small className="analysis-coverage">{statsPending || statsError ? text("coverageUnavailable") : text("coverage", { count: model.recordedLineups, total: model.record.played })}</small>
       </section>
     </div>

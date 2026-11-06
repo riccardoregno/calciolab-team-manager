@@ -523,17 +523,15 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
                 <AppCard key={match.id} title={getMatchTitle(match, clubName).plain}
                   subtitle={[formatDate(match.date), match.competition].filter(Boolean).join(" / ")}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {missingResult && (canManage
-                      ? <Button variant="ghost" onClick={() => openMatchModal(match.id)}>{t("pages.matches.completionResult")}</Button>
-                      : <Badge tone="orange">{t("pages.matches.completionResult")}</Badge>)}
-                    {missingFormation && (canManage
-                      ? <Link to={`/match-day/${encodeURIComponent(match.id)}`} style={matchStyles.completionLink}>{t("pages.matches.completionFormation")}</Link>
-                      : <Badge tone="orange">{t("pages.matches.completionFormation")}</Badge>)}
-                    {missingMinutes > 0 && (
-                      <Link to={`/match-stats/${encodeURIComponent(match.id)}`} state={{ fromCompletion: true }}
-                        style={matchStyles.completionLink}>{t("pages.matches.completionMinutes", { count: missingMinutes })}</Link>
-                    )}
+                    {missingResult && <Badge tone="orange">{t("pages.matches.completionResult")}</Badge>}
+                    {missingFormation && <Badge tone="orange">{t("pages.matches.completionFormation")}</Badge>}
+                    {missingMinutes > 0 && <Badge tone="orange">{t("pages.matches.completionMinutes", { count: missingMinutes })}</Badge>}
                   </div>
+                  {canManage && (
+                    <Link to={`/match-completion/${encodeURIComponent(match.id)}`} style={{ ...matchStyles.completionLink, marginTop: 12 }}>
+                      {t("pages.matches.completeMatchSheet")}
+                    </Link>
+                  )}
                 </AppCard>
               ))}
               {!pendingMatches.length && !matchRows.loading && !matchRows.error && (

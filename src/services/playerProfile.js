@@ -329,3 +329,23 @@ export async function upsertPlayerMatch(teamId, playerId, matchId, fields) {
   if (error && import.meta.env.DEV) console.error("[playerProfile] upsertPlayerMatch:", error.message);
   return { error };
 }
+
+export async function saveMatchMinutes(teamId, playerId, matchId, minutes, legacyAttendance) {
+  if (legacyAttendance) {
+    // Seed an older local tabellino only if nobody has created a cloud row.
+    const { error } = await supabase.from("player_matches").upsert({
+      team_id: teamId,
+      player_id: String(playerId),
+      match_id: String(matchId),
+      minutes_played: minutes,
+      goals: Number(legacyAttendance.goals) || 0,
+      assists: Number(legacyAttendance.assists) || 0,
+      yellow_cards: Number(legacyAttendance.yellowCards) || 0,
+      red_cards: Number(legacyAttendance.redCards) || 0,
+      rating: legacyAttendance.rating ?? null,
+      goals_conceded: legacyAttendance.goalsConceded ?? null,
+    }, { onConflict: "team_id,player_id,match_id", ignoreDuplicates: true });
+    if (error) return { error };
+  }
+  return upsertPlayerMatch(teamId, playerId, matchId, { minutes_played: minutes });
+}

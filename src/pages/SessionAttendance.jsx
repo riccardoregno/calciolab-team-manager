@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -68,6 +68,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const [pendingOnly, setPendingOnly] = useState(Boolean(state?.pendingOnly));
   const { canManage } = useAreaPermission();
   const [showSummaryList, setShowSummaryList] = useState(false);
   const [confirmState, setConfirmState] = useState(null);
@@ -76,6 +78,10 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const friendlyMatch = matches.find((match) => String(match.id) === String(id) && isFriendlyMatch(match));
   const session = trainingSession || getFriendlySession(friendlyMatch);
   const updateEvents = session?.isFriendlyMatch ? setMatches : setSessions;
+  const attendance = session?.attendance || {};
+  const visiblePlayers = pendingOnly ? players.filter((player) =>
+    (player.gruppo || "prima") === "prima" && !attendance[String(player.id)]?.status
+  ) : players;
 
   function updatePlayer(playerId, field, value) {
     if (!canManage) return;
@@ -103,9 +109,10 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
     updateEvents((prevSessions) =>
       prevSessions.map((item) => {
         if (String(item.id) !== String(id)) return item;
-        const newAttendance = {};
-        players.forEach((p) => {
+        const newAttendance = { ...item.attendance };
+        visiblePlayers.forEach((p) => {
           const playerId = String(p.id);
+          if (pendingOnly && item.attendance?.[playerId]?.status) return;
           newAttendance[playerId] = {
             ...(item.attendance?.[playerId] || {}),
             status,
@@ -134,7 +141,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
     0
   );
 
-  const attendance = session.attendance || {};
+
 
   // Contatori per status
   const counts = players.reduce(
@@ -277,8 +284,17 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
         </AppCard>
       ) : (
         <AppCard>
+          {state?.pendingOnly && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+              <Button variant="ghost" onClick={() => setPendingOnly((value) => !value)}>
+                {t(pendingOnly ? "pages.sessionAttendance.showAllPlayers" : "pages.sessionAttendance.showPendingPlayers")}
+              </Button>
+              <Button variant="ghost" onClick={() => navigate("/")}>{t("pages.sessionAttendance.backToDashboard")}</Button>
+            </div>
+          )}
+          {pendingOnly && !visiblePlayers.length && <p role="status">{t("pages.sessionAttendance.attendanceComplete")}</p>}
           <div className="cl-fluid-grid" style={s.grid}>
-            {[...players].sort((a, b) => {
+            {[...visiblePlayers].sort((a, b) => {
               const ro = (r) => { const s = (r||"").toLowerCase(); return s.startsWith("portiere") ? 0 : s.startsWith("difensore") ? 1 : s.startsWith("centrocampista") ? 2 : s.startsWith("attaccante") ? 3 : 99; };
               if (ro(a.role) !== ro(b.role)) return ro(a.role) - ro(b.role);
               return (a.lastName || a.name || "").localeCompare(b.lastName || b.name || "", "it");

@@ -1,9 +1,17 @@
 import { getAgendaDateKey } from "./coachAgenda.js";
 import { getLineup, parseMatchResult } from "./helpers.js";
 
-function hasRecordedMinutes(value) {
+export function hasRecordedMinutes(value) {
   return value != null && String(value).trim() !== "" &&
     Number.isInteger(Number(value)) && Number(value) >= 0;
+}
+
+export function getMatchCompletionPlayerIds(match) {
+  const lineup = getLineup(match);
+  return [...new Set([
+    ...lineup.starterIds, ...lineup.benchIds, ...lineup.calledUpIds,
+    ...(match.convocazione?.playerIds || []),
+  ].filter((id) => id != null).map(String))];
 }
 
 export function getMatchCompletionTasks({ matches, players, rows, canCheckMinutes, now = new Date() }) {
@@ -23,12 +31,9 @@ export function getMatchCompletionTasks({ matches, players, rows, canCheckMinute
     if (!day || day > today || (day === today && !score && !match.completed)) continue;
 
     const lineup = getLineup(match);
-    const ids = new Set([
-      ...lineup.starterIds, ...lineup.benchIds, ...lineup.calledUpIds,
-      ...(match.convocazione?.playerIds || []),
-    ].filter((id) => id != null).map(String));
+    const ids = getMatchCompletionPlayerIds(match);
     const recorded = minutesByMatch.get(String(match.id));
-    const missingMinutes = canCheckMinutes ? [...ids].filter((id) =>
+    const missingMinutes = canCheckMinutes ? ids.filter((id) =>
       rosterIds.has(id) && !hasRecordedMinutes(recorded?.has(id) ? recorded.get(id) : match.attendance?.[id]?.minutes)
     ).length : 0;
     const missingResult = !score;
