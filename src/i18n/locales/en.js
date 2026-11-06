@@ -783,6 +783,8 @@ export const en = {
       viewAll: "All",
       viewPlayed: "Played",
       viewUpcoming: "To play",
+      localMatchDraft: "Draft on this device",
+      resumeMatchDraft: "Resume draft",
       completeMatchSheet: "Complete match sheet",
       viewPending: "To complete",
       completionLoading: "Checking player minutes",

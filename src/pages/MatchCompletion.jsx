@@ -10,27 +10,7 @@ import { formatDate, parseMatchResult } from "../utils/helpers";
 import { buildHomeAwayScorePayload, isValidMatchScore } from "../utils/matchScore";
 import { getMatchCompletionPlayerIds, hasRecordedMinutes } from "../utils/matchCompletion";
 
-const emptyDraft = { score: {}, starters: [], minutes: {} };
-
-function readDraft(key) {
-  try {
-    const draft = JSON.parse(localStorage.getItem(key));
-    if (draft?.score && Array.isArray(draft.starters) && draft.minutes) return draft;
-  } catch {
-    // Storage may be unavailable on this device.
-  }
-  return emptyDraft;
-}
-
-function writeDraft(key, draft) {
-  try {
-    if (draft === emptyDraft) localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify(draft));
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { emptyDraft, getMatchDraftKey, readDraft, writeDraft } from "../utils/matchCompletionDraft";
 
 function playerName(player) {
   return player.name || [player.firstName, player.lastName].filter(Boolean).join(" ");
@@ -50,7 +30,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
   const { canManage } = useAreaPermission();
   const remote = Boolean(teamId && isSupabaseConfigured);
   const score = parseMatchResult(match.result, match);
-  const draftKey = "calciolab:match-completion:v1:" + JSON.stringify([teamId, match.id]);
+  const draftKey = getMatchDraftKey(teamId, match.id);
   const [draft, setDraft] = useState(() => readDraft(draftKey));
   const [draftError, setDraftError] = useState(false);
   const { score: scoreDraft, starters: starterDraft, minutes: edits } = draft;

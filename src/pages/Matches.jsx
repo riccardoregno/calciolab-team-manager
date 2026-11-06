@@ -21,6 +21,7 @@ import { sendTeamNotification } from "../services/notifications";
 import SearchBar from "../components/ui/SearchBar";
 import { searchNavigationItems } from "../utils/navigationSearch";
 import { useTeamMatchRows } from "../hooks/useTeamMatchRows";
+import { emptyDraft, getMatchDraftKey, readDraft } from "../utils/matchCompletionDraft";
 import { getMatchCompletionTasks } from "../utils/matchCompletion";
 import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
 import { buildHomeAwayScorePayload, isValidMatchScore } from "../utils/matchScore";
@@ -109,10 +110,19 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
     [match.opponent, match.date, formatDate(match.date), match.competition, match.location].filter(Boolean).join(" ")
   ), [sortedMatches, matchSearch]);
   const archiveMatches = searchedMatches.filter((match) => searching || String(match.id) !== String(focusMatch?.id));
-  const pendingMatches = useMemo(() => getMatchCompletionTasks({
+  const completionTasks = useMemo(() => getMatchCompletionTasks({
     matches: searchedMatches, players, rows: matchRows.rows,
     canCheckMinutes: !matchRows.unavailable && !matchRows.error,
   }), [searchedMatches, players, matchRows.rows, matchRows.unavailable, matchRows.error]);
+
+  const tasksByMatch = new Map(completionTasks.map((task) => [task.match.id, task]));
+  const draftMatches = [];
+  for (const match of searchedMatches) {
+    if (!canManage || readDraft(getMatchDraftKey(teamId, match.id)) === emptyDraft) continue;
+    draftMatches.push({ ...tasksByMatch.get(match.id), match, hasDraft: true });
+    tasksByMatch.delete(match.id);
+  }
+  const pendingMatches = [...draftMatches, ...tasksByMatch.values()];
 
   function setMatchView(view) {
     const params = new URLSearchParams(location.search);
@@ -519,17 +529,18 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
                   <Button variant="ghost" onClick={matchRows.retry}>{t("pages.matches.completionRetry")}</Button>
                 </AppCard>
               )}
-              {pendingMatches.map(({ match, missingResult, missingFormation, missingMinutes }) => (
+              {pendingMatches.map(({ match, missingResult, missingFormation, missingMinutes = 0, hasDraft }) => (
                 <AppCard key={match.id} title={getMatchTitle(match, clubName).plain}
                   subtitle={[formatDate(match.date), match.competition].filter(Boolean).join(" / ")}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {hasDraft && <Badge tone="blue">{t("pages.matches.localMatchDraft")}</Badge>}
                     {missingResult && <Badge tone="orange">{t("pages.matches.completionResult")}</Badge>}
                     {missingFormation && <Badge tone="orange">{t("pages.matches.completionFormation")}</Badge>}
                     {missingMinutes > 0 && <Badge tone="orange">{t("pages.matches.completionMinutes", { count: missingMinutes })}</Badge>}
                   </div>
                   {canManage && (
                     <Link to={`/match-completion/${encodeURIComponent(match.id)}`} style={{ ...matchStyles.completionLink, marginTop: 12 }}>
-                      {t("pages.matches.completeMatchSheet")}
+                      {t(hasDraft ? "pages.matches.resumeMatchDraft" : "pages.matches.completeMatchSheet")}
                     </Link>
                   )}
                 </AppCard>

@@ -783,6 +783,8 @@ export const it = {
       viewAll: "Tutte",
       viewPlayed: "Giocate",
       viewUpcoming: "Da giocare",
+      localMatchDraft: "Bozza su questo dispositivo",
+      resumeMatchDraft: "Riprendi bozza",
       completeMatchSheet: "Completa tabellino",
       viewPending: "Da completare",
       completionLoading: "Verifica dei minuti in corso",
