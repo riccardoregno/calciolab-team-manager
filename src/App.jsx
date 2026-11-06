@@ -665,6 +665,8 @@ function App() {
                 element={
                   gate(managementRoles, <FeatureGate featureKey="exports" appSettings={previewAppSettings}>
                     <ExportCenter
+                      matchScope={matchScope}
+                      teamId={teamId}
                       players={players}
                       exercises={exercises}
                       sessions={sessions}

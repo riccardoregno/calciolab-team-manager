@@ -1,4 +1,9 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
+import { buildCoachAnalysis } from "../utils/coachAnalysis";
+import { getMatchSeason } from "../utils/matchScope";
+import { loadMatchStatsMatrix } from "../services/playerProfile";
 import { useTranslation } from "../i18n";
 import AppCard from "../components/ui/AppCard";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -11,7 +16,6 @@ import {
   getLineup,
   getPhysicalReference,
   getPlayerSummary,
-  getSeasonRecord,
   RPE_BY_MATCH_DAY,
 } from "../utils/helpers";
 
@@ -32,9 +36,19 @@ export default function ExportCenter({
   physicalTests = [],
   gpsSessions = [],
   appSettings = {},
+  matchScope,
+  teamId,
 }) {
   const { t } = useTranslation();
-  const [type, setType] = useState("training");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedType = searchParams.get("type");
+  const type = EXPORT_TYPE_KEYS.some((item) => item.id === requestedType) ? requestedType : "training";
+
+  function setType(value) {
+    const next = new URLSearchParams(searchParams);
+    next.set("type", value);
+    setSearchParams(next, { replace: true });
+  }
 
   const exportTypes = EXPORT_TYPE_KEYS.map((item) => ({
     id: item.id,
@@ -92,9 +106,6 @@ export default function ExportCenter({
       } else if (type === "player") {
         const { generatePlayerReportPDF } = await import("../utils/generatePlayerReportPDF");
         await generatePlayerReportPDF({ player: selectedPlayer, sessions, matches, physicalTests, appSettings });
-      } else if (type === "season") {
-        const { generateSeasonReport } = await import("../utils/generateSeasonReport");
-        await generateSeasonReport({ players, sessions, matches, physicalTests, appSettings });
       } else if (type === "microcycle") {
         const { generateMicrocyclePDF } = await import("../utils/generateMicrocyclePDF");
         await generateMicrocyclePDF({ match: selectedMatch, sessions, gpsSessions, appSettings });
@@ -117,11 +128,11 @@ export default function ExportCenter({
       <PageHeader
         title={t("pages.exportCenter.title")}
         subtitle={t("pages.exportCenter.subtitle")}
-        action={
+        action={type !== "season" && (
           <Button onClick={handlePdfDownload} disabled={generatingPdf || !canGeneratePdf}>
             {generatingPdf ? t("pages.exportCenter.generatingPdf") : t("pages.exportCenter.pdfBtn")}
           </Button>
-        }
+        )}
       />
 
       <div className="export-workspace" style={{ ...pageStyles.workspace, gridTemplateColumns: isMobile ? "1fr" : "360px 1fr" }}>
@@ -197,6 +208,8 @@ export default function ExportCenter({
 
         {type === "season" ? (
           <SeasonReportPanel
+            matchScope={matchScope}
+            teamId={teamId}
             players={players}
             sessions={sessions}
             matches={matches}
@@ -848,30 +861,49 @@ function RosterList({ title, players, roles, captainId, t }) {
 }
 
 // ─── Season Report Panel ────────────────────────────────────────────────────
-function SeasonReportPanel({ players, sessions, matches, physicalTests, appSettings }) {
-  const { t } = useTranslation();
+function SeasonReportPanel({ players, sessions, matches, physicalTests, appSettings, matchScope, teamId }) {
+  const { t, language } = useTranslation();
   const T = "pages.exportCenter.tpl.season";
   const [generating, setGenerating] = useState(false);
   const teamName = appSettings?.workspaceProfile?.clubName || "CalcioLab";
 
-  const { wins, draws, losses } = getSeasonRecord(matches);
+  const [error, setError] = useState(false);
+  const scopedMatches = matchScope?.matches ?? matches;
+  const season = matchScope?.season;
+  const inSeason = (event) => !season || season === "all" || getMatchSeason(event) === season;
+  const scopedSessions = sessions.filter(inSeason);
+  const scopedTests = physicalTests.filter(inSeason);
+  const competition = matchScope?.competitions.find((option) => option.value === matchScope.competition)?.label
+    || (matchScope?.competition === "league" ? "Campionato" : "Tutte le competizioni");
+  const { record } = buildCoachAnalysis({ matches: scopedMatches, leagueOnly: false });
+  const { played, wins, draws, losses } = record;
 
   async function handleDownload() {
     setGenerating(true);
+    setError(false);
     try {
       const { generateSeasonReport } = await import("../utils/generateSeasonReport");
-      await generateSeasonReport({ players, sessions, matches, physicalTests, appSettings });
+      const matchIds = scopedMatches.map((match) => String(match.id));
+      const { data, error: rowsError } = teamId && matchIds.length
+        ? await loadMatchStatsMatrix(teamId, matchIds) : { data: [] };
+      if (rowsError) throw rowsError;
+      await generateSeasonReport({
+        players, sessions: scopedSessions, matches: scopedMatches, physicalTests: scopedTests,
+        appSettings, season, competition, record, playerMatchRows: data || [],
+      });
+    } catch {
+      setError(true);
     } finally {
-      setTimeout(() => setGenerating(false), 800);
+      setGenerating(false);
     }
   }
 
   const kpis = [
-    { label: t(`${T}.kpiMatches`),  value: matches.length },
+    { label: t(`${T}.kpiMatches`),  value: played },
     { label: t(`${T}.kpiWins`),     value: wins },
     { label: t(`${T}.kpiDraws`),    value: draws },
     { label: t(`${T}.kpiLosses`),   value: losses },
-    { label: t(`${T}.kpiSessions`), value: sessions.length },
+    { label: t(`${T}.kpiSessions`), value: scopedSessions.length },
     { label: t(`${T}.kpiPlayers`),  value: players.length },
   ];
 
@@ -880,7 +912,7 @@ function SeasonReportPanel({ players, sessions, matches, physicalTests, appSetti
     { icon: "⚽", label: t(`${T}.sectionMatches`),    desc: t(`${T}.sectionMatchesDesc`) },
     { icon: "📅", label: t(`${T}.sectionAttendance`), desc: t(`${T}.sectionAttendanceDesc`) },
     { icon: "📈", label: t(`${T}.sectionStats`),      desc: t(`${T}.sectionStatsDesc`) },
-    ...(physicalTests.length > 0 ? [{ icon: "⏱️", label: t(`${T}.sectionTests`), desc: t(`${T}.sectionTestsDesc`) }] : []),
+    ...(scopedTests.length > 0 ? [{ icon: "⏱️", label: t(`${T}.sectionTests`), desc: t(`${T}.sectionTestsDesc`) }] : []),
   ];
 
   return (
@@ -888,6 +920,7 @@ function SeasonReportPanel({ players, sessions, matches, physicalTests, appSetti
       title={t(`${T}.title`)}
       subtitle={t(`${T}.subtitle`, { teamName })}
     >
+      <MatchScopeFilters scope={matchScope} />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }} className="no-mobile-override">
         {kpis.map((k) => (
           <div key={k.label} style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 12, padding: "12px 14px", textAlign: "center" }}>
@@ -909,6 +942,7 @@ function SeasonReportPanel({ players, sessions, matches, physicalTests, appSetti
         ))}
       </div>
 
+      {error && <p role="alert">{language === "en" ? "Could not generate the report. Try again." : "Impossibile generare il report. Riprova."}</p>}
       <Button onClick={handleDownload} disabled={generating} style={{ width: "100%", justifyContent: "center", fontSize: 15, padding: "13px 0" }}>
         {generating ? t(`${T}.btnGenerating`) : t(`${T}.btnDownload`)}
       </Button>

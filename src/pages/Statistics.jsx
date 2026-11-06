@@ -437,7 +437,7 @@ function Statistics({
           <Badge tone={statsSource === "supabase" ? "green" : "orange"}>
             {statsSource === "supabase" ? t("pages.statistics.cloudData") : t("pages.statistics.localData")}
           </Badge>
-          <Button variant="ghost" onClick={() => navigate("/exports")}>
+          <Button variant="ghost" onClick={() => navigate("/exports?type=season")}>
             {t("pages.statistics.reportPdf")}
           </Button>
         </div>

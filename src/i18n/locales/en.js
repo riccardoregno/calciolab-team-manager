@@ -3125,7 +3125,7 @@ export const en = {
         season: {
           title: "\uD83D\uDCCA Season report",
           subtitle: "Full PDF of {{teamName}} \u2014 matches, attendance, statistics and physical tests.",
-          kpiMatches: "Matches",  kpiWins: "Wins",    kpiDraws: "Draws",
+          kpiMatches: "Matches played", kpiWins: "Wins",    kpiDraws: "Draws",
           kpiLosses: "Losses",   kpiSessions: "Sessions",  kpiPlayers: "Players",
           sectionSummary: "Season summary",
           sectionSummaryDesc: "Points, goals, clean sheets, matches and sessions",

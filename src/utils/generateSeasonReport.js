@@ -1,7 +1,7 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { jsPDF } from "jspdf";
+import { autoTable } from "jspdf-autotable";
 import { loadBrandingAssets } from "./pdfBranding";
-import { parseMatchResult } from "./helpers";
+import { getPlayerMatchTotals, getSeasonRecord, isLeagueStatsMatch, parseMatchResult } from "./helpers";
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 const C = {
@@ -55,7 +55,7 @@ function sectionHeader(doc, title, y) {
 }
 
 // ─── Cover page ──────────────────────────────────────────────────────────────
-function drawCover(doc, { teamName, season, generatedAt, calciolabLogo, teamLogo }) {
+function drawCover(doc, { teamName, season, competition, generatedAt, calciolabLogo, teamLogo }) {
   const W = doc.internal.pageSize.width;
   const H = doc.internal.pageSize.height;
 
@@ -68,10 +68,6 @@ function drawCover(doc, { teamName, season, generatedAt, calciolabLogo, teamLogo
   // CalcioLab logo or text
   if (calciolabLogo) {
     try { doc.addImage(calciolabLogo, "PNG", W / 2 - 22, 60, 44, 38); } catch { /* skip */ }
-  } else {
-    doc.setFontSize(52);
-    doc.setTextColor(...C.accentL);
-    doc.text("⚽", W / 2, 80, { align: "center" });
   }
 
   // App name
@@ -102,15 +98,16 @@ function drawCover(doc, { teamName, season, generatedAt, calciolabLogo, teamLogo
     doc.text(teamName || "La mia squadra", W / 2, 145, { align: "center" });
   }
 
-  if (season) {
+  if (season || competition) {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...C.muted);
-    doc.text(`Stagione ${season}`, W / 2, 170, { align: "center" });
+    const scope = [season === "all" ? "Tutte le stagioni" : season && `Stagione ${season}`, competition].filter(Boolean);
+    doc.text(doc.splitTextToSize(scope.join("\n"), W - 36), W / 2, 170, { align: "center" });
   }
 
   doc.setFontSize(9);
-  doc.setTextColor(...C.border);
+  doc.setTextColor(...C.muted);
   doc.text(`Generato il ${generatedAt}`, W / 2, H - 20, { align: "center" });
 
   doc.setFillColor(...C.accent);
@@ -127,12 +124,12 @@ function addPageChrome(doc, teamName) {
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...C.accentL);
-  doc.text("⚽ CalcioLab", 14, 9);
+  doc.text("CalcioLab", 14, 9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...C.muted);
   doc.text(teamName || "", W - 14, 9, { align: "right" });
 
-  doc.setFillColor(...C.border[0], C.border[1], C.border[2]);
+  doc.setFillColor(...C.border);
   doc.setDrawColor(...C.border);
   doc.line(14, H - 10, W - 14, H - 10);
   doc.setFontSize(8);
@@ -151,7 +148,11 @@ function addPageChrome(doc, teamName) {
  * @param {array}  opts.physicalTests
  * @param {object} opts.appSettings
  */
-export async function generateSeasonReport({ players = [], sessions = [], matches = [], physicalTests = [], appSettings = {} }) {
+export async function generateSeasonReport({
+  players = [], sessions = [], matches = [], physicalTests = [], appSettings = {},
+  season = appSettings.workspaceProfile?.currentSeason || appSettings.workspaceProfile?.season || "",
+  competition = "", record = getSeasonRecord(matches), playerMatchRows = [],
+}) {
   const teamLogoUrl = appSettings?.workspaceProfile?.logo || null;
   const { calciolabLogo, teamLogo } = await loadBrandingAssets(teamLogoUrl);
 
@@ -159,11 +160,10 @@ export async function generateSeasonReport({ players = [], sessions = [], matche
   const W   = doc.internal.pageSize.width;
 
   const teamName = appSettings?.workspaceProfile?.clubName || "La mia squadra";
-  const season   = appSettings?.workspaceProfile?.season   || "";
   const generatedAt = new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" });
 
   // ── 1. Cover ──────────────────────────────────────────────────────────────
-  drawCover(doc, { teamName, season, generatedAt, calciolabLogo, teamLogo });
+  drawCover(doc, { teamName, season, competition, generatedAt, calciolabLogo, teamLogo });
 
   // ── 2. Riepilogo stagione ─────────────────────────────────────────────────
   doc.addPage();
@@ -172,19 +172,13 @@ export async function generateSeasonReport({ players = [], sessions = [], matche
   let y = 22;
   y = sectionHeader(doc, "Riepilogo stagione", y);
 
-  const played  = matches.filter((m) => resultOutcome(m) !== null);
-  const wins    = played.filter((m) => resultOutcome(m) === "V").length;
-  const draws   = played.filter((m) => resultOutcome(m) === "P").length;
-  const losses  = played.filter((m) => resultOutcome(m) === "S").length;
-  const gf      = played.reduce((s, m) => s + (parseMatchResult(m.result, m)?.goalsFor || 0), 0);
-  const gc      = played.reduce((s, m) => s + (parseMatchResult(m.result, m)?.goalsAgainst || 0), 0);
-  const points  = wins * 3 + draws;
-  const cleanSheets = played.filter((m) => parseMatchResult(m.result, m)?.goalsAgainst === 0).length;
+  const { played, wins, draws, losses, goalsFor: gf, goalsAgainst: gc, cleanSheets } = record;
+  const showPoints = matches.every(isLeagueStatsMatch);
 
   const stats = [
-    ["Partite giocate", played.length, "Allenamenti", sessions.length],
+    ["Partite giocate", played, "Allenamenti", sessions.length],
     ["Vittorie",        wins,          "Pareggi",     draws],
-    ["Sconfitte",       losses,        "Punti",       points],
+    ["Sconfitte",       losses,        showPoints ? "Punti" : "", showPoints ? wins * 3 + draws : ""],
     ["Gol fatti",       gf,            "Gol subiti",  gc],
     ["Clean sheet",     cleanSheets,   "Giocatori",   players.length],
   ];
@@ -222,8 +216,8 @@ export async function generateSeasonReport({ players = [], sessions = [], matche
         m.opponent || m.title || "—",
         m.location === "Casa" || m.home ? "Casa" : "Trasferta",
         resultText(m),
-        outcome === "V" ? "✓ Vinta"
-          : outcome === "S" ? "✗ Sconfitta"
+        outcome === "V" ? "Vinta"
+          : outcome === "S" ? "Sconfitta"
           : outcome === "P" ? "= Pareggio"
           : "Da giocare",
       ];
@@ -246,8 +240,8 @@ export async function generateSeasonReport({ players = [], sessions = [], matche
     didParseCell(data) {
       if (data.column.index === 4 && data.section === "body") {
         const v = String(data.cell.raw);
-        if (v.startsWith("✓")) data.cell.styles.textColor = C.green;
-        else if (v.startsWith("✗")) data.cell.styles.textColor = C.red;
+        if (v === "Vinta") data.cell.styles.textColor = C.green;
+        else if (v === "Sconfitta") data.cell.styles.textColor = C.red;
         else if (v.startsWith("=")) data.cell.styles.textColor = C.yellow;
       }
     },
@@ -278,7 +272,7 @@ export async function generateSeasonReport({ players = [], sessions = [], matche
         present,
         absent,
         total ? pct(present, total) : "—",
-        p.status === "Infortunato" ? "🚑 Infortun." : p.status === "Squalificato" ? "🟥 Squalif." : "✓",
+        p.status === "Infortunato" ? "Infortunato" : p.status === "Squalificato" ? "Squalificato" : "—",
       ];
     });
 
@@ -300,9 +294,8 @@ export async function generateSeasonReport({ players = [], sessions = [], matche
     didParseCell(data) {
       if (data.column.index === 5 && data.section === "body") {
         const v = String(data.cell.raw);
-        if (v.startsWith("✓")) data.cell.styles.textColor = C.green;
-        else if (v.startsWith("🚑")) data.cell.styles.textColor = C.red;
-        else if (v.startsWith("🟥")) data.cell.styles.textColor = C.yellow;
+        if (v === "Infortunato") data.cell.styles.textColor = C.red;
+        else if (v === "Squalificato") data.cell.styles.textColor = C.yellow;
       }
       if (data.column.index === 4 && data.section === "body") {
         const v = parseInt(data.cell.raw);
@@ -322,13 +315,8 @@ export async function generateSeasonReport({ players = [], sessions = [], matche
 
   const statsRows = [...players]
     .map((p) => {
-      const matchesPlayed = matches.filter(
-        (m) => m.attendance?.[p.id]?.status === "Presente"
-      );
-      const goals   = matchesPlayed.reduce((s, m) => s + Number(m.attendance?.[p.id]?.goals   || 0), 0);
-      const assists = matchesPlayed.reduce((s, m) => s + Number(m.attendance?.[p.id]?.assists || 0), 0);
-      const minutes = matchesPlayed.reduce((s, m) => s + Number(m.attendance?.[p.id]?.minutes || 0), 0);
-      return { name: p.name, role: p.role, pres: matchesPlayed.length, goals, assists, minutes };
+      const { presences: pres, goals, assists, minutes } = getPlayerMatchTotals(p, matches, playerMatchRows, players, false);
+      return { name: p.name, role: p.role, pres, goals, assists, minutes };
     })
     .sort((a, b) => b.goals - a.goals || b.assists - a.assists || b.pres - a.pres)
     .map((r) => [r.name || "—", r.role || "—", r.pres, r.goals, r.assists, r.minutes ? `${r.minutes}'` : "—"]);
