@@ -25,7 +25,7 @@ import {
   mergeEntityArrayWithRemote,
 } from "../utils/syncHelpers";
 
-const REMOTE_REFRESH_INTERVAL_MS = 60 * 1000;
+const REMOTE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const MIN_FOCUS_REFRESH_INTERVAL_MS = 60 * 1000;
 const REMOTE_SAVE_DEBOUNCE_MS = 1500;
 
@@ -248,7 +248,7 @@ export function useTeamData({ teamId } = {}) {
 
     const handleOnline = () => { refreshTeamData().catch(() => {}); };
     window.addEventListener("online", handleOnline);
-    window.addEventListener("focus", refreshFromRemote);
+    window.addEventListener("focus", handleVisibleRefresh);
     document.addEventListener("visibilitychange", handleVisibleRefresh);
 
     const intervalId = window.setInterval(() => {
@@ -260,7 +260,7 @@ export function useTeamData({ teamId } = {}) {
     return () => {
       active = false;
       window.removeEventListener("online", handleOnline);
-      window.removeEventListener("focus", refreshFromRemote);
+      window.removeEventListener("focus", handleVisibleRefresh);
       document.removeEventListener("visibilitychange", handleVisibleRefresh);
       window.clearInterval(intervalId);
     };
@@ -272,7 +272,7 @@ export function useTeamData({ teamId } = {}) {
     if (!hydrated.current) return;
 
     // Salvataggio localStorage sincrono — non perdiamo nulla se il tab chiude ora
-    const localResult = saveLocalState(state);
+    const localResult = saveLocalState(state, teamId);
     setLocalSaveError(localResult?.saved === false ? localResult.error?.message || "Copia locale non disponibile" : null);
     const keysToSave = Array.from(dirtyKeysRef.current);
     if (teamId && keysToSave.length) {

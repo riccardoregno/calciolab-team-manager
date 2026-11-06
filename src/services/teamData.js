@@ -19,8 +19,10 @@ const ENTITY_TABLES = {
   staffTasks:    "staff_tasks",
   injuryRecords: "injury_records",
 };
-const STORAGE_BACKUP_KEY = `${STORAGE_KEY}:backup`;
-const EMPTY_ENTITY_INTENT_KEY = `${STORAGE_KEY}:empty-entities`;
+function storageKeys(teamId) {
+  const primary = teamId ? STORAGE_KEY + ":team:" + encodeURIComponent(teamId) : STORAGE_KEY;
+  return { primary, backup: primary + ":backup", emptyIntent: primary + ":empty-entities" };
+}
 
 // FIX #7: regex che ammette solo caratteri sicuri negli ID usati nelle query Supabase.
 // Previene injection nella lista passata a .not("id","in", rawString).
@@ -43,16 +45,20 @@ export function getInitialState() {
 }
 
 /** @returns {object} */
-export function loadLocalState() {
+export function loadLocalState(teamId) {
+  const { primary, backup } = storageKeys(teamId);
+  const fallback = () => teamId
+    ? normalizeAppState(Object.fromEntries(Object.keys(ENTITY_TABLES).map((key) => [key, []])))
+    : getInitialState();
   try {
-    const state = parseStoredState(localStorage.getItem(STORAGE_KEY));
-    const backupState = parseStoredState(localStorage.getItem(STORAGE_BACKUP_KEY));
-    if (!state) return backupState || getInitialState();
+    const state = parseStoredState(localStorage.getItem(primary));
+    const backupState = parseStoredState(localStorage.getItem(backup));
+    if (!state) return backupState || fallback();
     if (!backupState) return state;
-    return recoverMissingLocalEntities(state, backupState, loadEmptyEntityIntents());
+    return recoverMissingLocalEntities(state, backupState, loadEmptyEntityIntents(teamId));
   } catch (error) {
     if (import.meta.env.DEV) console.error("Errore caricamento dati locali:", error);
-    return getInitialState();
+    return fallback();
   }
 }
 
@@ -61,29 +67,30 @@ let _lastSerialized = null;
 
 /** @param {object} state
  * @returns {void} */
-export function saveLocalState(state) {
+export function saveLocalState(state, teamId) {
+  const { primary, backup } = storageKeys(teamId);
   const normalized = normalizeAppState(state);
   const serialized  = JSON.stringify(normalized);
-  _lastSerialized   = serialized;
+  _lastSerialized   = { serialized, teamId };
   let previous = null;
 
   try {
-    previous = localStorage.getItem(STORAGE_KEY);
+    previous = localStorage.getItem(primary);
     const previousState = parseStoredState(previous);
-    if (previousState) updateEmptyEntityIntents(normalized, previousState);
+    if (previousState) updateEmptyEntityIntents(normalized, previousState, teamId);
   } catch {
     previous = null;
   }
 
   function write() {
     try {
-      localStorage.setItem(STORAGE_KEY, serialized);
+      localStorage.setItem(primary, serialized);
     } catch (error) {
       // Il backup non deve mai impedire il salvataggio dello stato corrente.
       // Se la quota e esaurita, libera il backup e ritenta una sola volta.
       try {
-        try { localStorage.removeItem(STORAGE_BACKUP_KEY); } catch { /* Primary data was saved. */ }
-        localStorage.setItem(STORAGE_KEY, serialized);
+        try { localStorage.removeItem(backup); } catch { /* Primary data was saved. */ }
+        localStorage.setItem(primary, serialized);
       } catch (retryError) {
         if (import.meta.env.DEV) console.error("Errore salvataggio localStorage:", retryError || error);
         return { saved: false, error: retryError || error };
@@ -92,10 +99,10 @@ export function saveLocalState(state) {
 
     if (previous && previous !== serialized) {
       try {
-        localStorage.setItem(STORAGE_BACKUP_KEY, previous);
+        localStorage.setItem(backup, previous);
       } catch {
         // Backup best-effort: lo stato principale e gia stato scritto.
-        localStorage.removeItem(STORAGE_BACKUP_KEY);
+        localStorage.removeItem(backup);
       }
     }
     return { saved: true, error: null };
@@ -110,23 +117,25 @@ export function saveLocalState(state) {
 if (typeof window !== "undefined") {
   window.addEventListener("pagehide", () => {
     if (!_lastSerialized) return;
+    const { serialized, teamId } = _lastSerialized;
+    const { primary, backup } = storageKeys(teamId);
     try {
-      const previous = localStorage.getItem(STORAGE_KEY);
-      localStorage.setItem(STORAGE_KEY, _lastSerialized);
-      if (previous && previous !== _lastSerialized) {
-        const nextState = parseStoredState(_lastSerialized);
+      const previous = localStorage.getItem(primary);
+      localStorage.setItem(primary, serialized);
+      if (previous && previous !== serialized) {
+        const nextState = parseStoredState(serialized);
         const previousState = parseStoredState(previous);
-        if (nextState && previousState) updateEmptyEntityIntents(nextState, previousState);
+        if (nextState && previousState) updateEmptyEntityIntents(nextState, previousState, teamId);
         try {
-          localStorage.setItem(STORAGE_BACKUP_KEY, previous);
+          localStorage.setItem(backup, previous);
         } catch {
-          localStorage.removeItem(STORAGE_BACKUP_KEY);
+          localStorage.removeItem(backup);
         }
       }
     } catch {
       try {
-        localStorage.removeItem(STORAGE_BACKUP_KEY);
-        localStorage.setItem(STORAGE_KEY, _lastSerialized);
+        localStorage.removeItem(backup);
+        localStorage.setItem(primary, serialized);
       } catch {
         // Best-effort on pagehide
       }
@@ -138,7 +147,7 @@ if (typeof window !== "undefined") {
  * @returns {Promise<{data: any[], error: any}>} */
 export async function loadRemoteState({ teamId, entityKeys } = {}) {
   if (!isSupabaseConfigured || !teamId) {
-    return { state: loadLocalState(), source: "local" };
+    return { state: loadLocalState(teamId), source: "local" };
   }
   return loadTeamTablesState(teamId, { entityKeys });
 }
@@ -160,7 +169,7 @@ export async function saveTeamTablesState(state, teamId, { keys, entityChanges }
         .map(async ([stateKey, table]) => {
           try {
             await syncEntityTable(table, teamId, normalized[stateKey] || [], {
-              allowEmptyDelete: hasEmptyEntityIntent(stateKey),
+              allowEmptyDelete: hasEmptyEntityIntent(stateKey, teamId),
               changes: entityChanges?.[stateKey],
             });
           } catch (error) {
@@ -215,7 +224,7 @@ export async function saveTeamTablesState(state, teamId, { keys, entityChanges }
  * @returns {Promise<{data: any[], error: any}>} */
 export async function saveRemoteState(state, { teamId } = {}) {
   const normalizedState = normalizeAppState(state);
-  saveLocalState(normalizedState);
+  saveLocalState(normalizedState, teamId);
 
   if (!isSupabaseConfigured || !teamId) {
     return { source: "local" };
@@ -254,15 +263,21 @@ async function loadTeamTablesState(teamId, { entityKeys } = {}) {
 
     const tableResults = await Promise.allSettled(
       selectedEntityEntries.map(async ([stateKey, table]) => {
-        // FIX #2: seleziona anche updated_at per conflict detection futura
-        const { data, error } = await supabase
-          .from(table)
-          .select("id, data, updated_at")
-          .eq("team_id", teamId);
-
-        if (error) {
-          error._syncTable = table;
-          throw error;
+        const data = [];
+        const pageSize = 500;
+        let cursor;
+        for (;;) {
+          let query = supabase.from(table).select("id, data, updated_at")
+            .eq("team_id", teamId).order("id").limit(pageSize);
+          if (cursor !== undefined) query = query.gt("id", cursor);
+          const { data: page, error } = await query;
+          if (error) {
+            error._syncTable = table;
+            throw error;
+          }
+          data.push(...page);
+          if (page.length < pageSize) break;
+          cursor = page.at(-1).id;
         }
 
         return [
@@ -308,8 +323,8 @@ async function loadTeamTablesState(teamId, { entityKeys } = {}) {
       failures.push({ table: "teams.settings", error: teamRowError });
     }
 
-    const localState = loadLocalState();
-    const emptyIntents = loadEmptyEntityIntents();
+    const localState = loadLocalState(teamId);
+    const emptyIntents = loadEmptyEntityIntents(teamId);
     const remoteEntityState = Object.fromEntries(successfulEntries);
     const retainedLocalEntityKeys = [];
     const entityState = Object.fromEntries(
@@ -368,7 +383,7 @@ async function loadTeamTablesState(teamId, { entityKeys } = {}) {
     if (import.meta.env.DEV) {
       console.warn("Lettura tabelle Supabase fallita, uso localStorage:", error.message);
     }
-    return { state: loadLocalState(), source: "local", error };
+    return { state: loadLocalState(teamId), source: "local", error };
   }
 }
 
@@ -704,22 +719,22 @@ async function syncEntityChanges(table, teamId, { changedOrAdded = [], deleted =
   }
 }
 
-function loadEmptyEntityIntents() {
+function loadEmptyEntityIntents(teamId) {
   if (typeof localStorage === "undefined") return {};
 
   try {
-    const parsed = JSON.parse(localStorage.getItem(EMPTY_ENTITY_INTENT_KEY) || "{}");
+    const parsed = JSON.parse(localStorage.getItem(storageKeys(teamId).emptyIntent) || "{}");
     return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
     return {};
   }
 }
 
-function saveEmptyEntityIntents(intents) {
+function saveEmptyEntityIntents(intents, teamId) {
   if (typeof localStorage === "undefined") return;
 
   try {
-    localStorage.setItem(EMPTY_ENTITY_INTENT_KEY, JSON.stringify(intents));
+    localStorage.setItem(storageKeys(teamId).emptyIntent, JSON.stringify(intents));
   } catch {
     /* best-effort local marker */
   }
@@ -735,12 +750,12 @@ function parseStoredState(serialized) {
   }
 }
 
-function hasEmptyEntityIntent(stateKey) {
-  return Boolean(loadEmptyEntityIntents()[stateKey]);
+function hasEmptyEntityIntent(stateKey, teamId) {
+  return Boolean(loadEmptyEntityIntents(teamId)[stateKey]);
 }
 
-function updateEmptyEntityIntents(nextState, previousState) {
-  const intents = loadEmptyEntityIntents();
+function updateEmptyEntityIntents(nextState, previousState, teamId) {
+  const intents = loadEmptyEntityIntents(teamId);
   let changed = false;
 
   Object.keys(ENTITY_TABLES).forEach((stateKey) => {
@@ -761,7 +776,7 @@ function updateEmptyEntityIntents(nextState, previousState) {
     }
   });
 
-  if (changed) saveEmptyEntityIntents(intents);
+  if (changed) saveEmptyEntityIntents(intents, teamId);
 }
 
 function normalizeRecordIdForTable(table, id) {

@@ -105,15 +105,28 @@ try {
 
   assert.ok(supabase, 'Remote-read regression requires the configured Supabase client');
   const originalFrom = supabase.from;
+  saveLocalState(snapshot, 'test-team');
+  assert.equal(loadLocalState('test-team').matches[0].result, snapshot.matches[0].result);
+  assert.deepEqual(loadLocalState('another-team').matches, [], 'An empty team cannot inherit another team or a legacy cache');
+  const firstPage = Array.from({ length: 500 }, (_, index) => ({
+    id: 'match-' + String(index).padStart(3, '0'), data: { opponent: 'Remote match', result: '1-0' },
+  }));
   supabase.from = () => ({
-    select: () => ({ eq: async () => ({
-      data: [{ id: 'test-match', data: { opponent: 'Stale remote', result: '1-0' } }], error: null,
-    }) }),
+    select: () => ({ eq: () => ({ order: () => ({ limit: () => ({
+      then(resolve) { resolve({ data: firstPage, error: null }); },
+      async gt(column, cursor) {
+        assert.equal(column, 'id');
+        assert.equal(cursor, 'match-499');
+        return { data: [{ id: 'match-500', data: { opponent: 'Last match', result: '0-0' } }], error: null };
+      },
+    }) }) }) }),
   });
   try {
     const before = new Map(values);
     const remote = await loadRemoteState({ teamId: 'test-team', entityKeys: ['matches'] });
     assert.equal(remote.state.matches[0].result, '1-0');
+    assert.equal(remote.state.matches.length, 501);
+    assert.equal(remote.state.matches.at(-1).result, '0-0');
     assert.deepEqual(values, before, 'A remote read must not overwrite local edits or their backup');
   } finally {
     supabase.from = originalFrom;
