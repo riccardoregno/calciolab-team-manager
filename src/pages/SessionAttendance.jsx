@@ -47,9 +47,10 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const session = trainingSession || getFriendlySession(friendlyMatch);
   const updateEvents = session?.isFriendlyMatch ? setMatches : setSessions;
   const attendance = session?.attendance || {};
-  const visiblePlayers = pendingOnly ? players.filter((player) =>
-    (player.gruppo || "prima") === "prima" && !attendance[String(player.id)]?.status
-  ) : players;
+  const firstTeamPlayers = players.filter((player) => String(player.gruppo || "prima").trim().toLowerCase() === "prima");
+  const visiblePlayers = pendingOnly
+    ? firstTeamPlayers.filter((player) => !attendance[String(player.id)]?.status)
+    : players;
 
   function updatePlayer(playerId, field, value) {
     if (!canManage) return;
@@ -112,7 +113,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
 
 
   // Contatori per status
-  const counts = players.reduce(
+  const counts = firstTeamPlayers.reduce(
     (acc, p) => {
       const st = getTrainingSessionStatus(p, session);
       acc[st] = (acc[st] || 0) + 1;
@@ -125,7 +126,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const assenti     = counts["Assente"]     || 0;
   const infortunati = counts["Infortunato"] || 0;
   const permesso    = counts["Permesso"]    || 0;
-  const pct = players.length > 0 ? Math.round((presenti / players.length) * 100) : 0;
+  const pct = firstTeamPlayers.length > 0 ? Math.round((presenti / firstTeamPlayers.length) * 100) : null;
 
   const subtitle = [
     formatDate(session.date),
@@ -140,7 +141,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
       <PageHeader
         title={`${t("pages.sessionAttendance.title")} — ${session.title || t("pages.sessionAttendance.defaultSession")}`}
         subtitle={subtitle}
-        badge={t("pages.sessionAttendance.badge", { count: players.length })}
+        badge={t("pages.sessionAttendance.badge", { count: firstTeamPlayers.length })}
       />
 
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
@@ -153,7 +154,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
             {assenti     > 0 && <SummaryPill color="#f87171"  icon="✖" label={t("pages.sessionAttendance.summaryAssenti")}     value={assenti} />}
             {infortunati > 0 && <SummaryPill color="#fb923c"  icon="⚠" label={t("pages.sessionAttendance.summaryInfortunati")} value={infortunati} />}
             {permesso    > 0 && <SummaryPill color="#38bdf8"  icon="◎" label={t("pages.sessionAttendance.summaryPermesso")}    value={permesso} />}
-            <span style={s.pct}>{pct}{t("pages.sessionAttendance.summaryPct")}</span>
+            {pct !== null && <span style={s.pct}>{pct}{t("pages.sessionAttendance.summaryPct")}</span>}
           </div>
           <div style={s.topActions}>
             {canManage && (
@@ -184,24 +185,14 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
           if (r.startsWith("attaccante")) return 3;
           return 99;
         };
-        const isJun = (p) => (p.gruppo || "prima") === "juniores";
         const sortByRole = (arr) => [...arr].sort((a, b) => {
           const ra = getRoleOrder(a.role);
           const rb = getRoleOrder(b.role);
           if (ra !== rb) return ra - rb;
           return getSortKey(a).localeCompare(getSortKey(b), "it");
         });
-        const sortByGruppoRole = (arr) => [...arr].sort((a, b) => {
-          const ga = isJun(a) ? 1 : 0;
-          const gb = isJun(b) ? 1 : 0;
-          if (ga !== gb) return ga - gb;
-          const ra = getRoleOrder(a.role);
-          const rb = getRoleOrder(b.role);
-          if (ra !== rb) return ra - rb;
-          return getSortKey(a).localeCompare(getSortKey(b), "it");
-        });
-        const presentiList = sortByRole(players.filter((p) => getTrainingSessionStatus(p, session) === "Presente"));
-        const assentiList  = sortByGruppoRole(players.filter((p) => getTrainingSessionStatus(p, session) !== "Presente"));
+        const presentiList = sortByRole(firstTeamPlayers.filter((p) => getTrainingSessionStatus(p, session) === "Presente"));
+        const assentiList  = sortByRole(firstTeamPlayers.filter((p) => getTrainingSessionStatus(p, session) !== "Presente"));
         return (
           <AppCard>
             <button
@@ -211,30 +202,28 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
               onClick={() => setShowSummaryList((v) => !v)}
               style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, padding: 0 }}
             >
-              {showSummaryList ? "▲" : "▼"} Lista presenti / non in campo
+              {showSummaryList ? "▲" : "▼"} {t("pages.sessionAttendance.firstTeamSummary")}
             </button>
             {showSummaryList && (
               <div id="attendance-summary" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 14 }}>
                 <div>
                   <p style={{ color: "#22c55e", fontWeight: 800, fontSize: 13, marginBottom: 8 }}>✔ Presenti ({presentiList.length})</p>
                   {presentiList.map((p) => {
-                    const isJuniores = (p.gruppo || "prima") === "juniores";
                     return (
                       <div key={p.id} style={{ fontSize: 13, color: "#e2e8f0", padding: "3px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                        {getName(p)} <span style={{ color: "#64748b", fontSize: 11 }}>{p.role || ""}{isJuniores ? " · Juniores" : ""}</span>
+                        {getName(p)} <span style={{ color: "#64748b", fontSize: 11 }}>{p.role || ""}</span>
                       </div>
                     );
                   })}
                 </div>
                 <div>
-                  <p style={{ color: "#f87171", fontWeight: 800, fontSize: 13, marginBottom: 8 }}>✖ Assenti ({assentiList.length})</p>
+                  <p style={{ color: "#f87171", fontWeight: 800, fontSize: 13, marginBottom: 8 }}>✖ {t("pages.sessionAttendance.notOnPitch")} ({assentiList.length})</p>
                   {assentiList.map((p) => {
                     const st = getTrainingSessionStatus(p, session);
                     const stColor = { Assente: "#f87171", Infortunato: "#fb923c", Recupero: "#38bdf8", Permesso: "#38bdf8", Squalificato: "#c084fc" }[st] || "#94a3b8";
-                    const isJuniores = (p.gruppo || "prima") === "juniores";
                     return (
                       <div key={p.id} style={{ fontSize: 13, color: "#e2e8f0", padding: "3px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between" }}>
-                        <span>{getName(p)} <span style={{ color: "#64748b", fontSize: 11 }}>{p.role || ""}{isJuniores ? " · Juniores" : ""}</span></span>
+                        <span>{getName(p)} <span style={{ color: "#64748b", fontSize: 11 }}>{p.role || ""}</span></span>
                         <span style={{ color: stColor, fontSize: 11, fontWeight: 700 }}>{st}</span>
                       </div>
                     );
