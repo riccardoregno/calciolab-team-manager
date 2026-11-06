@@ -11,6 +11,7 @@ import {
   getLineup,
   getPhysicalReference,
   getPlayerSummary,
+  getSeasonRecord,
   RPE_BY_MATCH_DAY,
 } from "../utils/helpers";
 
@@ -853,10 +854,7 @@ function SeasonReportPanel({ players, sessions, matches, physicalTests, appSetti
   const [generating, setGenerating] = useState(false);
   const teamName = appSettings?.workspaceProfile?.clubName || "CalcioLab";
 
-  const played = matches.filter((m) => m.goalsScored !== undefined || m.goals_scored !== undefined);
-  const wins   = played.filter((m) => Number(m.goalsScored ?? m.goals_scored ?? 0) > Number(m.goalsConceded ?? m.goals_conceded ?? 0)).length;
-  const draws  = played.filter((m) => Number(m.goalsScored ?? m.goals_scored ?? 0) === Number(m.goalsConceded ?? m.goals_conceded ?? 0)).length;
-  const losses = played.length - wins - draws;
+  const { wins, draws, losses } = getSeasonRecord(matches);
 
   async function handleDownload() {
     setGenerating(true);

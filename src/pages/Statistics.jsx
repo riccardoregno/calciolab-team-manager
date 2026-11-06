@@ -11,7 +11,7 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 
-import { getPlayerMatchEntries, getPlayerMatchTotals, isLeagueStatsMatch, formatDate, getPlayerUnavailabilityOnDate, localDateString, normalizeAppSettings } from "../utils/helpers";
+import { getPlayerMatchEntries, getPlayerMatchTotals, isLeagueStatsMatch, formatDate, getPlayerUnavailabilityOnDate, localDateString, normalizeAppSettings, parseMatchResult } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { loadPlayerMatches, loadPlayerMatchesForPeriod, loadMatchStatsMatrix } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
@@ -186,7 +186,8 @@ function Statistics({
       return;
     }
     const matchEvents = events.filter(
-      (e) => e.type === "Partita" && isLeagueStatsMatch(e) && (!from || e.date >= from) && (!to || e.date <= to)
+      (e) => e.type === "Partita" && isLeagueStatsMatch(e) && (!from || e.date >= from) &&
+        (!to || e.date <= to) && parseMatchResult(e.result, e)
     );
     setCaricoMatchCount(matchEvents.length);
     if (!auth.team?.id || matchEvents.length === 0) {

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { buildCoachAnalysis, hasRecordedLineup } from "../src/utils/coachAnalysis.js";
+import { getSeasonRecord, parseMatchResult } from "../src/utils/helpers.js";
 
 const now = new Date(2020, 0, 10, 12);
 const base = { matchKind: "Campionato", season: "2019/20", location: "Casa" };
@@ -29,6 +30,19 @@ const rows = [
   { match_id: "future-scored", player_id: "a", minutes_played: 90, goals: 9 },
   { match_id: "away", player_id: "j", minutes_played: 30, goals: 1 },
 ];
+const scoreCases = [
+  { ...base, id: "medicina", date: "2020-01-02", location: "Trasferta", result: "0-2", goalsScored: "0", goalsConceded: "2" },
+  { ...base, id: "scoreless", date: "2020-01-03", result: "0-0" },
+  { ...base, id: "no-score", date: "2020-01-04", result: "", goalsScored: "", goalsConceded: "" },
+];
+assert.deepEqual(parseMatchResult(scoreCases[0].result, scoreCases[0]), { homeGoals: 0, awayGoals: 2, goalsFor: 2, goalsAgainst: 0 });
+const record = getSeasonRecord(scoreCases);
+assert.deepEqual(record, { played: 2, wins: 1, draws: 1, losses: 0, goalsFor: 2, goalsAgainst: 0, cleanSheets: 2 });
+const scoreModel = buildCoachAnalysis({ matches: scoreCases, now, season: base.season });
+assert.deepEqual(scoreModel.record, record);
+assert.equal(scoreModel.pointsPerGame, 2);
+assert.deepEqual(scoreModel.missingResults.map((match) => match.id), ["no-score"]);
+
 const snapshot = JSON.stringify({ players, matches, rows });
 const model = buildCoachAnalysis({ players, matches, rows, now, season: "2019/20" });
 assert.equal(model.points, 4);

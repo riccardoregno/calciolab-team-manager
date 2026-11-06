@@ -831,7 +831,8 @@ function MatchFocusCard({
   editMatch,
   deleteMatch,
 }) {
-  const status = getMatchStatus(match);
+  const score = parseMatchResult(match.result, match);
+  const status = getMatchStatus(score);
   const isPast = String(match.date || "") <= localDateString();
   const actionTitle = isPast ? "Ultima partita" : "Prossima partita";
   const matchTitle = getMatchTitle(match, clubName);
@@ -888,8 +889,8 @@ function MatchFocusCard({
                 <button onClick={closeResultEdit} style={matchStyles.iconClose} aria-label="Chiudi">×</button>
               </div>
             ) : (
-              <Button variant={match.result ? "ghost" : "primary"} onClick={canManage ? () => openResultEdit(match) : undefined} style={{ width: "100%" }}>
-                {match.result ? `${t("pages.matches.resultPrefix")} ${formatTeamScore(match)}` : t("pages.matches.addResult")}
+              <Button variant={score ? "ghost" : "primary"} onClick={canManage ? () => openResultEdit(match) : undefined} style={{ width: "100%" }}>
+                {score ? `${t("pages.matches.resultPrefix")} ${formatHomeAwayScore(score)}` : t("pages.matches.addResult")}
               </Button>
             )}
           </div>
@@ -943,7 +944,8 @@ function MatchCard({
   editMatch,
   deleteMatch,
 }) {
-  const status = getMatchStatus(match);
+  const score = parseMatchResult(match.result, match);
+  const status = getMatchStatus(score);
   const calledUpCount = getMatchPlayerIds(match).length;
   const convocationCount = match.convocazione?.playerIds?.length || 0;
   const matchTeams = getMatchTeams(match, clubName, clubLogo);
@@ -1070,16 +1072,16 @@ function MatchCard({
                     height: "100%",
                     background: "transparent",
                     border: "none",
-                    color: match.result ? "#f8fafc" : "#94a3b8",
+                    color: score ? "#f8fafc" : "#94a3b8",
                     cursor: canManage ? "pointer" : "default",
-                    fontSize: match.result ? 18 : 15,
+                    fontSize: score ? 18 : 15,
                     fontWeight: 900,
                     lineHeight: 1.1,
                     padding: 0,
                 }}
                 title={canManage ? t("pages.matches.editResult") : undefined}
               >
-                {match.result ? formatTeamScore(match) : (canManage ? `+ ${t("pages.matches.addResult")}` : "-")}
+                {score ? formatHomeAwayScore(score) : (canManage ? `+ ${t("pages.matches.addResult")}` : "-")}
               </button>
             )}
           </div>
@@ -1240,9 +1242,8 @@ function matchToForm(match) {
   };
 }
 
-function formatTeamScore(match) {
-  const parsed = parseMatchResult(match.result, match);
-  return parsed ? `${parsed.homeGoals}-${parsed.awayGoals}` : (match.result || "-");
+function formatHomeAwayScore(score) {
+  return `${score.homeGoals}-${score.awayGoals}`;
 }
 
 function emptyMatch(homeLogo = "") {
@@ -1440,8 +1441,7 @@ function normalizeSortTime(value) {
   return `${match[1].padStart(2, "0")}:${match[2]}`;
 }
 
-function getMatchStatus(match) {
-  const parsed = parseMatchResult(match.result, match);
+function getMatchStatus(parsed) {
   if (!parsed) return "In programma";
 
   if (parsed.goalsFor > parsed.goalsAgainst) return "Vinta";
