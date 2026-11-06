@@ -20,6 +20,8 @@ import { createId, formatDate, localDateString, normalizeAppSettings, parseMatch
 import { sendTeamNotification } from "../services/notifications";
 import SearchBar from "../components/ui/SearchBar";
 import { searchNavigationItems } from "../utils/navigationSearch";
+import { useTeamMatchRows } from "../hooks/useTeamMatchRows";
+import { getMatchCompletionTasks } from "../utils/matchCompletion";
 import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
 import { buildHomeAwayScorePayload, isValidMatchScore } from "../utils/matchScore";
 
@@ -81,7 +83,8 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
   const [resultEditId, setResultEditId] = useState(null);
   const [resultDraft, setResultDraft] = useState({ home: "", away: "" });
   const [matchSearch, setMatchSearch] = useState("");
-  const [matchView, setMatchView] = useState("all");
+  const matchView = searchParams.get("view") || "all";
+  const matchRows = useTeamMatchRows(teamId);
   const [form, setForm] = useState(() => loadMatchDraft(`${MATCH_DRAFT_KEY}:new`, emptyMatch(clubLogo)));
   const [formErrors, setFormErrors] = useState({});
   const [importSummary, setImportSummary] = useState(null);
@@ -102,9 +105,21 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
     [scopedMatches]
   );
   const searching = Boolean(matchSearch.trim());
-  const archiveMatches = useMemo(() => searchNavigationItems(sortedMatches, matchSearch, (match) =>
+  const searchedMatches = useMemo(() => searchNavigationItems(sortedMatches, matchSearch, (match) =>
     [match.opponent, match.date, formatDate(match.date), match.competition, match.location].filter(Boolean).join(" ")
-  ).filter((match) => searching || String(match.id) !== String(focusMatch?.id)), [sortedMatches, matchSearch, searching, focusMatch]);
+  ), [sortedMatches, matchSearch]);
+  const archiveMatches = searchedMatches.filter((match) => searching || String(match.id) !== String(focusMatch?.id));
+  const pendingMatches = useMemo(() => getMatchCompletionTasks({
+    matches: searchedMatches, players, rows: matchRows.rows,
+    canCheckMinutes: !matchRows.unavailable && !matchRows.error,
+  }), [searchedMatches, players, matchRows.rows, matchRows.unavailable, matchRows.error]);
+
+  function setMatchView(view) {
+    const params = new URLSearchParams(location.search);
+    if (view === "all") params.delete("view");
+    else params.set("view", view);
+    navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+  }
   const visibleMatches = archiveMatches.filter((match) => {
     const played = playedMatchIds.has(String(match.id));
     return matchView === "played" ? played : matchView === "upcoming" ? !played : true;
@@ -416,7 +431,7 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
       />
 
       <MatchScopeFilters scope={matchScope} />
-      {!loading && focusMatch && !searching && (
+      {!loading && focusMatch && !searching && matchView !== "pending" && (
         <MatchFocusCard
           match={focusMatch}
           clubName={clubName}
@@ -492,8 +507,40 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
               all: archiveMatches.length,
               played: archiveMatches.filter((match) => playedMatchIds.has(String(match.id))).length,
               upcoming: archiveMatches.filter((match) => !playedMatchIds.has(String(match.id))).length,
+              pending: pendingMatches.length,
             }}
           />
+          {matchView === "pending" ? (
+            <>
+              {matchRows.loading && <p role="status">{t("pages.matches.completionLoading")}</p>}
+              {matchRows.error && (
+                <AppCard>
+                  <p role="alert">{t("pages.matches.completionError")}</p>
+                  <Button variant="ghost" onClick={matchRows.retry}>{t("pages.matches.completionRetry")}</Button>
+                </AppCard>
+              )}
+              {pendingMatches.map(({ match, missingResult, missingFormation, missingMinutes }) => (
+                <AppCard key={match.id} title={getMatchTitle(match, clubName).plain}
+                  subtitle={[formatDate(match.date), match.competition].filter(Boolean).join(" / ")}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {missingResult && (canManage
+                      ? <Button variant="ghost" onClick={() => openMatchModal(match.id)}>{t("pages.matches.completionResult")}</Button>
+                      : <Badge tone="orange">{t("pages.matches.completionResult")}</Badge>)}
+                    {missingFormation && (canManage
+                      ? <Link to={`/match-day/${encodeURIComponent(match.id)}`} style={matchStyles.completionLink}>{t("pages.matches.completionFormation")}</Link>
+                      : <Badge tone="orange">{t("pages.matches.completionFormation")}</Badge>)}
+                    {missingMinutes > 0 && (
+                      <Link to={`/match-stats/${encodeURIComponent(match.id)}`} state={{ fromCompletion: true }}
+                        style={matchStyles.completionLink}>{t("pages.matches.completionMinutes", { count: missingMinutes })}</Link>
+                    )}
+                  </div>
+                </AppCard>
+              ))}
+              {!pendingMatches.length && !matchRows.loading && !matchRows.error && (
+                <AppCard><p style={{ margin: 0 }}>{t(matchSearch ? "pages.matches.noViewMatches" : "pages.matches.completionEmpty")}</p></AppCard>
+              )}
+            </>
+          ) : <>
           {visibleMatches.map((match) => (
             <MatchCard
               key={match.id}
@@ -521,6 +568,7 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
               {matchSearch && <Button variant="ghost" onClick={() => setMatchSearch("")}>Cancella ricerca</Button>}
             </AppCard>
           )}
+          </>}
         </div>
       )}
 
@@ -791,6 +839,7 @@ function MatchListToolbar({ t, activeView, onChange, counts, search, onSearch })
     ["all", t("pages.matches.viewAll"), counts.all],
     ["played", t("pages.matches.viewPlayed"), counts.played],
     ["upcoming", t("pages.matches.viewUpcoming"), counts.upcoming],
+    ["pending", t("pages.matches.viewPending"), counts.pending],
   ];
 
   return (
@@ -1599,6 +1648,10 @@ const matchStyles = {
     margin: "4px 0 0",
     color: "#94a3b8",
     fontSize: 13,
+  },
+  completionLink: {
+    display: "inline-flex", alignItems: "center", minHeight: 44, padding: "8px 12px",
+    border: "1px solid rgba(148,163,184,0.28)", borderRadius: 8, color: "#bfdbfe", fontWeight: 700,
   },
   segmented: {
     display: "flex",

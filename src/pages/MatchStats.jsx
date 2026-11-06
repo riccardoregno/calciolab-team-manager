@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
@@ -205,6 +205,8 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const backToMatches = state?.fromCompletion ? "/matches?view=pending" : "/matches";
   const auth = useAuth();
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
   const activeSeason = workspaceProfile.currentSeason;
@@ -213,8 +215,8 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
 
   const match = matches.find((m) => String(m.id) === String(id));
   const matrixMatches = useMemo(
-    () => [...matches].filter((item) => item?.id && isLeagueMatch(item)).sort(compareMatchDateTime),
-    [matches],
+    () => [...matches].filter((item) => item?.id && (isLeagueMatch(item) || String(item.id) === String(id))).sort(compareMatchDateTime),
+    [matches, id],
   );
   const matchIds = useMemo(() => matrixMatches.map((item) => String(item.id)), [matrixMatches]);
   const matchIdsKey = useMemo(() => matchIds.join("|"), [matchIds]);
@@ -498,7 +500,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       <div style={s.page}>
         <AppCard>
           <p style={s.muted}>{t("pages.matchStats.notFound")}</p>
-          <Button variant="ghost" onClick={() => navigate("/matches")}>{t("pages.matchStats.backToMatches")}</Button>
+          <Button variant="ghost" onClick={() => navigate(backToMatches)}>{t("pages.matchStats.backToMatches")}</Button>
         </AppCard>
       </div>
     );
@@ -565,7 +567,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                 ›
               </button>
             </div>
-            <Button variant="ghost" onClick={() => navigate("/matches")}>{t("pages.matchStats.btnBack")}</Button>
+            <Button variant="ghost" onClick={() => navigate(backToMatches)}>{t("pages.matchStats.btnBack")}</Button>
             <Button onClick={handleSave} disabled={saving || loading || loadError} style={s.saveButton}>
               {saving ? "Salvataggio..." : "Salva dati"}
             </Button>
