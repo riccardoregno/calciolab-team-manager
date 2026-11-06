@@ -1741,10 +1741,9 @@ export function isGoalkeeper(player) {
   return role.includes("portier") || ["por", "gk", "goalkeeper"].includes(role);
 }
 
-export function hasMatchParticipation(data = {}) {
-  return [data.minutes_played ?? data.minutes, data.goals, data.assists,
-    data.yellow_cards ?? data.yellowCards, data.red_cards ?? data.redCards,
-    data.goals_conceded ?? data.goalsConceded].some((value) => Number(value) > 0);
+export function hasMatchParticipation(data) {
+  const minutes = Number(data?.minutes_played ?? data?.minutes);
+  return Number.isFinite(minutes) && minutes > 0;
 }
 
 // Match rows are authoritative per player and match; missing rows use local data.
@@ -1770,7 +1769,7 @@ export function getPlayerMatchEntries(player, matches = [], rows = [], leagueOnl
         assists: Number(source.assists || 0),
         yellowCards: Number(source.yellow_cards ?? source.yellowCards ?? 0),
         redCards: Number(source.red_cards ?? source.redCards ?? 0),
-        goalsConceded: source.goals_conceded ?? source.goalsConceded ?? null,
+        goalsConceded: played ? (source.goals_conceded ?? source.goalsConceded ?? null) : null,
         rating: source.rating ?? null,
       } }];
     });

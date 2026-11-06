@@ -13,7 +13,7 @@ import { SkeletonList } from "../components/ui/Skeleton";
 import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
 import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getCompletedTrainingEvents, getTrainingAttendanceSummary, getTrainingSessionStatus, isTrainingStatsEvent, localDateString, parseMatchResult } from "../utils/helpers";
 import { styles } from "../styles/index.js";
-import { loadPlayerMatches, loadPlayerMatchesForPeriod, loadMatchStatsMatrix } from "../services/playerProfile";
+import { loadPlayerMatchesForPeriod, loadMatchStatsMatrix } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -55,7 +55,6 @@ function Statistics({
   const [toDate, setToDate] = useState("");
   const [playerMatchStatsRows, setPlayerMatchStatsRows] = useState([]);
   const [statsLoading, setStatsLoading] = useState(Boolean(auth.team?.id));
-  const [playerMatchesDB, setPlayerMatchesDB] = useState([]);
   const [sortBy, setSortBy] = useState("role");
   const [sortOrder, setSortOrder] = useState("desc");
   const [searchPlayer, setSearchPlayer] = useState("");
@@ -239,16 +238,6 @@ function Statistics({
     return () => { active = false; };
   }, [auth.team?.id, events]);
 
-  useEffect(() => {
-    if (!auth.team?.id || !effectiveSelectedPlayerId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPlayerMatchesDB([]);
-      return;
-    }
-    loadPlayerMatches(auth.team.id, effectiveSelectedPlayerId).then(({ data }) => {
-      setPlayerMatchesDB(data || []);
-    }).catch(() => setPlayerMatchesDB([]));
-  }, [auth.team?.id, effectiveSelectedPlayerId]);
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
@@ -361,7 +350,7 @@ function Statistics({
     (s) => String(s.id) === String(effectiveSelectedPlayerId)
   );
 
-  const history = getPlayerHistory(filteredEvents, selectedPlayer, playerMatchesDB, roster, playerMatchStatsRows);
+  const history = getPlayerHistory(filteredEvents, selectedPlayer, playerMatchStatsRows, roster);
 
   const topScorer = getTopPlayerByStat(stats, "goals");
   const mostMinutes = getTopPlayerByStat(stats, "minutes");
@@ -1617,7 +1606,7 @@ function getStatsSummary(events, players, playerMatchStatsRows = [], roster = pl
   });
 }
 
-function getPlayerHistory(events, player, playerMatchesDB = [], roster = [], teamRows = []) {
+function getPlayerHistory(events, player, playerMatchesDB = [], roster = []) {
   if (!player) return [];
 
   const matchEntries = new Map(getPlayerMatchEntries(player, events.filter((event) => event.type === "Partita"), playerMatchesDB, false).map((entry) => [String(entry.event.id), entry.data]));
@@ -1633,7 +1622,9 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = [], tea
           date: event.date,
           type: event.type,
           status: matchData.status,
-          goalsConceded: matchData.goalsConceded ?? getPlayerMatchTotals(player, [event], teamRows.length ? teamRows : playerMatchesDB, roster, false).goalsConceded,
+          goalsConceded: matchData.status === "Presente"
+            ? (matchData.goalsConceded ?? getPlayerMatchTotals(player, [event], playerMatchesDB, roster, false).goalsConceded)
+            : null,
           minutes: matchData.minutes,
           goals: matchData.goals,
           assists: matchData.assists,

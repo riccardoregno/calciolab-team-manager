@@ -26,6 +26,19 @@ assert.equal(conceded(keeper, [{ ...match, date: "2999-01-01" }]), 0);
 assert.equal(conceded(keeper, [{ ...match, isFriendly: true }]), 0);
 assert.equal(conceded(keeper, [{ ...match, matchKind: "Coppa" }]), 0);
 
+const fullGames = Array.from({ length: 9 }, (_, index) => ({ ...match, id: "played-" + index }));
+const unused = { ...match, id: "unused" };
+const unusedRow = { player_id: "gk", match_id: "unused", minutes_played: 0, goals_conceded: 1, yellow_cards: 1 };
+const keeperTotals = getPlayerMatchTotals(keeper, [...fullGames, unused], [unusedRow], players);
+assert.equal(keeperTotals.presences, 9);
+assert.equal(keeperTotals.minutes, 810);
+assert.equal(keeperTotals.goalkeeperRecord.appearances, 9);
+assert.equal(keeperTotals.goalsConceded, 18);
+assert.equal(keeperTotals.yellowCards, 1, "Bench cards still count as discipline");
+const unusedEntry = getPlayerMatchEntries(keeper, [unused], [unusedRow])[0].data;
+assert.equal(unusedEntry.status, "Non impiegato");
+assert.equal(unusedEntry.goalsConceded, null);
+
 const league = { ...match, attendance: { forward: { status: "Presente", minutes: 10, goals: 9 } } };
 const fallback = { ...league, id: "local", attendance: { forward: { minutes: 20, goals: 1, assists: 1 } } };
 const bench = { ...league, id: "bench", lineup: { calledUpIds: ["forward"] }, attendance: {} };
