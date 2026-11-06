@@ -147,6 +147,7 @@ function Dashboard({
   exercises: rawExercises = [],
   sessions: rawSessions = [],
   matches: rawMatches = [],
+  matchScope,
   physicalTests: rawPhysicalTests = [],
   appSettings = {},
   setAppSettings,
@@ -1036,7 +1037,7 @@ function Dashboard({
   }
 
   if (["owner", "headCoach", "assistantCoach", "director"].includes(currentRole)) {
-    return <CoachAnalysisDashboard players={players} matches={matches} sessions={sessions} rows={playerMatchRows}
+    return <CoachAnalysisDashboard matchScope={matchScope} players={players} matches={matchScope?.matches ?? matches} sessions={sessions} rows={playerMatchRows}
       profile={settings.workspaceProfile} loading={loading} statsLoading={Boolean(auth.team?.id) && (statsLoading || statsCompletedForTeam !== auth.team.id)} statsError={statsError}
       onRetryStats={() => setStatsReload((value) => value + 1)}
       now={new Date(agendaMinute)} canManage={["owner", "headCoach", "assistantCoach"].includes(currentRole)} />;

@@ -17,12 +17,11 @@ export function hasRecordedLineup(match, rows = []) {
     Object.values(match.attendance || {}).some((entry) => hasMinutes(entry?.minutes));
 }
 
-export function buildCoachAnalysis({ matches = [], players = [], sessions = [], rows = [], now = new Date(), season = "", group = "prima", canCheckStats = true } = {}) {
+export function buildCoachAnalysis({ matches = [], players = [], sessions = [], rows = [], now = new Date(), season = "", group = "prima", canCheckStats = true, leagueOnly = true } = {}) {
   const today = getAgendaDateKey(now);
   const scoped = matches.filter((match) => getAgendaDateKey(match.date) && (!season || !match.season || match.season === season));
   const past = scoped.filter((match) => getAgendaDateKey(match.date) < today || (getAgendaDateKey(match.date) === today && parseMatchResult(match.result, match))).sort(order);
-  const league = past.filter(isLeagueStatsMatch);
-  const played = league.filter((match) => parseMatchResult(match.result, match));
+  const played = past.filter((match) => (!leagueOnly || isLeagueStatsMatch(match)) && parseMatchResult(match.result, match));
   const record = getSeasonRecord(played);
   const points = record.wins * 3 + record.draws;
   let cumulative = 0;
@@ -45,7 +44,7 @@ export function buildCoachAnalysis({ matches = [], players = [], sessions = [], 
       ["Recupero", "Differenziato"].includes(status) ? "limited" : status === "Disponibile" ? "available" : "unknown";
     availability[category].push({ ...player, reason: period?.label || status || "" });
   }
-  const playerStats = canCheckStats ? roster.map((player) => ({ player, ...getPlayerMatchTotals(player, played, rows, roster) })) : [];
+  const playerStats = canCheckStats ? roster.map((player) => ({ player, ...getPlayerMatchTotals(player, played, rows, roster, leagueOnly) })) : [];
   const leaders = (key) => [...playerStats].filter((item) => item[key] > 0).sort((a, b) => b[key] - a[key] || b.minutes - a.minutes || String(a.player.id).localeCompare(String(b.player.id))).slice(0, 3);
   const missingResults = past.filter((match) => !parseMatchResult(match.result, match)).reverse();
   const missingLineups = canCheckStats ? played.filter((match) => !hasRecordedLineup(match, rows)).reverse() : [];

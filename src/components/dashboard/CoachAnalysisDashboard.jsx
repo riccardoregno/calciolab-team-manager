@@ -3,31 +3,34 @@ import { Link } from "react-router-dom";
 import { ArrowUpRight, CalendarDays, CheckCircle2, ClipboardList, ShieldCheck, Target, TrendingUp, Users } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { formatDate } from "../../utils/helpers";
+import MatchScopeFilters from "../statistics/MatchScopeFilters";
+import { isLeagueStatsMatch } from "../../utils/helpers.js";
 import { buildCoachAnalysis } from "../../utils/coachAnalysis.js";
 import "../../styles/coach-analysis.css";
 
 const nameOf = (player) => player.name || [player.firstName, player.lastName].filter(Boolean).join(" ") || "—";
 
-export default function CoachAnalysisDashboard({ players = [], matches = [], sessions = [], rows = [], profile = {}, loading = false, statsLoading = false, statsError = null, onRetryStats, now = new Date(), canManage = true }) {
+export default function CoachAnalysisDashboard({ matchScope, players = [], matches = [], sessions = [], rows = [], profile = {}, loading = false, statsLoading = false, statsError = null, onRetryStats, now = new Date(), canManage = true }) {
   const { t, language } = useTranslation();
   const text = (key, params) => t(`coachOverview.${key}`, params);
   const [group, setGroup] = useState("prima");
   const hasFirst = players.some((player) => (player.gruppo || "prima") === "prima");
   const hasJuniors = players.some((player) => player.gruppo === "juniores");
   const effectiveGroup = group === "prima" && !hasFirst && hasJuniors ? "juniores" : group;
-  const model = useMemo(() => buildCoachAnalysis({ players, matches, sessions, rows, now, group: effectiveGroup, season: profile.currentSeason || "", canCheckStats: !statsLoading && !statsError }), [players, matches, sessions, rows, now, effectiveGroup, profile.currentSeason, statsLoading, statsError]);
+  const model = useMemo(() => buildCoachAnalysis({ players, matches, sessions, rows, now, group: effectiveGroup, season: matchScope ? "" : profile.currentSeason || "", leagueOnly: !matchScope, canCheckStats: !statsLoading && !statsError }), [players, matches, sessions, rows, now, effectiveGroup, matchScope, profile.currentSeason, statsLoading, statsError]);
   const teamName = profile.teamName || profile.clubName || "CalcioLab";
   const statsPending = loading || statsLoading;
   const number = (value, digits = 0) => value == null ? "—" : Number(value).toLocaleString(language === "en" ? "en-GB" : "it-IT", { minimumFractionDigits: digits, maximumFractionDigits: digits });
   const count = (value) => loading ? "—" : number(value);
   const formPoints = model.form.reduce((total, item) => total + item.earned, 0);
   const calledUp = new Set([...(model.nextMatch?.convocazione?.playerIds || []), ...(model.nextMatch?.lineup?.calledUpIds || [])].map(String)).size;
+  const showPoints = !matchScope || matches.every(isLeagueStatsMatch);
   const metrics = [
     ["points", count(model.points), text("pointsNote"), TrendingUp],
     ["played", count(model.record.played), `${model.record.wins} ${text("winsShort")} · ${model.record.draws} ${text("drawsShort")} · ${model.record.losses} ${text("lossesShort")}`, ShieldCheck],
     ["goals", loading ? "—" : <><span>{model.record.goalsFor}</span><span>/</span><span>{model.record.goalsAgainst}</span></>, text("goalsNote"), Target],
     ["average", loading ? "—" : number(model.pointsPerGame, 2), text("averageNote"), TrendingUp],
-  ];
+  ].filter(([key]) => showPoints || (key !== "points" && key !== "average"));
 
   function MatchPanel({ match, previous = false }) {
     const score = previous ? model.latestScore : null;
@@ -57,7 +60,7 @@ export default function CoachAnalysisDashboard({ players = [], matches = [], ses
 
   return <div className="coach-analysis" aria-busy={loading}>
     <header className="analysis-heading"><div><span className="analysis-overline">{text("eyebrow")}</span><h1>{teamName}</h1><p>{text("subtitle")}</p></div><Link to="/statistics" className="analysis-primary-link">{text("openAnalysis")} <ArrowUpRight size={18} /></Link></header>
-    <div className="analysis-scope"><span className="analysis-scope-dot" /><span>{text("leagueScope")}{profile.currentSeason ? ` · ${profile.currentSeason}` : ""}</span><span>{text("scopeNote")}</span></div>
+    <MatchScopeFilters scope={matchScope} />
     {loading && <p className="analysis-loading" role="status">{text("loading")}</p>}
     {statsError && <div className="analysis-data-warning" role="alert"><span>{text("syncError")}</span>{onRetryStats && <button type="button" onClick={onRetryStats} disabled={statsLoading}>{text(statsLoading ? "checking" : "retry")}</button>}</div>}
 
@@ -66,10 +69,10 @@ export default function CoachAnalysisDashboard({ players = [], matches = [], ses
     <div className="analysis-season-grid">
       <section className="analysis-panel analysis-season"><div className="analysis-panel-head"><div><span className="analysis-overline">{text("seasonPulse")}</span><h2>{text("recentForm")}</h2></div><Link className="analysis-icon-link" to="/statistics" aria-label={text("openAnalysis")}><ArrowUpRight size={20} /></Link></div>
         {!model.form.length ? <div className="analysis-blank"><TrendingUp size={32} aria-hidden="true" /><h3>{text("noResults")}</h3><p>{text("noResultsHint")}</p></div> : <>
-          <div className="analysis-form"><div className="analysis-form-points"><strong>{formPoints}<span>/{model.form.length * 3}</span></strong><small>{text("recentPoints", { count: model.form.length })}</small></div><div className="analysis-form-results">{model.form.map(({ match, score, outcome }) => <Link key={match.id} className={`analysis-result outcome-${outcome}`} to={`/match-stats/${match.id}`} aria-label={`${match.opponent}, ${formatDate(match.date)}, ${score.homeGoals}-${score.awayGoals}, ${text(outcome)}`}><strong>{text(`${outcome}Letter`)}</strong><small>{score.homeGoals}–{score.awayGoals}</small></Link>)}</div></div>
-          <div className="analysis-chart-heading"><span>{text("pointsTrend")}</span><strong>{model.trend.at(-1)?.cumulative} {text("pointsUnit")}</strong></div>
+          <div className="analysis-form">{showPoints && <div className="analysis-form-points"><strong>{formPoints}<span>/{model.form.length * 3}</span></strong><small>{text("recentPoints", { count: model.form.length })}</small></div>}<div className="analysis-form-results">{model.form.map(({ match, score, outcome }) => <Link key={match.id} className={`analysis-result outcome-${outcome}`} to={`/match-stats/${match.id}`} aria-label={`${match.opponent}, ${formatDate(match.date)}, ${score.homeGoals}-${score.awayGoals}, ${text(outcome)}`}><strong>{text(`${outcome}Letter`)}</strong><small>{score.homeGoals}–{score.awayGoals}</small></Link>)}</div></div>
+          {showPoints && <><div className="analysis-chart-heading"><span>{text("pointsTrend")}</span><strong>{model.trend.at(-1)?.cumulative} {text("pointsUnit")}</strong></div>
           <svg className="analysis-chart" viewBox="0 0 320 96" role="img" aria-label={text("chartLabel", { count: chart.length })}><line x1="12" x2="308" y1="80" y2="80" stroke="currentColor" opacity="0.12" /><line x1="12" x2="308" y1="48" y2="48" stroke="currentColor" opacity="0.08" /><polyline points={line} fill="none" stroke="#74d5b2" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />{chart.map((item, index) => <circle key={item.match.id} cx={chart.length === 1 ? 160 : 12 + index * 296 / (chart.length - 1)} cy={78 - (item.cumulative - minPoints) / span * 60} r="4" fill="#74d5b2"><title>{`${item.match.opponent}: ${item.cumulative} ${text("pointsUnit")}`}</title></circle>)}</svg>
-          <div className="analysis-chart-foot"><span>{text("oldest")}</span><span>{text("latest")}</span></div>
+          <div className="analysis-chart-foot"><span>{text("oldest")}</span><span>{text("latest")}</span></div></>}
         </>}
       </section>
       <div className="analysis-fixtures"><MatchPanel match={model.latest} previous /><MatchPanel match={model.nextMatch} /></div>

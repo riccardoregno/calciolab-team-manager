@@ -11,7 +11,8 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 
-import { getPlayerMatchEntries, getPlayerMatchTotals, isLeagueStatsMatch, formatDate, getPlayerUnavailabilityOnDate, localDateString, normalizeAppSettings, parseMatchResult } from "../utils/helpers";
+import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
+import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getPlayerUnavailabilityOnDate, localDateString, parseMatchResult } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { loadPlayerMatches, loadPlayerMatchesForPeriod, loadMatchStatsMatrix } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
@@ -54,12 +55,10 @@ function getTopPlayerByStat(players = [], statKey) {
 }
 
 function Statistics({
-  events, players, appSettings = {}, setAppSettings }) {
-  const { t } = useTranslation();
+  events, players, matchScope }) {
+  const { t, language } = useTranslation();
   const auth = useAuth();
   const navigate = useNavigate();
-  const settings = normalizeAppSettings(appSettings);
-  const activeSeason = settings.workspaceProfile.currentSeason;
 
   const [squadraFilter, setSquadraFilter] = useState("prima");
   const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || "");
@@ -74,9 +73,7 @@ function Statistics({
   const [searchPlayer, setSearchPlayer] = useState("");
   const [onlyWithStats, setOnlyWithStats] = useState(false);
   const [roleFilter, setRoleFilter] = useState("Tutti");
-  const [comparePlayerIds, setComparePlayerIds] = useState(() =>
-    players.slice(0, 2).map((player) => String(player.id))
-  );
+  const [comparePlayerIds, setComparePlayerIds] = useState([]);
 
   const isMobile = useIsMobile(641);
   const isNarrow = useIsMobile(1025);
@@ -126,14 +123,6 @@ function Statistics({
     URL.revokeObjectURL(url);
   }
 
-  function changeSeason(newSeason) {
-    if (!newSeason.trim() || !setAppSettings) return;
-    setAppSettings({
-      ...settings,
-      workspaceProfile: { ...settings.workspaceProfile, currentSeason: newSeason.trim() },
-    });
-  }
-
   function handleSort(field) {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -152,7 +141,12 @@ function Statistics({
     setComparePlayerIds((prev) => {
       const next = [...prev];
       next[index] = value;
-      return next.filter((id, itemIndex) => id || itemIndex < 2);
+      if (index === 0) {
+        const first = players.find((player) => String(player.id) === value);
+        const second = players.find((player) => String(player.id) === next[1]);
+        if (first && (next[1] === value || (first.role || first.position || "") !== (second?.role || second?.position || ""))) next[1] = "";
+      }
+      return next;
     });
   }
 
@@ -182,21 +176,25 @@ function Statistics({
     if (invalid) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setCaricoMatchCount(0);
+      setCaricoLoading(false);
       setCaricoRows([]);
       return;
     }
     const matchEvents = events.filter(
-      (e) => e.type === "Partita" && isLeagueStatsMatch(e) && (!from || e.date >= from) &&
+      (e) => e.type === "Partita" && (!from || e.date >= from) &&
         (!to || e.date <= to) && parseMatchResult(e.result, e)
     );
     setCaricoMatchCount(matchEvents.length);
     if (!auth.team?.id || matchEvents.length === 0) {
+      setCaricoLoading(false);
       setCaricoRows([]);
       return;
     }
     setCaricoLoading(true);
     const ids = matchEvents.map((e) => String(e.id));
+    let active = true;
     loadPlayerMatchesForPeriod(auth.team.id, ids).then(({ data }) => {
+      if (!active) return;
       const agg = {};
       (data || []).forEach((row) => {
         const pid = String(row.player_id);
@@ -211,7 +209,12 @@ function Statistics({
       });
       setCaricoRows(Object.values(agg).sort((a, b) => b.minutes - a.minutes));
       setCaricoLoading(false);
-    }).catch(() => setCaricoLoading(false));
+    }).catch(() => {
+      if (!active) return;
+      setCaricoRows([]);
+      setCaricoLoading(false);
+    });
+    return () => { active = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caricoPreset, caricoFrom, caricoTo, events, auth.team?.id]);
 
@@ -227,13 +230,13 @@ function Statistics({
       return;
     }
     setStatsLoading(true);
-    const leagueMatchIds = events
-      .filter((event) => event.type === "Partita" && isLeagueStatsMatch(event))
+    const matchIds = events
+      .filter((event) => event.type === "Partita")
       .map((event) => String(event.id))
       .filter(Boolean);
 
     let active = true;
-    (leagueMatchIds.length ? loadMatchStatsMatrix(auth.team.id, leagueMatchIds) : Promise.resolve({ data: [], error: null }))
+    (matchIds.length ? loadMatchStatsMatrix(auth.team.id, matchIds) : Promise.resolve({ data: [], error: null }))
       .then(({ data, error }) => {
         if (!active) return;
         setPlayerMatchStatsRows(data || []);
@@ -246,7 +249,7 @@ function Statistics({
         setStatsLoading(false);
       });
     return () => { active = false; };
-  }, [auth.team?.id, activeSeason, events]);
+  }, [auth.team?.id, events]);
 
   useEffect(() => {
     if (!auth.team?.id || !effectiveSelectedPlayerId) {
@@ -263,7 +266,7 @@ function Statistics({
     return events.filter((event) => {
       const matchesType =
         eventType === "Tutti" ||
-        (eventType === "Partita" && event.type === "Partita" && isLeagueStatsMatch(event)) ||
+        (eventType === "Partita" && event.type === "Partita") ||
         (eventType !== "Partita" && event.type === eventType) ||
         (eventType === "Allenamento" && isFriendlyMatch(event));
       const afterStart = !fromDate || event.date >= fromDate;
@@ -282,7 +285,7 @@ function Statistics({
       : players;
     const filteredMatchIds = new Set(
       filteredEvents
-        .filter((event) => event.type === "Partita" && isLeagueStatsMatch(event))
+        .filter((event) => event.type === "Partita")
         .map((event) => String(event.id))
         .filter(Boolean)
     );
@@ -400,6 +403,7 @@ function Statistics({
   const mostMinutes = getTopPlayerByStat(stats, "minutes");
   const coachInsights = useMemo(() => getCoachInsights(stats, t), [stats, t]);
   const teamSummary = useMemo(() => getTeamSummary(stats), [stats]);
+  const firstCompared = stats.find((player) => String(player.id) === comparePlayerIds[0]);
   const compareStats = comparePlayerIds
     .filter(Boolean)
     .map((id) => stats.find((player) => String(player.id) === String(id)))
@@ -436,9 +440,9 @@ function Statistics({
           <Button variant="ghost" onClick={() => navigate("/exports")}>
             {t("pages.statistics.reportPdf")}
           </Button>
-          <SeasonSelector activeSeason={activeSeason} onChange={changeSeason} />
         </div>
       </div>
+      <MatchScopeFilters scope={matchScope} />
 
       {/* ── Filtri ── */}
       <AppCard>
@@ -720,17 +724,19 @@ function Statistics({
             <h3 style={{ margin: "4px 0 0", fontSize: 18, lineHeight: 1.2 }}>
               {t("pages.statistics.compareSubtitle")}
             </h3>
+            <small>{language === "en" ? "Starts come from recorded lineups." : "Titolarit\u00e0 calcolate dalle formazioni salvate."}</small>
           </div>
           <div style={s.compareSelectors}>
-            {[0, 1, 2, 3].map((slot) => (
+            {[0, 1].map((slot) => (
               <select
                 key={slot}
+                aria-label={t("pages.statistics.selectPlayer") + " " + (slot + 1)}
                 value={comparePlayerIds[slot] || ""}
                 onChange={(event) => updateComparePlayer(slot, event.target.value)}
               style={{ ...styles.input, minWidth: isMobile ? 0 : 160, width: isMobile ? "100%" : undefined, height: 38, fontSize: 13 }}
               >
-                <option value="">{slot < 2 ? t("pages.statistics.selectPlayer") : t("pages.statistics.addPlayer")}</option>
-                {players.map((player) => (
+                <option value="">{t("pages.statistics.selectPlayer")}</option>
+                {stats.filter((player) => slot === 0 || !firstCompared || (player.role === firstCompared.role && player.id !== firstCompared.id)).map((player) => (
                   <option key={player.id} value={player.id}>
                     {player.name}
                   </option>
@@ -740,7 +746,7 @@ function Statistics({
           </div>
         </div>
 
-        {compareStats.length ? (
+        {statsLoading ? <SkeletonList rows={2} /> : compareStats.length ? (
           <div style={s.compareGrid}>
             {compareStats.map((player) => (
               <div key={player.id} style={s.compareCard}>
@@ -758,7 +764,10 @@ function Statistics({
 
                 <div style={s.compareMetrics}>
                   <CompareMetric label={t("pages.statistics.minAbbr")} value={player.minutes} />
-                  <CompareMetric label={t("pages.statistics.avgAbbr")} value={player.avgMinutes} />
+                  <CompareMetric label={language === "en" ? "Appearances" : "Presenze"} value={player.presences} />
+                  <CompareMetric label={language === "en" ? "Starts" : "Titolarit\u00e0"} value={player.starts ?? "\u2014"} />
+                  <CompareMetric label={language === "en" ? "Goals / 90" : "Gol / 90"} value={formatPer90(player.goals, player.minutes, language)} />
+                  <CompareMetric label="Assist / 90" value={formatPer90(player.assists, player.minutes, language)} />
                   <CompareMetric label={t(isGoalkeeper(player) ? "pages.dashboard.goalsConcededLabel" : "common.goals")} value={isGoalkeeper(player) ? (player.goalsConceded ?? "—") : player.goals} color={isGoalkeeper(player) ? "#f87171" : "#4ade80"} />
                   <CompareMetric label={t("common.assists")} value={player.assists} color="#38bdf8" />
                   <CompareMetric label={t("pages.statistics.gaAbbr")} value={player.goalContributions} color="#a78bfa" />
@@ -1480,41 +1489,6 @@ function CompareMetric({ label, value, color = "#e2e8f0" }) {
   );
 }
 
-function SeasonSelector({ activeSeason, onChange }) {
-  const { t } = useTranslation();
-  const SEASONS = ["2023/2024", "2024/2025", "2025/2026", "2026/2027"];
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0, color: "#475569" }}>
-        {t("pages.statistics.activeSeason")}
-      </span>
-      <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", overflowX: "auto", justifyContent: "flex-end", paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
-        {SEASONS.map((s) => (
-          <button
-            key={s}
-            onClick={() => onChange(s)}
-            style={{
-              height: 32,
-              padding: "0 12px",
-              borderRadius: 10,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-              transition: "all 0.15s",
-              background: activeSeason === s ? "rgba(56,189,248,0.18)" : "rgba(255,255,255,0.05)",
-              border: activeSeason === s ? "1px solid rgba(56,189,248,0.5)" : "1px solid rgba(255,255,255,0.1)",
-              color: activeSeason === s ? "#38bdf8" : "#64748b",
-            }}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function StatusBadge({ status }) {
   const map = {
     Presente: { bg: "rgba(34,197,94,0.15)", border: "rgba(34,197,94,0.35)", color: "#4ade80" },
@@ -1708,11 +1682,19 @@ function isCompletedTrainingSession(session, today, nowTime) {
   return getTrainingTime(session) <= nowTime;
 }
 
+function formatPer90(total, minutes, language) {
+  return minutes > 0 ? (total * 90 / minutes).toLocaleString(language === "en" ? "en-GB" : "it-IT", {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  }) : "\u2014";
+}
+
 function getStatsSummary(events, players, playerMatchStatsRows = [], roster = players) {
   const today = localDateString();
   const now = new Date();
   const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  const matchEvents = events.filter((e) => e.type === "Partita" && isLeagueStatsMatch(e));
+  const matchEvents = events.filter((e) => e.type === "Partita");
+  const recordedFormations = matchEvents.filter((match) => match.date <= today &&
+    parseMatchResult(match.result, match) && match.lineup?.starterIds?.length);
   const trainingSessions = events
     .filter(isTrainingStatsEvent)
     .map((e) => ({ ...e, date: normalizeStatsDate(e.date) }))
@@ -1747,7 +1729,7 @@ function getStatsSummary(events, players, playerMatchStatsRows = [], roster = pl
       ? Math.round((trainingPresences / effectiveDenominator) * 100)
       : null;
 
-    const totals = getPlayerMatchTotals(player, matchEvents, playerMatchStatsRows, roster);
+    const totals = getPlayerMatchTotals(player, matchEvents, playerMatchStatsRows, roster, false);
     const { presences, minutes, goals, assists } = totals;
     const goalContributions = goals + assists;
 
@@ -1762,6 +1744,9 @@ function getStatsSummary(events, players, playerMatchStatsRows = [], roster = pl
       goals,
       goalsConceded: totals.goalsConceded,
       goalkeeperRecord: totals.goalkeeperRecord,
+      starts: recordedFormations.length ? recordedFormations.filter((match) =>
+        match.lineup.starterIds.some((id) => String(id) === String(player.id))
+      ).length : null,
       assists,
       goalContributions,
       avgMinutes: presences ? Math.round(minutes / presences) : 0,
@@ -1782,7 +1767,7 @@ function getStatsSummary(events, players, playerMatchStatsRows = [], roster = pl
 function getPlayerHistory(events, player, playerMatchesDB = [], roster = [], teamRows = []) {
   if (!player) return [];
 
-  const matchEntries = new Map(getPlayerMatchEntries(player, events.filter((event) => event.type === "Partita"), playerMatchesDB).map((entry) => [String(entry.event.id), entry.data]));
+  const matchEntries = new Map(getPlayerMatchEntries(player, events.filter((event) => event.type === "Partita"), playerMatchesDB, false).map((entry) => [String(entry.event.id), entry.data]));
   return [...events]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .map((event) => {
@@ -1795,7 +1780,7 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = [], tea
           date: event.date,
           type: event.type,
           status: matchData.status,
-          goalsConceded: matchData.goalsConceded ?? getPlayerMatchTotals(player, [event], teamRows.length ? teamRows : playerMatchesDB, roster).goalsConceded,
+          goalsConceded: matchData.goalsConceded ?? getPlayerMatchTotals(player, [event], teamRows.length ? teamRows : playerMatchesDB, roster, false).goalsConceded,
           minutes: matchData.minutes,
           goals: matchData.goals,
           assists: matchData.assists,

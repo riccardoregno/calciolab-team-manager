@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-
 
 import { styles } from "./styles/index.js";
 import { useTranslation } from "./i18n";
+import { buildMatchScope, getMatchSeason } from "./utils/matchScope.js";
 import RouteScrollReset from "./components/layout/RouteScrollReset";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
@@ -129,6 +130,8 @@ function extractRemoteSubscription(team) {
 
 function Blank() { return null; }
 
+const EMPTY_EVENTS = [];
+
 function App() {
   const { t } = useTranslation();
   const auth = useAuth();
@@ -226,6 +229,20 @@ function App() {
       developmentPreviewRole: developmentRolePreview,
     };
   }, [state.appSettings, remoteSubscription, developmentPlanPreview, developmentRolePreview]);
+
+  const sessions = state.sessions || EMPTY_EVENTS;
+  const matches = state.matches || EMPTY_EVENTS;
+  const [matchSelection, setMatchSelection] = useState({});
+  const teamId = auth.team?.id;
+  const matchScope = useMemo(() => {
+    const scope = buildMatchScope(matches, matchSelection.teamId === teamId ? matchSelection : {},
+      previewAppSettings.workspaceProfile?.currentSeason);
+    return { ...scope, onChange: (selection) => setMatchSelection({ ...selection, teamId }) };
+  }, [matches, matchSelection, previewAppSettings.workspaceProfile?.currentSeason, teamId]);
+  const statisticsEvents = useMemo(() => [
+    ...sessions.filter((session) => matchScope.season === "all" || getMatchSeason(session) === matchScope.season),
+    ...matchScope.matches,
+  ], [sessions, matchScope]);
 
   // FIX #9: active flag previene setState su componente smontato (memory leak)
   useEffect(() => {
@@ -397,8 +414,6 @@ function App() {
 
   const players = state.players || [];
   const exercises = state.exercises || [];
-  const sessions = state.sessions || [];
-  const matches = state.matches || [];
   const physicalTests = state.physicalTests || [];
   const gpsSessions   = state.gpsSessions   || [];
   const staffTasks    = state.staffTasks    || [];
@@ -544,6 +559,7 @@ function App() {
                     <Navigate to="/player-portal" replace />
                   ) : (
                     gate(allRoles, <Dashboard
+                      matchScope={matchScope}
                       players={players}
                       exercises={exercises}
                       sessions={sessions}
@@ -916,7 +932,7 @@ function App() {
               <Route
                 path="/statistics"
                 element={
-                  gate(coachRoles, <Statistics events={[...sessions, ...matches]} players={players} appSettings={previewAppSettings} setAppSettings={setAppSettings} />, "statistics")
+                  gate(coachRoles, <Statistics events={statisticsEvents} players={players} matchScope={matchScope} />, "statistics")
                 }
               />
 
@@ -1014,6 +1030,7 @@ function App() {
                 path="/matches"
                 element={
                   gate(coachRoles, <Matches
+                    matchScope={matchScope}
                     matches={matches}
                     setMatches={setMatches}
                     players={players}

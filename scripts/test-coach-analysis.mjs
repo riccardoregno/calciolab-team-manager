@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { buildCoachAnalysis, hasRecordedLineup } from "../src/utils/coachAnalysis.js";
+import { buildMatchScope } from "../src/utils/matchScope.js";
 import { getSeasonRecord, parseMatchResult } from "../src/utils/helpers.js";
 
 const now = new Date(2020, 0, 10, 12);
@@ -42,6 +43,22 @@ const scoreModel = buildCoachAnalysis({ matches: scoreCases, now, season: base.s
 assert.deepEqual(scoreModel.record, record);
 assert.equal(scoreModel.pointsPerGame, 2);
 assert.deepEqual(scoreModel.missingResults.map((match) => match.id), ["no-score"]);
+
+const legacyCup = { id: "legacy-cup", date: "2019-12-01", matchKind: "Coppa", competition: "Coppa Italia", result: "2-0" };
+const scopeFixtures = [...matches, legacyCup];
+const defaultScope = buildMatchScope(scopeFixtures, {}, "2019/2020");
+assert.equal(defaultScope.season, "2019/20");
+assert.equal(defaultScope.competition, "league");
+assert.equal(defaultScope.matches.some((match) => match.id === legacyCup.id), false);
+const cupScope = buildMatchScope(scopeFixtures, { season: "2019/20", competition: "name:Coppa Italia" });
+assert.deepEqual(cupScope.matches.map((match) => match.id), [legacyCup.id]);
+const cupStats = buildCoachAnalysis({
+  matches: cupScope.matches, leagueOnly: false, now, players,
+  rows: [{ match_id: legacyCup.id, player_id: "a", minutes_played: 60, goals: 2 }],
+});
+assert.equal(cupStats.record.goalsFor, 2);
+assert.equal(cupStats.topScorers[0].goals, 2);
+assert.equal(buildMatchScope(scopeFixtures, { season: "all", competition: "all" }).matches.length, scopeFixtures.length);
 
 const snapshot = JSON.stringify({ players, matches, rows });
 const model = buildCoachAnalysis({ players, matches, rows, now, season: "2019/20" });

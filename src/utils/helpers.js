@@ -1734,13 +1734,13 @@ export function hasMatchParticipation(data = {}) {
 
 // Match rows are authoritative per player and match; missing rows use local data.
 // A saved zero-minute row is a non-appearance, even if the player was called up.
-export function getPlayerMatchEntries(player, matches = [], rows = []) {
+export function getPlayerMatchEntries(player, matches = [], rows = [], leagueOnly = true) {
   if (!player) return [];
   const byMatch = new Map(rows
     .filter((row) => row.player_id == null || String(row.player_id) === String(player.id))
     .map((row) => [String(row.match_id), row]));
   const today = localDateString();
-  return matches.filter((match) => isLeagueStatsMatch(match) && normalizeStatsDate(match.date) && normalizeStatsDate(match.date) <= today)
+  return matches.filter((match) => (!leagueOnly || isLeagueStatsMatch(match)) && normalizeStatsDate(match.date) && normalizeStatsDate(match.date) <= today)
     .flatMap((event) => {
       const local = event.attendance?.[player.id];
       const db = byMatch.get(String(event.id));
@@ -1761,7 +1761,7 @@ export function getPlayerMatchEntries(player, matches = [], rows = []) {
     });
 }
 
-export function getGoalkeeperRecord(player, matches = [], players = [], rows = []) {
+export function getGoalkeeperRecord(player, matches = [], players = [], rows = [], leagueOnly = true) {
   const keepers = [...players.filter(isGoalkeeper)];
   if (!keepers.some((keeper) => String(keeper.id) === String(player?.id))) keepers.push(player);
   const byMatch = new Map();
@@ -1773,7 +1773,7 @@ export function getGoalkeeperRecord(player, matches = [], players = [], rows = [
   let total = 0, appearances = 0, knownAppearances = 0, cleanSheets = 0;
   let rateGoals = 0, rateMinutes = 0, rateMatches = 0;
   for (const match of matches) {
-    if (!isLeagueStatsMatch(match) || !normalizeStatsDate(match.date) || normalizeStatsDate(match.date) > localDateString()) continue;
+    if ((leagueOnly && !isLeagueStatsMatch(match)) || !normalizeStatsDate(match.date) || normalizeStatsDate(match.date) > localDateString()) continue;
     const dataFor = (keeper) => byMatch.get(String(match.id))?.get(String(keeper.id)) ?? match.attendance?.[keeper.id];
     const played = keepers.filter((keeper) => hasMatchParticipation(dataFor(keeper)));
     if (!played.some((keeper) => String(keeper.id) === String(player?.id))) continue;
@@ -1809,8 +1809,8 @@ export function getGoalkeeperGoalsConceded(player, matches = [], players = [], r
   return getGoalkeeperRecord(player, matches, players, rows).goalsConceded;
 }
 
-export function getPlayerMatchTotals(player, matches = [], rows = [], players = []) {
-  const entries = getPlayerMatchEntries(player, matches, rows);
+export function getPlayerMatchTotals(player, matches = [], rows = [], players = [], leagueOnly = true) {
+  const entries = getPlayerMatchEntries(player, matches, rows, leagueOnly);
   const totals = entries.reduce((acc, { data }) => {
     if (data.status === "Presente") acc.presences += 1;
     acc.minutes += data.minutes;
@@ -1822,7 +1822,7 @@ export function getPlayerMatchTotals(player, matches = [], rows = [], players = 
     return acc;
   }, { presences: 0, minutes: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0, ratings: [] });
   const { ratings, ...stats } = totals;
-  const goalkeeperRecord = isGoalkeeper(player) ? getGoalkeeperRecord(player, matches, players, rows) : null;
+  const goalkeeperRecord = isGoalkeeper(player) ? getGoalkeeperRecord(player, matches, players, rows, leagueOnly) : null;
   return { ...stats, isGoalkeeper: isGoalkeeper(player),
     goalkeeperRecord, goalsConceded: goalkeeperRecord?.goalsConceded ?? null,
     avgRating: ratings.length ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1) : null,

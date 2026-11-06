@@ -20,6 +20,7 @@ import { createId, formatDate, localDateString, normalizeAppSettings, parseMatch
 import { sendTeamNotification } from "../services/notifications";
 import SearchBar from "../components/ui/SearchBar";
 import { searchNavigationItems } from "../utils/navigationSearch";
+import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
 import { buildHomeAwayScorePayload, isValidMatchScore } from "../utils/matchScore";
 
 const MATCH_MODAL_QUERY = "match";
@@ -60,7 +61,7 @@ function getMatchPlayerIds(match) {
   ].map(String).filter(Boolean))];
 }
 
-function Matches({ matches, setMatches, players = [], appSettings = {}, loading = false, teamId = null }) {
+function Matches({ matches, matchScope, setMatches, players = [], appSettings = {}, loading = false, teamId = null }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const location = useLocation();
@@ -87,17 +88,18 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
   const [importPreview, setImportPreview] = useState(null);
   const savingRef = useRef(false);
   const importFileRef = useRef(null);
+  const scopedMatches = matchScope?.matches ?? matches;
   const sortedMatches = useMemo(
-    () => [...matches].sort((a, b) => compareMatchesByEncounterOrder(a, b, localDateString())),
-    [matches]
+    () => [...scopedMatches].sort((a, b) => compareMatchesByEncounterOrder(a, b, localDateString())),
+    [scopedMatches]
   );
   const focusMatch = useMemo(
-    () => getFocusMatch(matches, localDateString()),
-    [matches]
+    () => getFocusMatch(scopedMatches, localDateString()),
+    [scopedMatches]
   );
   const playedMatchIds = useMemo(
-    () => new Set(matches.filter((match) => parseMatchResult(match.result, match)).map((match) => String(match.id))),
-    [matches]
+    () => new Set(scopedMatches.filter((match) => parseMatchResult(match.result, match)).map((match) => String(match.id))),
+    [scopedMatches]
   );
   const searching = Boolean(matchSearch.trim());
   const archiveMatches = useMemo(() => searchNavigationItems(sortedMatches, matchSearch, (match) =>
@@ -410,9 +412,10 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
         eyebrow={t("pages.matches.title")}
         title="Centro partite"
         subtitle="Gestisci convocazioni e risultati. Apri il tabellino per minuti, gol, assist e gol subiti dei portieri."
-        meta={<Badge tone="blue">{matches.length} {t("pages.matches.matchesCount")}</Badge>}
+        meta={<Badge tone="blue">{scopedMatches.length} {t("pages.matches.matchesCount")}</Badge>}
       />
 
+      <MatchScopeFilters scope={matchScope} />
       {!loading && focusMatch && !searching && (
         <MatchFocusCard
           match={focusMatch}
@@ -449,7 +452,7 @@ function Matches({ matches, setMatches, players = [], appSettings = {}, loading 
 
       {loading && matches.length === 0 ? (
         <SkeletonList rows={4} cols={3} />
-      ) : matches.length === 0 ? (
+      ) : scopedMatches.length === 0 ? (
         <EmptyState
           icon="🏟️"
           title={t("pages.matches.noMatchesTitle")}
