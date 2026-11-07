@@ -959,7 +959,7 @@ export const en = {
       minPerGAAbbr: "Min/G+A",
       cardsLabel: "🟨 / 🟥",
       comparePresences: "{{count}} apps.",
-      csvHeaders: "Player,Role,Status,Appearances,Absences,Injuries,Tr. Appearances,% Att.,Minutes,Avg min,Goals,Assists,G+A,Min/Goal,Min/G+A,Yellow cards,Red cards",
+      csvHeaders: "Player,Role,Status,Appearances,Absences,Injuries,Tr. Appearances,Training sessions to confirm,Minutes,Avg min,Goals,Assists,G+A,Min/Goal,Min/G+A,Yellow cards,Red cards",
     },
     auth: {
       title: "Welcome back",

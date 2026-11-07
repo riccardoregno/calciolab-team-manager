@@ -1,3 +1,4 @@
+import { getPlayerMatchEntries } from "../utils/helpers";
 import "../styles/coach-focus.css";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -251,22 +252,17 @@ function Dashboard({
       if (matchIds.size > 0 && !matchIds.has(String(row.match_id))) return acc;
       const playerId = String(row.player_id || "");
       if (!playerId) return acc;
-      const minutes = Number(row.minutes_played || 0);
       const goals = Number(row.goals || 0);
       const assists = Number(row.assists || 0);
       const yellowCards = Number(row.yellow_cards || 0);
       const redCards = Number(row.red_cards || 0);
       if (!acc[playerId]) {
-        acc[playerId] = { goals: 0, assists: 0, minutes_played: 0, yellow_cards: 0, red_cards: 0, appearances: 0 };
+        acc[playerId] = { goals: 0, assists: 0, yellow_cards: 0, red_cards: 0 };
       }
       acc[playerId].goals += goals;
       acc[playerId].assists += assists;
-      acc[playerId].minutes_played += minutes;
       acc[playerId].yellow_cards += yellowCards;
       acc[playerId].red_cards += redCards;
-      if (minutes > 0 || goals > 0 || assists > 0 || yellowCards > 0 || redCards > 0) {
-        acc[playerId].appearances += 1;
-      }
       return acc;
     }, {});
     const hasMatchRows = Object.keys(matchRowsByPlayer).length > 0;
@@ -277,6 +273,8 @@ function Dashboard({
         ? matchRowsByPlayer[playerId] || {}
         : playerStatsMap[playerId] || {};
       const avgRating = playerRatingsMap[String(player.id)] ?? null;
+      const entries = getPlayerMatchEntries(player, matches, playerMatchRows, false);
+      const minutes = entries.reduce((total, entry) => total + (entry.data.minutes ?? 0), 0);
 
       return {
         id: player.id,
@@ -284,8 +282,8 @@ function Dashboard({
         role: player.role || "",
         goals: Number(stat.goals || 0),
         assists: Number(stat.assists || 0),
-        minutes: Number(stat.minutes_played || 0),
-        appearances: Number(stat.appearances || 0),
+        minutes,
+        appearances: entries.filter(({ data }) => data.minutes > 0).length,
         yellowCards: Number(stat.yellow_cards || 0),
         redCards: Number(stat.red_cards || 0),
         avgRating,

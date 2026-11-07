@@ -11,7 +11,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 
 import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
-import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getCompletedTrainingEvents, getTrainingAttendanceSummary, getTrainingSessionStatus, isTrainingStatsEvent, localDateString, parseMatchResult } from "../utils/helpers";
+import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getCompletedTrainingEvents, getTrainingAttendanceSummary, getRecordedTrainingStatus, formatTrainingAttendance, parseRecordedMinutes, isTrainingStatsEvent, localDateString, parseMatchResult } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { loadPlayerMatchesForPeriod, loadMatchStatsMatrix } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
@@ -84,7 +84,7 @@ function Statistics({
       r.absences,
       r.injuries,
       r.trainingPresences,
-      r.trainingPct !== null ? `${r.trainingPct}%` : "—",
+      r.pendingTrainings,
       r.minutes,
       r.avgMinutes,
       r.goals,
@@ -182,19 +182,22 @@ function Statistics({
     let active = true;
     loadPlayerMatchesForPeriod(auth.team.id, ids).then(({ data }) => {
       if (!active) return;
-      const agg = {};
-      (data || []).forEach((row) => {
-        const pid = String(row.player_id);
-        if (!agg[pid]) agg[pid] = { playerId: pid, minutes: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0, matches: 0, totalRating: 0, ratedMatches: 0 };
-        agg[pid].minutes    += Number(row.minutes_played) || 0;
-        agg[pid].goals      += Number(row.goals)          || 0;
-        agg[pid].assists    += Number(row.assists)        || 0;
-        agg[pid].yellowCards += Number(row.yellow_cards)  || 0;
-        agg[pid].redCards   += Number(row.red_cards)      || 0;
-        agg[pid].matches    += 1;
-        if (row.rating != null) { agg[pid].totalRating += Number(row.rating); agg[pid].ratedMatches += 1; }
+      const workload = players.flatMap((player) => {
+        const entries = getPlayerMatchEntries(player, matchEvents, data || [], false);
+        if (!entries.length) return [];
+        const totals = { playerId: String(player.id), minutes: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0, matches: 0, totalRating: 0, ratedMatches: 0 };
+        for (const { data: entry } of entries) {
+          totals.minutes += entry.minutes ?? 0;
+          if (entry.minutes > 0) totals.matches++;
+          totals.goals += entry.goals;
+          totals.assists += entry.assists;
+          totals.yellowCards += entry.yellowCards;
+          totals.redCards += entry.redCards;
+          if (entry.rating != null) { totals.totalRating += Number(entry.rating); totals.ratedMatches++; }
+        }
+        return [totals];
       });
-      setCaricoRows(Object.values(agg).sort((a, b) => b.minutes - a.minutes));
+      setCaricoRows(workload.sort((a, b) => b.minutes - a.minutes));
       setCaricoLoading(false);
     }).catch(() => {
       if (!active) return;
@@ -203,7 +206,7 @@ function Statistics({
     });
     return () => { active = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [caricoPreset, caricoFrom, caricoTo, events, auth.team?.id]);
+  }, [caricoPreset, caricoFrom, caricoTo, events, players, auth.team?.id]);
 
   // Keep the source badge honest when official match rows cannot be loaded.
   const [statsSource, setStatsSource] = useState("local"); // "supabase" | "local"
@@ -503,8 +506,8 @@ function Statistics({
         />
         <SummaryCard
           label={t("pages.statistics.trainingPresence")}
-          value={teamSummary.avgTrainingPct !== null ? `${teamSummary.avgTrainingPct}%` : "—"}
-          detail={`${teamSummary.trainingPlayers} ${t("pages.statistics.playersWithData")}`}
+          value={formatTrainingAttendance(teamSummary, language === "en")}
+          detail={language === "en" ? "Across player sessions" : "Somma delle presenze individuali"}
           accent="#38bdf8"
         />
         <SummaryCard
@@ -618,7 +621,7 @@ function Statistics({
                     </div>
                   </div>
                   <div style={{ textAlign: "right", minWidth: 60 }}>
-                    <span style={{ fontWeight: 750, color: "#f8fafc", fontSize: 14 }}>{row.minutes}</span>
+                    <span style={{ fontWeight: 750, color: "#f8fafc", fontSize: 14 }}>{row.minutes}{row.missingMinutes > 0 && <small title={"Minutaggio da completare in " + row.missingMinutes + " gare"}> *</small>}</span>
                     <span style={{ fontSize: 10, color: "#94a6be", marginLeft: 2 }}>min</span>
                   </div>
                   <div style={{ textAlign: "center", minWidth: 36, fontWeight: 700, color: "#94a3b8", fontSize: 13 }}>
@@ -656,7 +659,7 @@ function Statistics({
         {showMatrix && (
           <div id="statistics-minutes-matrix" style={{ marginTop: 20 }}>
             <Suspense fallback={<div style={{ padding: "24px 0", textAlign: "center", color: "#94a6be", fontSize: 13 }}>Caricamento…</div>}>
-              <MinutaggioMatrix players={players} matches={filteredEvents.filter((event) => !event.attendanceOnly)} />
+              <MinutaggioMatrix players={players} rows={playerMatchStatsRows} loading={statsLoading} matches={filteredEvents.filter((event) => !event.attendanceOnly)} />
             </Suspense>
           </div>
         )}
@@ -716,7 +719,7 @@ function Statistics({
                 </div>
 
                 <div style={s.compareMetrics}>
-                  <CompareMetric label={t("pages.statistics.minAbbr")} value={player.minutes} />
+                  <CompareMetric label={t("pages.statistics.minAbbr")} value={player.missingMinutes ? player.minutes + " · parziale" : player.minutes} />
                   <CompareMetric label={language === "en" ? "Appearances" : "Presenze"} value={player.presences} />
                   <CompareMetric label={language === "en" ? "Recorded starts" : "Titolarit\u00e0 note"} value={player.starts ?? "\u2014"} />
                   <CompareMetric label={language === "en" ? "Goals / 90" : "Gol / 90"} value={formatPer90(player.goals, player.minutes, language)} />
@@ -724,7 +727,7 @@ function Statistics({
                   <CompareMetric label={t(isGoalkeeper(player) ? "pages.dashboard.goalsConcededLabel" : "common.goals")} value={isGoalkeeper(player) ? (player.goalsConceded ?? "—") : player.goals} color={isGoalkeeper(player) ? "#f87171" : "#4ade80"} />
                   <CompareMetric label={t("common.assists")} value={player.assists} color="#38bdf8" />
                   <CompareMetric label={t("pages.statistics.gaAbbr")} value={player.goalContributions} color="#a78bfa" />
-                  <CompareMetric label={t("pages.statistics.trainingPctAbbr")} value={player.trainingPct !== null ? `${player.trainingPct}%` : "—"} />
+                  <CompareMetric label={language === "en" ? "Training attendance" : "Presenze allenamento"} value={formatTrainingAttendance(player, language === "en")} />
                 </div>
                 {player.unknownLineupRoles > 0 && <small>
                   {language === "en" ? "Appearances with unknown lineup role" : "Presenze con ruolo in formazione da verificare"}: {player.unknownLineupRoles}/{player.presences}
@@ -969,12 +972,12 @@ function Statistics({
                         <span style={{ ...s.mobileStatValue, color: row.assists > 0 ? "#38bdf8" : "#94a3b8" }}>{row.assists}</span>
                       </div>
                       <div style={s.mobileStatRow}>
-                        <span style={s.mobileStatLabel}>{t("pages.statistics.trainingPctAbbr")}</span>
+                        <span style={s.mobileStatLabel}>{(language === "en" ? "Training attendance" : "Presenze allenamento")}</span>
                         <span style={{
                           ...s.mobileStatValue,
                           color: row.trainingPct === null ? "#475569" : row.trainingPct >= 80 ? "#22c55e" : row.trainingPct >= 60 ? "#fbbf24" : "#f87171",
                         }}>
-                          {row.trainingPct !== null ? `${row.trainingPct}%` : "—"}
+                          {formatTrainingAttendance(row, language === "en")}
                         </span>
                       </div>
                       <div style={s.mobileStatRow}>
@@ -1012,7 +1015,7 @@ function Statistics({
                   style={{ ...s.thClickable, ...s.thNum, color: sortBy === "trainingPct" ? "#22d3ee" : "#64748b" }}
                   title={t("pages.statistics.trainingAttendancePct")}
                 >
-                  {t("pages.statistics.trainingPctAbbr")} {sortArrow("trainingPct")}
+                  {(language === "en" ? "Training attendance" : "Presenze allenamento")} {sortArrow("trainingPct")}
                 </span>
                 <span
                   onClick={() => handleSort("minutes")}
@@ -1125,7 +1128,7 @@ function Statistics({
                     <span style={s.tdNum}>{row.presences}</span>
                     <span style={s.tdNum}>{row.absences}</span>
                     <span style={s.tdNum}>{row.injuries}</span>
-                    <span style={s.tdNum}>{row.trainingPresences}/{row.totalTrainings}</span>
+                    <span style={s.tdNum}>{row.trainingPresences}/{row.totalTrainings - row.pendingTrainings}</span>
                     <span style={{
                       ...s.tdNum,
                       color: row.trainingPct === null
@@ -1137,7 +1140,7 @@ function Statistics({
                         : "#f87171",
                       fontWeight: row.trainingPct !== null ? 700 : 400,
                     }}>
-                      {row.trainingPct !== null ? `${row.trainingPct}%` : "—"}
+                      {formatTrainingAttendance(row, language === "en")}
                     </span>
                     <span style={s.tdNum}>{row.minutes}</span>
                     <span style={s.tdNum}>{row.avgMinutes}</span>
@@ -1204,7 +1207,7 @@ function Statistics({
                     </p>
 
                     <div style={s.historyMeta}>
-                      <StatChip label="min" value={item.minutes} />
+                      {item.minutes !== null && <StatChip label="min" value={item.minutes} />}
                       <StatChip label={t(isGoalkeeper(selectedPlayer) ? "pages.dashboard.goalsConcededLabel" : "common.goals")} value={isGoalkeeper(selectedPlayer) ? (item.goalsConceded ?? "—") : item.goals} color={isGoalkeeper(selectedPlayer) ? "#f87171" : "#4ade80"} />
                       <StatChip label="ast" value={item.assists} color={item.assists > 0 ? "#38bdf8" : undefined} />
                       {item.yellowCards > 0 && <StatChip label="🟨" value={item.yellowCards} color="#fbbf24" />}
@@ -1540,10 +1543,8 @@ function getTeamSummary(stats) {
       acc.minutes += Number(player.minutes || 0);
       acc.available += player.status === "Disponibile" ? 1 : 0;
 
-      if (player.trainingPct !== null && player.trainingPct !== undefined) {
-        acc.trainingPctSum += Number(player.trainingPct || 0);
-        acc.trainingPlayers += 1;
-      }
+      acc.trainingPresences += player.trainingPresences;
+      acc.pendingTrainings += player.pendingTrainings;
 
       return acc;
     },
@@ -1554,15 +1555,14 @@ function getTeamSummary(stats) {
       goalContributions: 0,
       minutes: 0,
       available: 0,
-      trainingPctSum: 0,
-      trainingPlayers: 0,
+      trainingPresences: 0,
+      pendingTrainings: 0,
     }
   );
 
   return {
     ...totals,
     avgMinutesPerPlayer: totals.totalPlayers ? Math.round(totals.minutes / totals.totalPlayers) : 0,
-    avgTrainingPct: totals.trainingPlayers ? Math.round(totals.trainingPctSum / totals.trainingPlayers) : null,
     notAvailable: Math.max(0, totals.totalPlayers - totals.available),
   };
 }
@@ -1605,6 +1605,7 @@ function getStatsSummary(events, players, playerMatchStatsRows = [], roster = pl
       role: player.role || player.position || "",
       presences,
       minutes,
+      missingMinutes: totals.missingMinutes,
       goals,
       goalsConceded: totals.goalsConceded,
       goalkeeperRecord: totals.goalkeeperRecord,
@@ -1652,7 +1653,7 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = []) {
       } else {
         if (!isTrainingStatsEvent(event)) return null;
         const data = event.attendance?.[player.id] || {};
-        const status = getTrainingSessionStatus(player, event);
+        const status = getRecordedTrainingStatus(player, event) ?? "Da confermare";
         const present = status === "Presente" || status === "Recupero";
         return {
           sessionId: event.id,
@@ -1660,7 +1661,7 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = []) {
           date: event.date,
           type: event.type,
           status,
-          minutes: present ? Number(data.minutes || 0) : 0,
+          minutes: parseRecordedMinutes(data.minutes, Infinity),
           goals: present ? Number(data.goals || 0) : 0,
           assists: present ? Number(data.assists || 0) : 0,
           yellowCards: present ? Number(data.yellowCards || 0) : 0,

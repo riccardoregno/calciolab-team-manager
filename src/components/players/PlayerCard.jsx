@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
 import Badge from "../ui/Badge";
 import { useTranslation } from "../../i18n";
-import { calcPlayerAge, getPlayerQuickStats, isGoalkeeper } from "../../utils/helpers";
+import { calcPlayerAge, getPlayerQuickStats, formatTrainingAttendance, isGoalkeeper } from "../../utils/helpers";
 
 const SUSPENSION_THRESHOLD = 5;
 
@@ -51,14 +51,11 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
 
   const computedAge = calcPlayerAge(player.birthDate);
   const ageValue = computedAge ?? player.age ?? "-";
-  const { trainingPct } = getPlayerQuickStats(player, sessions, matches);
+  const training = getPlayerQuickStats(player, sessions, matches);
   const stats = normalizeMatchStats(matchStats);
   const statValue = (value) => statsUnavailable ? "—" : value;
   const suspensionYellowCards = yellowCards || stats.yellowCards || 0;
-  const trainingPctValue = trainingPct === null ? "-" : `${trainingPct}%`;
-  const trainingPctLabelKey = "components.playerCard.trainingPctAbbr";
-  const trainingPctLabel = t(trainingPctLabelKey);
-  const safeTrainingPctLabel = trainingPctLabel === trainingPctLabelKey ? "% All." : trainingPctLabel;
+  const trainingPctValue = formatTrainingAttendance(training);
 
   const initials = player.name
     ? player.name
@@ -196,7 +193,7 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
           <MiniValue label="Assist" value={statValue(stats.assists)} />
           <MiniValue label="G/R" value={statValue(`${stats.yellowCards}/${stats.redCards}`)} />
           <MiniValue
-            label={safeTrainingPctLabel}
+            label={t("components.playerCard.trainingPct")}
             title={t("components.playerCard.trainingPct")}
             value={trainingPctValue}
           />

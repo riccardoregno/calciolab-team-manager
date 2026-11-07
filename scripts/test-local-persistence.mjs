@@ -29,6 +29,49 @@ try {
   const { persistPendingChanges, restorePendingChanges, acknowledgePendingChanges } = await server.ssrLoadModule('/src/services/pendingChanges.js');
   const { normalizeAppState } = await server.ssrLoadModule('/src/utils/helpers.js');
   const { loadPlayerMatches } = await server.ssrLoadModule('/src/services/playerProfile.js');
+  const { savePlayerMatchStats, saveMatchMinutes } = await server.ssrLoadModule('/src/services/playerProfile.js');
+  const { getPlayerMatchEntries } = await server.ssrLoadModule('/src/utils/helpers.js');
+  const originalMatchFrom = supabase.from;
+  const originalRpc = supabase.rpc;
+  let savedMatch = { minutes_played: null, minutes_cleared: false };
+  const matchWrites = [];
+  const aggregates = [];
+  supabase.from = (table) => {
+    assert.equal(table, 'player_matches');
+    return { upsert: async (payload) => {
+      matchWrites.push(payload);
+      savedMatch = { ...savedMatch, ...payload };
+      return { error: null };
+    } };
+  };
+  supabase.rpc = async (_name, args) => { aggregates.push(args); return { error: null }; };
+  try {
+    const player = { id: 'p' };
+    const fixture = { id: 'm', date: '2020-01-01', matchKind: 'Campionato', attendance: { p: { minutes: 65 } } };
+    const readMinutes = (match = fixture) => getPlayerMatchEntries(player, [match], [savedMatch], false)[0].data.minutes;
+    await savePlayerMatchStats('test', 'p', 'm', { yellow_cards: 1 }, null);
+    assert.equal(matchWrites.at(-1).yellow_cards, 1);
+    assert.equal(Object.hasOwn(matchWrites.at(-1), 'minutes_played'), false);
+    assert.equal(readMinutes({ ...fixture, attendance: {} }), null);
+    assert.equal(readMinutes(), 65);
+    await savePlayerMatchStats('test', 'p', 'm', { minutes_played: 0 }, savedMatch);
+    assert.equal(readMinutes(), 0);
+    await saveMatchMinutes('test', 'p', 'm', 65);
+    await savePlayerMatchStats('test', 'p', 'm', { yellow_cards: 2 }, savedMatch);
+    assert.equal(readMinutes(), 65);
+    assert.equal(aggregates.at(-1).p_delta_minutes, 0);
+    await savePlayerMatchStats('test', 'p', 'm', { minutes_played: null }, savedMatch);
+    assert.equal(readMinutes(), null);
+    assert.equal(matchWrites.at(-1).minutes_cleared, true);
+    await savePlayerMatchStats('test', 'p', 'm', { assists: 1 }, savedMatch);
+    assert.equal(readMinutes(), null);
+    await saveMatchMinutes('test', 'p', 'm', 30);
+    assert.equal(matchWrites.at(-1).minutes_cleared, false);
+    assert.equal(readMinutes(), 30);
+  } finally {
+    supabase.from = originalMatchFrom;
+    supabase.rpc = originalRpc;
+  }
   const baseline = normalizeAppState({
     matches: [{ id: 'match-reload', date: '2026-10-04', _updatedAt: 'version-1' }],
     sessions: [{ id: 'attendance-reload', date: '2026-10-06', attendance: {} }],

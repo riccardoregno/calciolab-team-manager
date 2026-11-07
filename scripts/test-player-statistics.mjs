@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { getMatchCompletionTasks } from "../src/utils/matchCompletion.js";
 import { buildMatchScope, buildStatisticsEvents } from "../src/utils/matchScope.js";
-import { getCompletedTrainingEvents, getTrainingAttendanceSummary, getGoalkeeperGoalsConceded, getPlayerMatchEntries, getPlayerMatchTotals, getPlayerSummary, isGoalkeeper } from "../src/utils/helpers.js";
+import { getCompletedTrainingEvents, getRecordedTrainingStatus, formatTrainingAttendance, getTrainingSessionStatus, parseRecordedMinutes, resolveMatchMinutes, getTrainingAttendanceSummary, getGoalkeeperGoalsConceded, getPlayerMatchEntries, getPlayerMatchTotals, getPlayerSummary, isGoalkeeper } from "../src/utils/helpers.js";
 
 const keeper = { id: "gk", role: "Portiere" };
 const reserve = { id: "reserve", position: "GK" };
@@ -80,5 +81,40 @@ assert.equal(scoped.some((event) => event.id === "other-season"), false);
 const all = buildStatisticsEvents(sessions, summerMatches, buildMatchScope(summerMatches, { season: "2020/21", competition: "all" }));
 assert.equal(all.filter((event) => event.id === "friendly").length, 1);
 const completed = getCompletedTrainingEvents(scoped, "2020-08-01", "21:00");
-assert.deepEqual(getTrainingAttendanceSummary(summerPlayer, completed), { trainingPresences: 1, absences: 3, injuries: 1, totalTrainings: 5, trainingPct: 20 });
+assert.deepEqual(getTrainingAttendanceSummary(summerPlayer, completed), { trainingPresences: 1, absences: 1, injuries: 1, totalTrainings: 5, pendingTrainings: 2, trainingPct: null });
 assert.equal(getTrainingAttendanceSummary({ ...summerPlayer, absences: [] }, completed).absences, 1);
+
+const attendanceCases = [
+  { attendance: { forward: { status: "Presente" } } },
+  { attendance: { forward: { status: "Presente", minutes: 30 } } },
+  { date: "2020-01-01" },
+];
+assert.equal(getTrainingSessionStatus(striker, attendanceCases[2]), "Presente");
+assert.equal(getRecordedTrainingStatus(striker, attendanceCases[2]), null);
+assert.equal(parseRecordedMinutes(attendanceCases[0].attendance.forward.minutes, Infinity), null);
+const attendanceTotals = getTrainingAttendanceSummary(striker, attendanceCases);
+assert.equal(attendanceTotals.trainingPresences, 2);
+assert.equal(attendanceTotals.pendingTrainings, 1);
+assert.equal(attendanceTotals.trainingPct, null);
+const expected = { ...bench, id: "expected" };
+const starterWithoutMinutes = { ...bench, id: "starter", lineup: { starterIds: ["forward"] } };
+const legacyMinutes = { ...league, id: "legacy", attendance: { forward: { minutes: "65" } } };
+const cases = [bench, expected, starterWithoutMinutes, legacyMinutes];
+const entries = getPlayerMatchEntries(striker, cases, rows);
+assert.deepEqual(entries.map(({ data }) => [data.status, data.minutes]), [
+  ["Non impiegato", 0], ["Minutaggio da completare", null],
+  ["Minutaggio da completare", null], ["Presente", 65],
+]);
+assert.equal(getPlayerMatchTotals(striker, cases, rows).minutes, 65);
+assert.equal(getPlayerMatchTotals(striker, cases, rows).missingMinutes, 2);
+assert.equal(resolveMatchMinutes(0, 65), 0);
+assert.equal(resolveMatchMinutes("", 65), 65);
+assert.equal(resolveMatchMinutes(null, ""), null);
+assert.equal(formatTrainingAttendance(attendanceTotals), "2 presenti · 1 da confermare");
+const recentTraining = getPlayerSummary(striker, { sessions: [{ ...attendanceCases[0], type: "Allenamento", date: "2020-01-01" }] }).recentEvents[0];
+assert.equal(recentTraining.data.status, "Presente");
+assert.equal(recentTraining.data.minutes, null);
+const completeLegacy = { ...legacyMinutes, lineup: { starterIds: ["forward"] } };
+const tasks = getMatchCompletionTasks({ matches: [starterWithoutMinutes, completeLegacy], players,
+  rows: [{ player_id: "forward", match_id: "legacy", minutes_played: null }], canCheckMinutes: true, now: new Date("2020-02-01") });
+assert.deepEqual(tasks.map(({ match: event, missingMinutes }) => [event.id, missingMinutes]), [["starter", 1]]);

@@ -959,7 +959,7 @@ export const it = {
       minPerGAAbbr: "Min/G+A",
       cardsLabel: "🟨 / 🟥",
       comparePresences: "{{count}} pres.",
-      csvHeaders: "Giocatore,Ruolo,Stato,Presenze,Assenze,Infortuni,Pres. all.,% All.,Minuti,Media min,Gol,Assist,G+A,Min/Gol,Min/G+A,Ammonizioni,Espulsioni",
+      csvHeaders: "Giocatore,Ruolo,Stato,Presenze,Assenze,Infortuni,Pres. all.,Allenamenti da confermare,Minuti,Media min,Gol,Assist,G+A,Min/Gol,Min/G+A,Ammonizioni,Espulsioni",
     },
     auth: {
       title: "Bentornato",

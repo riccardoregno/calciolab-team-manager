@@ -508,7 +508,7 @@ export function PlayerTechnicalOverview({
               <div key={`${event.type}-${event.id}`} style={sectionStyles.listItem}>
                 <Badge tone={event.type === "Partita" ? "orange" : "green"}>{event.type}</Badge>
                 <strong>{event.title}</strong>
-                <span>{formatShortDate(event.date)} · {data.status || "—"} · RPE {data.rpe || "-"} · {data.minutes || 0} min</span>
+                <span>{formatShortDate(event.date)} · {data.status || "—"} · RPE {data.rpe || "-"}{data.minutes != null && " · " + data.minutes + " min"}</span>
               </div>
             ))}
           </div>
@@ -1030,7 +1030,7 @@ export function PlayerStatsTab({ summary, seasonSeries }) {
             <div key={`${event.type}-${event.id}`} style={sectionStyles.listItem}>
               <Badge tone={event.type === "Partita" ? "orange" : "green"}>{event.type}</Badge>
               <strong>{event.title}</strong>
-              <span>{formatShortDate(event.date)} · {data.status} · {data.minutes || 0} min · {summary.stats.isGoalkeeper && event.type === "Partita" ? (data.goalsConceded ?? "—") : (data.goals || 0)} {t(summary.stats.isGoalkeeper && event.type === "Partita" ? "pages.dashboard.goalsConcededLabel" : "pages.playerDetail.kpi.goals").toLowerCase()} · {data.assists || 0} {t("pages.playerDetail.kpi.assists").toLowerCase()}</span>
+              <span>{formatShortDate(event.date)} · {data.status}{data.minutes != null && " · " + data.minutes + " min"} · {summary.stats.isGoalkeeper && event.type === "Partita" ? (data.goalsConceded ?? "—") : (data.goals || 0)} {t(summary.stats.isGoalkeeper && event.type === "Partita" ? "pages.dashboard.goalsConcededLabel" : "pages.playerDetail.kpi.goals").toLowerCase()} · {data.assists || 0} {t("pages.playerDetail.kpi.assists").toLowerCase()}</span>
             </div>
           ))}
         </div>

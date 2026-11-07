@@ -190,7 +190,7 @@ async function readMatchRows(teamId, matchIds = null, playerId = null) {
   const pageSize = 500;
   for (let offset = 0; ; offset += pageSize) {
     let query = supabase.from("player_matches")
-      .select("player_id, match_id, goals, assists, minutes_played, yellow_cards, red_cards, rating, goals_conceded")
+      .select("player_id, match_id, goals, assists, minutes_played, minutes_cleared, yellow_cards, red_cards, rating, goals_conceded")
       .eq("team_id", teamId);
     if (ids) query = query.in("match_id", ids);
     if (playerId !== null) query = query.eq("player_id", String(playerId));
@@ -254,11 +254,14 @@ export async function savePlayerMatchStats(teamId, playerId, matchId, newStats, 
   const matchStatsPayload = {
     goals:          newStats.goals ?? 0,
     assists:        newStats.assists ?? 0,
-    minutes_played: newStats.minutes_played ?? 0,
     yellow_cards:   newStats.yellow_cards ?? 0,
     red_cards:      newStats.red_cards ?? 0,
     rating:         newStats.rating ?? null,
   };
+  if (Object.hasOwn(newStats, "minutes_played")) {
+    matchStatsPayload.minutes_played = newStats.minutes_played;
+    matchStatsPayload.minutes_cleared = newStats.minutes_played === null;
+  }
   if (Object.hasOwn(newStats, "goals_conceded")) {
     matchStatsPayload.goals_conceded = newStats.goals_conceded;
   }
@@ -281,9 +284,9 @@ export async function savePlayerMatchStats(teamId, playerId, matchId, newStats, 
   const STAT_FIELDS = ["goals", "assists", "minutes_played", "yellow_cards", "red_cards"];
   const delta = {};
   for (const field of STAT_FIELDS) {
-    delta[field] = (newStats[field] ?? 0) - (prev[field] ?? 0);
+    delta[field] = (Object.hasOwn(matchStatsPayload, field) ? (matchStatsPayload[field] ?? 0) : (prev[field] ?? 0)) - (prev[field] ?? 0);
   }
-  const isNew = !oldStats;
+  const isNew = !oldStats && matchStatsPayload.minutes_played > 0;
 
   // 3. Tenta prima la DB function atomica (FIX #4)
   const { error: rpcError } = await supabase.rpc("increment_player_stats", {
@@ -347,5 +350,5 @@ export async function saveMatchMinutes(teamId, playerId, matchId, minutes, legac
     }, { onConflict: "team_id,player_id,match_id", ignoreDuplicates: true });
     if (error) return { error };
   }
-  return upsertPlayerMatch(teamId, playerId, matchId, { minutes_played: minutes });
+  return upsertPlayerMatch(teamId, playerId, matchId, { minutes_played: minutes, minutes_cleared: false });
 }

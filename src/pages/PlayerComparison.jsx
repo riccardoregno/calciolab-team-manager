@@ -6,7 +6,7 @@ import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import { styles } from "../styles/index.js";
 import { useTranslation } from "../i18n";
-import { getPlayerSummary, isGoalkeeper } from "../utils/helpers";
+import { formatTrainingAttendance, getPlayerSummary, isGoalkeeper } from "../utils/helpers";
 import { loadTeamPlayerMatches } from "../services/playerProfile";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ function statusTone(status) {
 }
 
 // ─── Confronta una singola metrica ───────────────────────────────────────────
-function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) => v, icon, compareValues = true }) {
+function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) => v, icon, compareValues = true, displayA, displayB }) {
   const hasA = valueA !== null && valueA !== undefined && valueA !== "";
   const hasB = valueB !== null && valueB !== undefined && valueB !== "";
   const numA = hasA ? Number(valueA) : 0;
@@ -47,7 +47,7 @@ function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) 
       {/* Valore A */}
       <div style={{ ...cmp.metricVal, justifyContent: "flex-end" }}>
         <span style={{ ...cmp.metricNum, color: winA ? "#22c55e" : "#e2e8f0" }}>
-          {display(valueA, hasA)}
+          {displayA ?? display(valueA, hasA)}
         </span>
         {winA && <span style={cmp.winBadge}>▲</span>}
       </div>
@@ -93,7 +93,7 @@ function MetricRow({ label, valueA, valueB, higherIsBetter = true, format = (v) 
       <div style={{ ...cmp.metricVal, justifyContent: "flex-start" }}>
         {winB && <span style={cmp.winBadge}>▲</span>}
         <span style={{ ...cmp.metricNum, color: winB ? "#22c55e" : "#e2e8f0" }}>
-          {display(valueB, hasB)}
+          {displayB ?? display(valueB, hasB)}
         </span>
       </div>
     </div>
@@ -292,11 +292,12 @@ export default function PlayerComparison({ players = [], sessions = [], matches 
               valueB={appearancesB}
             />
             <MetricRow
-              label={t("pages.playerComparison.metricTrainingPct")}
+              label="Presenze allenamento"
               icon="📋"
               valueA={pctA}
               valueB={pctB}
-              format={(v) => `${v}%`}
+              displayA={formatTrainingAttendance(statsA)}
+              displayB={formatTrainingAttendance(statsB)}
             />
             <MetricRow
               label={t(bothKeepers ? "pages.dashboard.goalsConcededLabel" : "pages.playerComparison.metricGoals")}

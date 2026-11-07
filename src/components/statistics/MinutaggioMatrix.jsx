@@ -1,7 +1,4 @@
-import { useEffect, useState } from "react";
-import { loadPlayerMatchesForPeriod } from "../../services/playerProfile";
-import { useAuth } from "../../hooks/useAuth";
-import { comparePlayersByName } from "../../utils/helpers";
+import { comparePlayersByName, getMatchCompletionPlayerIds, localDateString, resolveMatchMinutes } from "../../utils/helpers";
 
 const CELL_W = 46;
 const HEADER_H = 110;
@@ -9,76 +6,45 @@ const ROW_H = 32;
 const NAME_W = 160;
 
 /* ── helpers ── */
-function getLineup(event) {
-  return event?.lineup || { calledUpIds: [], starterIds: [], benchIds: [] };
-}
-
-function cellType(player, event, stats) {
-  const lineup = getLineup(event);
+function cellType(player, event, stats, expected) {
   const pid = String(player.id);
-  const isCalledUp   = (lineup.calledUpIds  || []).map(String).includes(pid);
-  const isStarter    = (lineup.starterIds   || []).map(String).includes(pid);
-  const isBench      = (lineup.benchIds     || []).map(String).includes(pid);
-  const mins         = stats ? Number(stats.minutes_played) || 0 : 0;
-  const hasStats     = Boolean(stats);
-
-  if (!isCalledUp && !hasStats) return { type: "absent" };
-  if (isStarter && !hasStats)   return { type: "full",    mins: 90 };  // nessun dato inserito → titolare 90' assunto
-  if (isStarter && mins >= 88)  return { type: "full",    mins };
-  if (isStarter && mins > 0)    return { type: "starter", mins };
-  if (isStarter)                return { type: "unused" };  // dati inseriti ma 0 min → non ha giocato
-  if ((isBench || hasStats) && mins > 0) return { type: "sub",   mins };
-  if (isCalledUp)               return { type: "unused" };
-  if (hasStats && mins > 0)     return { type: "sub",     mins };
-  return { type: "absent" };
+  const legacy = event.attendance?.[pid];
+  const minutes = resolveMatchMinutes(stats?.minutes_played, legacy?.minutes, stats?.minutes_cleared);
+  if (minutes === null) return { type: expected.has(pid) || stats || legacy ? "missing" : "absent", minutes };
+  if (minutes === 0) return { type: "unused", minutes };
+  const starter = event.lineup?.starterIds?.some((id) => String(id) === pid);
+  if (starter) return { type: minutes >= (Number(event.duration) || 90) ? "full" : "starter", minutes };
+  const bench = event.lineup?.benchIds?.some((id) => String(id) === pid);
+  return { type: bench ? "sub" : "played", minutes };
 }
-
 const COLORS = {
   full:    { bg: "#15803d", text: "#dcfce7" },
   starter: { bg: "#22c55e", text: "#052e16" },
   sub:     { bg: "#ca8a04", text: "#fefce8" },
   unused:  { bg: "rgba(255,255,255,0.06)", text: "#475569" },
+  missing: { bg: "#422006", text: "#fde68a" },
+  played: { bg: "#1e3a5f", text: "#bfdbfe" },
   absent:  { bg: "transparent", text: "#1e293b" },
 };
 
 const LEGEND = [
-  { label: "Titolare 90'",    bg: "#15803d", text: "#dcfce7" },
+  { label: "Titolare · gara intera",    bg: "#15803d", text: "#dcfce7" },
   { label: "Titolare uscito", bg: "#22c55e", text: "#052e16" },
   { label: "Subentrato",      bg: "#ca8a04", text: "#fefce8" },
-  { label: "Conv. non util.", bg: "rgba(255,255,255,0.08)", text: "#94a3b8", symbol: "—" },
+  { label: "Non impiegato · 0 min", bg: "rgba(255,255,255,0.08)", text: "#94a3b8", symbol: "0" },
+  { label: "Minutaggio da completare", ...COLORS.missing, symbol: "?" },
+  { label: "Minuti registrati", ...COLORS.played },
   { label: "Non convocato",   bg: "transparent",            text: "#1e293b" },
 ];
 
 /* ── component ── */
-export default function MinutaggioMatrix({ players, matches }) {
-  const auth = useAuth();
-  const [statsMap, setStatsMap] = useState({});  // { matchId: { playerId: row } }
-  const [loading, setLoading]   = useState(false);
-
-  const sortedMatches = [...matches]
-    .filter((e) => e.type === "Partita")
-    .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-
+export default function MinutaggioMatrix({ players, matches, rows, loading }) {
+  const today = localDateString();
+  const sortedMatches = matches.filter((event) => event.type === "Partita" && event.date && event.date.slice(0, 10) <= today)
+    .sort((a, b) => a.date.localeCompare(b.date));
   const sortedPlayers = [...players].sort(comparePlayersByName);
-
-  useEffect(() => {
-    if (!auth.team?.id || sortedMatches.length === 0) return;
-    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect
-    const ids = sortedMatches.map((e) => String(e.id));
-    loadPlayerMatchesForPeriod(auth.team.id, ids).then(({ data }) => {
-      const map = {};
-      (data || []).forEach((row) => {
-        const mid = String(row.match_id);
-        const pid = String(row.player_id);
-        if (!map[mid]) map[mid] = {};
-        map[mid][pid] = row;
-      });
-      setStatsMap(map);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.team?.id, matches]);
-
+  const expectedByMatch = new Map(sortedMatches.map((match) => [String(match.id), new Set(getMatchCompletionPlayerIds(match))]));
+  const statsMap = new Map(rows.map((row) => [JSON.stringify([String(row.match_id), String(row.player_id)]), row]));
   if (loading) {
     return <div style={{ padding: "32px 0", textAlign: "center", color: "#64748b", fontSize: 13 }}>Caricamento dati…</div>;
   }
@@ -158,6 +124,8 @@ export default function MinutaggioMatrix({ players, matches }) {
           {sortedPlayers.map((player, pi) => {
             const pid = String(player.id);
             let total = 0;
+            let known = 0;
+            let missing = 0;
 
             return (
               <div
@@ -189,18 +157,19 @@ export default function MinutaggioMatrix({ players, matches }) {
 
                 {sortedMatches.map((match) => {
                   const mid   = String(match.id);
-                  const stats = statsMap[mid]?.[pid];
-                  const cell  = cellType(player, match, stats);
+                  const stats = statsMap.get(JSON.stringify([mid, pid]));
+                  const cell  = cellType(player, match, stats, expectedByMatch.get(mid));
                   const col   = COLORS[cell.type];
                   const hasRed    = stats && Number(stats.red_cards)    > 0;
                   const hasYellow = stats && Number(stats.yellow_cards) > 0;
 
-                  if (cell.type !== "absent") total += cell.mins || 0;
+                  if (cell.minutes !== null) { total += cell.minutes; known++; }
+                  if (cell.type === "missing") missing++;
 
                   return (
                     <div
                       key={match.id}
-                      title={`${player.name} vs ${match.opponent || match.title || "—"}: ${cell.mins ?? "—"} min`}
+                      title={cell.type === "missing" ? "Minutaggio da completare" : cell.type === "unused" ? "Non impiegato · 0 min" : cell.minutes === null ? undefined : cell.minutes + " min"}
                       style={{
                         width: CELL_W,
                         flexShrink: 0,
@@ -217,10 +186,7 @@ export default function MinutaggioMatrix({ players, matches }) {
                         outlineOffset: "-2px",
                       }}
                     >
-                      {cell.type === "absent"  ? "" :
-                       cell.type === "unused"  ? "—" :
-                       cell.mins != null       ? cell.mins :
-                       ""}
+                      {cell.type === "missing" ? "?" : cell.minutes ?? ""}
                       {hasYellow && (
                         <span style={{ position: "absolute", top: 2, right: hasRed ? 10 : 3, width: 5, height: 5, background: "#facc15", borderRadius: 1 }} />
                       )}
@@ -243,7 +209,7 @@ export default function MinutaggioMatrix({ players, matches }) {
                   fontWeight: 900,
                   color: total > 0 ? "#60a5fa" : "#334155",
                 }}>
-                  {total > 0 ? total : "—"}
+                  {known ? total : "—"}{missing > 0 && <span title={"Minutaggio da completare in " + missing + " gare"}> *</span>}
                 </div>
               </div>
             );

@@ -1,20 +1,14 @@
 import { getAgendaDateKey, buildCoachAgenda } from "./coachAgenda.js";
-import { getPlayerMatchTotals, getPlayerUnavailabilityOnDate, getSeasonRecord, isLeagueStatsMatch, parseMatchResult } from "./helpers.js";
+import { getMatchCompletionPlayerIds, getPlayerMatchTotals, parseRecordedMinutes, resolveMatchMinutes, getPlayerUnavailabilityOnDate, getSeasonRecord, isLeagueStatsMatch, parseMatchResult } from "./helpers.js";
 
 const order = (a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time || "").localeCompare(String(b.time || ""));
-const hasMinutes = (value) => value != null && String(value).trim() !== "" && Number.isFinite(Number(value)) && Number(value) >= 0;
 
 export function hasRecordedLineup(match, rows = []) {
   const saved = new Map(rows.filter((row) => String(row.match_id) === String(match.id)).map((row) => [String(row.player_id), row]));
-  const expected = [...new Set([...(match.convocazione?.playerIds || []), ...(match.lineup?.calledUpIds || []), ...(match.lineup?.starterIds || []), ...(match.lineup?.benchIds || [])].map(String))];
-  const recorded = (id) => {
-    const row = saved.get(id);
-    // An authoritative saved row with missing minutes must not fall back to stale local values.
-    return row ? hasMinutes(row.minutes_played) : hasMinutes(match.attendance?.[id]?.minutes);
-  };
-  if (expected.length) return expected.every(recorded);
-  return [...saved.values()].some((row) => hasMinutes(row.minutes_played)) ||
-    Object.values(match.attendance || {}).some((entry) => hasMinutes(entry?.minutes));
+  const expected = getMatchCompletionPlayerIds(match);
+  if (expected.length) return expected.every((id) => resolveMatchMinutes(saved.get(id)?.minutes_played, match.attendance?.[id]?.minutes, saved.get(id)?.minutes_cleared) !== null);
+  return [...saved.values()].some((row) => parseRecordedMinutes(row.minutes_played) !== null) ||
+    Object.values(match.attendance || {}).some((entry) => parseRecordedMinutes(entry?.minutes) !== null);
 }
 
 export function buildCoachAnalysis({ matches = [], players = [], sessions = [], rows = [], now = new Date(), season = "", group = "prima", canCheckStats = true, leagueOnly = true } = {}) {

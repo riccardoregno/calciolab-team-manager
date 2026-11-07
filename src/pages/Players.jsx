@@ -24,7 +24,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
-import { createUuid, isBirthdayToday, getTeamAverageAge, getPlayerQuickStats, comparePlayersByName, getPlayerMatchTotals, getPlayerMatchEntries, isGoalkeeper } from "../utils/helpers";
+import { createUuid, isBirthdayToday, getTeamAverageAge, getPlayerQuickStats, formatTrainingAttendance, comparePlayersByName, getPlayerMatchTotals, getPlayerMatchEntries, isGoalkeeper } from "../utils/helpers";
 import { useTeamMatchRows } from "../hooks/useTeamMatchRows";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
@@ -1042,8 +1042,8 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
 function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchStats = {}, yellowCards = 0, avgRating = null, statsUnavailable = false }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { trainingPct } = getPlayerQuickStats(player, sessions, matches);
-  const trainingPctValue = trainingPct === null ? "-" : `${trainingPct}%`;
+  const training = getPlayerQuickStats(player, sessions, matches);
+  const trainingPctValue = formatTrainingAttendance(training);
   const statValue = (value) => statsUnavailable ? "—" : value;
   const cardsValue = statValue(`${matchStats.yellowCards || 0}/${matchStats.redCards || 0}`);
   const suspensionYellowCards = yellowCards || matchStats.yellowCards || 0;
@@ -1125,7 +1125,7 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchSta
         <InlineStat label={isGoalkeeper(player) ? "Gol subiti" : "Gol"} value={statValue(isGoalkeeper(player) ? (matchStats.goalsConceded ?? "—") : matchStats.goals || 0)} />
         <InlineStat label="Ass" value={statValue(matchStats.assists || 0)} />
         <InlineStat label="G/R" value={cardsValue} />
-        <InlineStat label="% All." value={trainingPctValue} tone={trainingPct === 100 ? "#22c55e" : undefined} />
+        <InlineStat label="Allenamenti" value={trainingPctValue} tone={training.trainingPct === 100 ? "#22c55e" : undefined} />
       </div>
 
       {/* Badge stato + alert */}

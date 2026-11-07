@@ -671,10 +671,10 @@ function PlayerView({
         ))}
         <div style={ps.kpiItem}>
           <p style={{ margin: "0 0 2px", color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>Allenamenti</p>
-          <strong style={{ fontSize: 20, lineHeight: 1 }}>{visibleSummary.stats.trainingPresences}/{visibleSummary.stats.totalTrainings}</strong>
+          <strong style={{ fontSize: 20, lineHeight: 1 }}>{visibleSummary.stats.trainingPresences} presenti{visibleSummary.stats.pendingTrainings > 0 && " · " + visibleSummary.stats.pendingTrainings + " da confermare"}</strong>
           {visibleSummary.stats.trainingPct !== null && (
             <p style={{ margin: "2px 0 0", fontSize: 11, color: visibleSummary.stats.trainingPct >= 80 ? "#4ade80" : visibleSummary.stats.trainingPct >= 50 ? "#fb923c" : "#f87171" }}>
-              {visibleSummary.stats.trainingPct}%
+              {visibleSummary.stats.trainingPct}% su {visibleSummary.stats.totalTrainings} sedute
             </p>
           )}
         </div>
@@ -842,7 +842,7 @@ function PlayerView({
                         <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>{event.title}</p>
                         <p style={{ ...ps.muted, fontSize: 12 }}>{formatShortDate(event.date)}</p>
                       </div>
-                      <strong style={{ color: "#38bdf8" }}>{data.minutes || 0}&apos;</strong>
+                      {data.minutes != null && <strong style={{ color: "#38bdf8" }}>{data.minutes}&apos;</strong>}
                     </div>
                   ))}
                 </div>
@@ -1122,7 +1122,7 @@ function PlayerView({
                             {match?.date && <div style={{ fontSize: 11, color: "#64748b" }}>{match.date}</div>}
                           </div>
                           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
-                            {row.minutes_played > 0 && <StatPill label="min" value={row.minutes_played} />}
+                            {row.minutes_played != null && <StatPill label="min" value={row.minutes_played} />}
                             {visibleSummary.stats.isGoalkeeper
                               ? <StatPill label="Gol subiti" value={getGoalkeeperGoalsConceded(selectedPlayer, match ? [match] : [], players, myMatchStats || []) ?? "—"} color="#f87171" />
                               : row.goals > 0 && <StatPill label="⚽" value={row.goals} color="#4ade80" />}

@@ -89,7 +89,7 @@ export default function StatisticsCharts({ stats, history, selectedPlayer, event
     .filter((p) => p.trainingPct !== null)
     .sort((a, b) => b.trainingPct - a.trainingPct)
     .slice(0, 12)
-    .map((p) => ({ name: chartPlayerLabel(p), pct: p.trainingPct }));
+    .map((p) => ({ name: chartPlayerLabel(p), pct: p.trainingPct, total: p.totalTrainings }));
 
   /* ── Nuovo — Top minutaggio ── */
   const topMinutes = [...stats]
@@ -195,13 +195,13 @@ export default function StatisticsCharts({ stats, history, selectedPlayer, event
       {attendanceData.length > 0 && (
         <AppCard style={{ minWidth: 0, overflow: "hidden" }}>
           <p style={sectionLabel}>Presenze allenamenti</p>
-          <h3 style={cardTitle}>% partecipazione per giocatore</h3>
+          <h3 style={cardTitle}>% partecipazione · periodi interamente registrati</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={attendanceData} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
               <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis domain={[0, 100]} tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} unit="%" />
-              <Tooltip {...TT} formatter={(v) => [`${v}%`, "Presenze"]} />
+              <Tooltip {...TT} formatter={(v, _name, item) => [v + "% su " + item.payload.total + " sedute", "Presenze"]} />
               <Bar dataKey="pct" name="% Presenze" radius={[4, 4, 0, 0]}>
                 {attendanceData.map((entry) => (
                   <Cell key={entry.name}

@@ -1,3 +1,4 @@
+import { getRecordedTrainingStatus, resolveMatchMinutes } from "./helpers.js";
 import { getAgendaDateKey, buildCoachAgenda } from "./coachAgenda.js";
 import { isLeagueStatsMatch, parseMatchResult } from "./helpers.js";
 
@@ -33,15 +34,11 @@ export function buildCoachTasks({ sessions = [], matches = [], players = [], mat
       if (!canCheckMatchStats || !isLeagueStatsMatch(event)) continue;
       const ids = [...new Set([...(event.convocazione?.playerIds || []), ...(event.lineup?.calledUpIds || []), ...(event.lineup?.starterIds || []), ...(event.lineup?.benchIds || [])].map(String))].filter((id) => playerIds.has(id));
       const rows = new Map(matchRows.filter((row) => String(row.match_id) === String(event.id)).map((row) => [String(row.player_id), row]));
-      const missing = ids.filter((id) => {
-        const row = rows.get(id) || event.attendance?.[id];
-        const minutes = row?.minutes_played ?? row?.minutes;
-        return minutes == null || String(minutes).trim() === "" || !Number.isFinite(Number(minutes));
-      });
+      const missing = ids.filter((id) => resolveMatchMinutes(rows.get(id)?.minutes_played, event.attendance?.[id]?.minutes, rows.get(id)?.minutes_cleared) === null);
       if (missing.length) tasks.push({ id: `stats:${event.id}`, kind: "stats", event, count: missing.length, to: `/match-stats/${event.id}` });
     } else {
-      const roster = players.filter((player) => (player.gruppo || "prima") === "prima");
-      const missing = roster.filter((player) => !event.attendance?.[player.id]?.status);
+      const roster = players.filter((player) => String(player.gruppo || "prima").trim().toLowerCase() === "prima");
+      const missing = roster.filter((player) => getRecordedTrainingStatus(player, event) === null);
       if (missing.length) tasks.push({ id: `attendance:${event.id}`, kind: "attendance", event, count: missing.length, to: `/session-attendance/${event.id}` });
     }
   }

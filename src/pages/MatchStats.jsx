@@ -6,7 +6,7 @@ import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
 import { loadMatchStatsMatrix, savePlayerMatchStats } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
-import { compareMatchDateTime, comparePlayersByName, formatDate, isGoalkeeper, isLeagueStatsMatch, normalizeAppSettings } from "../utils/helpers";
+import { compareMatchDateTime, comparePlayersByName, formatDate, isGoalkeeper, isLeagueStatsMatch, normalizeAppSettings, parseRecordedMinutes, resolveMatchMinutes } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
 const COUNTER_FIELDS = [
@@ -42,7 +42,6 @@ function parseRating(val) {
 
 function validateRow(row, t) {
   const errors = [];
-  const mins    = parseInt(row.minutes_played, 10);
   const yellows = parseInt(row.yellow_cards,   10);
   const reds    = parseInt(row.red_cards,      10);
   const goals   = parseInt(row.goals,          10);
@@ -50,7 +49,9 @@ function validateRow(row, t) {
   const rating  = parseFloat(row.rating);
   const conceded = row.goals_conceded;
 
-  if (!isNaN(mins)    && (mins    < 0 || mins    > 120)) errors.push(t("pages.matchStats.errMinutes"));
+  if (row.minutesEdited && String(row.minutes_played).trim() !== "" && parseRecordedMinutes(row.minutes_played) === null) {
+    errors.push(t("pages.matchStats.errMinutes"));
+  }
   if (!isNaN(goals)   && goals   < 0)                    errors.push(t("pages.matchStats.errGoalsNeg"));
   if (!isNaN(assists) && assists < 0)                     errors.push(t("pages.matchStats.errAssistsNeg"));
   if (conceded != null && conceded !== "" && (!Number.isInteger(Number(conceded)) || Number(conceded) < 0)) {
@@ -65,7 +66,7 @@ function validateRow(row, t) {
 
 function rowToStats(row) {
   return {
-    minutes_played: parseNum(row.minutes_played),
+    ...(row.minutesEdited ? { minutes_played: parseRecordedMinutes(row.minutes_played) } : {}),
     goals:          parseNum(row.goals),
     goals_conceded: row.goals_conceded == null || row.goals_conceded === "" ? null : Number(row.goals_conceded),
     assists:        parseNum(row.assists),
@@ -291,7 +292,8 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     const previous = savedSnapshot[`${mid}:${pid}`];
     if (!row || (!previous && !rowHasData(row))) return false;
     const next = rowToStats(row);
-    return ["minutes_played", "goals", "goals_conceded", "assists", "yellow_cards", "red_cards", "rating"].some((field) => {
+    if (row.minutesEdited) return true;
+    return ["goals", "goals_conceded", "assists", "yellow_cards", "red_cards", "rating"].some((field) => {
       const nullable = field === "goals_conceded" || field === "rating";
       return String(next[field] ?? (nullable ? "" : 0)) !== String(previous?.[field] ?? (nullable ? "" : 0));
     });
@@ -366,7 +368,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
       ...prev,
       [mid]: {
         ...(prev[mid] || {}),
-        [pid]: { ...((prev[mid] || {})[pid] || EMPTY_ROW), [field]: value },
+        [pid]: { ...((prev[mid] || {})[pid] || EMPTY_ROW), [field]: value, ...(field === "minutes_played" ? { minutesEdited: true } : {}) },
       },
     }));
     setSaveResult(null);
@@ -462,6 +464,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     setValidationErrors({});
 
     let hasError = false;
+    const confirmedMinutesEdits = new Set();
     for (const matchItem of matrixMatches) {
       const mid = String(matchItem.id);
       for (const player of matrixPlayers) {
@@ -483,13 +486,21 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
         hasError = true;
       } else {
         // Aggiorna savedRef con i nuovi valori per eventuali salvataggi successivi
-          savedRef.current[`${mid}:${pid}`] = { ...newStats, player_id: pid, match_id: mid };
+          const key = mid + ":" + pid;
+          const minutesUpdate = row.minutesEdited ? { minutes_cleared: newStats.minutes_played === null } : {};
+          if (row.minutesEdited) confirmedMinutesEdits.add(key);
+          savedRef.current[key] = { ...oldStats, ...newStats, ...minutesUpdate, player_id: pid, match_id: mid };
       }
       }
     }
 
     setSaving(false);
     setSavedSnapshot({ ...savedRef.current });
+    setRows((previous) => Object.fromEntries(Object.entries(previous).map(([mid, playerRows]) => [mid,
+      Object.fromEntries(Object.entries(playerRows).map(([pid, row]) => [pid,
+        confirmedMinutesEdits.has(mid + ":" + pid) ? { ...row, minutesEdited: false } : row,
+      ])),
+    ])));
     window.dispatchEvent(new Event("player-match-stats-updated"));
     setSaveResult(hasError ? "error" : "ok");
     if (!hasError) clearDraftRows(draftKey);
@@ -691,8 +702,10 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
                             type="number"
                             min="0"
                             max="120"
-                            placeholder="-"
-                            value={row.minutes_played}
+                            placeholder="Da completare"
+                            value={row.minutesEdited ? row.minutes_played : (resolveMatchMinutes(
+                              savedSnapshot[cellKey]?.minutes_played, matchItem.attendance?.[pid]?.minutes, savedSnapshot[cellKey]?.minutes_cleared
+                            ) ?? "")}
                             onChange={(event) => updateCell(mid, pid, "minutes_played", event.target.value)}
                             aria-label={`${displayName} minuti ${matchItem.opponent || ""}`}
                           />

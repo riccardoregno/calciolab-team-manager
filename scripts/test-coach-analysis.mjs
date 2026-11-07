@@ -83,7 +83,7 @@ assert.equal(model.availability.unknown[0].id, "d", "Unknown status must not be 
 assert.equal(hasRecordedLineup(matches[0], rows), true, "A recorded zero minutes is complete");
 assert.equal(hasRecordedLineup(matches[0], rows.filter((row) => row.player_id !== "b")), false);
 assert.equal(hasRecordedLineup({ ...matches[0], convocazione: {}, lineup: { starterIds: ["a"], benchIds: ["missing-player"] } }, rows), false, "The saved formation must also be checked");
-assert.equal(hasRecordedLineup({ id: "x", convocazione: { playerIds: ["a"] }, attendance: { a: { minutes: 90 } } }, [{ match_id: "x", player_id: "a", minutes_played: null }]), false);
+assert.equal(hasRecordedLineup({ id: "x", convocazione: { playerIds: ["a"] }, attendance: { a: { minutes: 90 } } }, [{ match_id: "x", player_id: "a", minutes_played: null }]), true, "Missing cloud minutes fall back to explicit legacy minutes");
 const offline = buildCoachAnalysis({ players, matches, rows, now, canCheckStats: false });
 assert.equal(offline.topScorers.length, 0);
 assert.equal(offline.recordedLineups, null);

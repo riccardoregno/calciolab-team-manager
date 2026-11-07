@@ -2,7 +2,7 @@ import { getPlayerPhotoStyle } from "../../utils/playerPhoto";
 import { ArrowUpRight, Clock3, ClipboardCheck, Goal, HandHelping } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "../../i18n";
-import { isGoalkeeper } from "../../utils/helpers";
+import { formatTrainingAttendance, isGoalkeeper } from "../../utils/helpers";
 import AppCard from "../ui/AppCard";
 import GoalkeeperMetrics from "./GoalkeeperMetrics";
 
@@ -27,6 +27,8 @@ export default function PlayerStatisticsCard({ player, stats, loading = false })
         <Link to={"/players/" + player.id} className="player-statistics-profile" aria-label={t("productPolish.openPlayer", { name: player.name })}>{t("productPolish.openProfile")}<ArrowUpRight size={16} aria-hidden="true" /></Link>
       </div>
       <dl className="player-statistics-metrics">{metrics.map(({ label, value, Icon, tone }) => <div key={label} data-tone={tone}><dt><Icon size={15} aria-hidden="true" />{label}</dt><dd>{loading ? "—" : typeof value === "number" ? number.format(value) : value}</dd></div>)}</dl>
+      {!loading && stats && <p>{formatTrainingAttendance(stats, language === "en")}</p>}
+      {!loading && stats?.missingMinutes > 0 && <p>{language === "en" ? "Known minutes only. Matches to complete" : "Totale dei minuti registrati. Gare da completare"} · {stats.missingMinutes}</p>}
       {loading ? <p role="status" className={"player-statistics-loading" + (goalkeeper ? " is-goalkeeper" : "")}>{t("common.loadingData")}</p> : goalkeeper && <GoalkeeperMetrics stats={stats} />}
     </section>
   </AppCard>;

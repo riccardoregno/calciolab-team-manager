@@ -11,7 +11,7 @@ import SearchBar from "../components/ui/SearchBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { useAuth } from "../hooks/useAuth";
 import { styles } from "../styles/index.js";
-import { comparePlayersByName, formatShortDate, getPlayerSortKey, getPlayerUnavailabilityOnDate, getTrainingSessionStatus, isFriendlyMatch } from "../utils/helpers";
+import { comparePlayersByName, formatShortDate, getPlayerSortKey, getPlayerUnavailabilityOnDate, getTrainingSessionStatus, getRecordedTrainingStatus, getCompletedTrainingEvents, getTrainingAttendanceSummary, formatTrainingAttendance, isFriendlyMatch } from "../utils/helpers";
 import { fetchTeamRpe } from "../services/sessionRpe";
 import { useTranslation } from "../i18n";
 
@@ -354,9 +354,9 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   function cycleStatus(session, player) {
     if (!canManage || (session.isMatch && !session.isFriendly)) return;
     const playerId = String(player.id);
-    const current = getTrainingSessionStatus(player, session);
+    const current = getRecordedTrainingStatus(player, session);
     const currentIndex = STATUS_FLOW.indexOf(current);
-    const nextStatus = STATUS_FLOW[(currentIndex + 1) % STATUS_FLOW.length] || "Presente";
+    const nextStatus = current === null ? getTrainingSessionStatus(player, session) : STATUS_FLOW[(currentIndex + 1) % STATUS_FLOW.length];
     updateAttendance(session, playerId, { status: nextStatus });
   }
 
@@ -409,9 +409,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                       <span style={{ fontSize: 11, color: "#64748b" }}>{player.role || "-"}{player.shirtNumber ? ` · #${player.shirtNumber}` : ""}</span>
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <Badge tone={rowStats.presencePct < 70 ? "red" : rowStats.presencePct < 85 ? "orange" : "green"}>
-                        {rowStats.presencePct}%
-                      </Badge>
+                      <Badge tone={rowStats.pendingTrainings ? "orange" : "green"}>{formatTrainingAttendance(rowStats)}</Badge>
                       <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>carico {rowStats.load}</span>
                     </div>
                   </div>
@@ -420,6 +418,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                       const status = getSessionStatus(player, session);
                       const meta = STATUS_META[status] || STATUS_META.Presente;
                       const isReadOnlyMatch = session.isMatch && !session.isFriendly;
+                      const pending = !isReadOnlyMatch && getRecordedTrainingStatus(player, session) === null;
                       return (
                         <div key={session.id} style={{ flexShrink: 0, textAlign: "center" }}>
                           <div style={{ fontSize: 9, color: "#475569", fontWeight: 700, marginBottom: 2, whiteSpace: "nowrap" }}>
@@ -436,7 +435,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                               display: "flex", alignItems: "center", justifyContent: "center",
                             }}
                           >
-                            {meta.code}
+                            {pending ? "?" : meta.code}
                           </button>
                         </div>
                       );
@@ -503,7 +502,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                     )}
                   </th>
                 ))}
-                <th style={ar.th}>{t("pages.attendanceRegister.presencePct")}</th>
+                <th style={ar.th}>{"Presenze allenamento"}</th>
                 <th style={ar.th}>{t("pages.attendanceRegister.load")}</th>
               </tr>
             </thead>
@@ -525,6 +524,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                       const status = getSessionStatus(player, session);
                       const meta = STATUS_META[status] || STATUS_META.Presente;
                       const isReadOnlyMatch = session.isMatch && !session.isFriendly;
+                      const pending = !isReadOnlyMatch && getRecordedTrainingStatus(player, session) === null;
                       const showRpe = status === "Presente" || status === "Recupero";
                       const playerSubmittedRpe = playerRpeIndex[`${playerId}:${session.id}`];
                       const effectiveRpe = entry.rpe ?? playerSubmittedRpe ?? "";
@@ -543,9 +543,9 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                                 borderColor: meta.border,
                                 cursor: isReadOnlyMatch ? "default" : "pointer",
                               }}
-                              title={isReadOnlyMatch ? t("pages.attendanceRegister.editInConvocation") : t("pages.attendanceRegister.cycleStatus")}
+                              title={pending ? "Da confermare · suggerito " + status : isReadOnlyMatch ? t("pages.attendanceRegister.editInConvocation") : t("pages.attendanceRegister.cycleStatus")}
                             >
-                              {meta.code}
+                              {pending ? "?" : meta.code}
                             </button>
                             {showRpe && (
                               <input
@@ -571,9 +571,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                     })}
 
                     <td style={ar.td}>
-                      <Badge tone={rowStats.presencePct < 70 ? "red" : rowStats.presencePct < 85 ? "orange" : "green"}>
-                        {rowStats.presencePct}%
-                      </Badge>
+                      <Badge tone={rowStats.pendingTrainings ? "orange" : "green"}>{formatTrainingAttendance(rowStats)}</Badge>
                     </td>
                     <td style={ar.td}>
                       <span style={ar.loadValue}>{rowStats.load}</span>
@@ -609,7 +607,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
         <div style={ar.toolbar}>
           <div style={ar.metrics}>
             <Metric label={t("pages.attendanceRegister.metricSessions")} value={visibleSessions.length} tone="blue" />
-            <Metric label={t("pages.attendanceRegister.metricPresence")} value={`${registerStats.presencePct}%`} tone="green" />
+            <Metric label="Presenze allenamento" value={formatTrainingAttendance(registerStats)} tone="green" />
             <Metric label={t("pages.attendanceRegister.metricAbsences")} value={registerStats.absences} tone="red" />
             <Metric label={t("pages.attendanceRegister.metricInjuries")} value={registerStats.injuries} tone="orange" />
             <Metric label={t("pages.attendanceRegister.metricAvgRpe")} value={registerStats.avgRpe || "-"} tone="purple" />
@@ -745,19 +743,18 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
 }
 
 function buildRegisterStats(players, sessions, playerRpeIndex = {}) {
-  const today = new Date().toISOString().slice(0, 10);
-  const pastSessions = sessions.filter((s) => (s.date || "") <= today);
+  const pastSessions = getCompletedTrainingEvents(sessions);
   let present = 0;
   let absences = 0;
   let injuries = 0;
-  let cells = 0;
+  let pendingTrainings = 0;
   const rpes = [];
 
   players.forEach((player) => {
     pastSessions.forEach((session) => {
-      cells += 1;
       const entry = session.attendance?.[String(player.id)] || {};
-      const status = getSessionStatus(player, session);
+      const status = getRecordedTrainingStatus(player, session);
+      if (status === null) pendingTrainings++;
       const effectiveRpe = entry.rpe ?? playerRpeIndex[`${player.id}:${session.id}`];
       if (PRESENT_STATUSES.has(status)) present += 1;
       if (ABSENT_STATUSES.has(status)) absences += 1;
@@ -767,7 +764,8 @@ function buildRegisterStats(players, sessions, playerRpeIndex = {}) {
   });
 
   return {
-    presencePct: cells ? Math.round((present / cells) * 100) : 0,
+    trainingPresences: present,
+    pendingTrainings,
     absences,
     injuries,
     avgRpe: rpes.length ? Number((rpes.reduce((sum, value) => sum + value, 0) / rpes.length).toFixed(1)) : 0,
@@ -775,23 +773,20 @@ function buildRegisterStats(players, sessions, playerRpeIndex = {}) {
 }
 
 function buildPlayerStats(player, sessions, playerRpeIndex = {}) {
-  const today = new Date().toISOString().slice(0, 10);
-  const pastSessions = sessions.filter((s) => (s.date || "") <= today);
-  let present = 0;
+  const pastSessions = getCompletedTrainingEvents(sessions);
   let load = 0;
 
   pastSessions.forEach((session) => {
     const entry = session.attendance?.[String(player.id)] || {};
-    const status = getSessionStatus(player, session);
+    const status = getRecordedTrainingStatus(player, session);
     const effectiveRpe = entry.rpe ?? playerRpeIndex[`${player.id}:${session.id}`];
     if (PRESENT_STATUSES.has(status)) {
-      present += 1;
       load += getDuration(session) * Number(effectiveRpe || 0);
     }
   });
 
   return {
-    presencePct: pastSessions.length ? Math.round((present / pastSessions.length) * 100) : 0,
+    ...getTrainingAttendanceSummary(player, pastSessions),
     load,
   };
 }

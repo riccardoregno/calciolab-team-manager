@@ -6,7 +6,7 @@ import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { loadMatchStats, saveMatchMinutes } from "../services/playerProfile";
-import { formatDate, parseMatchResult } from "../utils/helpers";
+import { formatDate, parseMatchResult, resolveMatchMinutes } from "../utils/helpers";
 import { buildHomeAwayScorePayload, isValidMatchScore } from "../utils/matchScore";
 import { getMatchCompletionPlayerIds, hasRecordedMinutes } from "../utils/matchCompletion";
 
@@ -52,7 +52,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
     loadMatchStats(teamId, matchId).then(({ data, error }) => {
       if (!active) return;
       if (error) setLoadError(true);
-      else setSaved(Object.fromEntries((data || []).map((row) => [String(row.player_id), row.minutes_played])));
+      else setSaved(Object.fromEntries((data || []).map((row) => [String(row.player_id), row])));
     }).catch(() => { if (active) setLoadError(true); });
     return () => { active = false; };
   }, [matchId, remote, revision, teamId]);
@@ -69,13 +69,12 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
 
   function getMinutes(id) {
     if (Object.hasOwn(edits, id)) return edits[id];
-    if (saved && Object.hasOwn(saved, id)) return saved[id] ?? "";
-    return match.attendance?.[id]?.minutes ?? "";
+    return resolveMatchMinutes(saved?.[id]?.minutes_played, match.attendance?.[id]?.minutes, saved?.[id]?.minutes_cleared) ?? "";
   }
 
   const missingMinutes = minutesPlayers.filter((player) => {
     const value = getMinutes(String(player.id));
-    return !hasRecordedMinutes(value) || Number(value) > 120;
+    return !hasRecordedMinutes(value);
   }).length;
 
   function updateDraft(next) {
@@ -105,7 +104,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
     saveLock.current = true;
     const updates = Object.fromEntries(minutesPlayers
       .map((player) => String(player.id))
-      .filter((id) => Object.hasOwn(edits, id) && Number(edits[id]) !== Number(saved && Object.hasOwn(saved, id) ? saved[id] ?? NaN : match.attendance?.[id]?.minutes ?? NaN))
+      .filter((id) => Object.hasOwn(edits, id) && Number(edits[id]) !== resolveMatchMinutes(saved?.[id]?.minutes_played, match.attendance?.[id]?.minutes, saved?.[id]?.minutes_cleared))
       .map((id) => [id, Number(edits[id])]));
     try {
       if (remote) {
@@ -188,7 +187,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
               minutesPlayers.map((player) => {
                 const id = String(player.id);
                 return <label key={id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
-                  <span>{playerName(player)}{starters.includes(id) ? " · Titolare" : ""}</span>
+                  <span>{playerName(player)}{starters.includes(id) ? " · Titolare" : ""}{!hasRecordedMinutes(getMinutes(id)) ? " · Minutaggio da completare" : Number(getMinutes(id)) === 0 ? " · Non impiegato · 0 min" : ""}</span>
                   <input style={control} type="number" inputMode="numeric" min="0" max="120" step="1" required
                     value={getMinutes(id)} onChange={(e) => updateDraft({ ...draft, minutes: { ...edits, [id]: e.target.value } })} />
                 </label>;

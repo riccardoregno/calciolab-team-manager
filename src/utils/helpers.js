@@ -1454,21 +1454,10 @@ export function getTeamAverageAge(players = []) {
  *     presente, sul totale delle sedute completate.
  */
 export function getPlayerQuickStats(player, sessions = [], matches = []) {
-  const pid = player?.id;
-  const today = localDateString();
-  const now = new Date();
-  const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const appearances = getPlayerMatchEntries(player, matches).filter(({ data }) => data.minutes > 0).length;
+  const training = getTrainingAttendanceSummary(player, getCompletedTrainingEvents([...sessions, ...matches.filter(isFriendlyMatch)]));
 
-  const appearances = matches.reduce((count, match) => {
-    if (isFriendlyMatch(match)) return count;
-    const data = match?.attendance?.[pid];
-    if (!data || data.status === "Assente") return count;
-    return count + 1;
-  }, 0);
-
-  const { trainingPct } = getTrainingAttendanceSummary(player, getCompletedTrainingEvents([...sessions, ...matches.filter(isFriendlyMatch)], today, nowTime));
-
-  return { appearances, trainingPct };
+  return { appearances, ...training };
 }
 
 function normalizeStatsDate(value) {
@@ -1526,22 +1515,33 @@ export function getCompletedTrainingEvents(events, today = localDateString(), no
 
 const ATTENDANCE_STATUSES = new Set(["Presente", "Recupero", "Assente", "Permesso", "Infortunato", "Squalificato"]);
 
+export function getRecordedTrainingStatus(player, event) {
+  const status = event?.attendance?.[player.id]?.status;
+  return ATTENDANCE_STATUSES.has(status) ? status : null;
+}
+
 export function getTrainingSessionStatus(player, event) {
-  const status = event.attendance?.[player.id]?.status;
-  return ATTENDANCE_STATUSES.has(status) ? status : getTrainingDefaultStatus(player, normalizeStatsDate(event.date));
+  return getRecordedTrainingStatus(player, event) ?? getTrainingDefaultStatus(player, normalizeStatsDate(event.date));
 }
 
 export function getTrainingAttendanceSummary(player, completedEvents) {
-  let trainingPresences = 0, absences = 0, injuries = 0;
+  let trainingPresences = 0, absences = 0, injuries = 0, pendingTrainings = 0;
   for (const event of completedEvents) {
-    const status = getTrainingSessionStatus(player, event);
+    const status = getRecordedTrainingStatus(player, event);
+    if (status === null) pendingTrainings++;
     if (status === "Presente" || status === "Recupero") trainingPresences++;
     if (status === "Assente" || status === "Permesso") absences++;
     if (status === "Infortunato") injuries++;
   }
   const totalTrainings = completedEvents.length;
-  return { trainingPresences, absences, injuries, totalTrainings,
-    trainingPct: totalTrainings ? Math.round(trainingPresences / totalTrainings * 100) : null };
+  return { trainingPresences, absences, injuries, totalTrainings, pendingTrainings,
+    trainingPct: totalTrainings && !pendingTrainings ? Math.round(trainingPresences / totalTrainings * 100) : null };
+}
+
+export function formatTrainingAttendance({ trainingPresences, pendingTrainings }, english = false) {
+  const present = english ? "present" : "presenti";
+  const pending = english ? "to confirm" : "da confermare";
+  return trainingPresences + " " + present + (pendingTrainings ? " · " + pendingTrainings + " " + pending : "");
 }
 
 export function getCoachAlerts({ players = [], matches = [], physicalTests = [], sessions = [], playerStatsMap = {}, teamWellnessToday = [], t } = {}){
@@ -1741,13 +1741,23 @@ export function isGoalkeeper(player) {
   return role.includes("portier") || ["por", "gk", "goalkeeper"].includes(role);
 }
 
-export function hasMatchParticipation(data) {
-  const minutes = Number(data?.minutes_played ?? data?.minutes);
-  return Number.isFinite(minutes) && minutes > 0;
+export function parseRecordedMinutes(value, maximum = 120) {
+  if ((typeof value !== "number" && typeof value !== "string") || String(value).trim() === "") return null;
+  const minutes = Number(value);
+  return Number.isInteger(minutes) && minutes >= 0 && minutes <= maximum ? minutes : null;
 }
 
-// Match rows are authoritative per player and match; missing rows use local data.
-// A saved zero-minute row is a non-appearance, even if the player was called up.
+// The stats editor updates the cloud row independently of the match snapshot.
+// A valid cloud value (including zero) wins; use explicit legacy minutes as fallback.
+export function resolveMatchMinutes(cloudMinutes, legacyMinutes, minutesCleared = false) {
+  if (minutesCleared) return null;
+  return parseRecordedMinutes(cloudMinutes) ?? parseRecordedMinutes(legacyMinutes);
+}
+
+export function getMatchCompletionPlayerIds(match) {
+  const lineup = getLineup(match);
+  return uniqueIds([...lineup.starterIds, ...lineup.benchIds, ...lineup.calledUpIds, ...(match.convocazione?.playerIds || [])].filter((id) => id != null).map(String));
+}
 export function getPlayerMatchEntries(player, matches = [], rows = [], leagueOnly = true) {
   if (!player) return [];
   const byMatch = new Map(rows
@@ -1759,18 +1769,19 @@ export function getPlayerMatchEntries(player, matches = [], rows = [], leagueOnl
       const local = event.attendance?.[player.id];
       const db = byMatch.get(String(event.id));
       const source = db || local;
-      if (!source) return [];
-      const played = hasMatchParticipation(source);
+      if (!source && !getMatchCompletionPlayerIds(event).includes(String(player.id))) return [];
+      const minutes = resolveMatchMinutes(db?.minutes_played, local?.minutes, db?.minutes_cleared);
+      const played = minutes > 0;
       return [{ event, data: {
         ...(local || {}),
-        status: played ? "Presente" : (local?.status === "Presente" ? "Non impiegato" : local?.status || "Non impiegato"),
-        minutes: Number(source.minutes_played ?? source.minutes ?? 0),
-        goals: Number(source.goals || 0),
-        assists: Number(source.assists || 0),
-        yellowCards: Number(source.yellow_cards ?? source.yellowCards ?? 0),
-        redCards: Number(source.red_cards ?? source.redCards ?? 0),
-        goalsConceded: played ? (source.goals_conceded ?? source.goalsConceded ?? null) : null,
-        rating: source.rating ?? null,
+        status: played ? "Presente" : minutes === 0 ? "Non impiegato" : "Minutaggio da completare",
+        minutes,
+        goals: Number(source?.goals || 0),
+        assists: Number(source?.assists || 0),
+        yellowCards: Number(source?.yellow_cards ?? source?.yellowCards ?? 0),
+        redCards: Number(source?.red_cards ?? source?.redCards ?? 0),
+        goalsConceded: played ? (source?.goals_conceded ?? source?.goalsConceded ?? null) : null,
+        rating: source?.rating ?? null,
       } }];
     });
 }
@@ -1789,11 +1800,15 @@ export function getGoalkeeperRecord(player, matches = [], players = [], rows = [
   for (const match of matches) {
     if ((leagueOnly && !isLeagueStatsMatch(match)) || !normalizeStatsDate(match.date) || normalizeStatsDate(match.date) > localDateString()) continue;
     const dataFor = (keeper) => byMatch.get(String(match.id))?.get(String(keeper.id)) ?? match.attendance?.[keeper.id];
-    const played = keepers.filter((keeper) => hasMatchParticipation(dataFor(keeper)));
+    const minutesFor = (keeper) => {
+      const row = byMatch.get(String(match.id))?.get(String(keeper.id));
+      return resolveMatchMinutes(row?.minutes_played, match.attendance?.[keeper.id]?.minutes, row?.minutes_cleared);
+    };
+    const played = keepers.filter((keeper) => minutesFor(keeper) > 0);
     if (!played.some((keeper) => String(keeper.id) === String(player?.id))) continue;
     appearances += 1;
     const data = dataFor(player);
-    const minutes = Number(data?.minutes_played ?? data?.minutes ?? 0);
+    const minutes = minutesFor(player);
     const duration = Number(match.duration) > 0 ? Number(match.duration) : 90;
     const explicit = data?.goals_conceded ?? data?.goalsConceded;
     let goals = null;
@@ -1827,14 +1842,15 @@ export function getPlayerMatchTotals(player, matches = [], rows = [], players = 
   const entries = getPlayerMatchEntries(player, matches, rows, leagueOnly);
   const totals = entries.reduce((acc, { data }) => {
     if (data.status === "Presente") acc.presences += 1;
-    acc.minutes += data.minutes;
+    if (data.minutes === null) acc.missingMinutes++;
+    else acc.minutes += data.minutes;
     acc.goals += data.goals;
     acc.assists += data.assists;
     acc.yellowCards += data.yellowCards;
     acc.redCards += data.redCards;
     if (Number(data.rating) > 0) acc.ratings.push(Number(data.rating));
     return acc;
-  }, { presences: 0, minutes: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0, ratings: [] });
+  }, { presences: 0, minutes: 0, missingMinutes: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0, ratings: [] });
   const { ratings, ...stats } = totals;
   const goalkeeperRecord = isGoalkeeper(player) ? getGoalkeeperRecord(player, matches, players, rows, leagueOnly) : null;
   return { ...stats, isGoalkeeper: isGoalkeeper(player),
@@ -1852,11 +1868,6 @@ export function getPlayerSeasonSeries(player, { sessions = [], matches = [], phy
     return { events: [], tests: [] };
   }
 
-  const dbMatchesById = playerMatchesDB.reduce((acc, row) => {
-    acc[String(row.match_id)] = row;
-    return acc;
-  }, {});
-
   const sessionEvents = sessions
     .map((session) => {
       const data = session.attendance?.[player.id];
@@ -1873,20 +1884,12 @@ export function getPlayerSeasonSeries(player, { sessions = [], matches = [], phy
     })
     .filter(Boolean);
 
-  const matchEvents = matches
-    .filter(isLeagueStatsMatch)
-    .map((event) => {
-      const db = dbMatchesById[String(event.id)];
-      const data = db || event.attendance?.[player.id] || event.attendance?.[String(player.id)];
-      if(!data) return null;
-      return {
-        date: event.date,
-        title: event.title || event.opponent || "",
-        type: "match",
-        matchMinutes: Number(data.minutes_played ?? data.minutes ?? 0),
-      };
-    })
-    .filter(Boolean);
+  const matchEvents = getPlayerMatchEntries(player, matches, playerMatchesDB).map(({ event, data }) => ({
+    date: event.date,
+    title: event.title || event.opponent || "",
+    type: "match",
+    matchMinutes: data.minutes,
+  }));
 
   const events = [...sessionEvents, ...matchEvents]
     .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1905,7 +1908,7 @@ export function getPlayerSeasonSeries(player, { sessions = [], matches = [], phy
 export function getPlayerSummary(player, { sessions = [], matches = [], physicalTests = [], playerMatchesDB = [], players = [] } = {}){
   if(!player){
     return {
-      stats: { presences: 0, minutes: 0, goals: 0, assists: 0, isGoalkeeper: false, goalsConceded: null, avgRating: null, avgRpe: 0, load: 0, trainingPresences: 0, totalTrainings: 0, trainingPct: null },
+      stats: { presences: 0, minutes: 0, goals: 0, assists: 0, isGoalkeeper: false, goalsConceded: null, avgRating: null, avgRpe: 0, load: 0, trainingPresences: 0, pendingTrainings: 0, totalTrainings: 0, trainingPct: null },
       latestTests: [],
       recentEvents: [],
       alerts: [],
@@ -1930,11 +1933,15 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
   const playerEvents = [
     ...events.filter((event) => event.type !== "Partita")
       .map((event) => ({ event, data: event.attendance?.[player.id] }))
-      .filter(({ data }) => data),
+      .filter(({ data }) => data)
+      .map(({ event, data }) => ({ event, data: { ...data,
+        status: getRecordedTrainingStatus(player, event) ?? "Da confermare",
+        minutes: parseRecordedMinutes(data.minutes, Infinity),
+      } })),
     ...matchEntries,
   ];
 
-  const { trainingPresences, totalTrainings, trainingPct } = getTrainingAttendanceSummary(player,
+  const training = getTrainingAttendanceSummary(player,
     getCompletedTrainingEvents([...sessions, ...matches.filter(isFriendlyMatch)], todayStr));
 
   const rpeValues = playerEvents
@@ -1966,9 +1973,7 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
       ...matchTotals,
       avgRpe: rpeValues.length ? Math.round(rpeValues.reduce((sum, value) => sum + value, 0) / rpeValues.length) : 0,
       load,
-      trainingPresences,
-      totalTrainings,
-      trainingPct,
+      ...training,
     },
     latestTests,
     recentEvents: playerEvents

@@ -6,7 +6,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
-import { formatDate, getTrainingSessionStatus, isFriendlyMatch } from "../utils/helpers";
+import { formatDate, getRecordedTrainingStatus, getTrainingSessionStatus, isFriendlyMatch } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
 const STATUS_OPTIONS = ["Presente", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"];
@@ -49,7 +49,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const attendance = session?.attendance || {};
   const firstTeamPlayers = players.filter((player) => String(player.gruppo || "prima").trim().toLowerCase() === "prima");
   const visiblePlayers = pendingOnly
-    ? firstTeamPlayers.filter((player) => !attendance[String(player.id)]?.status)
+    ? firstTeamPlayers.filter((player) => getRecordedTrainingStatus(player, session) === null)
     : players;
 
   function updatePlayer(playerId, field, value) {
@@ -81,7 +81,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
         const newAttendance = { ...item.attendance };
         visiblePlayers.forEach((p) => {
           const playerId = String(p.id);
-          if (pendingOnly && item.attendance?.[playerId]?.status) return;
+          if (pendingOnly && getRecordedTrainingStatus(p, item)) return;
           newAttendance[playerId] = {
             ...(item.attendance?.[playerId] || {}),
             status,
@@ -115,18 +115,18 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   // Contatori per status
   const counts = firstTeamPlayers.reduce(
     (acc, p) => {
-      const st = getTrainingSessionStatus(p, session);
+      const st = getRecordedTrainingStatus(p, session) ?? "Da confermare";
       acc[st] = (acc[st] || 0) + 1;
       return acc;
     },
     {}
   );
 
-  const presenti    = counts["Presente"]    || 0;
+  const presenti = (counts.Presente || 0) + (counts.Recupero || 0);
+  const pending = counts["Da confermare"] || 0;
   const assenti     = counts["Assente"]     || 0;
   const infortunati = counts["Infortunato"] || 0;
   const permesso    = counts["Permesso"]    || 0;
-  const pct = firstTeamPlayers.length > 0 ? Math.round((presenti / firstTeamPlayers.length) * 100) : null;
 
   const subtitle = [
     formatDate(session.date),
@@ -154,7 +154,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
             {assenti     > 0 && <SummaryPill color="#f87171"  icon="✖" label={t("pages.sessionAttendance.summaryAssenti")}     value={assenti} />}
             {infortunati > 0 && <SummaryPill color="#fb923c"  icon="⚠" label={t("pages.sessionAttendance.summaryInfortunati")} value={infortunati} />}
             {permesso    > 0 && <SummaryPill color="#38bdf8"  icon="◎" label={t("pages.sessionAttendance.summaryPermesso")}    value={permesso} />}
-            {pct !== null && <span style={s.pct}>{pct}{t("pages.sessionAttendance.summaryPct")}</span>}
+            {pending > 0 && <SummaryPill color="#facc15" icon="?" label="da confermare" value={pending} />}
           </div>
           <div style={s.topActions}>
             {canManage && (
@@ -191,8 +191,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
           if (ra !== rb) return ra - rb;
           return getSortKey(a).localeCompare(getSortKey(b), "it");
         });
-        const presentiList = sortByRole(firstTeamPlayers.filter((p) => getTrainingSessionStatus(p, session) === "Presente"));
-        const assentiList  = sortByRole(firstTeamPlayers.filter((p) => getTrainingSessionStatus(p, session) !== "Presente"));
+        const presentiList = sortByRole(firstTeamPlayers.filter((p) => ["Presente", "Recupero"].includes(getRecordedTrainingStatus(p, session))));
+        const assentiList  = sortByRole(firstTeamPlayers.filter((p) => !["Presente", "Recupero"].includes(getRecordedTrainingStatus(p, session))));
         return (
           <AppCard>
             <button
@@ -258,6 +258,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
             }).map((player) => {
               const pid    = String(player.id);
               const data   = attendance[pid] || {};
+              const recorded = getRecordedTrainingStatus(player, session);
               const status = getTrainingSessionStatus(player, session);
               const rpe    = data.rpe ?? "";
               const displayName =
@@ -273,7 +274,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                       <p style={s.playerName}>{displayName}</p>
                       <p style={s.playerRole}>{player.role || "—"}</p>
                     </div>
-                    <Badge tone={STATUS_TONE[status] || "blue"}>{status}</Badge>
+                    <Badge tone={STATUS_TONE[status] || "blue"}>{recorded ?? ("Da confermare · suggerito " + status)}</Badge>
                   </div>
 
                   {/* Bottoni stato */}
