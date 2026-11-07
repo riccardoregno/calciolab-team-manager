@@ -6,15 +6,16 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
-import { formatDate, getRecordedTrainingStatus, getTrainingSessionStatus, isFriendlyMatch } from "../utils/helpers";
+import { formatDate, getRecordedTrainingStatus, getTrainingSessionStatus, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
-const STATUS_OPTIONS = ["Presente", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"];
+const STATUS_OPTIONS = ["Presente", "Parziale", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"];
 
 const STATUS_TONE = {
   Presente:   "green",
   Assente:    "red",
   Infortunato:"orange",
+  Parziale:   "blue",
   Recupero:   "blue",
   Permesso:   "blue",
   Squalificato:"purple",
@@ -123,6 +124,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   );
 
   const presenti = (counts.Presente || 0) + (counts.Recupero || 0);
+  const partial = counts.Parziale || 0;
   const pending = counts["Da confermare"] || 0;
   const assenti     = counts["Assente"]     || 0;
   const infortunati = counts["Infortunato"] || 0;
@@ -151,6 +153,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
         <div style={s.topBar}>
           <div style={s.summary}>
             <SummaryPill color="#22c55e" icon="✔" label={t("pages.sessionAttendance.summaryPresenti")}    value={presenti} />
+            {partial > 0 && <SummaryPill color="#38bdf8" icon="◐" label="parziali" value={partial} />}
             {assenti     > 0 && <SummaryPill color="#f87171"  icon="✖" label={t("pages.sessionAttendance.summaryAssenti")}     value={assenti} />}
             {infortunati > 0 && <SummaryPill color="#fb923c"  icon="⚠" label={t("pages.sessionAttendance.summaryInfortunati")} value={infortunati} />}
             {permesso    > 0 && <SummaryPill color="#38bdf8"  icon="◎" label={t("pages.sessionAttendance.summaryPermesso")}    value={permesso} />}
@@ -191,8 +194,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
           if (ra !== rb) return ra - rb;
           return getSortKey(a).localeCompare(getSortKey(b), "it");
         });
-        const presentiList = sortByRole(firstTeamPlayers.filter((p) => ["Presente", "Recupero"].includes(getRecordedTrainingStatus(p, session))));
-        const assentiList  = sortByRole(firstTeamPlayers.filter((p) => !["Presente", "Recupero"].includes(getRecordedTrainingStatus(p, session))));
+        const presentiList = sortByRole(firstTeamPlayers.filter((p) => isTrainingParticipation(getRecordedTrainingStatus(p, session))));
+        const assentiList  = sortByRole(firstTeamPlayers.filter((p) => !isTrainingParticipation(getRecordedTrainingStatus(p, session))));
         return (
           <AppCard>
             <button
@@ -283,7 +286,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                       <button
                         key={opt}
                         type="button"
-                        aria-pressed={status === opt}
+                        aria-pressed={recorded === opt}
                         onClick={() => updatePlayer(pid, "status", opt)}
                         disabled={!canManage}
                         style={{
@@ -297,7 +300,19 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                   </div>
 
                   {/* RPE solo se presente */}
-                  {status === "Presente" && (
+                  {recorded === "Parziale" && (
+                    <label style={s.rpeRow}>
+                      <span>Minuti svolti (facoltativi)</span>
+                      <input style={s.rpeInput} type="number" min="1" step="1" inputMode="numeric"
+                        value={data.partialMinutes ?? ""} disabled={!canManage}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          const minutes = parseRecordedMinutes(value, Infinity);
+                          if (value === "" || minutes > 0) updatePlayer(pid, "partialMinutes", minutes);
+                        }} />
+                    </label>
+                  )}
+                  {isTrainingParticipation(status) && (
                     <div style={s.rpeRow}>
                       <span style={s.rpeLabel}>RPE</span>
                       <input

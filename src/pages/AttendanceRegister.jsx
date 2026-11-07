@@ -11,22 +11,22 @@ import SearchBar from "../components/ui/SearchBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { useAuth } from "../hooks/useAuth";
 import { styles } from "../styles/index.js";
-import { comparePlayersByName, formatShortDate, getPlayerSortKey, getPlayerUnavailabilityOnDate, getTrainingSessionStatus, getRecordedTrainingStatus, getCompletedTrainingEvents, getTrainingAttendanceSummary, formatTrainingAttendance, isFriendlyMatch } from "../utils/helpers";
+import { comparePlayersByName, formatShortDate, getPlayerSortKey, getPlayerUnavailabilityOnDate, getTrainingSessionStatus, getRecordedTrainingStatus, getRecordedTrainingMinutes, isTrainingParticipation, getCompletedTrainingEvents, getTrainingAttendanceSummary, formatTrainingAttendance, isFriendlyMatch } from "../utils/helpers";
 import { fetchTeamRpe } from "../services/sessionRpe";
 import { useTranslation } from "../i18n";
 
-const STATUS_FLOW = ["Presente", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"];
+const STATUS_FLOW = ["Presente", "Parziale", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"];
 
 const STATUS_META = {
   Presente:     { code: "P",  tone: "green",  color: "#4ade80", bg: "rgba(34,197,94,0.13)", border: "rgba(34,197,94,0.36)" },
   Assente:      { code: "A",  tone: "red",    color: "#f87171", bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.34)" },
   Infortunato:  { code: "I",  tone: "orange", color: "#fbbf24", bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.36)" },
+  Parziale:     { code: "P½", tone: "blue", color: "#38bdf8", bg: "rgba(56,189,248,0.12)", border: "rgba(56,189,248,0.34)" },
   Recupero:     { code: "R",  tone: "blue",   color: "#38bdf8", bg: "rgba(56,189,248,0.12)", border: "rgba(56,189,248,0.34)" },
   Permesso:     { code: "Pe", tone: "blue",   color: "#93c5fd", bg: "rgba(96,165,250,0.12)", border: "rgba(96,165,250,0.34)" },
   Squalificato: { code: "S",  tone: "purple", color: "#c4b5fd", bg: "rgba(168,85,247,0.12)", border: "rgba(168,85,247,0.34)" },
 };
 
-const PRESENT_STATUSES = new Set(["Presente", "Recupero"]);
 const ABSENT_STATUSES = new Set(["Assente", "Permesso", "Squalificato"]);
 
 function getPlayerName(player) {
@@ -525,7 +525,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                       const meta = STATUS_META[status] || STATUS_META.Presente;
                       const isReadOnlyMatch = session.isMatch && !session.isFriendly;
                       const pending = !isReadOnlyMatch && getRecordedTrainingStatus(player, session) === null;
-                      const showRpe = status === "Presente" || status === "Recupero";
+                      const showRpe = isTrainingParticipation(status);
                       const playerSubmittedRpe = playerRpeIndex[`${playerId}:${session.id}`];
                       const effectiveRpe = entry.rpe ?? playerSubmittedRpe ?? "";
 
@@ -756,10 +756,10 @@ function buildRegisterStats(players, sessions, playerRpeIndex = {}) {
       const status = getRecordedTrainingStatus(player, session);
       if (status === null) pendingTrainings++;
       const effectiveRpe = entry.rpe ?? playerRpeIndex[`${player.id}:${session.id}`];
-      if (PRESENT_STATUSES.has(status)) present += 1;
+      if (isTrainingParticipation(status)) present += 1;
       if (ABSENT_STATUSES.has(status)) absences += 1;
       if (status === "Infortunato") injuries += 1;
-      if (PRESENT_STATUSES.has(status) && Number(effectiveRpe || 0)) rpes.push(Number(effectiveRpe));
+      if (isTrainingParticipation(status) && Number(effectiveRpe || 0)) rpes.push(Number(effectiveRpe));
     });
   });
 
@@ -780,8 +780,9 @@ function buildPlayerStats(player, sessions, playerRpeIndex = {}) {
     const entry = session.attendance?.[String(player.id)] || {};
     const status = getRecordedTrainingStatus(player, session);
     const effectiveRpe = entry.rpe ?? playerRpeIndex[`${player.id}:${session.id}`];
-    if (PRESENT_STATUSES.has(status)) {
-      load += getDuration(session) * Number(effectiveRpe || 0);
+    if (isTrainingParticipation(status)) {
+      const minutes = getRecordedTrainingMinutes(entry) ?? (status === "Parziale" ? 0 : getDuration(session));
+      load += minutes * Number(effectiveRpe || 0);
     }
   });
 

@@ -11,7 +11,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 
 import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
-import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getCompletedTrainingEvents, getTrainingAttendanceSummary, getRecordedTrainingStatus, formatTrainingAttendance, parseRecordedMinutes, isTrainingStatsEvent, localDateString, parseMatchResult } from "../utils/helpers";
+import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getCompletedTrainingEvents, getTrainingAttendanceSummary, getRecordedTrainingStatus, formatTrainingAttendance, getRecordedTrainingMinutes, isTrainingParticipation, isTrainingStatsEvent, localDateString, parseMatchResult } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { loadPlayerMatchesForPeriod, loadMatchStatsMatrix } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
@@ -1654,14 +1654,14 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = []) {
         if (!isTrainingStatsEvent(event)) return null;
         const data = event.attendance?.[player.id] || {};
         const status = getRecordedTrainingStatus(player, event) ?? "Da confermare";
-        const present = status === "Presente" || status === "Recupero";
+        const present = isTrainingParticipation(status);
         return {
           sessionId: event.id,
           title: event.title,
           date: event.date,
           type: event.type,
           status,
-          minutes: parseRecordedMinutes(data.minutes, Infinity),
+          minutes: getRecordedTrainingMinutes(data),
           goals: present ? Number(data.goals || 0) : 0,
           assists: present ? Number(data.assists || 0) : 0,
           yellowCards: present ? Number(data.yellowCards || 0) : 0,

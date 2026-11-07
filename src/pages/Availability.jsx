@@ -22,7 +22,7 @@ const PREP_PLANNING_MAX_DAYS = 62;
 // Soglia sotto la quale un giorno viene segnalato come "critico"
 // (percentuale di rosa disponibile).
 const PREP_CRITICAL_RATIO = 0.7;
-const PREP_AVAILABLE_ATTENDANCE = new Set(["Presente", "Recupero"]);
+const PREP_AVAILABLE_ATTENDANCE = new Set(["Presente", "Parziale", "Recupero"]);
 const PREP_UNAVAILABLE_ATTENDANCE_LABELS = {
   Assente: "Assente nel registro",
   Infortunato: "Infortunato nel registro",
@@ -103,7 +103,7 @@ function buildPrepDays(players, sessions, matches, start, end) {
       (player) => {
         if (!trainingSession || getPlayerUnavailabilityOnDate(player, dateStr)) return false;
         const status = trainingSession.attendance?.[String(player.id)]?.status || "Assente";
-        return status === "Presente" || status === "Recupero";
+        return status === "Presente" || status === "Parziale" || status === "Recupero";
       }
     );
 

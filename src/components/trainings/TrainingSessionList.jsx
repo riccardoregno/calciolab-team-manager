@@ -26,7 +26,7 @@ export default function TrainingSessionList({ sessions = [], loading = false, ca
         const parsedDate = date ? new Date(`${date}T12:00:00`) : null;
         const duration = getTrainingDuration(session);
         const status = getTrainingStatus(session, today);
-        const present = Object.values(session.attendance || {}).filter((entry) => ["Presente", "Recupero", "Differenziato"].includes(entry?.status)).length;
+        const present = Object.values(session.attendance || {}).filter((entry) => ["Presente", "Parziale", "Recupero", "Differenziato"].includes(entry?.status)).length;
         const registered = Object.values(session.attendance || {}).some((entry) => entry?.status);
         const title = session.title || text(session.isFriendlyMatch ? "friendly" : "session");
         const primaryPath = session.isFriendlyMatch ? `/match-stats/${session.id}` : `/session-attendance/${session.id}`;

@@ -1513,7 +1513,16 @@ export function getCompletedTrainingEvents(events, today = localDateString(), no
     .filter((event) => isCompletedTrainingSession(event, today, nowTime));
 }
 
-const ATTENDANCE_STATUSES = new Set(["Presente", "Recupero", "Assente", "Permesso", "Infortunato", "Squalificato"]);
+const ATTENDANCE_STATUSES = new Set(["Presente", "Parziale", "Recupero", "Assente", "Permesso", "Infortunato", "Squalificato"]);
+
+export function isTrainingParticipation(status) {
+  return status === "Presente" || status === "Parziale" || status === "Recupero";
+}
+
+export function getRecordedTrainingMinutes(entry) {
+  const value = entry?.status === "Parziale" ? entry.partialMinutes : entry?.minutes;
+  return parseRecordedMinutes(value, Infinity);
+}
 
 export function getRecordedTrainingStatus(player, event) {
   const status = event?.attendance?.[player.id]?.status;
@@ -1529,7 +1538,7 @@ export function getTrainingAttendanceSummary(player, completedEvents) {
   for (const event of completedEvents) {
     const status = getRecordedTrainingStatus(player, event);
     if (status === null) pendingTrainings++;
-    if (status === "Presente" || status === "Recupero") trainingPresences++;
+    if (isTrainingParticipation(status)) trainingPresences++;
     if (status === "Assente" || status === "Permesso") absences++;
     if (status === "Infortunato") injuries++;
   }
@@ -1873,7 +1882,7 @@ export function getPlayerSeasonSeries(player, { sessions = [], matches = [], phy
       const data = session.attendance?.[player.id];
       if(!data) return null;
       const rpe = Number(data.rpe || 0);
-      const duration = Number(data.minutes || session.duration || 0);
+      const duration = getRecordedTrainingMinutes(data) ?? (data.status === "Parziale" ? 0 : Number(session.duration || 0));
       return {
         date: session.date,
         title: session.title || "",
@@ -1936,7 +1945,7 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
       .filter(({ data }) => data)
       .map(({ event, data }) => ({ event, data: { ...data,
         status: getRecordedTrainingStatus(player, event) ?? "Da confermare",
-        minutes: parseRecordedMinutes(data.minutes, Infinity),
+        minutes: getRecordedTrainingMinutes(data),
       } })),
     ...matchEntries,
   ];
@@ -1948,7 +1957,7 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
     .map(({ data }) => Number(data.rpe || 0))
     .filter(Boolean);
   const load = playerEvents.reduce((sum, { event, data }) => {
-    const duration = Number(data.minutes || event.duration || 0);
+    const duration = data.minutes ?? (data.status === "Parziale" ? 0 : Number(event.duration || 0));
     const rpe = Number(data.rpe || 0);
     return sum + duration * rpe;
   }, 0);

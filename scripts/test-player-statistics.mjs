@@ -118,3 +118,16 @@ const completeLegacy = { ...legacyMinutes, lineup: { starterIds: ["forward"] } }
 const tasks = getMatchCompletionTasks({ matches: [starterWithoutMinutes, completeLegacy], players,
   rows: [{ player_id: "forward", match_id: "legacy", minutes_played: null }], canCheckMinutes: true, now: new Date("2020-02-01") });
 assert.deepEqual(tasks.map(({ match: event, missingMinutes }) => [event.id, missingMinutes]), [["starter", 1]]);
+
+const partialSession = { date: "2020-01-02", type: "Allenamento", duration: 90,
+  attendance: { forward: { status: "Parziale", partialMinutes: 30, rpe: 4 } } };
+const partialSummary = getPlayerSummary(striker, { sessions: [partialSession] });
+assert.equal(partialSummary.stats.trainingPresences, 1);
+assert.equal(partialSummary.stats.pendingTrainings, 0);
+assert.equal(partialSummary.stats.load, 120);
+assert.equal(partialSummary.recentEvents[0].data.status, "Parziale");
+assert.equal(partialSummary.recentEvents[0].data.minutes, 30);
+const unknownPartial = { ...partialSession, attendance: { forward: { status: "Parziale", rpe: 4 } } };
+const unknownSummary = getPlayerSummary(striker, { sessions: [unknownPartial] });
+assert.equal(unknownSummary.recentEvents[0].data.minutes, null);
+assert.equal(unknownSummary.stats.load, 0, "Unknown partial minutes must not inherit the full session duration");

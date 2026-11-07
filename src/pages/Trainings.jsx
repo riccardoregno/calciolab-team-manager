@@ -1166,7 +1166,7 @@ function PrintBox({ title, value }) {
 // ─────────────────────────────────────────────
 // Box giocatori disponibili nel form seduta
 // ─────────────────────────────────────────────
-const SESSION_AVAILABLE_ATTENDANCE = new Set(["Presente", "Recupero"]);
+const SESSION_AVAILABLE_ATTENDANCE = new Set(["Presente", "Parziale", "Recupero"]);
 const ATTENDANCE_UNAVAILABLE_LABELS = {
   Assente: "Assente nel registro",
   Infortunato: "Infortunato nel registro",
