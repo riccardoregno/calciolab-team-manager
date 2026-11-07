@@ -1,3 +1,4 @@
+import WeeklyRoster from "../components/statistics/WeeklyRoster";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -399,6 +400,7 @@ function Statistics({
         </div>
       </div>
       <MatchScopeFilters scope={matchScope} />
+      <WeeklyRoster events={events} players={players} rows={playerMatchStatsRows} loading={statsLoading} />
 
       {/* ── Filtri ── */}
       <AppCard>
