@@ -34,12 +34,13 @@ function getWeekEvents(events, start, now) {
   return { sessions, matches };
 }
 
-function FourWeekComparison({ events, players, rows, start, now, loading, statsError }) {
+function FourWeekComparison({ events, players, selectedPlayer, onSelectPlayer, rows, start, now, loading, statsError }) {
+  const comparisonPlayers = selectedPlayer ? [selectedPlayer] : players;
   const weeks = [3, 2, 1, 0].map((offset) => {
     const date = moveDate(start, -7 * offset);
     const { sessions, matches } = getWeekEvents(events, date, now);
     const totals = { presences: 0, absences: 0, pending: 0, minutes: 0, recorded: 0, missing: 0, unverifiable: 0 };
-    for (const player of players) {
+    for (const player of comparisonPlayers) {
       const attendance = getTrainingAttendanceSummary(player, sessions);
       totals.presences += attendance.trainingPresences;
       totals.absences += attendance.absences;
@@ -64,14 +65,25 @@ function FourWeekComparison({ events, players, rows, start, now, loading, statsE
   });
 
   return <>
-    <p>Totali della prima squadra per la settimana selezionata e le tre precedenti. Le presenze includono parziali e recuperi. Le assenze includono i permessi. I dati da completare sono contati per giocatore e per evento.</p>
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 12 }}>
+    <label style={{ display: "grid", gap: 6, maxWidth: 360, marginTop: 8 }}>
+      Giocatore
+      <select value={selectedPlayer ? String(selectedPlayer.id) : ""} onChange={(event) => onSelectPlayer(event.target.value)}
+        style={{ width: "100%", minWidth: 0, minHeight: 44, padding: "8px 12px", border: "1px solid #334155", borderRadius: 8, background: "#182334", color: "#e2e8f0" }}>
+        <option value="">Tutta la prima squadra</option>
+        {[...players].sort(comparePlayersByName).map((player) => <option key={player.id} value={String(player.id)}>{player.name}</option>)}
+      </select>
+    </label>
+    <p>Settimana selezionata e tre precedenti. Le presenze includono parziali e recuperi. Le assenze includono i permessi.</p>
+    <div aria-live="polite" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 12 }}>
       {weeks.map((week) => <article key={week.date} style={{ padding: 12, border: "1px solid #334155", borderRadius: 12 }}>
         <strong>{formatDate(week.date)} – {formatDate(moveDate(week.date, 6))}</strong>
         <div>{week.sessions.length} sedute · {week.matches.length} gare</div>
-        <p>{week.presences} presenze · {week.absences} assenze<br />{week.pending} presenze da confermare</p>
+        <p>{week.presences} presenze · {week.absences} assenze<br />{week.pending} presenze da registrare</p>
         {!week.matches.length ? <p>Nessuna gara</p> : loading ? <p>Caricamento minutaggio…</p> : statsError ? <p>Minutaggio non verificabile</p> : <>
-          <p>{week.recorded ? week.minutes + " min registrati" : "Nessun minuto registrato"}<br />{week.missing} minutaggi da completare</p>
+          <p>{week.recorded
+            ? week.minutes + (selectedPlayer && week.minutes === 0 && !week.missing && !week.unverifiable ? " min · non impiegato" : " min registrati")
+            : selectedPlayer && !week.missing && !week.unverifiable ? "Non convocato" : "Nessun minuto registrato"}
+            <br />{week.missing} minutaggi da completare</p>
           {week.unverifiable > 0 && <p>{week.unverifiable} convocazioni non verificabili</p>}
         </>}
       </article>)}
@@ -81,6 +93,8 @@ function FourWeekComparison({ events, players, rows, start, now, loading, statsE
 
 export default function WeeklyRoster({ events, players, rows, loading, statsError, standalone = false }) {
   const [showComparison, setShowComparison] = useState(false);
+  const [comparisonPlayerId, setComparisonPlayerId] = useState("");
+  const comparisonPlayer = players.find((player) => String(player.id) === comparisonPlayerId);
   const now = new Date();
   const today = localDateString(now);
   const [params, setParams] = useSearchParams();
@@ -116,7 +130,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
       missing.length ? "Minutaggio da completare" : games.every(({ status }) => status === "Non convocato") ? "Non convocato" : "Convocazione non verificabile";
     const trainingLabels = { Presente: "presenti", Assente: "assenze", Recupero: "recuperi", Parziale: "parziali", Permesso: "permessi", Infortunato: "infortuni", Squalificato: "squalifiche" };
     const trainingSummary = training.map(([status, count]) => count + " " + trainingLabels[status]);
-    if (pending.length) trainingSummary.push(pending.length + " da confermare");
+    if (pending.length) trainingSummary.push(pending.length + " da registrare");
     return { player, pending, trainingSummary, games, known, missing, matchSummary };
   });
   const pendingOnly = params.get("rosterPending") === "1";
@@ -141,7 +155,8 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
       <p>{sessions.length} sedute svolte · {matches.length} gare</p>
       {standalone && players.length > 0 && <details onToggle={(event) => setShowComparison(event.currentTarget.open)} style={{ marginBottom: 12 }}>
         <summary style={{ cursor: "pointer", padding: "10px 0" }}>Confronta quattro settimane</summary>
-        {showComparison && <FourWeekComparison {...{ events, players, rows, start, now, loading, statsError }} />}
+        {showComparison && <FourWeekComparison {...{ events, players, rows, start, now, loading, statsError }}
+          selectedPlayer={comparisonPlayer} onSelectPlayer={setComparisonPlayerId} />}
       </details>}
       {players.length > 0 && <label style={{ display: "inline-flex", alignItems: "center", gap: 8, minHeight: 44, cursor: "pointer" }}>
         <input type="checkbox" checked={pendingOnly} onChange={togglePending} />
@@ -173,7 +188,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
                 <ul style={{ margin: "6px 0 0", paddingLeft: 18, overflowWrap: "anywhere" }}>
                   {pending.map(({ event }) => <li key={"session-" + event.id}>
                     <Link to={"/session-attendance/" + encodeURIComponent(event.id)} state={{ pendingOnly: true, rosterWeek: start, rosterPending: pendingOnly }}>
-                      {formatDate(event.date)} · {event.title || "Seduta"} · Da confermare
+                      {formatDate(event.date)} · {event.title || "Seduta"} · Da registrare
                     </Link>
                   </li>)}
                   {!loading && !statsError && games.map(({ event, status, minutes }) => {
