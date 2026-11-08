@@ -55,6 +55,24 @@ const tasks = buildCoachTasks({ players: [player, reserve], now: new Date(2026, 
 assert.equal(tasks.find((task) => task.kind === "stats").count, 1, "Saved zero-minute bench records are complete");
 assert.equal(tasks.find((task) => task.kind === "attendance").count, 1, "An explicit absence is complete");
 assert.equal(tasks.some((task) => task.event.id === "old"), false);
+assert.equal(tasks.find((task) => task.kind === "stats").to, "/match-completion/m");
+assert.equal(tasks.find((task) => task.kind === "attendance").state.pendingOnly, true);
+const completedTasks = buildCoachTasks({
+  players: [player, reserve],
+  now: new Date(2026, 9, 20, 19),
+  matches: [recentMatch],
+  matchRows: [
+    { player_id: "1", match_id: "m", minutes_played: 0 },
+    { player_id: "2", match_id: "m", minutes_played: 65 },
+  ],
+  sessions: [
+    { id: "finished", type: "Allenamento", date: "2026-10-20", time: "17:00", duration: 60, attendance: { 1: { status: "Presente" }, 2: { status: "Assente" } } },
+    { id: "ongoing", type: "Allenamento", date: "2026-10-20", time: "18:30", duration: 60 },
+    { id: "just-ended", type: "Allenamento", date: "2026-10-20", time: "18:00", duration: 60 },
+  ],
+});
+assert.equal(completedTasks.some((task) => task.kind === "stats"), false);
+assert.deepEqual(completedTasks.filter((task) => task.kind === "attendance").map((task) => task.event.id), ["just-ended"]);
 assert.equal(tasks.find((task) => task.kind === "callup").event.id, "future");
 assert.equal(buildCoachTasks({ players: [player], matches: [recentMatch], now: new Date(2026, 9, 20), canCheckMatchStats: false }).some((task) => task.kind === "stats"), false, "Do not report missing statistics when the server could not be checked");
 assert.deepEqual(searchNavigationItems([{ label: "Disponibilità" }, { label: "Statistiche squadra" }], "DISPONIBILITA", (item) => item.label), [{ label: "Disponibilità" }]);

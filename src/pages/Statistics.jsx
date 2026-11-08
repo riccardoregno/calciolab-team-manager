@@ -212,12 +212,14 @@ function Statistics({
   }, [caricoPreset, caricoFrom, caricoTo, events, players, auth.team?.id]);
 
   // Keep the source badge honest when official match rows cannot be loaded.
+  const [rosterStatsError, setRosterStatsError] = useState(false);
   const [statsSource, setStatsSource] = useState("local"); // "supabase" | "local"
 
   useEffect(() => {
     if (!auth.team?.id) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatsSource("local");
+      setRosterStatsError(false);
       setStatsLoading(false);
       setPlayerMatchStatsRows([]);
       return;
@@ -233,11 +235,13 @@ function Statistics({
       .then(({ data, error }) => {
         if (!active) return;
         setPlayerMatchStatsRows(data || []);
+        setRosterStatsError(Boolean(error));
         setStatsSource(error || !data?.length ? "local" : "supabase");
         setStatsLoading(false);
       }).catch(() => {
         if (!active) return;
         setStatsSource("local");
+        setRosterStatsError(true);
         setPlayerMatchStatsRows([]);
         setStatsLoading(false);
       });
@@ -373,7 +377,7 @@ function Statistics({
       <PageHeader title="Quadro settimanale della rosa" />
       <Link to="/">Torna alla Dashboard</Link>
       <MatchScopeFilters scope={matchScope} />
-      <WeeklyRoster events={events} players={players} rows={playerMatchStatsRows} loading={statsLoading} standalone />
+      <WeeklyRoster events={events} players={players} rows={playerMatchStatsRows} loading={statsLoading} statsError={rosterStatsError} standalone />
     </div>;
   }
 
@@ -411,7 +415,7 @@ function Statistics({
         </div>
       </div>
       <MatchScopeFilters scope={matchScope} />
-      <WeeklyRoster events={events} players={players} rows={playerMatchStatsRows} loading={statsLoading} />
+      <WeeklyRoster events={events} players={players} rows={playerMatchStatsRows} loading={statsLoading} statsError={rosterStatsError} />
 
       {/* ── Filtri ── */}
       <AppCard>

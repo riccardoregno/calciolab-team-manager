@@ -26,7 +26,7 @@ export default function CoachActionQueue({ tasks = [], onOpen, loading = false }
           <ul id={listId} className={"coach-queue-list" + (expanded ? " is-expanded" : "")}>
             {visibleTasks.map((task) => {
               const Icon = TASK_ICONS[task.kind] || ClipboardCheck;
-              return <li key={task.id}><button type="button" onClick={() => onOpen(task.to)} className={"coach-action-task coach-task-" + task.kind}>
+              return <li key={task.id}><button type="button" onClick={() => onOpen(task.to, { state: task.state })} className={"coach-action-task coach-task-" + task.kind}>
                 <Icon size={17} className="coach-task-icon" aria-hidden="true" />
                 <span className="coach-task-copy"><strong>{t(`coachTasks.${task.kind}`, { count: task.count })}</strong><small>{task.event.opponent || task.event.title || t("common.session")} · {formatDate(task.event.date)}</small></span>
                 <ArrowRight size={15} aria-hidden="true" />

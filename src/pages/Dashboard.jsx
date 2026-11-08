@@ -370,9 +370,9 @@ function Dashboard({
   const upcomingWeekEvents = agenda.weekEvents.length;
   const openCorrections = getOpenPostMatchCorrections(sessions, matches);
   const operationalTasks = useMemo(() => buildCoachTasks({ sessions, matches, players,
-    matchRows: playerMatchRows, canCheckMatchStats: !statsLoading && !statsError,
+    matchRows: playerMatchRows, canCheckMatchStats: !statsLoading && !statsError && (!auth.team?.id || statsCompletedForTeam === auth.team.id),
     now: new Date(agendaMinute),
-  }), [sessions, matches, players, playerMatchRows, statsLoading, statsError, agendaMinute]);
+  }), [sessions, matches, players, playerMatchRows, statsLoading, statsError, agendaMinute, auth.team?.id, statsCompletedForTeam]);
   const availablePlayers = primaPlayers.filter((p) => !p.status || p.status === "Disponibile").length;
   const recentActivities = agenda.pastEvents.slice(0, 4);
   const coachAlerts = useMemo(() => prioritizeCoachAlerts([
@@ -469,7 +469,7 @@ function Dashboard({
             showMetrics={widgets.hero} showAgenda={widgets.nextEvent}>
             {nextEvent?.type === "Partita" && <NextMatchCard match={nextEvent} navigate={navigate} clubName={settings.workspaceProfile?.clubName || t("common.appName")} rsvpSummary={nextMatchRsvpSummary} />}
           </CoachFocusCard>
-          {queueWithFocus && <CoachActionQueue tasks={operationalTasks} loading={statsLoading} onOpen={(path) => navigate(path)} />}
+          {queueWithFocus && <CoachActionQueue tasks={operationalTasks} loading={statsLoading} onOpen={navigate} />}
           </div>
         );
 
@@ -1217,7 +1217,7 @@ function Dashboard({
       )}
 
       {showOperationalQueue && !queueWithFocus &&
-        <CoachActionQueue tasks={operationalTasks} loading={statsLoading} onOpen={(path) => navigate(path)} />}
+        <CoachActionQueue tasks={operationalTasks} loading={statsLoading} onOpen={navigate} />}
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
         <div>

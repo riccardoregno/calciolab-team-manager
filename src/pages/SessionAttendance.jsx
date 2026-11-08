@@ -170,8 +170,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                 {t("pages.sessionAttendance.markAllPresent")}
               </Button>
             )}
-            <Button variant="ghost" onClick={() => navigate(rosterReturn || "/trainings")}>
-              {rosterReturn ? "Torna al riepilogo settimanale" : t("pages.sessionAttendance.back")}
+            <Button variant="ghost" onClick={() => navigate(rosterReturn || (state?.fromDashboard ? "/" : "/trainings"))}>
+              {rosterReturn ? "Torna al riepilogo settimanale" : t(state?.fromDashboard ? "pages.sessionAttendance.backToDashboard" : "pages.sessionAttendance.back")}
             </Button>
           </div>
         </div>
@@ -250,7 +250,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
               <Button variant="ghost" onClick={() => setPendingOnly((value) => !value)}>
                 {t(pendingOnly ? "pages.sessionAttendance.showAllPlayers" : "pages.sessionAttendance.showPendingPlayers")}
               </Button>
-              {!rosterReturn && <Button variant="ghost" onClick={() => navigate("/")}>{t("pages.sessionAttendance.backToDashboard")}</Button>}
+              {!rosterReturn && !state?.fromDashboard && <Button variant="ghost" onClick={() => navigate("/")}>{t("pages.sessionAttendance.backToDashboard")}</Button>}
             </div>
           )}
           {pendingOnly && !visiblePlayers.length && <p role="status">{t("pages.sessionAttendance.attendanceComplete")}</p>}

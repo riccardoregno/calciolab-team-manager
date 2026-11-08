@@ -61,6 +61,8 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
   const expected = new Set([...registeredIds, ...starters]);
   const { state } = useLocation();
   const linkedPlayerId = state?.minutesPlayerId;
+  const [missingOnly, setMissingOnly] = useState(Boolean(state?.missingMinutesOnly));
+  const backTo = state?.fromDashboard ? "/" : "/matches?view=pending";
   const rosterReturn = state?.rosterWeek ? "/statistics?roster=1&rosterWeek=" + encodeURIComponent(state.rosterWeek) + (state.rosterPending ? "&rosterPending=1" : "") : null;
   const savedStarterNames = starters.map((id) => {
     const player = players.find((item) => String(item.id) === id);
@@ -73,11 +75,17 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
   });
   const awayFixture = match.location === "Trasferta";
 
-  function getMinutes(id) {
-    if (Object.hasOwn(edits, id)) return edits[id];
+  function getSavedMinutes(id) {
     return resolveMatchMinutes(saved?.[id]?.minutes_played, match.attendance?.[id]?.minutes, saved?.[id]?.minutes_cleared) ?? "";
   }
 
+  function getMinutes(id) {
+    return Object.hasOwn(edits, id) ? edits[id] : getSavedMinutes(id);
+  }
+
+  const visibleMinutesPlayers = missingOnly
+    ? minutesPlayers.filter(({ id }) => !hasRecordedMinutes(getSavedMinutes(String(id))) || Object.hasOwn(edits, String(id)))
+    : minutesPlayers;
   const missingMinutes = minutesPlayers.filter((player) => {
     const value = getMinutes(String(player.id));
     return !hasRecordedMinutes(value);
@@ -136,7 +144,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
       }));
       writeDraft(draftKey, emptyDraft);
       window.dispatchEvent(new Event("player-match-stats-updated"));
-      navigate(rosterReturn || "/matches?view=pending");
+      navigate(rosterReturn || backTo);
     } catch {
       setError("Alcuni minuti potrebbero essere stati salvati. Riprova per completare il tabellino.");
     } finally {
@@ -148,7 +156,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
   return (
     <div style={{ maxWidth: 720, marginInline: "auto", display: "grid", gap: 14 }}>
       <PageHeader title="Completa tabellino" subtitle={formatDate(match.date)} />
-      <Link to={rosterReturn || "/matches?view=pending"}>{rosterReturn ? "Torna al riepilogo settimanale" : "Torna alle gare da completare"}</Link>
+      <Link to={rosterReturn || backTo}>{rosterReturn ? "Torna al riepilogo settimanale" : state?.fromDashboard ? "Torna alla Dashboard" : "Torna alle gare da completare"}</Link>
       <form onSubmit={save}>
         <fieldset disabled={!canManage || saving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: "grid", gap: 14 }}>
           {(draft !== emptyDraft || draftError) && (
@@ -187,10 +195,14 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
             {(!remote || saved) && minutesPlayers.length > 0 && (
               <p role="status">{minutesPlayers.length - missingMinutes} di {minutesPlayers.length} con minuti registrati o compilati</p>
             )}
+            {state?.missingMinutesOnly && (!remote || saved) && <label style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 44 }}>
+              <input type="checkbox" checked={missingOnly} onChange={(event) => setMissingOnly(event.target.checked)} />
+              Solo minutaggi da completare
+            </label>}
             {loadError ? <div role="alert">Impossibile caricare il tabellino.{" "}
               <Button type="button" onClick={() => { setLoadError(false); setRevision((value) => value + 1); }}>Riprova</Button>
             </div> : remote && !saved ? <p role="status">Caricamento del tabellino…</p> :
-              minutesPlayers.map((player) => {
+              visibleMinutesPlayers.map((player) => {
                 const id = String(player.id);
                 return <label key={id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
                   <span>{playerName(player)}{starters.includes(id) ? " · Titolare" : ""}{!hasRecordedMinutes(getMinutes(id)) ? " · Minutaggio da completare" : Number(getMinutes(id)) === 0 ? " · Non impiegato · 0 min" : ""}</span>
@@ -200,7 +212,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
               })}
           </AppCard>
           {error && <p role="alert">{error}</p>}
-          <Button type="submit" disabled={saving || !canManage || (remote && !saved)}>{saving ? "Salvataggio…" : rosterReturn ? "Salva e torna al riepilogo" : "Salva e torna alle gare"}</Button>
+          <Button type="submit" disabled={saving || !canManage || (remote && !saved)}>{saving ? "Salvataggio…" : rosterReturn ? "Salva e torna al riepilogo" : state?.fromDashboard ? "Salva e torna alla Dashboard" : "Salva e torna alle gare"}</Button>
         </fieldset>
       </form>
     </div>

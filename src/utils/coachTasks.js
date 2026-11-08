@@ -1,6 +1,6 @@
-import { getRecordedTrainingStatus, resolveMatchMinutes } from "./helpers.js";
+import { getMatchCompletionPlayerIds, getRecordedTrainingStatus, parseMatchResult, resolveMatchMinutes } from "./helpers.js";
 import { getAgendaDateKey, buildCoachAgenda } from "./coachAgenda.js";
-import { isLeagueStatsMatch, parseMatchResult } from "./helpers.js";
+import { hasTrainingEnded } from "./trainingArchive.js";
 
 export function summarizeMatchRsvps(match, rsvps = []) {
   const ids = [...new Set((match?.convocazione?.playerIds || []).map(String))];
@@ -24,22 +24,25 @@ export function buildCoachTasks({ sessions = [], matches = [], players = [], mat
   const next = agenda.nextMatch;
   if (next && !(next.convocazione?.playerIds || []).length) tasks.push({ id: `callup:${next.id}`, kind: "callup", event: next, count: 0, to: `/match-convocation/${next.id}` });
   const playerIds = new Set(players.map((player) => String(player.id)));
-  const recent = agenda.pastEvents.filter((event) => {
+  const recent = agenda.events.filter((event) => {
     const day = getAgendaDateKey(event.date);
-    return day >= from && (day < today || event.completed === true);
-  });
+    if (day < from || day > today) return false;
+    if (event.type !== "Partita") return hasTrainingEnded(event, now);
+    return day < today || event.completed || Boolean(parseMatchResult(event.result, event));
+  }).reverse();
   for (const event of recent) {
     if (event.type === "Partita") {
+      if (event.attendanceOnly) continue;
       if (!parseMatchResult(event.result, event)) tasks.push({ id: `result:${event.id}`, kind: "result", event, count: 0, to: `/post-match/${event.id}` });
-      if (!canCheckMatchStats || !isLeagueStatsMatch(event)) continue;
-      const ids = [...new Set([...(event.convocazione?.playerIds || []), ...(event.lineup?.calledUpIds || []), ...(event.lineup?.starterIds || []), ...(event.lineup?.benchIds || [])].map(String))].filter((id) => playerIds.has(id));
+      if (!canCheckMatchStats) continue;
+      const ids = getMatchCompletionPlayerIds(event).filter((id) => playerIds.has(id));
       const rows = new Map(matchRows.filter((row) => String(row.match_id) === String(event.id)).map((row) => [String(row.player_id), row]));
       const missing = ids.filter((id) => resolveMatchMinutes(rows.get(id)?.minutes_played, event.attendance?.[id]?.minutes, rows.get(id)?.minutes_cleared) === null);
-      if (missing.length) tasks.push({ id: `stats:${event.id}`, kind: "stats", event, count: missing.length, to: `/match-stats/${event.id}` });
+      if (missing.length) tasks.push({ id: `stats:${event.id}`, kind: "stats", event, count: missing.length, to: `/match-completion/${encodeURIComponent(event.id)}`, state: { fromDashboard: true, missingMinutesOnly: true } });
     } else {
       const roster = players.filter((player) => String(player.gruppo || "prima").trim().toLowerCase() === "prima");
       const missing = roster.filter((player) => getRecordedTrainingStatus(player, event) === null);
-      if (missing.length) tasks.push({ id: `attendance:${event.id}`, kind: "attendance", event, count: missing.length, to: `/session-attendance/${event.id}` });
+      if (missing.length) tasks.push({ id: `attendance:${event.id}`, kind: "attendance", event, count: missing.length, to: `/session-attendance/${encodeURIComponent(event.id)}`, state: { fromDashboard: true, pendingOnly: true } });
     }
   }
   return tasks;

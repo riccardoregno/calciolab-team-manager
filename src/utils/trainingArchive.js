@@ -9,6 +9,18 @@ export function getTrainingDuration(session = {}) {
   return detailed || minutes(session.duration ?? session.plannedDuration) || null;
 }
 
+export function hasTrainingEnded(session, now = new Date()) {
+  const date = getAgendaDateKey(session.date);
+  const today = localDateString(now);
+  if (!date || date > today) return false;
+  if (date < today || session.completed) return true;
+  const time = String(session.time || session.startTime || session.start_time || "").match(/^(\d{1,2}):(\d{2})/);
+  const duration = getTrainingDuration(session);
+  if (!time || !duration || Number(time[1]) > 23 || Number(time[2]) > 59) return false;
+  const endMinute = Number(time[1]) * 60 + Number(time[2]) + duration;
+  return endMinute <= now.getHours() * 60 + now.getMinutes();
+}
+
 export function getTrainingStatus(session, today = localDateString()) {
   const date = getAgendaDateKey(session.date);
   if (session.isFriendlyMatch && parseMatchResult(session.result, session)) return "completed";

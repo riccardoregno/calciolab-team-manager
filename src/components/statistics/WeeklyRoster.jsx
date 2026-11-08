@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import AppCard from "../ui/AppCard";
 import Button from "../ui/Button";
 import { getAgendaDateKey } from "../../utils/coachAgenda";
-import { getTrainingDuration } from "../../utils/trainingArchive";
-import { comparePlayersByName, formatDate, getCompletedTrainingEvents, getPlayerMatchEntries, getRecordedTrainingStatus, localDateString, parseMatchResult } from "../../utils/helpers";
+import { hasTrainingEnded } from "../../utils/trainingArchive";
+import { comparePlayersByName, formatDate, isTrainingStatsEvent, getPlayerMatchEntries, getRecordedTrainingStatus, getTrainingAttendanceSummary, localDateString, parseMatchResult } from "../../utils/helpers";
 
 function moveDate(date, days) {
   const shifted = new Date(date + "T12:00:00");
@@ -16,7 +17,70 @@ function monday(date) {
   return moveDate(date, -((day + 6) % 7));
 }
 
-export default function WeeklyRoster({ events, players, rows, loading, standalone = false }) {
+function getWeekEvents(events, start, now) {
+  const today = localDateString(now);
+  const end = moveDate(start, 6);
+  const week = events.filter((event) => {
+    const date = getAgendaDateKey(event.date);
+    return date >= start && date <= end;
+  });
+  const sessions = week.filter((event) => isTrainingStatsEvent(event) && hasTrainingEnded(event, now));
+  const matches = week.filter((event) => {
+    const date = getAgendaDateKey(event.date);
+    return event.type === "Partita" && !event.attendanceOnly &&
+      (date < today || (date === today && (event.completed || parseMatchResult(event.result, event))));
+  });
+
+  return { sessions, matches };
+}
+
+function FourWeekComparison({ events, players, rows, start, now, loading, statsError }) {
+  const weeks = [3, 2, 1, 0].map((offset) => {
+    const date = moveDate(start, -7 * offset);
+    const { sessions, matches } = getWeekEvents(events, date, now);
+    const totals = { presences: 0, absences: 0, pending: 0, minutes: 0, recorded: 0, missing: 0, unverifiable: 0 };
+    for (const player of players) {
+      const attendance = getTrainingAttendanceSummary(player, sessions);
+      totals.presences += attendance.trainingPresences;
+      totals.absences += attendance.absences;
+      totals.pending += attendance.pendingTrainings;
+      if (loading || statsError) continue;
+      const entries = getPlayerMatchEntries(player, matches, rows, false);
+      const byMatch = new Map(entries.map(({ event, data }) => [event.id, data]));
+      for (const match of matches) {
+        const data = byMatch.get(match.id);
+        if (data) {
+          if (data.minutes === null) totals.missing++;
+          else {
+            totals.minutes += data.minutes;
+            totals.recorded++;
+          }
+        } else if (!(match.convocazione?.published && Array.isArray(match.convocazione.playerIds))) {
+          totals.unverifiable++;
+        }
+      }
+    }
+    return { date, sessions, matches, ...totals };
+  });
+
+  return <>
+    <p>Totali della prima squadra per la settimana selezionata e le tre precedenti. Le presenze includono parziali e recuperi. Le assenze includono i permessi. I dati da completare sono contati per giocatore e per evento.</p>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 12 }}>
+      {weeks.map((week) => <article key={week.date} style={{ padding: 12, border: "1px solid #334155", borderRadius: 12 }}>
+        <strong>{formatDate(week.date)} – {formatDate(moveDate(week.date, 6))}</strong>
+        <div>{week.sessions.length} sedute · {week.matches.length} gare</div>
+        <p>{week.presences} presenze · {week.absences} assenze<br />{week.pending} presenze da confermare</p>
+        {!week.matches.length ? <p>Nessuna gara</p> : loading ? <p>Caricamento minutaggio…</p> : statsError ? <p>Minutaggio non verificabile</p> : <>
+          <p>{week.recorded ? week.minutes + " min registrati" : "Nessun minuto registrato"}<br />{week.missing} minutaggi da completare</p>
+          {week.unverifiable > 0 && <p>{week.unverifiable} convocazioni non verificabili</p>}
+        </>}
+      </article>)}
+    </div>
+  </>;
+}
+
+export default function WeeklyRoster({ events, players, rows, loading, statsError, standalone = false }) {
+  const [showComparison, setShowComparison] = useState(false);
   const now = new Date();
   const today = localDateString(now);
   const [params, setParams] = useSearchParams();
@@ -29,23 +93,7 @@ export default function WeeklyRoster({ events, players, rows, loading, standalon
     setParams(next, { replace: true });
   };
   const end = moveDate(start, 6);
-  const week = events.filter((event) => {
-    const date = getAgendaDateKey(event.date);
-    return date >= start && date <= end;
-  });
-  const sessions = getCompletedTrainingEvents(week).filter((session) => {
-    if (session.date < today || session.completed) return true;
-    const time = String(session.time || session.startTime || session.start_time || "").match(/^(\d{1,2}):(\d{2})/);
-    const duration = getTrainingDuration(session);
-    if (!time || !duration) return false;
-    const endMinute = Number(time[1]) * 60 + Number(time[2]) + duration;
-    return endMinute <= now.getHours() * 60 + now.getMinutes();
-  });
-  const matches = week.filter((event) => {
-    const date = getAgendaDateKey(event.date);
-    return event.type === "Partita" && !event.attendanceOnly &&
-      (date < today || (date === today && (event.completed || parseMatchResult(event.result, event))));
-  });
+  const { sessions, matches } = getWeekEvents(events, start, now);
 
   const rosterRows = [...players].sort(comparePlayersByName).map((player) => {
     const statuses = sessions.map((event) => ({ event, status: getRecordedTrainingStatus(player, event) }));
@@ -72,7 +120,7 @@ export default function WeeklyRoster({ events, players, rows, loading, standalon
     return { player, pending, trainingSummary, games, known, missing, matchSummary };
   });
   const pendingOnly = params.get("rosterPending") === "1";
-  const pendingRows = rosterRows.filter(({ pending, missing }) => pending.length > 0 || (!loading && missing.length > 0));
+  const pendingRows = rosterRows.filter(({ pending, missing }) => pending.length > 0 || (!loading && !statsError && missing.length > 0));
   const visibleRows = pendingOnly ? pendingRows : rosterRows;
   const checkingMinutes = loading && matches.length > 0;
   const togglePending = () => {
@@ -91,6 +139,10 @@ export default function WeeklyRoster({ events, players, rows, loading, standalon
         <Button variant="ghost" onClick={() => setStart(moveDate(start, 7))} disabled={start >= currentWeek}>Settimana successiva</Button>
       </div>
       <p>{sessions.length} sedute svolte · {matches.length} gare</p>
+      {standalone && players.length > 0 && <details onToggle={(event) => setShowComparison(event.currentTarget.open)} style={{ marginBottom: 12 }}>
+        <summary style={{ cursor: "pointer", padding: "10px 0" }}>Confronta quattro settimane</summary>
+        {showComparison && <FourWeekComparison {...{ events, players, rows, start, now, loading, statsError }} />}
+      </details>}
       {players.length > 0 && <label style={{ display: "inline-flex", alignItems: "center", gap: 8, minHeight: 44, cursor: "pointer" }}>
         <input type="checkbox" checked={pendingOnly} onChange={togglePending} />
         Solo da completare
@@ -98,6 +150,8 @@ export default function WeeklyRoster({ events, players, rows, loading, standalon
       {pendingOnly && players.length > 0 && <p aria-live="polite">
         {checkingMinutes
           ? "Verifica del minutaggio in corso…"
+          : statsError && matches.length > 0
+            ? "Minutaggio non verificabile. Il filtro mostra le presenze da confermare."
           : pendingRows.length === 0
             ? "Nessuna presenza o minutaggio da completare."
             : pendingRows.length + (pendingRows.length === 1 ? " giocatore da verificare" : " giocatori da verificare")}
@@ -109,12 +163,12 @@ export default function WeeklyRoster({ events, players, rows, loading, standalon
               <h3 style={{ margin: "0 0 8px", overflowWrap: "anywhere" }}>{player.name}</h3>
               <div><strong>Allenamenti</strong><div>{trainingSummary.join(" · ") || "Nessuna seduta svolta"}</div></div>
               <div style={{ marginTop: 8 }}><strong>Partite</strong><div>
-                {loading && matches.length ? "Caricamento…" : <>
+                {loading && matches.length ? "Caricamento…" : statsError && matches.length ? "Minutaggio non verificabile" : <>
                   {matchSummary}{missing.length > 0 && (known.length > 0 || missing.length > 1) &&
                     " · " + missing.length + (missing.length === 1 ? " gara da completare" : " gare da completare")}
                 </>}
               </div></div>
-              {(pending.length > 0 || (!loading && games.length > 0)) && <details style={{ marginTop: 10 }}>
+              {(pending.length > 0 || (!loading && !statsError && games.length > 0)) && <details style={{ marginTop: 10 }}>
                 <summary style={{ cursor: "pointer", padding: "6px 0" }}>Dettaglio eventi</summary>
                 <ul style={{ margin: "6px 0 0", paddingLeft: 18, overflowWrap: "anywhere" }}>
                   {pending.map(({ event }) => <li key={"session-" + event.id}>
@@ -122,7 +176,7 @@ export default function WeeklyRoster({ events, players, rows, loading, standalon
                       {formatDate(event.date)} · {event.title || "Seduta"} · Da confermare
                     </Link>
                   </li>)}
-                  {!loading && games.map(({ event, status, minutes }) => {
+                  {!loading && !statsError && games.map(({ event, status, minutes }) => {
                     const label = formatDate(event.date) + " · " + (event.opponent || event.title || "Partita") + " · " +
                       (minutes === 0 ? "0 min · non impiegato" : minutes !== null ? minutes + " min" : status);
                     return <li key={"match-" + event.id}>{status === "Minutaggio da completare" ?
