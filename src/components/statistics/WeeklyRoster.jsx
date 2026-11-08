@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import AppCard from "../ui/AppCard";
 import Button from "../ui/Button";
 import { getAgendaDateKey } from "../../utils/coachAgenda";
@@ -25,7 +24,15 @@ function PendingEvents({ label, children }) {
 
 export default function WeeklyRoster({ events, players, rows, loading }) {
   const today = localDateString();
-  const [start, setStart] = useState(() => monday(today));
+  const [params, setParams] = useSearchParams();
+  const requestedWeek = getAgendaDateKey(params.get("rosterWeek"));
+  const currentWeek = monday(today);
+  const start = requestedWeek && requestedWeek <= today ? monday(requestedWeek) : currentWeek;
+  const setStart = (date) => {
+    const next = new URLSearchParams(params);
+    next.set("rosterWeek", date);
+    setParams(next, { replace: true });
+  };
   const end = moveDate(start, 6);
   const week = events.filter((event) => {
     const date = getAgendaDateKey(event.date);
@@ -38,13 +45,13 @@ export default function WeeklyRoster({ events, players, rows, loading }) {
   const cell = { padding: "8px 10px", whiteSpace: "nowrap", textAlign: "left", borderBottom: "1px solid #334155" };
 
   return <AppCard>
-    <details>
+    <details open={Boolean(requestedWeek) || undefined}>
       <summary style={{ cursor: "pointer", fontWeight: 700 }}>Riepilogo settimanale della rosa</summary>
       <p>Prima squadra · sedute già svolte e gare della competizione selezionata</p>
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <Button variant="ghost" onClick={() => setStart(moveDate(start, -7))}>Settimana precedente</Button>
         <strong aria-live="polite">{formatDate(start)} – {formatDate(end)}</strong>
-        <Button variant="ghost" onClick={() => setStart(moveDate(start, 7))} disabled={start >= monday(today)}>Settimana successiva</Button>
+        <Button variant="ghost" onClick={() => setStart(moveDate(start, 7))} disabled={start >= currentWeek}>Settimana successiva</Button>
       </div>
       <p>{sessions.length} sedute · {matches.length} gare</p>
       {!sessions.length && !matches.length ? <p>Nessuna seduta svolta o gara da riepilogare in questa settimana.</p> :
@@ -69,7 +76,7 @@ export default function WeeklyRoster({ events, players, rows, loading }) {
                 {[present, partial, recovery, other].map((value, index) => <td key={columns[index + 1]} style={cell}>{value}</td>)}
                 <td style={cell}>{pending === 0 ? 0 : <PendingEvents label={pending + " da confermare"}>
                   {pendingSessions.map((session) => <li key={session.id}>
-                    <Link to={"/session-attendance/" + encodeURIComponent(session.id)} state={{ pendingOnly: true }}>
+                    <Link to={"/session-attendance/" + encodeURIComponent(session.id)} state={{ pendingOnly: true, rosterWeek: start }}>
                       {formatDate(session.date)} · {session.title || session.opponent || "Seduta"}
                     </Link>
                   </li>)}
@@ -78,7 +85,7 @@ export default function WeeklyRoster({ events, players, rows, loading }) {
                   {known.length ? minutes + " min" : "—"}
                   {missing.length > 0 && <PendingEvents label={missing.length + " da completare"}>
                     {missing.map(({ event }) => <li key={event.id}>
-                      <Link to={"/match-completion/" + encodeURIComponent(event.id)} state={{ minutesPlayerId: String(player.id) }}>
+                      <Link to={"/match-completion/" + encodeURIComponent(event.id)} state={{ minutesPlayerId: String(player.id), rosterWeek: start }}>
                         {formatDate(event.date)} · {event.opponent || event.title || "Partita"}
                       </Link>
                     </li>)}

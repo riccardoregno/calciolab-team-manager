@@ -61,6 +61,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
   const expected = new Set([...registeredIds, ...starters]);
   const { state } = useLocation();
   const linkedPlayerId = state?.minutesPlayerId;
+  const rosterReturn = state?.rosterWeek ? "/statistics?rosterWeek=" + encodeURIComponent(state.rosterWeek) : null;
   const savedStarterNames = starters.map((id) => {
     const player = players.find((item) => String(item.id) === id);
     return player ? playerName(player) : id;
@@ -135,7 +136,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
       }));
       writeDraft(draftKey, emptyDraft);
       window.dispatchEvent(new Event("player-match-stats-updated"));
-      navigate("/matches?view=pending");
+      navigate(rosterReturn || "/matches?view=pending");
     } catch {
       setError("Alcuni minuti potrebbero essere stati salvati. Riprova per completare il tabellino.");
     } finally {
@@ -147,7 +148,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
   return (
     <div style={{ maxWidth: 720, marginInline: "auto", display: "grid", gap: 14 }}>
       <PageHeader title="Completa tabellino" subtitle={formatDate(match.date)} />
-      <Link to="/matches?view=pending">Torna alle gare da completare</Link>
+      <Link to={rosterReturn || "/matches?view=pending"}>{rosterReturn ? "Torna al riepilogo settimanale" : "Torna alle gare da completare"}</Link>
       <form onSubmit={save}>
         <fieldset disabled={!canManage || saving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: "grid", gap: 14 }}>
           {(draft !== emptyDraft || draftError) && (
@@ -199,7 +200,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
               })}
           </AppCard>
           {error && <p role="alert">{error}</p>}
-          <Button type="submit" disabled={saving || !canManage || (remote && !saved)}>{saving ? "Salvataggio…" : "Salva e torna alle gare"}</Button>
+          <Button type="submit" disabled={saving || !canManage || (remote && !saved)}>{saving ? "Salvataggio…" : rosterReturn ? "Salva e torna al riepilogo" : "Salva e torna alle gare"}</Button>
         </fieldset>
       </form>
     </div>

@@ -38,6 +38,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const { id } = useParams();
   const navigate = useNavigate();
   const { state } = useLocation();
+  const rosterReturn = state?.rosterWeek ? "/statistics?rosterWeek=" + encodeURIComponent(state.rosterWeek) : null;
   const [pendingOnly, setPendingOnly] = useState(Boolean(state?.pendingOnly));
   const { canManage } = useAreaPermission();
   const [showSummaryList, setShowSummaryList] = useState(false);
@@ -169,8 +170,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                 {t("pages.sessionAttendance.markAllPresent")}
               </Button>
             )}
-            <Button variant="ghost" onClick={() => navigate("/trainings")}>
-              {t("pages.sessionAttendance.back")}
+            <Button variant="ghost" onClick={() => navigate(rosterReturn || "/trainings")}>
+              {rosterReturn ? "Torna al riepilogo settimanale" : t("pages.sessionAttendance.back")}
             </Button>
           </div>
         </div>
@@ -249,7 +250,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
               <Button variant="ghost" onClick={() => setPendingOnly((value) => !value)}>
                 {t(pendingOnly ? "pages.sessionAttendance.showAllPlayers" : "pages.sessionAttendance.showPendingPlayers")}
               </Button>
-              <Button variant="ghost" onClick={() => navigate("/")}>{t("pages.sessionAttendance.backToDashboard")}</Button>
+              {!rosterReturn && <Button variant="ghost" onClick={() => navigate("/")}>{t("pages.sessionAttendance.backToDashboard")}</Button>}
             </div>
           )}
           {pendingOnly && !visiblePlayers.length && <p role="status">{t("pages.sessionAttendance.attendanceComplete")}</p>}
