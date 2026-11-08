@@ -6,7 +6,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
-import { formatDate, getRecordedTrainingStatus, getTrainingSessionStatus, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes } from "../utils/helpers";
+import { formatDate, getRecordedTrainingStatus, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 
 const STATUS_OPTIONS = ["Presente", "Parziale", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"];
@@ -115,10 +115,12 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
 
 
   // Contatori per status
+  const unrecordedPlayers = firstTeamPlayers.filter((player) => getRecordedTrainingStatus(player, session) === null);
+  const pending = unrecordedPlayers.length;
   const counts = firstTeamPlayers.reduce(
     (acc, p) => {
-      const st = getRecordedTrainingStatus(p, session) ?? "Da confermare";
-      acc[st] = (acc[st] || 0) + 1;
+      const st = getRecordedTrainingStatus(p, session);
+      if (st) acc[st] = (acc[st] || 0) + 1;
       return acc;
     },
     {}
@@ -126,7 +128,6 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
 
   const presenti = (counts.Presente || 0) + (counts.Recupero || 0);
   const partial = counts.Parziale || 0;
-  const pending = counts["Da confermare"] || 0;
   const assenti     = counts["Assente"]     || 0;
   const infortunati = counts["Infortunato"] || 0;
   const permesso    = counts["Permesso"]    || 0;
@@ -158,16 +159,16 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
             {assenti     > 0 && <SummaryPill color="#f87171"  icon="✖" label={t("pages.sessionAttendance.summaryAssenti")}     value={assenti} />}
             {infortunati > 0 && <SummaryPill color="#fb923c"  icon="⚠" label={t("pages.sessionAttendance.summaryInfortunati")} value={infortunati} />}
             {permesso    > 0 && <SummaryPill color="#38bdf8"  icon="◎" label={t("pages.sessionAttendance.summaryPermesso")}    value={permesso} />}
-            {pending > 0 && <SummaryPill color="#facc15" icon="?" label="da confermare" value={pending} />}
+            {pending > 0 && <SummaryPill color="#facc15" icon="?" label={t("pages.sessionAttendance.pendingCount")} value={pending} />}
           </div>
           <div style={s.topActions}>
-            {canManage && (
+            {canManage && visiblePlayers.length > 0 && (
               <Button variant="ghost" onClick={() => setConfirmState({
-                message: "Questo aggiornerà le presenze di tutti i giocatori. Vuoi continuare?",
-                confirmLabel: t("pages.sessionAttendance.markAllPresent"),
+                message: t(pendingOnly ? "pages.sessionAttendance.markPendingMessage" : "pages.sessionAttendance.markAllMessage"),
+                confirmLabel: t(pendingOnly ? "pages.sessionAttendance.markPendingPresent" : "pages.sessionAttendance.markAllPresent"),
                 onConfirm: () => markAll("Presente"),
               })}>
-                {t("pages.sessionAttendance.markAllPresent")}
+                {t(pendingOnly ? "pages.sessionAttendance.markPendingPresent" : "pages.sessionAttendance.markAllPresent")}
               </Button>
             )}
             <Button variant="ghost" onClick={() => navigate(rosterReturn || (state?.fromDashboard ? "/" : "/trainings"))}>
@@ -175,6 +176,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
             </Button>
           </div>
         </div>
+        {pending > 0 && <p style={s.pendingHelp}>{t("pages.sessionAttendance.pendingHelp")}</p>}
       </AppCard>
 
       {/* Lista riepilogo presenti/assenti */}
@@ -196,7 +198,15 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
           return getSortKey(a).localeCompare(getSortKey(b), "it");
         });
         const presentiList = sortByRole(firstTeamPlayers.filter((p) => isTrainingParticipation(getRecordedTrainingStatus(p, session))));
-        const assentiList  = sortByRole(firstTeamPlayers.filter((p) => !isTrainingParticipation(getRecordedTrainingStatus(p, session))));
+        const assentiList = sortByRole(firstTeamPlayers.filter((p) => {
+          const status = getRecordedTrainingStatus(p, session);
+          return status !== null && !isTrainingParticipation(status);
+        }));
+        const groups = [
+          { label: t("pages.sessionAttendance.summaryPresenti"), color: "#22c55e", players: presentiList },
+          { label: t("pages.sessionAttendance.notOnPitch"), color: "#f87171", players: assentiList },
+          { label: t("pages.sessionAttendance.pendingStatus"), color: "#facc15", players: sortByRole(unrecordedPlayers) },
+        ];
         return (
           <AppCard>
             <button
@@ -209,30 +219,18 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
               {showSummaryList ? "▲" : "▼"} {t("pages.sessionAttendance.firstTeamSummary")}
             </button>
             {showSummaryList && (
-              <div id="attendance-summary" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 14 }}>
-                <div>
-                  <p style={{ color: "#22c55e", fontWeight: 800, fontSize: 13, marginBottom: 8 }}>✔ Presenti ({presentiList.length})</p>
-                  {presentiList.map((p) => {
-                    return (
-                      <div key={p.id} style={{ fontSize: 13, color: "#e2e8f0", padding: "3px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                        {getName(p)} <span style={{ color: "#64748b", fontSize: 11 }}>{p.role || ""}</span>
+              <div id="attendance-summary" style={s.summaryGrid}>
+                {groups.map(({ label, color, players }) => (
+                  <div key={label} style={{ minWidth: 0 }}>
+                    <p style={{ color, fontWeight: 800, fontSize: 13, marginBottom: 8 }}>{label} ({players.length})</p>
+                    {players.map((player) => (
+                      <div key={player.id} style={s.summaryPlayer}>
+                        <span>{getName(player)}</span>
+                        <small>{getRecordedTrainingStatus(player, session) ?? player.role}</small>
                       </div>
-                    );
-                  })}
-                </div>
-                <div>
-                  <p style={{ color: "#f87171", fontWeight: 800, fontSize: 13, marginBottom: 8 }}>✖ {t("pages.sessionAttendance.notOnPitch")} ({assentiList.length})</p>
-                  {assentiList.map((p) => {
-                    const st = getTrainingSessionStatus(p, session);
-                    const stColor = { Assente: "#f87171", Infortunato: "#fb923c", Recupero: "#38bdf8", Permesso: "#38bdf8", Squalificato: "#c084fc" }[st] || "#94a3b8";
-                    return (
-                      <div key={p.id} style={{ fontSize: 13, color: "#e2e8f0", padding: "3px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between" }}>
-                        <span>{getName(p)} <span style={{ color: "#64748b", fontSize: 11 }}>{p.role || ""}</span></span>
-                        <span style={{ color: stColor, fontSize: 11, fontWeight: 700 }}>{st}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             )}
           </AppCard>
@@ -254,7 +252,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
             </div>
           )}
           {pendingOnly && !visiblePlayers.length && <p role="status">{t("pages.sessionAttendance.attendanceComplete")}</p>}
-          <div className="cl-fluid-grid" style={s.grid}>
+          <div style={s.grid}>
             {[...visiblePlayers].sort((a, b) => {
               const ro = (r) => { const s = (r||"").toLowerCase(); return s.startsWith("portiere") ? 0 : s.startsWith("difensore") ? 1 : s.startsWith("centrocampista") ? 2 : s.startsWith("attaccante") ? 3 : 99; };
               if (ro(a.role) !== ro(b.role)) return ro(a.role) - ro(b.role);
@@ -263,7 +261,6 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
               const pid    = String(player.id);
               const data   = attendance[pid] || {};
               const recorded = getRecordedTrainingStatus(player, session);
-              const status = getTrainingSessionStatus(player, session);
               const rpe    = data.rpe ?? "";
               const displayName =
                 [player.firstName, player.lastName].filter(Boolean).join(" ") ||
@@ -278,7 +275,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                       <p style={s.playerName}>{displayName}</p>
                       <p style={s.playerRole}>{player.role || "—"}</p>
                     </div>
-                    <Badge tone={STATUS_TONE[status] || "blue"}>{recorded ?? ("Da confermare · suggerito " + status)}</Badge>
+                    <Badge tone={STATUS_TONE[recorded] || "slate"}>{recorded ?? t("pages.sessionAttendance.pendingStatus")}</Badge>
                   </div>
 
                   {/* Bottoni stato */}
@@ -292,7 +289,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                         disabled={!canManage}
                         style={{
                           ...s.statusBtn,
-                          ...(status === opt ? s.statusBtnActive : {}),
+                          ...(recorded === opt ? s.statusBtnActive : {}),
                         }}
                       >
                         {opt}
@@ -313,7 +310,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                         }} />
                     </label>
                   )}
-                  {isTrainingParticipation(status) && (
+                  {isTrainingParticipation(recorded) && (
                     <div style={s.rpeRow}>
                       <span style={s.rpeLabel}>RPE</span>
                       <input
@@ -365,7 +362,7 @@ const pill = {
 };
 
 const s = {
-  page: { display: "grid", gap: 18 },
+  page: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 18 },
   muted: { color: "#94a3b8", margin: 0 },
 
   topBar: {
@@ -387,15 +384,35 @@ const s = {
     fontWeight: 700,
     marginLeft: 4,
   },
-  topActions: { display: "flex", gap: 10 },
+  topActions: { display: "flex", gap: 10, flexWrap: "wrap" },
+  pendingHelp: { color: "#94a3b8", fontSize: 13, margin: "12px 0 0" },
+  summaryGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 210px), 1fr))",
+    gap: 20,
+    marginTop: 14,
+  },
+  summaryPlayer: {
+    fontSize: 13,
+    padding: "4px 0",
+    borderBottom: "1px solid rgba(255,255,255,0.05)",
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: "2px 8px",
+    overflowWrap: "anywhere",
+  },
 
   grid: {
     display: "grid",
-    "--cl-grid-min": "280px",
+    gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))",
     gap: 14,
   },
 
   playerCard: {
+    minWidth: 0,
+    gridTemplateColumns: "minmax(0, 1fr)",
+    alignContent: "start",
     borderRadius: 18,
     padding: 16,
     background: "rgba(255,255,255,0.045)",
@@ -407,16 +424,15 @@ const s = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 10,
+    flexWrap: "wrap",
+    gap: 8,
   },
   playerName: {
     margin: 0,
     fontSize: 15,
     fontWeight: 700,
     color: "#e2e8f0",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
+    overflowWrap: "anywhere",
   },
   playerRole: {
     margin: "3px 0 0",
@@ -431,6 +447,7 @@ const s = {
   },
   statusBtn: {
     borderRadius: 999,
+    minHeight: 36,
     padding: "6px 11px",
     fontSize: 12,
     fontWeight: 700,
@@ -449,6 +466,7 @@ const s = {
     display: "flex",
     alignItems: "center",
     gap: 8,
+    flexWrap: "wrap",
     paddingTop: 4,
     borderTop: "1px solid rgba(255,255,255,0.06)",
   },
