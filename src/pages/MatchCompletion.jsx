@@ -61,7 +61,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
   const expected = new Set([...registeredIds, ...starters]);
   const { state } = useLocation();
   const linkedPlayerId = state?.minutesPlayerId;
-  const rosterReturn = state?.rosterWeek ? "/statistics?roster=1&rosterWeek=" + encodeURIComponent(state.rosterWeek) : null;
+  const rosterReturn = state?.rosterWeek ? "/statistics?roster=1&rosterWeek=" + encodeURIComponent(state.rosterWeek) + (state.rosterPending ? "&rosterPending=1" : "") : null;
   const savedStarterNames = starters.map((id) => {
     const player = players.find((item) => String(item.id) === id);
     return player ? playerName(player) : id;
