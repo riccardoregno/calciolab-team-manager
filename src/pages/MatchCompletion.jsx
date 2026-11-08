@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
@@ -59,12 +59,17 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
 
   const registeredIds = getMatchCompletionPlayerIds(match);
   const expected = new Set([...registeredIds, ...starters]);
+  const { state } = useLocation();
+  const linkedPlayerId = state?.minutesPlayerId;
   const savedStarterNames = starters.map((id) => {
     const player = players.find((item) => String(item.id) === id);
     return player ? playerName(player) : id;
   });
   const lineupPlayers = registeredIds.length ? players.filter((player) => expected.has(String(player.id))) : players;
-  const minutesPlayers = players.filter((player) => expected.has(String(player.id)));
+  const minutesPlayers = players.filter((player) => {
+    const id = String(player.id);
+    return expected.has(id) || id === linkedPlayerId;
+  });
   const awayFixture = match.location === "Trasferta";
 
   function getMinutes(id) {
@@ -189,7 +194,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
                 return <label key={id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
                   <span>{playerName(player)}{starters.includes(id) ? " · Titolare" : ""}{!hasRecordedMinutes(getMinutes(id)) ? " · Minutaggio da completare" : Number(getMinutes(id)) === 0 ? " · Non impiegato · 0 min" : ""}</span>
                   <input style={control} type="number" inputMode="numeric" min="0" max="120" step="1" required
-                    value={getMinutes(id)} onChange={(e) => updateDraft({ ...draft, minutes: { ...edits, [id]: e.target.value } })} />
+                    value={getMinutes(id)} autoFocus={id === linkedPlayerId} onChange={(e) => updateDraft({ ...draft, minutes: { ...edits, [id]: e.target.value } })} />
                 </label>;
               })}
           </AppCard>
