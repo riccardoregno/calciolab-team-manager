@@ -38,7 +38,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const { id } = useParams();
   const navigate = useNavigate();
   const { state } = useLocation();
-  const rosterReturn = state?.rosterWeek ? "/statistics?rosterWeek=" + encodeURIComponent(state.rosterWeek) : null;
+  const rosterReturn = state?.rosterWeek ? "/statistics?roster=1&rosterWeek=" + encodeURIComponent(state.rosterWeek) : null;
   const [pendingOnly, setPendingOnly] = useState(Boolean(state?.pendingOnly));
   const { canManage } = useAreaPermission();
   const [showSummaryList, setShowSummaryList] = useState(false);

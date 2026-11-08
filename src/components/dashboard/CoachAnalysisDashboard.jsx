@@ -70,6 +70,7 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
 
   return <div className="coach-analysis" aria-busy={loading}>
     <header className="analysis-heading"><div><span className="analysis-overline">{text("eyebrow")}</span><h1>{teamName}</h1><p>{text("subtitle")}</p></div><Link to="/statistics" className="analysis-primary-link">{text("openAnalysis")} <ArrowUpRight size={18} /></Link></header>
+    <Link to="/statistics?roster=1" className="analysis-primary-link">Quadro settimanale della rosa <ArrowUpRight size={18} /></Link>
     <MatchScopeFilters scope={matchScope} />
     {loading && <p className="analysis-loading" role="status">{text("loading")}</p>}
     {statsError && <div className="analysis-data-warning" role="alert"><span>{text("syncError")}</span>{onRetryStats && <button type="button" onClick={onRetryStats} disabled={statsLoading}>{text(statsLoading ? "checking" : "retry")}</button>}</div>}

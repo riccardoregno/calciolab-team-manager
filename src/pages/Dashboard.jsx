@@ -1592,6 +1592,7 @@ function PhysicalRoleDashboard({ players, matches, physicalTests, coachAlerts })
         subtitle={t("pages.dashboard.physicalDashboardSubtitle")}
         badge={t("pages.dashboard.physicalView")}
       />
+      <Button variant="ghost" onClick={() => navigate("/statistics?roster=1")}>Quadro settimanale della rosa</Button>
 
       <div style={roleDashboardStyles.kpiGrid}>
         <KpiCard

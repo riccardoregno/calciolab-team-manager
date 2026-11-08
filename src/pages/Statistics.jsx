@@ -1,6 +1,6 @@
 import WeeklyRoster from "../components/statistics/WeeklyRoster";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import PlayerStatisticsCard from "../components/statistics/PlayerStatisticsCard";
 import PageHeader from "../components/ui/PageHeader";
@@ -48,6 +48,8 @@ function Statistics({
   const { t, language } = useTranslation();
   const auth = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const rosterOnly = params.get("roster") === "1";
 
   const players = useMemo(() => roster.filter((player) => String(player.gruppo || "prima").trim().toLowerCase() === "prima"), [roster]);
   const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || "");
@@ -365,6 +367,15 @@ function Statistics({
     .filter(Boolean)
     .map((id) => stats.find((player) => String(player.id) === String(id)))
     .filter(Boolean);
+
+  if (rosterOnly) {
+    return <div className="statistics-workspace" style={{ ...styles.page, ...s.page }}>
+      <PageHeader title="Quadro settimanale della rosa" />
+      <Link to="/">Torna alla Dashboard</Link>
+      <MatchScopeFilters scope={matchScope} />
+      <WeeklyRoster events={events} players={players} rows={playerMatchStatsRows} loading={statsLoading} standalone />
+    </div>;
+  }
 
   if (players.length === 0) {
     return (
