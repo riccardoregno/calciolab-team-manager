@@ -54,7 +54,7 @@ function Statistics({
   const rosterOnly = params.get("roster") === "1";
 
   const players = useMemo(() => roster.filter((player) => String(player.gruppo || "prima").trim().toLowerCase() === "prima"), [roster]);
-  const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || "");
+  const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [eventType, setEventType] = useState("Tutti");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -77,7 +77,7 @@ function Statistics({
   const [minPresences, setMinPresences] = useState("");
   const [minAvgMinutes, setMinAvgMinutes] = useState("");
 
-  const effectiveSelectedPlayerId = selectedPlayerId || players[0]?.id || "";
+  const selectedPlayer = players.find((player) => String(player.id) === String(selectedPlayerId));
 
   function exportCSV() {
     const headers = [...t("pages.statistics.csvHeaders").split(","), t("pages.dashboard.goalsConcededLabel")];
@@ -354,12 +354,8 @@ function Statistics({
     roster,
   ]);
 
-  const selectedPlayer = players.find(
-    (p) => String(p.id) === String(effectiveSelectedPlayerId)
-  );
-
   const selectedStats = stats.find(
-    (s) => String(s.id) === String(effectiveSelectedPlayerId)
+    (s) => String(s.id) === String(selectedPlayer?.id)
   );
 
   const history = getPlayerHistory(filteredEvents, selectedPlayer, playerMatchStatsRows, roster);
@@ -426,10 +422,11 @@ function Statistics({
           <label style={s.filterLabel}>
             {t("pages.statistics.playerFilter")}
             <select
-              value={effectiveSelectedPlayerId}
+              value={selectedPlayer?.id ?? ""}
               onChange={(e) => setSelectedPlayerId(e.target.value)}
               style={styles.input}
             >
+              <option value="">{t("pages.statistics.selectPlayer")}</option>
               {players.map((player) => (
                 <option key={player.id} value={player.id}>
                   {player.name}
@@ -489,7 +486,7 @@ function Statistics({
                 setMinAvgMinutes("");
                 setSortBy("goals");
                 setSortOrder("desc");
-                setSelectedPlayerId(players[0]?.id || "");
+                setSelectedPlayerId("");
               }}
               style={s.resetBtn}
             >
@@ -500,7 +497,7 @@ function Statistics({
       </AppCard>
 
 
-      <PlayerStatisticsCard player={selectedPlayer} stats={selectedStats} loading={statsLoading} />
+      {selectedPlayer && <PlayerStatisticsCard player={selectedPlayer} stats={selectedStats} loading={statsLoading} />}
 
       {/* ── KPI ── */}
       <MetricStrip items={[
