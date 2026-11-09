@@ -1595,6 +1595,10 @@ function formatPer90(total, minutes, language) {
 function getStatsSummary(events, players, playerMatchStatsRows = [], roster = players) {
   const today = localDateString();
   const matchEvents = events.filter((e) => e.type === "Partita" && !e.attendanceOnly);
+  const playedMatches = matchEvents.filter((event) => {
+    const date = getAgendaDateKey(event.date);
+    return date && (date < today || (date === today && (event.completed || parseMatchResult(event.result, event))));
+  });
   const trainingSessions = getCompletedTrainingEvents(events, today);
 
   return players.map((player) => {
@@ -1610,10 +1614,6 @@ function getStatsSummary(events, players, playerMatchStatsRows = [], roster = pl
       return {
         id: player.id,
         name: getDisplayPlayerName(player),
-  const playedMatches = matchEvents.filter((event) => {
-    const date = getAgendaDateKey(event.date);
-    return date && (date < today || (date === today && (event.completed || parseMatchResult(event.result, event))));
-  });
       lastName: player.lastName || player.last_name || "",
       status: player.status || "Disponibile",
       role: player.role || player.position || "",
@@ -1647,6 +1647,7 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = []) {
       if (event.type === "Partita" && !isTrainingStatsEvent(event)) {
         const matchData = matchEntries.get(String(event.id));
         if (!matchData) return null;
+        const lineupRole = getRecordedLineupRole(event, player.id);
         return {
           sessionId: event.id,
           title: event.title,
@@ -1663,7 +1664,6 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = []) {
           yellowCards: matchData.yellowCards,
           redCards: matchData.redCards,
           rating: matchData.rating,
-        const lineupRole = getRecordedLineupRole(event, player.id);
         };
       } else {
         if (!isTrainingStatsEvent(event)) return null;
