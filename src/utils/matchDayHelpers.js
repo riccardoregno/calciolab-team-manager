@@ -1,8 +1,23 @@
+function getFormationPlayerIds(slots) {
+  return [...new Set(Object.values(slots || {}).filter((id) => id != null && id !== "").map(String))];
+}
+
+export function getRecordedLineupRole(match, playerId) {
+  const lineup = match.lineup;
+  const firstHalfIds = getFormationPlayerIds(lineup?.formationPlans?.firstHalf?.slots);
+  const starters = firstHalfIds.length ? firstHalfIds : getFormationPlayerIds(Array.isArray(lineup?.starterIds) ? lineup.starterIds : []);
+  if (!starters.length) return null;
+
+  const id = String(playerId);
+  if (starters.includes(id)) return "starter";
+  return Array.isArray(lineup?.benchIds) && lineup.benchIds.some((benchId) => String(benchId) === id) ? "bench" : null;
+}
+
 export function syncFormationLineup(lineup) {
   const slots = lineup.formationPlans?.firstHalf?.slots;
   if (!slots) return lineup;
 
-  const assignedIds = [...new Set(Object.values(slots).filter((id) => id != null && id !== "").map(String))];
+  const assignedIds = getFormationPlayerIds(slots);
   const calledUpIds = [...new Set((lineup.calledUpIds?.length
     ? lineup.calledUpIds
     : [...(lineup.starterIds || []), ...(lineup.benchIds || []), ...assignedIds]).map(String))];

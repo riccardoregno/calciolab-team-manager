@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { syncFormationLineup } from "../src/utils/matchDayHelpers.js";
+import { getRecordedLineupRole, syncFormationLineup } from "../src/utils/matchDayHelpers.js";
 
 const calledUpIds = Array.from({ length: 20 }, (_, index) => index + 1);
 const firstHalf = { slots: Object.fromEntries(calledUpIds.slice(0, 11).map((id, index) => [index, String(id)])) };
@@ -23,4 +23,21 @@ const invalid = syncFormationLineup({ ...lineup, formationPlans: { firstHalf: { 
 assert.deepEqual(invalid.starterIds, ["1"]);
 const legacy = { starterIds: [1], benchIds: [2] };
 assert.equal(syncFormationLineup(legacy), legacy);
+const savedField = {
+  lineup: {
+    starterIds: ["vecchia-formazione"],
+    benchIds: ["mura", "riserva"],
+    formationPlans: {
+      firstHalf: { slots: { 0: "mura", 1: "jammeh" } },
+      secondHalf: { slots: { 0: "subentrato" } },
+    },
+  },
+};
+assert.equal(getRecordedLineupRole(savedField, "mura"), "starter");
+assert.equal(getRecordedLineupRole(savedField, "jammeh"), "starter");
+assert.equal(getRecordedLineupRole(savedField, "riserva"), "bench");
+assert.equal(getRecordedLineupRole(savedField, "vecchia-formazione"), null);
+assert.equal(getRecordedLineupRole(savedField, "subentrato"), null);
+assert.equal(getRecordedLineupRole({ lineup: legacy }, "1"), "starter");
+assert.equal(getRecordedLineupRole({ lineup: { ...legacy, formationPlans: { firstHalf: { slots: {} } } } }, "1"), "starter");
 console.log("Formation lineup tests passed");

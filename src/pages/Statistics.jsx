@@ -12,12 +12,14 @@ import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 
 import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
-import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getCompletedTrainingEvents, getTrainingAttendanceSummary, getRecordedTrainingStatus, formatTrainingAttendance, getRecordedTrainingMinutes, isTrainingParticipation, isTrainingStatsEvent, localDateString, parseMatchResult } from "../utils/helpers";
+import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getCompletedTrainingEvents, getTrainingAttendanceSummary, getTrainingSessionStatus, formatTrainingAttendance, getRecordedTrainingMinutes, isTrainingParticipation, isTrainingStatsEvent, localDateString, parseMatchResult } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { loadPlayerMatchesForPeriod, loadMatchStatsMatrix } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { getRecordedLineupRole } from "../utils/matchDayHelpers";
+import { getAgendaDateKey } from "../utils/coachAgenda";
 import { isGoalkeeper } from "../utils/goalkeeperStats";
 
 const StatisticsCharts = lazy(() => import("../components/statistics/StatisticsCharts"));
@@ -697,7 +699,7 @@ function Statistics({
             <h3 style={{ margin: "4px 0 0", fontSize: 18, lineHeight: 1.2 }}>
               {t("pages.statistics.compareSubtitle")}
             </h3>
-            <small>{language === "en" ? "Starts are based on saved lineups. Missing roles are shown as unknown." : "Titolarit\u00e0 dalle formazioni salvate. Le gare senza un ruolo registrato sono indicate a parte."}</small>
+            <small>{language === "en" ? "Starts are based on the saved first-half lineup. Missing roles are shown as unknown." : "Titolarità dallo schieramento salvato del primo tempo. Le gare senza un ruolo registrato sono indicate a parte."}</small>
           </div>
           <div style={s.compareSelectors}>
             {[0, 1].map((slot) => (
@@ -744,7 +746,7 @@ function Statistics({
                   <CompareMetric label={t(isGoalkeeper(player) ? "pages.dashboard.goalsConcededLabel" : "common.goals")} value={isGoalkeeper(player) ? (player.goalsConceded ?? "—") : player.goals} color={isGoalkeeper(player) ? "#f87171" : "#4ade80"} />
                   <CompareMetric label={t("common.assists")} value={player.assists} color="#38bdf8" />
                   <CompareMetric label={t("pages.statistics.gaAbbr")} value={player.goalContributions} color="#a78bfa" />
-                  <CompareMetric label={language === "en" ? "Training attendance" : "Presenze allenamento"} value={formatTrainingAttendance(player, language === "en")} />
+                  <CompareMetric label={language === "en" ? "Training attendance" : "Presenze allenamento"} value={player.trainingPresences} />
                 </div>
                 {player.unknownLineupRoles > 0 && <small>
                   {language === "en" ? "Appearances with unknown lineup role" : "Presenze con ruolo in formazione da verificare"}: {player.unknownLineupRoles}/{player.presences}
@@ -1590,14 +1592,6 @@ function formatPer90(total, minutes, language) {
   }) : "\u2014";
 }
 
-function getRecordedLineupRole(match, playerId) {
-  const starters = match.lineup?.starterIds;
-  if (!Array.isArray(starters) || !starters.length) return null;
-  const includesPlayer = (ids) => Array.isArray(ids) && ids.some((id) => String(id) === String(playerId));
-  if (includesPlayer(starters)) return "starter";
-  return includesPlayer(match.lineup?.benchIds) ? "bench" : null;
-}
-
 function getStatsSummary(events, players, playerMatchStatsRows = [], roster = players) {
   const today = localDateString();
   const matchEvents = events.filter((e) => e.type === "Partita" && !e.attendanceOnly);
@@ -1608,15 +1602,18 @@ function getStatsSummary(events, players, playerMatchStatsRows = [], roster = pl
 
     const totals = getPlayerMatchTotals(player, matchEvents, playerMatchStatsRows, roster, false);
     const { presences, minutes, goals, assists } = totals;
-    const lineupRoles = getPlayerMatchEntries(player, matchEvents, playerMatchStatsRows, false)
-      .filter(({ data }) => data.status === "Presente")
-      .map(({ event }) => getRecordedLineupRole(event, player.id));
-    const unknownLineupRoles = lineupRoles.filter((role) => role === null).length;
+    const lineupRoles = playedMatches.map((event) => getRecordedLineupRole(event, player.id));
+    const unknownLineupRoles = getPlayerMatchEntries(player, matchEvents, playerMatchStatsRows, false)
+      .filter(({ event, data }) => data.status === "Presente" && getRecordedLineupRole(event, player.id) === null).length;
     const goalContributions = goals + assists;
 
       return {
         id: player.id,
         name: getDisplayPlayerName(player),
+  const playedMatches = matchEvents.filter((event) => {
+    const date = getAgendaDateKey(event.date);
+    return date && (date < today || (date === today && (event.completed || parseMatchResult(event.result, event))));
+  });
       lastName: player.lastName || player.last_name || "",
       status: player.status || "Disponibile",
       role: player.role || player.position || "",
@@ -1656,7 +1653,7 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = []) {
           date: event.date,
           type: event.type,
           status: matchData.status,
-          lineupRole: matchData.status === "Presente" ? getRecordedLineupRole(event, player.id) : undefined,
+          lineupRole: lineupRole === "starter" || matchData.status === "Presente" ? lineupRole : undefined,
           goalsConceded: matchData.status === "Presente"
             ? (matchData.goalsConceded ?? getPlayerMatchTotals(player, [event], playerMatchesDB, roster, false).goalsConceded)
             : null,
@@ -1666,11 +1663,12 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = []) {
           yellowCards: matchData.yellowCards,
           redCards: matchData.redCards,
           rating: matchData.rating,
+        const lineupRole = getRecordedLineupRole(event, player.id);
         };
       } else {
         if (!isTrainingStatsEvent(event)) return null;
         const data = event.attendance?.[player.id] || {};
-        const status = getRecordedTrainingStatus(player, event) ?? "Da confermare";
+        const status = getTrainingSessionStatus(player, event);
         const present = isTrainingParticipation(status);
         return {
           sessionId: event.id,

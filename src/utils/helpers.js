@@ -1525,7 +1525,8 @@ export function getRecordedTrainingMinutes(entry) {
 }
 
 export function getRecordedTrainingStatus(player, event) {
-  const status = event?.attendance?.[player.id]?.status;
+  const entry = event?.attendance?.[player.id];
+  const status = typeof entry === "string" ? entry : entry?.status;
   return ATTENDANCE_STATUSES.has(status) ? status : null;
 }
 
@@ -1534,17 +1535,16 @@ export function getTrainingSessionStatus(player, event) {
 }
 
 export function getTrainingAttendanceSummary(player, completedEvents) {
-  let trainingPresences = 0, absences = 0, injuries = 0, pendingTrainings = 0;
+  let trainingPresences = 0, absences = 0, injuries = 0;
   for (const event of completedEvents) {
-    const status = getRecordedTrainingStatus(player, event);
-    if (status === null) pendingTrainings++;
+    const status = getTrainingSessionStatus(player, event);
     if (isTrainingParticipation(status)) trainingPresences++;
     if (status === "Assente" || status === "Permesso") absences++;
     if (status === "Infortunato") injuries++;
   }
   const totalTrainings = completedEvents.length;
-  return { trainingPresences, absences, injuries, totalTrainings, pendingTrainings,
-    trainingPct: totalTrainings && !pendingTrainings ? Math.round(trainingPresences / totalTrainings * 100) : null };
+  return { trainingPresences, absences, injuries, totalTrainings, pendingTrainings: 0,
+    trainingPct: totalTrainings ? Math.round(trainingPresences / totalTrainings * 100) : null };
 }
 
 export function formatTrainingAttendance({ trainingPresences, pendingTrainings }, english = false) {
@@ -1944,7 +1944,7 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
       .map((event) => ({ event, data: event.attendance?.[player.id] }))
       .filter(({ data }) => data)
       .map(({ event, data }) => ({ event, data: { ...data,
-        status: getRecordedTrainingStatus(player, event) ?? "Da confermare",
+        status: getTrainingSessionStatus(player, event),
         minutes: getRecordedTrainingMinutes(data),
       } })),
     ...matchEntries,

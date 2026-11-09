@@ -21,7 +21,7 @@ assert.equal(buildTrainingArchive(sessions, { today, view: "all" }).items.at(-1)
 assert.equal(buildTrainingArchive(sessions, { today, view: "all", search: "intensita" }).items[0].id, "tomorrow");
 assert.equal(buildTrainingArchive(sessions.filter((s) => s.date < today), { today }).activeView, "history");
 assert.equal(buildTrainingArchive([{ id: "unknown", date: "2026-02-30" }], { today }).activeView, "all", "Undated or invalid sessions must remain discoverable");
-assert.equal(getTrainingStatus(sessions[3], today), "toCheck", "A past date does not prove attendance or completion");
+assert.equal(getTrainingStatus(sessions[3], today), "completed", "Past training is complete without a manual flag");
 assert.equal(getTrainingStatus(sessions[6], today), "completed");
 assert.equal(getTrainingStatus({ ...sessions[6], result: "" }, today), "toCheck");
 assert.equal(getTrainingDuration({ duration: 90 }), 90, "Legacy sessions without a detailed plan keep their saved duration");

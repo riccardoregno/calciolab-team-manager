@@ -6,7 +6,8 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
-import { formatDate, getRecordedTrainingStatus, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes } from "../utils/helpers";
+import { formatDate, getRecordedTrainingStatus, getTrainingSessionStatus, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes } from "../utils/helpers";
+import { hasTrainingEnded } from "../utils/trainingArchive";
 import { useTranslation } from "../i18n";
 
 const STATUS_OPTIONS = ["Presente", "Parziale", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"];
@@ -50,8 +51,11 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const updateEvents = session?.isFriendlyMatch ? setMatches : setSessions;
   const attendance = session?.attendance || {};
   const firstTeamPlayers = players.filter((player) => String(player.gruppo || "prima").trim().toLowerCase() === "prima");
+  const ended = session && hasTrainingEnded(session);
+  const attendanceStatus = (player) => ended ? getTrainingSessionStatus(player, session) : getRecordedTrainingStatus(player, session);
+  const unrecordedPlayers = firstTeamPlayers.filter((player) => attendanceStatus(player) === null);
   const visiblePlayers = pendingOnly
-    ? firstTeamPlayers.filter((player) => getRecordedTrainingStatus(player, session) === null)
+    ? unrecordedPlayers
     : players;
 
   function updatePlayer(playerId, field, value) {
@@ -115,11 +119,10 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
 
 
   // Contatori per status
-  const unrecordedPlayers = firstTeamPlayers.filter((player) => getRecordedTrainingStatus(player, session) === null);
   const pending = unrecordedPlayers.length;
   const counts = firstTeamPlayers.reduce(
     (acc, p) => {
-      const st = getRecordedTrainingStatus(p, session);
+      const st = attendanceStatus(p);
       if (st) acc[st] = (acc[st] || 0) + 1;
       return acc;
     },
@@ -197,15 +200,15 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
           if (ra !== rb) return ra - rb;
           return getSortKey(a).localeCompare(getSortKey(b), "it");
         });
-        const presentiList = sortByRole(firstTeamPlayers.filter((p) => isTrainingParticipation(getRecordedTrainingStatus(p, session))));
+        const presentiList = sortByRole(firstTeamPlayers.filter((p) => isTrainingParticipation(attendanceStatus(p))));
         const assentiList = sortByRole(firstTeamPlayers.filter((p) => {
-          const status = getRecordedTrainingStatus(p, session);
+          const status = attendanceStatus(p);
           return status !== null && !isTrainingParticipation(status);
         }));
         const groups = [
           { label: t("pages.sessionAttendance.summaryPresenti"), color: "#22c55e", players: presentiList },
           { label: t("pages.sessionAttendance.notOnPitch"), color: "#f87171", players: assentiList },
-          { label: t("pages.sessionAttendance.pendingStatus"), color: "#facc15", players: sortByRole(unrecordedPlayers) },
+          ...(!ended ? [{ label: t("pages.sessionAttendance.pendingStatus"), color: "#facc15", players: sortByRole(unrecordedPlayers) }] : []),
         ];
         return (
           <AppCard>
@@ -226,7 +229,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                     {players.map((player) => (
                       <div key={player.id} style={s.summaryPlayer}>
                         <span>{getName(player)}</span>
-                        <small>{getRecordedTrainingStatus(player, session) ?? player.role}</small>
+                        <small>{attendanceStatus(player) ?? player.role}</small>
                       </div>
                     ))}
                   </div>
@@ -260,7 +263,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
             }).map((player) => {
               const pid    = String(player.id);
               const data   = attendance[pid] || {};
-              const recorded = getRecordedTrainingStatus(player, session);
+              const recorded = attendanceStatus(player);
               const rpe    = data.rpe ?? "";
               const displayName =
                 [player.firstName, player.lastName].filter(Boolean).join(" ") ||

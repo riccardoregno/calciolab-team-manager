@@ -12,6 +12,7 @@ import { useAreaPermission } from "../components/auth/permissionContext";
 import { useAuth } from "../hooks/useAuth";
 import { styles } from "../styles/index.js";
 import { comparePlayersByName, formatShortDate, getPlayerSortKey, getPlayerUnavailabilityOnDate, getTrainingSessionStatus, getRecordedTrainingStatus, getRecordedTrainingMinutes, isTrainingParticipation, getCompletedTrainingEvents, getTrainingAttendanceSummary, formatTrainingAttendance, isFriendlyMatch } from "../utils/helpers";
+import { hasTrainingEnded } from "../utils/trainingArchive";
 import { fetchTeamRpe } from "../services/sessionRpe";
 import { useTranslation } from "../i18n";
 
@@ -354,7 +355,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   function cycleStatus(session, player) {
     if (!canManage || (session.isMatch && !session.isFriendly)) return;
     const playerId = String(player.id);
-    const current = getRecordedTrainingStatus(player, session);
+    const current = hasTrainingEnded(session) ? getTrainingSessionStatus(player, session) : getRecordedTrainingStatus(player, session);
     const currentIndex = STATUS_FLOW.indexOf(current);
     const nextStatus = current === null ? getTrainingSessionStatus(player, session) : STATUS_FLOW[(currentIndex + 1) % STATUS_FLOW.length];
     updateAttendance(session, playerId, { status: nextStatus });
@@ -418,7 +419,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                       const status = getSessionStatus(player, session);
                       const meta = STATUS_META[status] || STATUS_META.Presente;
                       const isReadOnlyMatch = session.isMatch && !session.isFriendly;
-                      const pending = !isReadOnlyMatch && getRecordedTrainingStatus(player, session) === null;
+                      const pending = !isReadOnlyMatch && !hasTrainingEnded(session) && getRecordedTrainingStatus(player, session) === null;
                       return (
                         <div key={session.id} style={{ flexShrink: 0, textAlign: "center" }}>
                           <div style={{ fontSize: 9, color: "#475569", fontWeight: 700, marginBottom: 2, whiteSpace: "nowrap" }}>
@@ -524,7 +525,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                       const status = getSessionStatus(player, session);
                       const meta = STATUS_META[status] || STATUS_META.Presente;
                       const isReadOnlyMatch = session.isMatch && !session.isFriendly;
-                      const pending = !isReadOnlyMatch && getRecordedTrainingStatus(player, session) === null;
+                      const pending = !isReadOnlyMatch && !hasTrainingEnded(session) && getRecordedTrainingStatus(player, session) === null;
                       const showRpe = isTrainingParticipation(status);
                       const playerSubmittedRpe = playerRpeIndex[`${playerId}:${session.id}`];
                       const effectiveRpe = entry.rpe ?? playerSubmittedRpe ?? "";
@@ -747,14 +748,12 @@ function buildRegisterStats(players, sessions, playerRpeIndex = {}) {
   let present = 0;
   let absences = 0;
   let injuries = 0;
-  let pendingTrainings = 0;
   const rpes = [];
 
   players.forEach((player) => {
     pastSessions.forEach((session) => {
       const entry = session.attendance?.[String(player.id)] || {};
-      const status = getRecordedTrainingStatus(player, session);
-      if (status === null) pendingTrainings++;
+      const status = getTrainingSessionStatus(player, session);
       const effectiveRpe = entry.rpe ?? playerRpeIndex[`${player.id}:${session.id}`];
       if (isTrainingParticipation(status)) present += 1;
       if (ABSENT_STATUSES.has(status)) absences += 1;
@@ -765,7 +764,6 @@ function buildRegisterStats(players, sessions, playerRpeIndex = {}) {
 
   return {
     trainingPresences: present,
-    pendingTrainings,
     absences,
     injuries,
     avgRpe: rpes.length ? Number((rpes.reduce((sum, value) => sum + value, 0) / rpes.length).toFixed(1)) : 0,
@@ -778,7 +776,7 @@ function buildPlayerStats(player, sessions, playerRpeIndex = {}) {
 
   pastSessions.forEach((session) => {
     const entry = session.attendance?.[String(player.id)] || {};
-    const status = getRecordedTrainingStatus(player, session);
+    const status = getTrainingSessionStatus(player, session);
     const effectiveRpe = entry.rpe ?? playerRpeIndex[`${player.id}:${session.id}`];
     if (isTrainingParticipation(status)) {
       const minutes = getRecordedTrainingMinutes(entry) ?? (status === "Parziale" ? 0 : getDuration(session));

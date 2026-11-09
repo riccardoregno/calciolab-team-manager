@@ -25,7 +25,8 @@ export function getTrainingStatus(session, today = localDateString()) {
   const date = getAgendaDateKey(session.date);
   if (session.isFriendlyMatch && parseMatchResult(session.result, session)) return "completed";
   if (session.completed) return "completed";
-  if (!date || date < today) return "toCheck";
+  if (!date) return "toCheck";
+  if (date < today) return session.isFriendlyMatch ? "toCheck" : "completed";
   return date === today ? "today" : "scheduled";
 }
 
