@@ -10,7 +10,7 @@ import MetricStrip from "../components/ui/MetricStrip";
 import { useToast } from "../components/ui/Toast";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { styles } from "../styles/index.js";
-import { createId, getPlayerUnavailabilityOnDate, localDateString } from "../utils/helpers";
+import { createId, getPlayerUnavailabilityOnDate, hasPlayerTransferred, localDateString } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { fetchPlayerAvailability } from "../services/playerAvailability";
@@ -78,7 +78,8 @@ function buildPrepDays(players, sessions, matches, start, end) {
     }
     const dateStr = cursor.toISOString().slice(0, 10);
     const trainingSession = trainingByDate.get(dateStr);
-    const absentEntries = primaPlayers
+    const activePrima = primaPlayers.filter((player) => !hasPlayerTransferred(player, dateStr));
+    const absentEntries = activePrima
       .map((player) => {
         const info = getPlayerUnavailabilityOnDate(player, dateStr);
         if (info) return { player, info };
@@ -98,7 +99,7 @@ function buildPrepDays(players, sessions, matches, start, end) {
       })
       .filter((entry) => entry.info);
     const absentIds = new Set(absentEntries.map((entry) => entry.player.id));
-    const availablePlayers = primaPlayers.filter((player) => !absentIds.has(player.id));
+    const availablePlayers = activePrima.filter((player) => !absentIds.has(player.id));
     const availableJuniors = juniorPlayers.filter(
       (player) => {
         if (!trainingSession || getPlayerUnavailabilityOnDate(player, dateStr)) return false;
@@ -109,8 +110,8 @@ function buildPrepDays(players, sessions, matches, start, end) {
 
     days.push({
       date: dateStr,
-      total: primaPlayers.length,
-      available: primaPlayers.length - absentEntries.length,
+      total: activePrima.length,
+      available: availablePlayers.length,
       absentEntries,
       availablePlayers,
       availableJuniors,
@@ -223,7 +224,7 @@ function getStatusStyle(status) {
 }
 
 function emptyForm(players) {
-  const firstAvailable = players.find((p) => !UNAVAILABLE.includes(p.status || "Disponibile"));
+  const firstAvailable = players.find((p) => !hasPlayerTransferred(p) && !UNAVAILABLE.includes(p.status || "Disponibile"));
   return {
     playerId:        firstAvailable?.id || "",
     status:          "Infortunato",
@@ -383,10 +384,12 @@ export default function Availability({
     [prepDays]
   );
 
+  const activePlayers = players.filter((player) => !hasPlayerTransferred(player));
+
   async function exportAvailabilityPDF() {
     const { generateAvailabilityPDF } = await import("../utils/generateAvailabilityExport");
     await generateAvailabilityPDF({
-      players,
+      players: activePlayers,
       teamName,
       prepRange,
       prepDays,
@@ -396,14 +399,14 @@ export default function Availability({
 
   async function exportAvailabilityCSV() {
     const { generateAvailabilityCSV } = await import("../utils/generateAvailabilityExport");
-    await generateAvailabilityCSV({ players, teamName });
+    await generateAvailabilityCSV({ players: activePlayers, teamName });
   }
 
-  const injuredPlayers = players.filter((p) => UNAVAILABLE.includes(p.status || "Disponibile"));
+  const injuredPlayers = activePlayers.filter((p) => UNAVAILABLE.includes(p.status || "Disponibile"));
   // Il conteggio "Disponibili" in testa alla pagina riguarda solo la prima squadra:
   // i Juniores sono un gruppo a parte (vedi anche Rosa) e non devono alterare
   // il numero di riferimento usato per organizzare gli allenamenti della prima squadra.
-  const primaPlayers = players.filter((p) => (p.gruppo || "prima") === "prima");
+  const primaPlayers = activePlayers.filter((p) => (p.gruppo || "prima") === "prima");
   const availablePlayers = primaPlayers.filter((p) => !UNAVAILABLE.includes(p.status || "Disponibile"));
 
   async function handleSyncNow() {
@@ -653,7 +656,7 @@ export default function Availability({
     closeRecovery();
   }
 
-  const selectablePlayers = players.filter(
+  const selectablePlayers = activePlayers.filter(
     (p) => !UNAVAILABLE.includes(p.status || "Disponibile") || String(p.id) === String(editingPlayerId)
   );
 

@@ -528,7 +528,7 @@ function Statistics({
         />
         <SummaryCard
           label={t("pages.statistics.availability")}
-          value={`${teamSummary.available}/${teamSummary.totalPlayers}`}
+          value={`${teamSummary.available}/${teamSummary.activePlayers}`}
           detail={`${teamSummary.notAvailable} ${t("pages.statistics.toMonitor")}`}
           accent={teamSummary.notAvailable > 0 ? "#fb7185" : "#22c55e"}
         />
@@ -1557,7 +1557,10 @@ function getTeamSummary(stats) {
       acc.assists += Number(player.assists || 0);
       acc.goalContributions += Number(player.goalContributions || 0);
       acc.minutes += Number(player.minutes || 0);
-      acc.available += !hasPlayerTransferred(player) && player.status === "Disponibile" ? 1 : 0;
+      if (player.status !== "Trasferito") {
+        acc.activePlayers += 1;
+        acc.available += player.status === "Disponibile" ? 1 : 0;
+      }
 
       acc.trainingPresences += player.trainingPresences;
       acc.pendingTrainings += player.pendingTrainings;
@@ -1566,6 +1569,7 @@ function getTeamSummary(stats) {
     },
     {
       totalPlayers: 0,
+      activePlayers: 0,
       goals: 0,
       assists: 0,
       goalContributions: 0,
@@ -1579,7 +1583,7 @@ function getTeamSummary(stats) {
   return {
     ...totals,
     avgMinutesPerPlayer: totals.totalPlayers ? Math.round(totals.minutes / totals.totalPlayers) : 0,
-    notAvailable: Math.max(0, totals.totalPlayers - totals.available),
+    notAvailable: Math.max(0, totals.activePlayers - totals.available),
   };
 }
 
