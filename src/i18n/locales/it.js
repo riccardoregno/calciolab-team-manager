@@ -1341,6 +1341,9 @@ export const it = {
         load:      "Carico",
       },
       profile: {
+        transferred: "Trasferito",
+        transferDate: "Data di trasferimento",
+        transferHelp: "Dal giorno indicato il giocatore esce dai disponibili. Lascia vuoto se fa ancora parte della rosa.",
         title:           "Dati anagrafici",
         subtitle:        "Informazioni base del giocatore",
         cancel:          "Annulla",

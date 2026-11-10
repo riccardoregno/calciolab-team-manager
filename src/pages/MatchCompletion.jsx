@@ -6,7 +6,7 @@ import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { loadMatchStats, saveMatchMinutes } from "../services/playerProfile";
-import { formatDate, parseMatchResult, resolveMatchMinutes } from "../utils/helpers";
+import { formatDate, hasPlayerTransferred, parseMatchResult, resolveMatchMinutes } from "../utils/helpers";
 import { buildHomeAwayScorePayload, isValidMatchScore } from "../utils/matchScore";
 import { getMatchCompletionPlayerIds, hasRecordedMinutes } from "../utils/matchCompletion";
 
@@ -68,8 +68,9 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
     const player = players.find((item) => String(item.id) === id);
     return player ? playerName(player) : id;
   });
-  const lineupPlayers = registeredIds.length ? players.filter((player) => expected.has(String(player.id))) : players;
-  const minutesPlayers = players.filter((player) => {
+  const eligiblePlayers = players.filter((player) => !hasPlayerTransferred(player, match.date));
+  const lineupPlayers = registeredIds.length ? eligiblePlayers.filter((player) => expected.has(String(player.id))) : eligiblePlayers;
+  const minutesPlayers = eligiblePlayers.filter((player) => {
     const id = String(player.id);
     return expected.has(id) || id === linkedPlayerId;
   });

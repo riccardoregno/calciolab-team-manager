@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
 import Badge from "../ui/Badge";
 import { useTranslation } from "../../i18n";
-import { calcPlayerAge, getPlayerQuickStats, formatTrainingAttendance, isGoalkeeper } from "../../utils/helpers";
+import { calcPlayerAge, getPlayerQuickStats, formatTrainingAttendance, hasPlayerTransferred, isGoalkeeper } from "../../utils/helpers";
 
 const SUSPENSION_THRESHOLD = 5;
 
@@ -118,12 +118,13 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
             <Badge tone={
+              hasPlayerTransferred(player) ? "slate" :
               player.status === "Infortunato" ? "red" :
               player.status === "Squalificato" ? "purple" :
               player.status === "Recupero" || player.status === "Differenziato" ? "orange" :
               "green"
             }>
-              {player.status || "Disponibile"}
+              {hasPlayerTransferred(player) ? t("pages.playerDetail.profile.transferred") : player.status || "Disponibile"}
             </Badge>
             {suspensionYellowCards >= SUSPENSION_THRESHOLD - 1 && (
               <span style={{

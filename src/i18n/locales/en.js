@@ -1341,6 +1341,9 @@ export const en = {
         load:      "Load",
       },
       profile: {
+        transferred: "Transferred",
+        transferDate: "Transfer date",
+        transferHelp: "From this date the player is unavailable. Leave blank if they are still in the squad.",
         title:           "Personal data",
         subtitle:        "Basic player information",
         cancel:          "Cancel",

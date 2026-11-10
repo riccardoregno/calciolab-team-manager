@@ -4,7 +4,7 @@ import AppCard from "../ui/AppCard";
 import Button from "../ui/Button";
 import { getAgendaDateKey } from "../../utils/coachAgenda";
 import { hasTrainingEnded } from "../../utils/trainingArchive";
-import { comparePlayersByName, formatDate, isTrainingStatsEvent, getPlayerMatchEntries, getTrainingSessionStatus, getTrainingAttendanceSummary, localDateString, parseMatchResult } from "../../utils/helpers";
+import { comparePlayersByName, formatDate, isTrainingStatsEvent, getPlayerMatchEntries, getTrainingSessionStatus, getTrainingAttendanceSummary, hasPlayerTransferred, localDateString, parseMatchResult } from "../../utils/helpers";
 
 function moveDate(date, days) {
   const shifted = new Date(date + "T12:00:00");
@@ -111,12 +111,13 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
   const { sessions, matches } = getPeriodEvents(events, periodStart, end, now);
 
   const rosterRows = [...players].sort(comparePlayersByName).map((player) => {
-    const statuses = sessions.map((event) => getTrainingSessionStatus(player, event));
+    const playerSessions = sessions.filter((event) => !hasPlayerTransferred(player, event.date));
+    const statuses = playerSessions.map((event) => getTrainingSessionStatus(player, event));
     const training = ["Presente", "Assente", "Recupero", "Parziale", "Permesso", "Infortunato", "Squalificato"]
       .map((status) => [status, statuses.filter((entry) => entry === status).length])
       .filter(([, count]) => count > 0);
     const entries = new Map(getPlayerMatchEntries(player, matches, rows, false).map(({ event, data }) => [event.id, data]));
-    const games = matches.map((event) => {
+    const games = matches.filter((event) => !hasPlayerTransferred(player, event.date)).map((event) => {
       const data = entries.get(event.id);
       const publishedList = event.convocazione?.published && Array.isArray(event.convocazione.playerIds);
       const status = data?.status ?? (publishedList ? "Non convocato" : "Convocazione non verificabile");
@@ -133,7 +134,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
     const trainingSummary = training
       .filter(([status]) => !fourWeeks || !["Presente", "Parziale", "Recupero"].includes(status))
       .map(([status, count]) => count + " " + trainingLabels[status]);
-    if (fourWeeks && sessions.length) {
+    if (fourWeeks && playerSessions.length) {
       const { trainingPresences } = getTrainingAttendanceSummary(player, sessions);
       trainingSummary.unshift(trainingPresences + (trainingPresences === 1 ? " presenza" : " presenze"));
     }
@@ -200,6 +201,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
           {visibleRows.map(({ player, trainingSummary, games, known, missing, unverifiable, matchSummary }) => (
             <article key={player.id} style={{ minWidth: 0, padding: 12, border: "1px solid #334155", borderRadius: 12 }}>
               <h3 style={{ margin: "0 0 8px", overflowWrap: "anywhere" }}>{player.name}</h3>
+              {hasPlayerTransferred(player, today) && <small>Trasferito · {formatDate(player.transferDate)}</small>}
               <div><strong>Allenamenti</strong><div>{trainingSummary.join(" · ") || "Nessuna seduta svolta"}</div></div>
               <div style={{ marginTop: 8 }}><strong>Partite</strong><div>
                 {loading && matches.length ? "Caricamento…" : statsError && matches.length ? "Minutaggio non verificabile" : <>

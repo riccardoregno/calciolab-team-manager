@@ -1,4 +1,4 @@
-import { getPlayerMatchEntries } from "../utils/helpers";
+import { getPlayerMatchEntries, hasPlayerTransferred } from "../utils/helpers";
 import "../styles/coach-focus.css";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -373,7 +373,7 @@ function Dashboard({
     matchRows: playerMatchRows, canCheckMatchStats: !statsLoading && !statsError && (!auth.team?.id || statsCompletedForTeam === auth.team.id),
     now: new Date(agendaMinute),
   }), [sessions, matches, players, playerMatchRows, statsLoading, statsError, agendaMinute, auth.team?.id, statsCompletedForTeam]);
-  const availablePlayers = primaPlayers.filter((p) => !p.status || p.status === "Disponibile").length;
+  const availablePlayers = primaPlayers.filter((p) => !hasPlayerTransferred(p) && (!p.status || p.status === "Disponibile")).length;
   const recentActivities = agenda.pastEvents.slice(0, 4);
   const coachAlerts = useMemo(() => prioritizeCoachAlerts([
     ...getMatchOperationalAlerts(nextMatch, t),

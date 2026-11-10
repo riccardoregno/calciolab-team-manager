@@ -7,7 +7,7 @@ import MetricStrip from "../components/ui/MetricStrip";
 import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
-import { formatDate, getLineup, normalizeAppSettings } from "../utils/helpers";
+import { formatDate, getLineup, hasPlayerTransferred, normalizeAppSettings } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { createRsvpLink, fetchMatchRsvps, sendMatchConvocationEmail } from "../services/rsvp";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -265,6 +265,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   const { canManage } = useAreaPermission();
 
   const match = matches.find((m) => String(m.id) === String(id));
+  const eligiblePlayers = players.filter((player) => !hasPlayerTransferred(player, match?.date));
   const MAX_PLAYERS = match?.matchKind === "Amichevole" ? MAX_PLAYERS_FRIENDLY : MAX_PLAYERS_COMPETITIVE;
   const existing = match?.convocazione || {};
   const workspaceProfile = normalizeAppSettings(appSettings).workspaceProfile;
@@ -389,7 +390,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
 
   function selectAll() {
     if (!canManage) return;
-    updateRoster(players.slice(0, MAX_PLAYERS).map((p) => String(p.id)));
+    updateRoster(eligiblePlayers.slice(0, MAX_PLAYERS).map((p) => String(p.id)));
   }
 
   function clearAll() {
@@ -597,7 +598,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
     .map((pid) => players.find((p) => String(p.id) === pid))
     .filter(Boolean);
   const orderedConvocati = sortPlayersByName(convocati);
-  const availablePlayers = players.filter((player) => !selectedIds.includes(String(player.id)));
+  const availablePlayers = eligiblePlayers.filter((player) => !selectedIds.includes(String(player.id)));
   const groups = groupByRole(availablePlayers);
   const rsvpMap = new Map(rsvps.map((rsvp) => [String(rsvp.player_id), rsvp]));
   const emailTargets = convocati.filter((p) => String(p.email || "").trim());

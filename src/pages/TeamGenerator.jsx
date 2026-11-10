@@ -5,7 +5,7 @@ import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import EmptyState from "../components/ui/EmptyState";
 import { useNavigate } from "react-router-dom";
-import { normalizeRoleToGroup } from "../utils/helpers";
+import { hasPlayerTransferred, normalizeRoleToGroup } from "../utils/helpers";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { fetchPlayerAvailability } from "../services/playerAvailability";
 
@@ -117,7 +117,7 @@ export default function TeamGenerator({ players = [], teamId = null }) {
   // Juniores: solo quelli con availability "available"
   const availablePlayers = useMemo(() => {
     return players.filter((p) => {
-      if (["Infortunato", "Squalificato"].includes(p.status || "")) return false;
+      if (hasPlayerTransferred(p) || ["Infortunato", "Squalificato"].includes(p.status || "")) return false;
       if (p.squadra === "juniores") return availMap[String(p.id)] === "available";
       return true;
     });
@@ -125,12 +125,12 @@ export default function TeamGenerator({ players = [], teamId = null }) {
 
   // Juniores non disponibili (non "available") → sezione grigia
   const unavailableJuniores = useMemo(() =>
-    players.filter((p) => p.squadra === "juniores" && availMap[String(p.id)] !== "available"),
+    players.filter((p) => !hasPlayerTransferred(p) && p.squadra === "juniores" && availMap[String(p.id)] !== "available"),
   [players, availMap]);
 
   // Giocatori prima squadra non disponibili (inj/susp)
   const unavailablePrima = useMemo(() =>
-    players.filter((p) => p.squadra !== "juniores" && ["Infortunato", "Squalificato"].includes(p.status || "")),
+    players.filter((p) => !hasPlayerTransferred(p) && p.squadra !== "juniores" && ["Infortunato", "Squalificato"].includes(p.status || "")),
   [players]);
 
   const [selected, setSelected] = useState(() => new Set(availablePlayers.map((p) => String(p.id))));

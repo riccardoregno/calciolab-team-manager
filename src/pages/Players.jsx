@@ -24,7 +24,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
-import { createUuid, isBirthdayToday, getTeamAverageAge, getPlayerQuickStats, formatTrainingAttendance, comparePlayersByName, getPlayerMatchTotals, getPlayerMatchEntries, isGoalkeeper } from "../utils/helpers";
+import { createUuid, isBirthdayToday, getTeamAverageAge, getPlayerQuickStats, formatTrainingAttendance, comparePlayersByName, getPlayerMatchTotals, getPlayerMatchEntries, hasPlayerTransferred, isGoalkeeper } from "../utils/helpers";
 import { useTeamMatchRows } from "../hooks/useTeamMatchRows";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
@@ -216,7 +216,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   ).filter((player) => {
     const matchesGroup = gruppoFilter === "tutti" || (player.gruppo || "prima") === gruppoFilter;
     const matchesStatus =
-      filterStatus === "tutti" || (player.status || "Disponibile") === filterStatus;
+      filterStatus === "tutti" || (hasPlayerTransferred(player) ? "Trasferito" : player.status || "Disponibile") === filterStatus;
     const matchesRole = filterRole === "tutti" || (player.role || "") === filterRole;
     const matchesRoleFamily =
       filterRoleFamily === "tutti" || getRoleFamily(player.role) === filterRoleFamily;
@@ -310,7 +310,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     {
       key: "available",
       label: t("pages.players.available"),
-      value: primaPlayers.filter((p) => (p.status || "Disponibile") === "Disponibile").length,
+      value: primaPlayers.filter((p) => !hasPlayerTransferred(p) && (p.status || "Disponibile") === "Disponibile").length,
       color: "#22c55e",
       onClick: () => filterByStatus("Disponibile"),
       active: filterStatus === "Disponibile",
@@ -658,6 +658,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
                   { val: "Disponibile", label: t("pages.players.statusAvailable"), color: "#22c55e" },
                   { val: "Infortunato", label: t("pages.players.statusInjured"), color: "#f87171" },
                   { val: "Squalificato", label: t("pages.players.statusSuspended"), color: "#fb923c" },
+                  { val: "Trasferito", label: t("pages.playerDetail.profile.transferred"), color: "#94a3b8" },
                 ].map(({ val, label, color }) => (
                   <button key={val} onClick={() => setFilterStatus(val)} style={{
                     padding: "5px 11px", borderRadius: 8, fontSize: 12, fontWeight: 700,
@@ -1048,12 +1049,15 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchSta
   const cardsValue = statValue(`${matchStats.yellowCards || 0}/${matchStats.redCards || 0}`);
   const suspensionYellowCards = yellowCards || matchStats.yellowCards || 0;
 
+  const transferred = hasPlayerTransferred(player);
   const statusTone =
+    transferred ? "slate" :
     player.status === "Infortunato"  ? "red"    :
     player.status === "Squalificato" ? "purple"  :
     player.status === "Recupero" || player.status === "Differenziato" ? "orange" :
     "green";
   const statusDotColor =
+    transferred ? "#94a3b8" :
     player.status === "Infortunato"  ? "#f87171" :
     player.status === "Squalificato" ? "#a78bfa"  :
     player.status === "Recupero" || player.status === "Differenziato" ? "#fb923c" :
@@ -1130,7 +1134,7 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchSta
 
       {/* Badge stato + alert */}
       <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-        <Badge tone={statusTone}>{player.status || "Disponibile"}</Badge>
+        <Badge tone={statusTone}>{transferred ? t("pages.playerDetail.profile.transferred") : player.status || "Disponibile"}</Badge>
         {suspensionYellowCards >= SUSPENSION_THRESHOLD - 1 && (
           <span style={{
             fontSize: 10, fontWeight: 900, padding: "2px 6px", borderRadius: 6,

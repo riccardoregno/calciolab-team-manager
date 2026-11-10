@@ -231,7 +231,14 @@ export function normalizePlayer(player){
  * (Availability.jsx) — una stima, non un dato definitivo: un infortunio
  * senza data di rientro nota viene considerato indisponibile a oltranza.
  */
+export function hasPlayerTransferred(player, date = localDateString()) {
+  const transferDate = normalizeStatsDate(player?.transferDate);
+  const referenceDate = normalizeStatsDate(date);
+  return Boolean(transferDate && referenceDate && transferDate <= referenceDate);
+}
+
 export function getPlayerUnavailabilityOnDate(player, dateStr) {
+  if (hasPlayerTransferred(player, dateStr)) return { type: "transfer", label: "Trasferito" };
   if (!dateStr) return null;
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return null;
@@ -1223,6 +1230,7 @@ function buildSessionVariantNote({ exercise, field, matchDayDistance }){
 }
 
 export function getAvailabilityGroups(players = []){
+  players = players.filter((player) => !hasPlayerTransferred(player));
   return {
     available: players.filter((player) => player.status === "Disponibile"),
     limited: players.filter((player) =>
@@ -1531,18 +1539,20 @@ export function getRecordedTrainingStatus(player, event) {
 }
 
 export function getTrainingSessionStatus(player, event) {
+  if (hasPlayerTransferred(player, event.date)) return null;
   return getRecordedTrainingStatus(player, event) ?? getTrainingDefaultStatus(player, normalizeStatsDate(event.date));
 }
 
 export function getTrainingAttendanceSummary(player, completedEvents) {
   let trainingPresences = 0, absences = 0, injuries = 0;
-  for (const event of completedEvents) {
+  const eligibleEvents = completedEvents.filter((event) => !hasPlayerTransferred(player, event.date));
+  for (const event of eligibleEvents) {
     const status = getTrainingSessionStatus(player, event);
     if (isTrainingParticipation(status)) trainingPresences++;
     if (status === "Assente" || status === "Permesso") absences++;
     if (status === "Infortunato") injuries++;
   }
-  const totalTrainings = completedEvents.length;
+  const totalTrainings = eligibleEvents.length;
   return { trainingPresences, absences, injuries, totalTrainings, pendingTrainings: 0,
     trainingPct: totalTrainings ? Math.round(trainingPresences / totalTrainings * 100) : null };
 }
@@ -1773,7 +1783,7 @@ export function getPlayerMatchEntries(player, matches = [], rows = [], leagueOnl
     .filter((row) => row.player_id == null || String(row.player_id) === String(player.id))
     .map((row) => [String(row.match_id), row]));
   const today = localDateString();
-  return matches.filter((match) => (!leagueOnly || isLeagueStatsMatch(match)) && normalizeStatsDate(match.date) && normalizeStatsDate(match.date) <= today)
+  return matches.filter((match) => !hasPlayerTransferred(player, match.date) && (!leagueOnly || isLeagueStatsMatch(match)) && normalizeStatsDate(match.date) && normalizeStatsDate(match.date) <= today)
     .flatMap((event) => {
       const local = event.attendance?.[player.id];
       const db = byMatch.get(String(event.id));
@@ -1813,7 +1823,7 @@ export function getGoalkeeperRecord(player, matches = [], players = [], rows = [
       const row = byMatch.get(String(match.id))?.get(String(keeper.id));
       return resolveMatchMinutes(row?.minutes_played, match.attendance?.[keeper.id]?.minutes, row?.minutes_cleared);
     };
-    const played = keepers.filter((keeper) => minutesFor(keeper) > 0);
+    const played = keepers.filter((keeper) => !hasPlayerTransferred(keeper, match.date) && minutesFor(keeper) > 0);
     if (!played.some((keeper) => String(keeper.id) === String(player?.id))) continue;
     appearances += 1;
     const data = dataFor(player);
@@ -1930,7 +1940,7 @@ export function getPlayerSummary(player, { sessions = [], matches = [], physical
   // allenamenti futuri già marcati di default.
   const todayStr = localDateString();
   const leagueMatches = matches.filter(isLeagueStatsMatch);
-  const events = [...sessions, ...leagueMatches].filter((event) => event.date && event.date <= todayStr);
+  const events = [...sessions, ...leagueMatches].filter((event) => event.date && event.date <= todayStr && !hasPlayerTransferred(player, event.date));
   const matchEntries = getPlayerMatchEntries(player, leagueMatches, playerMatchesDB)
     .map(({ event, data }) => ({ event, data: {
       ...data,

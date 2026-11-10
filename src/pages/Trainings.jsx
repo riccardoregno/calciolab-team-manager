@@ -20,7 +20,7 @@ import { useAreaPermission } from "../components/auth/permissionContext";
 
 import { uploadTeamAttachment } from "../services/attachments";
 import { styles } from "../styles/index.js";
-import { createId, formatDate, getPlayerUnavailabilityOnDate, localDateString, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
+import { createId, formatDate, getPlayerUnavailabilityOnDate, hasPlayerTransferred, localDateString, normalizeAppSettings, RPE_BY_MATCH_DAY, TRAINING_BLOCKS, getBlockFromCategory } from "../utils/helpers";
 import { emptyExercise } from "../data/initialData";
 import { useTranslation } from "../i18n";
 import { sendTeamNotification } from "../services/notifications";
@@ -1184,7 +1184,8 @@ function getSessionAvailability(players, date, _availabilityRecords = [], sessio
   const available = [];
   const unavailable = [];
 
-  players.forEach((player) => {
+  const sessionPlayers = players.filter((player) => !hasPlayerTransferred(player, date));
+  sessionPlayers.forEach((player) => {
     const isJun = (player.gruppo || "prima") === "juniores";
     // Se il coach ha esplicitamente marcato "Presente" nel registro seduta, il giocatore è sempre disponibile
     const sessionStatus = sessionAttendance[String(player.id)]?.status;
@@ -1205,7 +1206,7 @@ function getSessionAvailability(players, date, _availabilityRecords = [], sessio
     }
   });
 
-  const primaryTotal = players.filter((p) => (p.gruppo || "prima") !== "juniores").length;
+  const primaryTotal = sessionPlayers.filter((p) => (p.gruppo || "prima") !== "juniores").length;
   return { available, unavailable, total: primaryTotal };
 }
 

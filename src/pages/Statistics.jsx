@@ -12,7 +12,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { SkeletonList } from "../components/ui/Skeleton";
 
 import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
-import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getCompletedTrainingEvents, getTrainingAttendanceSummary, getTrainingSessionStatus, formatTrainingAttendance, getRecordedTrainingMinutes, isTrainingParticipation, isTrainingStatsEvent, localDateString, parseMatchResult } from "../utils/helpers";
+import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getCompletedTrainingEvents, getTrainingAttendanceSummary, getTrainingSessionStatus, hasPlayerTransferred, formatTrainingAttendance, getRecordedTrainingMinutes, isTrainingParticipation, isTrainingStatsEvent, localDateString, parseMatchResult } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { loadPlayerMatchesForPeriod, loadMatchStatsMatrix } from "../services/playerProfile";
 import { useAuth } from "../hooks/useAuth";
@@ -1557,7 +1557,7 @@ function getTeamSummary(stats) {
       acc.assists += Number(player.assists || 0);
       acc.goalContributions += Number(player.goalContributions || 0);
       acc.minutes += Number(player.minutes || 0);
-      acc.available += player.status === "Disponibile" ? 1 : 0;
+      acc.available += !hasPlayerTransferred(player) && player.status === "Disponibile" ? 1 : 0;
 
       acc.trainingPresences += player.trainingPresences;
       acc.pendingTrainings += player.pendingTrainings;
@@ -1603,7 +1603,7 @@ function getStatsSummary(events, players, playerMatchStatsRows = [], roster = pl
 
     const totals = getPlayerMatchTotals(player, matchEvents, playerMatchStatsRows, roster, false);
     const { presences, minutes, goals, assists } = totals;
-    const lineupRoles = playedMatches.map((event) => getRecordedLineupRole(event, player.id));
+    const lineupRoles = playedMatches.filter((event) => !hasPlayerTransferred(player, event.date)).map((event) => getRecordedLineupRole(event, player.id));
     const unknownLineupRoles = getPlayerMatchEntries(player, matchEvents, playerMatchStatsRows, false)
       .filter(({ event, data }) => data.status === "Presente" && getRecordedLineupRole(event, player.id) === null).length;
     const goalContributions = goals + assists;
@@ -1612,7 +1612,7 @@ function getStatsSummary(events, players, playerMatchStatsRows = [], roster = pl
         id: player.id,
         name: getDisplayPlayerName(player),
       lastName: player.lastName || player.last_name || "",
-      status: player.status || "Disponibile",
+      status: hasPlayerTransferred(player, today) ? "Trasferito" : player.status || "Disponibile",
       role: player.role || player.position || "",
       presences,
       minutes,
@@ -1663,7 +1663,7 @@ function getPlayerHistory(events, player, playerMatchesDB = [], roster = []) {
           rating: matchData.rating,
         };
       } else {
-        if (!isTrainingStatsEvent(event)) return null;
+        if (!isTrainingStatsEvent(event) || hasPlayerTransferred(player, event.date)) return null;
         const data = event.attendance?.[player.id] || {};
         const status = getTrainingSessionStatus(player, event);
         const present = isTrainingParticipation(status);

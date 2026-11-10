@@ -11,7 +11,7 @@ import SearchBar from "../components/ui/SearchBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { useAuth } from "../hooks/useAuth";
 import { styles } from "../styles/index.js";
-import { comparePlayersByName, formatShortDate, getPlayerSortKey, getPlayerUnavailabilityOnDate, getTrainingSessionStatus, getRecordedTrainingStatus, getRecordedTrainingMinutes, isTrainingParticipation, getCompletedTrainingEvents, getTrainingAttendanceSummary, formatTrainingAttendance, isFriendlyMatch } from "../utils/helpers";
+import { comparePlayersByName, formatShortDate, getPlayerSortKey, getPlayerUnavailabilityOnDate, getTrainingSessionStatus, hasPlayerTransferred, getRecordedTrainingStatus, getRecordedTrainingMinutes, isTrainingParticipation, getCompletedTrainingEvents, getTrainingAttendanceSummary, formatTrainingAttendance, isFriendlyMatch } from "../utils/helpers";
 import { hasTrainingEnded } from "../utils/trainingArchive";
 import { fetchTeamRpe } from "../services/sessionRpe";
 import { useTranslation } from "../i18n";
@@ -353,7 +353,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   }
 
   function cycleStatus(session, player) {
-    if (!canManage || (session.isMatch && !session.isFriendly)) return;
+    if (!canManage || hasPlayerTransferred(player, session.date) || (session.isMatch && !session.isFriendly)) return;
     const playerId = String(player.id);
     const current = hasTrainingEnded(session) ? getTrainingSessionStatus(player, session) : getRecordedTrainingStatus(player, session);
     const currentIndex = STATUS_FLOW.indexOf(current);
@@ -368,6 +368,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
         if (String(item.id) !== String(session.id)) return item;
         const nextAttendance = { ...(item.attendance || {}) };
         targetPlayers.forEach((player) => {
+          if (hasPlayerTransferred(player, session.date)) return;
           const playerId = String(player.id);
           nextAttendance[playerId] = {
             ...(nextAttendance[playerId] || {}),
@@ -417,6 +418,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                   <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
                     {visibleSessions.map((session) => {
                       const status = getSessionStatus(player, session);
+                      const transferred = hasPlayerTransferred(player, session.date);
                       const meta = STATUS_META[status] || STATUS_META.Presente;
                       const isReadOnlyMatch = session.isMatch && !session.isFriendly;
                       const pending = !isReadOnlyMatch && !hasTrainingEnded(session) && getRecordedTrainingStatus(player, session) === null;
@@ -428,7 +430,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                           <button
                             type="button"
                             onClick={() => cycleStatus(session, player)}
-                            disabled={!canManage || isReadOnlyMatch}
+                            disabled={!canManage || isReadOnlyMatch || transferred}
                             style={{
                               width: 28, height: 28, borderRadius: 7, border: `1px solid ${meta.border}`,
                               background: meta.bg, color: meta.color,
@@ -436,7 +438,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                               display: "flex", alignItems: "center", justifyContent: "center",
                             }}
                           >
-                            {pending ? "?" : meta.code}
+                            {transferred ? "—" : pending ? "?" : meta.code}
                           </button>
                         </div>
                       );
@@ -523,6 +525,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                       const playerId = String(player.id);
                       const entry = session.attendance?.[playerId] || {};
                       const status = getSessionStatus(player, session);
+                      const transferred = hasPlayerTransferred(player, session.date);
                       const meta = STATUS_META[status] || STATUS_META.Presente;
                       const isReadOnlyMatch = session.isMatch && !session.isFriendly;
                       const pending = !isReadOnlyMatch && !hasTrainingEnded(session) && getRecordedTrainingStatus(player, session) === null;
@@ -536,7 +539,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                             <button
                               type="button"
                               onClick={() => cycleStatus(session, player)}
-                              disabled={!canManage || isReadOnlyMatch}
+                              disabled={!canManage || isReadOnlyMatch || transferred}
                               style={{
                                 ...ar.statusCell,
                                 color: meta.color,
@@ -546,7 +549,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                               }}
                               title={pending ? "Da confermare · suggerito " + status : isReadOnlyMatch ? t("pages.attendanceRegister.editInConvocation") : t("pages.attendanceRegister.cycleStatus")}
                             >
-                              {pending ? "?" : meta.code}
+                              {transferred ? "—" : pending ? "?" : meta.code}
                             </button>
                             {showRpe && (
                               <input

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { getMatchCompletionTasks } from "../src/utils/matchCompletion.js";
 import { buildMatchScope, buildStatisticsEvents } from "../src/utils/matchScope.js";
-import { getCompletedTrainingEvents, getRecordedTrainingStatus, formatTrainingAttendance, getTrainingSessionStatus, parseRecordedMinutes, resolveMatchMinutes, getTrainingAttendanceSummary, getGoalkeeperGoalsConceded, getPlayerMatchEntries, getPlayerMatchTotals, getPlayerSummary, isGoalkeeper } from "../src/utils/helpers.js";
+import { getCompletedTrainingEvents, hasPlayerTransferred, getRecordedTrainingStatus, formatTrainingAttendance, getTrainingSessionStatus, parseRecordedMinutes, resolveMatchMinutes, getTrainingAttendanceSummary, getGoalkeeperGoalsConceded, getPlayerMatchEntries, getPlayerMatchTotals, getPlayerSummary, isGoalkeeper } from "../src/utils/helpers.js";
 
 const keeper = { id: "gk", role: "Portiere" };
 const reserve = { id: "reserve", position: "GK" };
@@ -83,6 +83,17 @@ assert.equal(all.filter((event) => event.id === "friendly").length, 1);
 const completed = getCompletedTrainingEvents(scoped, "2020-08-01", "21:00");
 assert.deepEqual(getTrainingAttendanceSummary(summerPlayer, completed), { trainingPresences: 1, absences: 3, injuries: 1, totalTrainings: 5, pendingTrainings: 0, trainingPct: 20 });
 assert.equal(getTrainingAttendanceSummary({ ...summerPlayer, absences: [] }, completed).absences, 1);
+
+const transferredPlayer = { id: "transfer-test", transferDate: "2026-06-02" };
+const beforeTransfer = { id: "before", date: "2026-06-01", attendance: { "transfer-test": { status: "Presente", minutes: 45, goals: 1 } } };
+const onTransfer = { ...beforeTransfer, id: "on", date: "2026-06-02" };
+assert.equal(hasPlayerTransferred(transferredPlayer, beforeTransfer.date), false);
+assert.equal(hasPlayerTransferred(transferredPlayer, onTransfer.date), true);
+assert.equal(getTrainingSessionStatus(transferredPlayer, onTransfer), null);
+assert.deepEqual(getTrainingAttendanceSummary(transferredPlayer, [beforeTransfer, onTransfer]), {
+  trainingPresences: 1, absences: 0, injuries: 0, totalTrainings: 1, pendingTrainings: 0, trainingPct: 100,
+});
+assert.deepEqual(getPlayerMatchEntries(transferredPlayer, [beforeTransfer, onTransfer], [], false).map(({ data }) => [data.minutes, data.goals]), [[45, 1]]);
 
 const attendanceCases = [
   { attendance: { forward: { status: "Presente" } } },

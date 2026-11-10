@@ -6,7 +6,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
-import { formatDate, getRecordedTrainingStatus, getTrainingSessionStatus, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes } from "../utils/helpers";
+import { formatDate, getRecordedTrainingStatus, getTrainingSessionStatus, hasPlayerTransferred, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes } from "../utils/helpers";
 import { hasTrainingEnded } from "../utils/trainingArchive";
 import { useTranslation } from "../i18n";
 
@@ -50,13 +50,14 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const session = trainingSession || getFriendlySession(friendlyMatch);
   const updateEvents = session?.isFriendlyMatch ? setMatches : setSessions;
   const attendance = session?.attendance || {};
-  const firstTeamPlayers = players.filter((player) => String(player.gruppo || "prima").trim().toLowerCase() === "prima");
+  const sessionPlayers = players.filter((player) => !hasPlayerTransferred(player, session?.date));
+  const firstTeamPlayers = sessionPlayers.filter((player) => String(player.gruppo || "prima").trim().toLowerCase() === "prima");
   const ended = session && hasTrainingEnded(session);
   const attendanceStatus = (player) => ended ? getTrainingSessionStatus(player, session) : getRecordedTrainingStatus(player, session);
   const unrecordedPlayers = firstTeamPlayers.filter((player) => attendanceStatus(player) === null);
   const visiblePlayers = pendingOnly
     ? unrecordedPlayers
-    : players;
+    : sessionPlayers;
 
   function updatePlayer(playerId, field, value) {
     if (!canManage) return;
@@ -240,7 +241,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
         );
       })()}
 
-      {players.length === 0 ? (
+      {sessionPlayers.length === 0 ? (
         <AppCard>
           <p style={s.muted}>{t("pages.sessionAttendance.noPlayers")}</p>
         </AppCard>

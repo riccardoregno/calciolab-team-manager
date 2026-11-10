@@ -17,7 +17,7 @@ import Button from "../ui/Button";
 
 import { useTranslation } from "../../i18n";
 import { styles } from "../../styles/index.js";
-import { formatShortDate, getPhysicalReference, localDateString, parsePlayerBirthDate, PLAYER_ROLES, ROLE_GROUPS } from "../../utils/helpers";
+import { formatDate, formatShortDate, hasPlayerTransferred, getPhysicalReference, localDateString, parsePlayerBirthDate, PLAYER_ROLES, ROLE_GROUPS } from "../../utils/helpers";
 
 const TT = {
   contentStyle: {
@@ -235,6 +235,16 @@ export function PlayerProfileTab({
           )}
         </div>
       </div>
+
+      {editing ? (
+        <label style={{ display: "grid", gap: 6, marginBottom: 16 }}>
+          <span>{t("pages.playerDetail.profile.transferDate")}</span>
+          <input type="date" value={form.transferDate || ""} onChange={(event) => onFieldChange("transferDate", event.target.value)} />
+          <small>{t("pages.playerDetail.profile.transferHelp")}</small>
+        </label>
+      ) : player.transferDate && (
+        <p>{t(hasPlayerTransferred(player) ? "pages.playerDetail.profile.transferred" : "pages.playerDetail.profile.transferDate")}: {formatDate(player.transferDate)}</p>
+      )}
 
       {portalAccountLinked && (
         <div style={sectionStyles.portalActivityBox}>
