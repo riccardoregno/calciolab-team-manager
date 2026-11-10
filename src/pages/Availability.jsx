@@ -442,8 +442,8 @@ export default function Availability({
     }
 
     const types = [...byType.values()].sort((a, b) => b.days - a.days);
-    return { totalDays, types, activeCount: injuredPlayers.length };
-  }, [players, injuredPlayers.length, t]);
+    return { totalDays, types };
+  }, [players, t]);
   const recoveryPlayer = players.find((p) => String(p.id) === String(recoveryPlayerId));
   const recoveryActiveInjury = (recoveryPlayer?.injuries || []).find((i) => !i.endDate);
   const recoveryStartDate = recoveryActiveInjury?.startDate || recoveryPlayer?.injuryStartDate || "";
@@ -737,7 +737,7 @@ export default function Availability({
             className="mobile-scroll-x"
             style={{ marginBottom: 16 }}
             items={[
-              { key: "activeNow", label: t("pages.availability.reportActiveNow"), value: injuryReport.activeCount, color: "#f87171" },
+              { key: "activeNow", label: t("pages.availability.reportActiveNow"), value: injuredPlayers.length, color: "#f87171" },
               { key: "totalDays", label: t("pages.availability.reportTotalDays"), value: injuryReport.totalDays, color: "#fb923c" },
               { key: "types", label: t("pages.availability.reportTypesCount"), value: injuryReport.types.length, color: "#a78bfa" },
             ]}
