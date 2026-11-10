@@ -3955,6 +3955,8 @@ export const en = {
       age: "Age",
       appearances: "Apps",
       trainingPct: "Training",
+      trainingPresence: "{{count}} session attended",
+      trainingPresences: "{{count}} sessions attended",
       trainingPctAbbr: "% Att.",
       noRole: "Role not set",
     },

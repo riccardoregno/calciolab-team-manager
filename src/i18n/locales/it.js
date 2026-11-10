@@ -3969,6 +3969,8 @@ export const it = {
       age: "Età",
       appearances: "Presenze",
       trainingPct: "Allenamenti",
+      trainingPresence: "{{count}} presenza",
+      trainingPresences: "{{count}} presenze",
       trainingPctAbbr: "% All.",
       noRole: "Ruolo non impostato",
     },

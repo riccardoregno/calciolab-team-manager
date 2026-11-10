@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
 import Badge from "../ui/Badge";
 import { useTranslation } from "../../i18n";
-import { calcPlayerAge, getPlayerQuickStats, formatTrainingAttendance, hasPlayerTransferred, isGoalkeeper } from "../../utils/helpers";
+import { calcPlayerAge, getPlayerQuickStats, hasPlayerTransferred, isGoalkeeper } from "../../utils/helpers";
 
 const SUSPENSION_THRESHOLD = 5;
 
@@ -55,7 +55,9 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
   const stats = normalizeMatchStats(matchStats);
   const statValue = (value) => statsUnavailable ? "—" : value;
   const suspensionYellowCards = yellowCards || stats.yellowCards || 0;
-  const trainingPctValue = formatTrainingAttendance(training);
+  const trainingPresenceLabel = t(training.trainingPresences === 1
+    ? "components.playerCard.trainingPresence"
+    : "components.playerCard.trainingPresences", { count: training.trainingPresences });
 
   const initials = player.name
     ? player.name
@@ -196,7 +198,7 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
           <MiniValue
             label={t("components.playerCard.trainingPct")}
             title={t("components.playerCard.trainingPct")}
-            value={trainingPctValue}
+            value={trainingPresenceLabel}
           />
         </div>
 
