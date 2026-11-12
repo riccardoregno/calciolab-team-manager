@@ -2,7 +2,7 @@ import { changeSeasonRoster, changeSeasonEvents } from "../utils/seasons.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   loadRemoteState,
-  saveLocalState,
+  saveLocalStateDurably,
   saveTeamTablesState,
 } from "../services/teamData";
 import {
@@ -49,6 +49,8 @@ export function useTeamData({ teamId } = {}) {
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [localSaveError, setLocalSaveError] = useState(null);
   const [remoteSaving, setRemoteSaving] = useState(false);
+  const [localSaving, setLocalSaving] = useState(false);
+  const localSaveRevision = useRef(0);
   const hydrated = useRef(false);
   const remoteSyncReady = useRef(false);
   const skipNextRemoteSave = useRef(false);
@@ -196,6 +198,8 @@ export function useTeamData({ teamId } = {}) {
     setLoading(true);
     setRemoteSaving(false);
     setLocalSaveError(null);
+    localSaveRevision.current += 1;
+    setLocalSaving(false);
     setLastSyncedAt(null);
 
     loadRemoteState({ teamId }).then((result) => {
@@ -262,20 +266,39 @@ export function useTeamData({ teamId } = {}) {
     };
   }, [teamId, applyLoadedState, refreshTeamData]);
 
+  const saveDeviceCopy = useCallback(async (snapshot, targetTeam) => {
+    const revision = ++localSaveRevision.current;
+    setLocalSaving(true);
+    const result = await saveLocalStateDurably(snapshot, targetTeam);
+    if (revision === localSaveRevision.current && targetTeam === teamIdRef.current) {
+      setLocalSaveError(result.saved ? null : classifyLocalSaveError(result.error));
+      setLocalSaving(false);
+    }
+    return result;
+  }, []);
+
   const retryLocalSave = useCallback(() => {
     if (!hydrated.current) return;
-    const result = saveLocalState(stateRef.current, teamId);
-    setLocalSaveError(result.saved ? null : classifyLocalSaveError(result.error));
-  }, [teamId]);
+    return saveDeviceCopy(stateRef.current, teamId);
+  }, [teamId, saveDeviceCopy]);
 
-  // Persistenza: localStorage IMMEDIATAMENTE (previene perdita dati su chiusura tab),
-  // Supabase con debounce; the per-tab journal protects unacknowledged edits.
+  useEffect(() => {
+    const protectPendingEdits = event => {
+      if (!dirtyKeysRef.current.size) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', protectPendingEdits);
+    return () => window.removeEventListener('beforeunload', protectPendingEdits);
+  }, []);
+
+  // Web Storage is synchronous when it fits; large snapshots commit to IndexedDB.
+  // The synchronous per-tab journal continues protecting unacknowledged edits.
   useEffect(() => {
     if (!hydrated.current) return;
 
-    // Salvataggio localStorage sincrono — non perdiamo nulla se il tab chiude ora
-    const localResult = saveLocalState(state, teamId);
-    setLocalSaveError(localResult.saved ? null : classifyLocalSaveError(localResult.error));
+    // Confirm local durability only when the selected store has completed its write.
+    saveDeviceCopy(state, teamId);
     const keysToSave = Array.from(dirtyKeysRef.current);
     if (teamId && keysToSave.length) {
       try {
@@ -355,7 +378,7 @@ export function useTeamData({ teamId } = {}) {
       window.clearTimeout(timeoutId);
       if (!started) pendingSaveCount.current = Math.max(0, pendingSaveCount.current - 1);
     };
-  }, [state, teamId]);
+  }, [state, teamId, saveDeviceCopy]);
 
   const actions = useMemo(
     () => ({
@@ -462,7 +485,7 @@ export function useTeamData({ teamId } = {}) {
     storageError,
     lastSyncedAt,
     localSaveError,
-    remoteSaving,
+    remoteSaving: remoteSaving || localSaving,
     refreshTeamData,
     retryLocalSave,
     teamId,

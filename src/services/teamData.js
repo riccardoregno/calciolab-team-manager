@@ -10,6 +10,12 @@ import {
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { normalizeAppState } from "../utils/helpers";
 import { sameSyncData } from "../utils/syncHelpers";
+import { readLocalSnapshot, updateLocalSnapshot } from "./localSnapshotStore";
+
+const durableSnapshots = new Map();
+const durableTeams = new Set();
+const localWriteQueues = new Map();
+const localReadErrors = new Map();
 
 const ENTITY_TABLES = {
   players:       "players",
@@ -49,6 +55,14 @@ export function getInitialState() {
 
 /** @returns {object} */
 export function loadLocalState(teamId) {
+  const durable = durableSnapshots.get(storageKeys(teamId).primary);
+  if (durable) {
+    const current = parseStoredState(durable.current);
+    const backup = parseStoredState(durable.previous);
+    if (current) return backup ? recoverMissingLocalEntities(current, backup, durable.emptyIntents || {}) : current;
+    if (backup) return normalizeAppState({ ...backup, ...Object.fromEntries(
+      Object.keys(ENTITY_TABLES).filter(key => durable.emptyIntents?.[key]).map(key => [key, []])) });
+  }
   const { primary, backup } = storageKeys(teamId);
   const fallback = () => teamId
     ? normalizeAppState(Object.fromEntries(Object.keys(ENTITY_TABLES).map((key) => [key, []])))
@@ -75,7 +89,7 @@ function compactSnapshot(json) {
   return packed.length < json.length ? packed : json;
 }
 
-export function saveLocalState(state, teamId) {
+export function saveLocalState(state, teamId, { preserveBackup = false } = {}) {
   const { primary, backup } = storageKeys(teamId);
   const normalized = normalizeAppState(state);
   const json = JSON.stringify(normalized);
@@ -94,7 +108,8 @@ export function saveLocalState(state, teamId) {
     try {
       serialized = compactSnapshot(json);
       localStorage.setItem(primary, serialized);
-    } catch {
+    } catch (error) {
+      if (preserveBackup) return { saved: false, error };
       try {
         // Preserve the primary if both attempts fail. The old backup is expendable.
         localStorage.removeItem(backup);
@@ -110,17 +125,80 @@ export function saveLocalState(state, teamId) {
     try {
       localStorage.setItem(backup, previous.length >= COMPRESS_AT ? compactSnapshot(previous) : previous);
     } catch {
-      try { localStorage.removeItem(backup); } catch { /* The primary was saved. */ }
+      if (!preserveBackup) { try { localStorage.removeItem(backup); } catch { /* The primary was saved. */ } }
     }
   }
   return { saved: true, error: null };
 }
 
+async function hydrateDurableSnapshot(teamId) {
+  const key = storageKeys(teamId).primary;
+  await localWriteQueues.get(key)?.catch(() => {});
+  try {
+    const record = await readLocalSnapshot(key);
+    localReadErrors.delete(key);
+    if (record && (parseStoredState(record.current) || parseStoredState(record.previous))) {
+      durableTeams.add(key);
+      durableSnapshots.set(key, record);
+    }
+  } catch (error) {
+    if (globalThis.indexedDB) localReadErrors.set(key, error);
+  }
+}
+
+export async function loadLocalStateDurably(teamId) {
+  await hydrateDurableSnapshot(teamId);
+  return loadLocalState(teamId);
+}
+
+export function saveLocalStateDurably(state, teamId) {
+  const key = storageKeys(teamId).primary;
+  let legacyError;
+  if (!durableTeams.has(key)) {
+    const legacy = saveLocalState(state, teamId, { preserveBackup: true });
+    if (legacy.saved) return Promise.resolve(legacy);
+    legacyError = legacy.error;
+    if (!globalThis.indexedDB) return Promise.resolve(legacy);
+  }
+  durableTeams.add(key);
+  // Capture this revision before awaiting, so rapid edits cannot mutate an older write.
+  const normalized = normalizeAppState(state);
+  const serialized = JSON.stringify(normalized);
+  const job = (localWriteQueues.get(key) || Promise.resolve()).catch(() => {}).then(async () => {
+    try {
+      const record = await updateLocalSnapshot(key, previous => {
+        let legacyPrimary = null;
+        try { legacyPrimary = localStorage.getItem(key); } catch { /* IndexedDB may still work. */ }
+        const current = parseStoredState(previous?.current) ? previous.current
+          : parseStoredState(previous?.previous) ? previous.previous : legacyPrimary;
+        const before = parseStoredState(current);
+        const intents = { ...(previous?.emptyIntents || loadEmptyEntityIntents(teamId)) };
+        for (const stateKey of Object.keys(ENTITY_TABLES)) {
+          if (normalized[stateKey]?.length) delete intents[stateKey];
+          else if (hasUserLocalRecords(stateKey, before?.[stateKey] || [])) intents[stateKey] = new Date().toISOString();
+        }
+        return { current: serialized, previous: current === serialized ? previous?.previous || null : current,
+          emptyIntents: intents };
+      });
+      durableSnapshots.set(key, record);
+      return { saved: true, storage: 'indexeddb', error: null };
+    } catch (error) {
+      if (!durableSnapshots.has(key)) durableTeams.delete(key);
+      return { saved: false, error: legacyError || error };
+    }
+  });
+  localWriteQueues.set(key, job);
+  job.then(() => { if (localWriteQueues.get(key) === job) localWriteQueues.delete(key); });
+  return job;
+}
+
 /** @param {{ teamId?: string }} [params]
  * @returns {Promise<{data: any[], error: any}>} */
 export async function loadRemoteState({ teamId, entityKeys } = {}) {
+  await hydrateDurableSnapshot(teamId);
   if (!isSupabaseConfigured || !teamId) {
-    return { state: loadLocalState(teamId), source: "local" };
+    return { state: loadLocalState(teamId), source: "local", ...(localReadErrors.has(storageKeys(teamId).primary)
+      ? { error: new Error('La copia locale non è leggibile. Non sovrascrivere i dati prima di ripristinare l’accesso al dispositivo.') } : {}) };
   }
   return loadTeamTablesState(teamId, { entityKeys });
 }
@@ -721,6 +799,8 @@ async function acknowledgeRepeatedWrite(table, teamId, id, data) {
 }
 
 function loadEmptyEntityIntents(teamId) {
+  const durable = durableSnapshots.get(storageKeys(teamId).primary);
+  if (durable) return { ...(durable.emptyIntents || {}) };
   if (typeof localStorage === "undefined") return {};
 
   try {

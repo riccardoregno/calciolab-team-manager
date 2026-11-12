@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'vite';
+import { indexedDB as testIndexedDB } from 'fake-indexeddb';
 
 process.env.VITE_SUPABASE_URL = 'https://placeholder.supabase.co';
 process.env.VITE_SUPABASE_ANON_KEY = 'placeholder';
@@ -174,6 +175,63 @@ try {
     values.delete(largeKey);
     values.delete(largeKey + ':backup');
   }
+
+  // Full Web Storage must not require deleting legacy snapshots to save a large roster.
+  globalThis.indexedDB = testIndexedDB;
+  const durable = await server.ssrLoadModule('/src/services/teamData.js');
+  const store = await server.ssrLoadModule('/src/services/localSnapshotStore.js');
+  const durableTeam = 'indexeddb-large-team';
+  const durableKey = key + ':team:' + durableTeam;
+  const oldLocal = JSON.stringify({ players: [{ id:'old', name:'Legacy draft' }] });
+  values.set(durableKey, oldLocal);
+  values.set(durableKey + ':backup', oldLocal);
+  const photo = 'data:image/jpeg;base64,' + 'fictitious-photo'.repeat(200_000);
+  const bigRoster = { players:[{ id:'p1', name:'Rosa fittizia', photo }],
+    seasonPlayers:[{ id:'membership', seasonId:'season', playerId:'p1', profile:{name:'Rosa fittizia',photo} }],
+    sessions:[{id:'s1',date:'2026-11-12',attendance:{p1:{status:'Da confermare'}}}] };
+  const quotaError = new DOMException('Fixture quota', 'QuotaExceededError');
+  try {
+    localStorage.setItem = () => { throw quotaError; };
+    assert.equal((await durable.saveLocalStateDurably(bigRoster,durableTeam)).saved,true);
+    assert.equal(values.get(durableKey),oldLocal,'Legacy primary must remain intact');
+    assert.equal(values.get(durableKey+':backup'),oldLocal,'Legacy backup must remain intact');
+    assert.equal((await store.readLocalSnapshot(durableKey)).current.includes('Rosa fittizia'),true);
+    const edited = {...bigRoster,sessions:[{...bigRoster.sessions[0],attendance:{p1:{status:'Presente'}}}]};
+    const latest = {...edited,sessions:[{...edited.sessions[0],note:'ultima revisione'}]};
+    await Promise.all([durable.saveLocalStateDurably(edited,durableTeam),durable.saveLocalStateDurably(latest,durableTeam)]);
+    server.moduleGraph.invalidateAll();
+    const fresh = await server.ssrLoadModule('/src/services/teamData.js');
+    const reloaded = await fresh.loadLocalStateDurably(durableTeam);
+    assert.equal(reloaded.players[0].photo,photo,'Photos survive without lossy changes');
+    assert.equal(reloaded.seasonPlayers[0].profile.photo,photo,'Historical profile survives');
+    assert.equal(reloaded.sessions[0].attendance.p1.status,'Presente','Unacknowledged edit survives restart');
+    assert.equal(reloaded.sessions[0].note,'ultima revisione','Queued saves preserve newest revision');
+    await fresh.saveLocalStateDurably({...latest,sessions:[]},durableTeam);
+    server.moduleGraph.invalidateAll();
+    const afterDelete = await server.ssrLoadModule('/src/services/teamData.js');
+    assert.equal((await afterDelete.loadLocalStateDurably(durableTeam)).sessions.length,0,'Deliberately empty arrays must not be resurrected from backup');
+    const stable = await store.readLocalSnapshot(durableKey);
+    await assert.rejects(store.updateLocalSnapshot(durableKey,()=>{throw new Error('fixture transaction aborted');}));
+    assert.deepEqual(await store.readLocalSnapshot(durableKey),stable,'Aborted transaction preserves committed snapshot');
+    await store.updateLocalSnapshot(durableKey,row=>({...row,current:'invalid JSON'}));
+    server.moduleGraph.invalidateAll();
+    const recovery = await server.ssrLoadModule('/src/services/teamData.js');
+    const recovered = await recovery.loadLocalStateDurably(durableTeam);
+    assert.equal(recovered.players[0].photo,photo,'Corrupt durable primary recovers previous snapshot');
+    assert.equal(recovered.sessions.length,0,'Backup recovery still respects deliberate deletion markers');
+    assert.equal((await store.readLocalSnapshot(key+':team:another-team')),null,'Snapshots remain isolated by team');
+    const realOpen = indexedDB.open;
+    try {
+      indexedDB.open = () => {throw new DOMException('Fixture denied','SecurityError');};
+      const denied = await durable.saveLocalStateDurably(bigRoster,'indexeddb-denied-team');
+      assert.equal(denied.saved,false,'Both stores failing must not be reported as saved');
+      assert.equal(denied.error,quotaError);
+    } finally { indexedDB.open = realOpen; }
+  } finally {
+    localStorage.setItem = originalSetItem;
+    delete globalThis.indexedDB;
+  }
+  console.log('Durable local storage: full quota, preserved legacy copies, large photos/history, restart, pending edits, ordered writes, abort, deletion and isolation passed');
 
   assert.ok(supabase, 'Remote-read regression requires the configured Supabase client');
   const originalFrom = supabase.from;

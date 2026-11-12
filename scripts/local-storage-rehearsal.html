@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CalcioLab · prova copia locale</title>
+<style>body{font:17px system-ui;margin:24px;background:#111b29;color:#eef5ff;max-width:700px}button{padding:14px;margin:8px 0;display:block}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style>
+<h1>Prova locale con 25 giocatori fittizi</h1>
+<p>Nessuna lettura o scrittura del database remoto.</p>
+<button id="prepare">Crea prova fittizia con memoria piena</button>
+<button id="reload">Ricarica e verifica la copia</button>
+<pre id="result" role="status">Caricamento della copia locale…</pre>
+<script type="module">
+  import {saveLocalStateDurably,loadLocalStateDurably} from '/src/services/teamData.js';
+  if(location.hostname!=='127.0.0.1'||location.port!=='4182') throw new Error('Solo ambiente di collaudo locale 4182');
+  const team='quota-rehearsal', key='calciolab-platform-v2:team:'+team, result=document.querySelector('#result');
+  const show=value=>result.textContent=value;
+  const describe=async()=>{
+    const state=await loadLocalStateDurably(team);
+    show(state.players.length===25&&state.seasonPlayers.length===25
+      ?'PASS ricarica: 25 giocatori e 25 profili storici recuperati dal dispositivo; nota non sincronizzata: '+state.sessions[0]?.note
+      :'Pronto. Nessuna fixture persistita in questo ambiente.');
+  };
+  document.querySelector('#reload').onclick=()=>location.reload();
+  document.querySelector('#prepare').onclick=async()=>{
+    try{
+      const legacy=JSON.stringify({players:[{id:'fixture-0',name:'Giocatore fittizio 0'}]});
+      localStorage.setItem(key,legacy);
+      localStorage.setItem(key+':backup',legacy);
+      localStorage.setItem('quota-rehearsal-sentinel','copia precedente fittizia '.repeat(100000));
+      let seed=17;
+      const photo=()=>{let text='data:image/jpeg;base64,';const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';for(let i=0;i<150000;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;text+=chars[(seed>>>16)&63];}return text;};
+      const players=Array.from({length:25},(_,i)=>({id:'fixture-'+i,name:'Giocatore fittizio '+i,photo:photo()}));
+      const state={players,seasonPlayers:players.map(p=>({id:'membership-'+p.id,seasonId:'fixture-season',playerId:p.id,profile:p})),
+        sessions:[{id:'fixture-session',date:'2026-11-12',note:'presenza fittizia da inviare',attendance:{'fixture-0':{status:'Presente'}}}]};
+      show('Salvataggio della copia grande in corso…');
+      const saved=await saveLocalStateDurably(state,team);
+      if(!saved.saved) throw saved.error;
+      if(localStorage.getItem(key)!==legacy||localStorage.getItem(key+':backup')!==legacy)throw new Error('Copia precedente modificata');
+      const loaded=await loadLocalStateDurably(team);
+      if(loaded.players[24].photo!==players[24].photo||loaded.seasonPlayers[24].profile.photo!==players[24].photo)throw new Error('Foto non conservata');
+      show('PASS: IndexedDB confermato; 25 giocatori, 25 profili e foto integri. Copie precedenti intatte. Ora ricarica.');
+    }catch(error){show('ERRORE: '+error.message);}
+  };
+  await describe();
+</script></html>
