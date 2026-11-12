@@ -192,6 +192,10 @@ try {
       return {
         update: () => writeQuery,
         insert: () => ({ select: () => ({ single: async () => ({ data: { updated_at: "ack-insert" }, error: null }) }) }),
+        select: () => {
+          const query = { eq: () => query, maybeSingle: async () => ({ data: null, error: null }) };
+          return query;
+        },
       };
     };
     const writeState = { matches: [{ id: "one", _updatedAt: "old" }, { id: "two" }] };
@@ -203,6 +207,86 @@ try {
     conflict = true;
     assert.equal((await saveTeamTablesState(writeState, "test-team", options)).source, "partial");
   } finally { supabase.from = originalFrom; }
+
+  const { acknowledgeSavedKeys, buildEntityChanges } = await server.ssrLoadModule("/src/utils/syncHelpers.js");
+  supabase.from = (table) => ({
+    update: () => {
+      const query = {
+        eq: () => query,
+        select: async () => table === "matches"
+          ? { data: [{ updated_at: "partial-ack" }], error: null }
+          : { data: null, error: new Error("sessions temporarily unavailable") },
+      };
+      return query;
+    },
+  });
+  try {
+    const before = { matches: [{ id: "partial-match", result: "0-0", _updatedAt: "old-match" }],
+      sessions: [{ id: "partial-session", date: "2026-11-01", _updatedAt: "old-session" }] };
+    const edited = { matches: [{ ...before.matches[0], result: "1-0" }],
+      sessions: [{ ...before.sessions[0], date: "2026-11-02" }] };
+    const changes = buildEntityChanges(before, edited, ["matches", "sessions"]);
+    const result = await saveTeamTablesState(edited, "test-team", { keys: ["matches", "sessions"], entityChanges: changes });
+    assert.equal(result.source, "partial");
+    assert.deepEqual(result.savedKeys, ["matches"]);
+    const baseline = acknowledgeSavedKeys(before, edited, result);
+    const retry = buildEntityChanges(baseline, edited, ["matches", "sessions"]);
+    assert.equal(retry.matches.changedOrAdded.length, 0, "Do not retry an acknowledged table after a partial save");
+    assert.equal(retry.sessions.changedOrAdded.length, 1);
+    assert.equal(baseline.matches[0]._updatedAt, "partial-ack");
+    assert.equal(baseline.sessions[0]._updatedAt, "old-session");
+  } finally { supabase.from = originalFrom; }
+  // A retry after a committed write with a lost response must acknowledge the row.
+  // JSONB can return keys in a different order.
+  const transferId = "f0000000-0000-4000-8000-000000000001";
+  const transfer = { id: transferId, name: "Fixture trasferimento", transferDate: "2026-11-09", _updatedAt: "before" };
+  let remoteTransfer = { data: { transferDate: transfer.transferDate, name: transfer.name, id: transferId }, updated_at: "committed" };
+  let loseFirstResponse = true;
+  let remoteChanged = false;
+  supabase.from = (table) => {
+    assert.equal(table, "players");
+    return {
+      update: ({ data }) => {
+        assert.equal(data.transferDate, transfer.transferDate);
+        const query = {
+          eq: () => query,
+          select: async () => {
+            if (loseFirstResponse) {
+              loseFirstResponse = false;
+              return { data: null, error: new Error("response lost after commit") };
+            }
+            return { data: [], error: null };
+          },
+        };
+        return query;
+      },
+      select: (columns) => {
+        assert.equal(columns, "data, updated_at");
+        const query = {
+          eq: () => query,
+          maybeSingle: async () => ({
+            data: remoteChanged ? { ...remoteTransfer, data: { ...remoteTransfer.data, name: "Another session" } } : remoteTransfer,
+            error: null,
+          }),
+        };
+        return query;
+      },
+    };
+  };
+  try {
+    const input = { players: [transfer] };
+    const options = { keys: ["players"], entityChanges: { players: { changedOrAdded: [transfer] } } };
+    assert.equal((await saveTeamTablesState(input, "test-team", options)).source, "partial");
+    const retried = await saveTeamTablesState(input, "test-team", options);
+    assert.equal(retried.source, "supabase");
+    assert.equal(retried.versions.players.get(transferId), "committed");
+    assert.deepEqual(retried.savedKeys, ["players"]);
+    remoteChanged = true;
+    assert.equal((await saveTeamTablesState(input, "test-team", options)).source, "partial", "A real concurrent change must not be overwritten");
+  } finally {
+    supabase.from = originalFrom;
+  }
+
   saveLocalState(snapshot, 'test-team');
   assert.equal(loadLocalState('test-team').matches[0].result, snapshot.matches[0].result);
   assert.deepEqual(loadLocalState('another-team').matches, [], 'An empty team cannot inherit another team or a legacy cache');

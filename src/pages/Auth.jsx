@@ -155,6 +155,8 @@ function Auth() {
           } else {
             setFeedback({ type: "error", text: error.message });
           }
+        } else {
+          window.location.replace("/");
         }
         return;
       }

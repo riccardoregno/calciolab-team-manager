@@ -1,6 +1,6 @@
 export const ARRAY_ENTITY_KEYS = [
   "players", "exercises", "sessions", "matches",
-  "physicalTests", "gpsSessions", "staffTasks", "injuryRecords",
+  "physicalTests", "gpsSessions", "staffTasks", "injuryRecords", "seasonPlayers",
 ];
 
 function withoutSyncMetadata(item) {
@@ -8,6 +8,15 @@ function withoutSyncMetadata(item) {
   const { _updatedAt: _ignored, ...data } = item;
   void _ignored;
   return data;
+}
+
+export function sameSyncData(left, right) {
+  if (left === right) return true;
+  if (!left || !right || typeof left !== "object" || typeof right !== "object") return false;
+  if (Array.isArray(left) !== Array.isArray(right)) return false;
+  const keys = Object.keys(left);
+  return keys.length === Object.keys(right).length && keys.every((key) =>
+    Object.hasOwn(right, key) && sameSyncData(left[key], right[key]));
 }
 
 export function diffEntityArray(baselineArr = [], localArr = []) {
@@ -19,7 +28,7 @@ export function diffEntityArray(baselineArr = [], localArr = []) {
 
   localById.forEach((item, id) => {
     const baselineItem = baselineById.get(id);
-    if (!baselineItem || JSON.stringify(withoutSyncMetadata(baselineItem)) !== JSON.stringify(withoutSyncMetadata(item))) {
+    if (!baselineItem || !sameSyncData(withoutSyncMetadata(baselineItem), withoutSyncMetadata(item))) {
       // The UI may still carry metadata from before our last successful save.
       // Compare against the latest acknowledged version, not that stale copy.
       changedOrAdded.push(baselineItem ? { ...item, _updatedAt: baselineItem._updatedAt } : item);
@@ -57,4 +66,9 @@ export function acknowledgeEntityVersions(snapshot, versions = {}) {
     key, snapshot[key].map((item) => byId.has(String(item.id))
       ? { ...item, _updatedAt: byId.get(String(item.id)) } : item),
   ])) };
+}
+
+export function acknowledgeSavedKeys(baseline, snapshot, result) {
+  const acknowledged = acknowledgeEntityVersions(snapshot, result.versions);
+  return { ...baseline, ...Object.fromEntries((result.savedKeys || []).map((key) => [key, acknowledged[key]])) };
 }

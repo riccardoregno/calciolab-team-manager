@@ -52,6 +52,7 @@ function formatBirthDateDisplay(raw) {
 export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange, onPhotoOffsetChange, summary }) {
   const { t } = useTranslation();
   const { size: photoSize, x: photoOffsetX, y: photoOffsetY } = getPlayerPhotoSettings(form);
+  const transferred = hasPlayerTransferred(form);
   return (
     <>
       <AppCard>
@@ -73,7 +74,9 @@ export function PlayerSidebar({ form, editing, onImageUpload, onPhotoSizeChange,
 
           <div style={sectionStyles.badgeRow}>
             <Badge tone="blue">#{form.shirtNumber || "-"}</Badge>
-            <Badge tone={getStatusTone(form.status)}>{form.status || t("pages.playerDetail.statusField.available")}</Badge>
+            <Badge tone={transferred ? "slate" : getStatusTone(form.status)}>
+              {transferred ? t("pages.playerDetail.profile.transferred") : form.status || t("pages.playerDetail.statusField.available")}
+            </Badge>
           </div>
 
           {editing && onImageUpload && (
@@ -239,7 +242,7 @@ export function PlayerProfileTab({
       {editing ? (
         <label style={{ display: "grid", gap: 6, marginBottom: 16 }}>
           <span>{t("pages.playerDetail.profile.transferDate")}</span>
-          <input type="date" value={form.transferDate || ""} onChange={(event) => onFieldChange("transferDate", event.target.value)} />
+          <input type="date" value={form.transferDate || ""} onInput={(event) => onFieldChange("transferDate", event.currentTarget.value)} />
           <small>{t("pages.playerDetail.profile.transferHelp")}</small>
         </label>
       ) : player.transferDate && (
@@ -431,13 +434,14 @@ export function PlayerTechnicalOverview({
   onGoToTab,
 }) {
   const { t } = useTranslation();
-  const availabilityScore = getAvailabilityScore(player, activeInjuries);
+  const transferred = hasPlayerTransferred(player);
+  const availabilityScore = transferred ? 0 : getAvailabilityScore(player, activeInjuries);
   const workloadTone = summary.stats.load > 900 ? "orange" : summary.stats.load > 0 ? "green" : "blue";
   const readinessTone = availabilityScore >= 80 ? "green" : availabilityScore >= 50 ? "orange" : "red";
   const latestEvent = summary.recentEvents[0];
   const latestTest = summary.latestTests[0];
 
-  const priorities = [
+  const priorities = transferred ? [] : [
     player.status && player.status !== "Disponibile"
       ? player.expectedReturn
         ? t("pages.playerDetail.priorities.manageStatusWithReturn", { status: player.status, return: player.expectedReturn })
@@ -458,14 +462,14 @@ export function PlayerTechnicalOverview({
             <h3 style={sectionStyles.overviewTitle}>{t("pages.playerDetail.overview.title")}</h3>
             <p style={sectionStyles.cardSubtitle}>{t("pages.playerDetail.overview.subtitle")}</p>
           </div>
-          <div style={sectionStyles.readinessBox}>
+          {!transferred && <div style={sectionStyles.readinessBox}>
             <strong>{availabilityScore}%</strong>
             <span>{t("pages.playerDetail.overview.readiness")}</span>
-          </div>
+          </div>}
         </div>
 
         <div style={sectionStyles.overviewKpis}>
-          <MiniStatus label={t("pages.playerDetail.overview.availability")} value={player.status || t("pages.playerDetail.statusField.available")} tone={readinessTone} />
+          <MiniStatus label={t("pages.playerDetail.overview.availability")} value={transferred ? t("pages.playerDetail.profile.transferred") : player.status || t("pages.playerDetail.statusField.available")} tone={transferred ? "slate" : readinessTone} />
           <MiniStatus label={t("pages.playerDetail.overview.load")}    value={summary.stats.load || "-"} tone={workloadTone} />
           <MiniStatus label={t("pages.playerDetail.overview.minutes")} value={summary.stats.minutes || "-"} tone="blue" />
           <MiniStatus label={t("pages.playerDetail.overview.lastTest")} value={latestTest?.date ? formatShortDate(latestTest.date) : "-"} tone={latestTest ? "green" : "orange"} />

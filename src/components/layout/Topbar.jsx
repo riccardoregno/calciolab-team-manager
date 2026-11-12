@@ -49,7 +49,7 @@ export default function Topbar({
   });
 
   const firstName = profile?.first_name || "";
-  const displayFirstName = firstName || "Coach";
+  const displayFirstName = firstName || t("roles.headCoach");
   const lastName = profile?.last_name || "";
   const fallbackAvatarText = (
     `${profile?.first_name?.[0] || ""}${profile?.last_name?.[0] || ""}`
@@ -174,7 +174,7 @@ export default function Topbar({
       <div style={styles.topbarActions}>
         <LanguageSelector compact />
 
-        <DevelopmentPlanSwitcher
+        {import.meta.env.DEV && <details className="development-tools"><summary>{t("dailyUi.devTools")}</summary><div>        <DevelopmentPlanSwitcher
           value={developmentPlanPreview}
           onChange={onDevelopmentPlanPreviewChange}
         />
@@ -183,6 +183,7 @@ export default function Topbar({
           value={developmentRolePreview}
           onChange={onDevelopmentRolePreviewChange}
         />
+        </div></details>}
 
         <div style={styles.topbarSearchWrapper}>
           <div style={styles.topbarSearchBox}>
@@ -354,7 +355,7 @@ export default function Topbar({
               <strong style={styles.topbarProfileName}>
                 {displayFirstName} {lastName}
               </strong>
-              <span style={styles.topbarProfileRole}>Coach CalcioLab</span>
+              <span style={styles.topbarProfileRole}>{t("roles.headCoach")} CalcioLab</span>
             </div>
 
             <ChevronDown size={15} style={styles.topbarChevron} aria-hidden="true" />

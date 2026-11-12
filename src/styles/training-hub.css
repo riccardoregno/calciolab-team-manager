@@ -65,3 +65,135 @@
 .training-editor-notes .training-editor-fields{margin-top:12px}
 .training-editor-basic input[readonly]{color:#8ca4c3;background:rgba(148,163,184,.04)!important}
 @media(max-width:760px){.training-hub{gap:17px}.training-hub-heading{align-items:flex-start;gap:17px}.training-hub-heading h1{font-size:27px}.training-hub-heading-actions{width:100%}.training-hub-heading-actions>*{flex:1}.training-hub-toolbar{padding:13px;gap:12px}.training-hub-tabs{width:100%;justify-content:space-between;gap:2px}.training-hub-tabs button{padding:8px 9px;font-size:11px}.training-hub-search{flex:1 1 100%;min-width:0}.training-hub-row{grid-template-columns:43px minmax(0,1fr);gap:12px;padding:18px 15px}.training-hub-date strong{font-size:20px}.training-hub-title{font-size:13px!important}.training-hub-row-actions{grid-column:2;justify-content:space-between;margin-top:1px}.training-hub-attendance{font-size:11px;min-height:40px}.training-hub-menu>summary{min-width:42px}.training-hub-menu>div{min-width:180px}.training-hub-session-top{gap:6px}.training-hub-status,.training-hub-kind{font-size:9px}.training-hub-footer{font-size:10px}.training-disclosure-content,.training-disclosure>.no-print{padding:14px}.training-disclosure>summary{padding:17px 16px}.training-editor-fields{grid-template-columns:minmax(0,1fr)}.training-hub-empty{padding:38px 18px}}
+.training-team-builder-header,
+.training-team-builder-toolbar,
+.training-team-builder-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.training-team-builder-header,
+.training-team-builder-toolbar {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.training-team-builder-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: #eaf1fa;
+  font-size: 16px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.training-team-builder-toggle > span:first-child {
+  color: #94a6be;
+}
+
+.training-team-builder-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #a9b8cb;
+  font-size: 12px;
+}
+
+.training-team-builder-toolbar {
+  margin: 12px 0 16px;
+  padding: 12px 0;
+  border-block: 1px solid #293649;
+  color: #a9b8cb;
+  font-size: 13px;
+}
+
+.training-team-builder-pool {
+  margin-bottom: 16px;
+}
+
+.training-team-builder-pool h5 {
+  margin: 0 0 8px;
+  color: #c3d1e4;
+  font-size: 13px;
+}
+
+.training-team-builder-players,
+.training-team-builder-teams {
+  display: grid;
+  gap: 8px;
+}
+
+.training-team-builder-players {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+
+.training-team-builder-teams {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
+}
+
+.training-team-builder-player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid #293649;
+  border-radius: 9px;
+  background: #182334;
+}
+
+.training-team-builder-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.training-team-builder-role {
+  display: grid;
+  place-items: center;
+  flex: 0 0 21px;
+  height: 21px;
+  border-radius: 5px;
+  background: #0f1826;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.training-team-builder-player select {
+  width: 102px;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0 7px;
+  border: 1px solid #40516a;
+  border-radius: 7px;
+  background: #111a28;
+  color: #e2e8f0;
+  color-scheme: dark;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.training-team-builder-count {
+  margin-left: 6px;
+  color: #d3deee;
+  text-transform: none;
+}
+
+.training-team-builder-empty {
+  margin: 0;
+  color: #a9b8cb;
+  font-size: 12px;
+}

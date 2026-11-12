@@ -1,3 +1,4 @@
+import { useTranslation } from "../../i18n";
 const roleOptions = [
   { id: "owner", label: "Owner" },
   { id: "headCoach", label: "Coach" },
@@ -9,11 +10,12 @@ const roleOptions = [
 ];
 
 export default function DevelopmentRoleSwitcher({ value = "headCoach", onChange }) {
+  const { t } = useTranslation();
   if (!import.meta.env?.DEV) return null;
 
   return (
-    <div style={styles.wrapper} title="Visibile solo in sviluppo locale">
-      <span style={styles.label}>Ruolo</span>
+    <div style={styles.wrapper} title={t("dailyUi.devOnly")}>
+      <span style={styles.label}>{t("pages.players.filterRole")}</span>
       <div style={styles.segmented}>
         {roleOptions.map((role) => {
           const active = value === role.id;
@@ -28,7 +30,7 @@ export default function DevelopmentRoleSwitcher({ value = "headCoach", onChange 
                 ...(active ? styles.buttonActive : null),
               }}
             >
-              {role.label}
+              {t("roles." + role.id)}
             </button>
           );
         })}

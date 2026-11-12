@@ -1,3 +1,4 @@
+import { changeSeasonRoster, changeSeasonEvents } from "../utils/seasons.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   loadRemoteState,
@@ -22,6 +23,7 @@ import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { persistPendingChanges, restorePendingChanges, acknowledgePendingChanges } from "../services/pendingChanges";
 import {
   acknowledgeEntityVersions,
+  acknowledgeSavedKeys,
   buildEntityChanges,
 } from "../utils/syncHelpers";
 
@@ -111,10 +113,12 @@ export function useTeamData({ teamId } = {}) {
       let token = null;
       try { token = persistPendingChanges(teamId, lastSyncedSnapshotRef.current, stateRef.current, retryKeys); } catch { /* Keep the cloud retry available. */ }
       const retryChanges = buildEntityChanges(lastSyncedSnapshotRef.current, stateRef.current, retryKeys);
-      const retryResult = await saveTeamTablesState(stateRef.current, teamId, {
+      const retrySnapshot = stateRef.current;
+      const retryResult = await saveTeamTablesState(retrySnapshot, teamId, {
         keys: retryKeys,
         entityChanges: retryChanges,
       });
+      lastSyncedSnapshotRef.current = acknowledgeSavedKeys(lastSyncedSnapshotRef.current, retrySnapshot, retryResult);
       setStorageSource((prev) => retryResult.source !== prev ? retryResult.source : prev);
       setStorageError((prev) => {
         const next = retryResult.error?.message || null;
@@ -188,7 +192,7 @@ export function useTeamData({ teamId } = {}) {
     remoteSyncReady.current = false;
     skipNextRemoteSave.current = false;
     hasUnsyncedLocalChanges.current = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setLoading(true);
     setRemoteSaving(false);
     setLocalSaveError(null);
@@ -278,7 +282,7 @@ export function useTeamData({ teamId } = {}) {
         persistPendingChanges(teamId, lastSyncedSnapshotRef.current, state, keysToSave);
       } catch {
         // Report failure of the browser storage operation to the user.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+
         setStorageError("Backup delle modifiche non disponibile: non ricaricare prima del salvataggio cloud.");
         setStorageSource("partial");
       }
@@ -308,6 +312,7 @@ export function useTeamData({ teamId } = {}) {
       const entityChanges = buildEntityChanges(lastSyncedSnapshotRef.current, normalized, keysToSave);
       const result = await saveTeamTablesState(normalized, teamId, { keys: keysToSave, entityChanges });
       if (teamIdRef.current !== teamId) return;
+      lastSyncedSnapshotRef.current = acknowledgeSavedKeys(lastSyncedSnapshotRef.current, normalized, result);
       if (result.source === "supabase" && !result.error) {
         lastSyncedSnapshotRef.current = acknowledgeEntityVersions(normalized, result.versions);
         const unchanged = revision === editRevisionRef.current;
@@ -359,6 +364,17 @@ export function useTeamData({ teamId } = {}) {
         setState((prev) => {
           const raw = typeof players === "function" ? players(prev.players) : players;
           return { ...prev, players: (raw || []).map(normalizePlayer) };
+        });
+      },
+      setSeasonRoster(seasonId, update) {
+        markDirty("players"); markDirty("seasonPlayers");
+        setState(prev => ({ ...prev, ...changeSeasonRoster({ players: prev.players, memberships: prev.seasonPlayers, seasonId, update, createId: () => crypto.randomUUID() }) }));
+      },
+      setSeasonEvents(key, season, seasons, update, onError) {
+        markDirty(key);
+        setState(prev => {
+          try { return { ...prev, [key]: changeSeasonEvents(prev[key], season, seasons, update) }; }
+          catch(error) { queueMicrotask(() => onError(error.message)); return prev; }
         });
       },
       setExercises(exercises) {
@@ -427,7 +443,7 @@ export function useTeamData({ teamId } = {}) {
       setState(updater) {
         [
           "players", "exercises", "sessions", "matches",
-          "physicalTests", "gpsSessions", "staffTasks", "injuryRecords",
+          "physicalTests", "gpsSessions", "staffTasks", "injuryRecords", "seasonPlayers",
           "appSettings", "setPlays",
         ].forEach(markDirty);
         setState((prev) =>

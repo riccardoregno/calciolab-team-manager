@@ -27,11 +27,11 @@ export default function FeatureGate({ featureKey, appSettings, children }) {
             Piano attuale: <strong>{currentPlan.name}</strong>.
             {billing.trialExpired
               ? " Il trial e' scaduto: scegli un piano attivo per riaprire questa sezione."
-              : " Questa sezione è inclusa in Premium a €9,90 al mese."}
+              : " Questa sezione è inclusa nell’abbonamento CalcioLab da 9,90 € al mese per squadra."}
           </p>
           <div style={gateStyles.actions}>
             <Button onClick={() => navigate("/premium")}>
-              {billing.trialExpired ? "Gestisci abbonamento" : "Scopri Premium"}
+              {billing.trialExpired ? "Gestisci abbonamento" : "Scopri l’abbonamento"}
             </Button>
             <Button variant="ghost" onClick={() => navigate("/onboarding")}>Completa onboarding</Button>
             <Button variant="ghost" onClick={() => navigate("/")}>Torna alla dashboard</Button>

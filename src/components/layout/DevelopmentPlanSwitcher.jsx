@@ -1,3 +1,4 @@
+import { useTranslation } from "../../i18n";
 const planOptions = [
   { id: "free", label: "Free" },
   { id: "premium", label: "Premium" },
@@ -5,11 +6,12 @@ const planOptions = [
 ];
 
 export default function DevelopmentPlanSwitcher({ value = "club", onChange }) {
+  const { t } = useTranslation();
   if (!import.meta.env?.DEV) return null;
 
   return (
-    <div style={styles.wrapper} title="Visibile solo in sviluppo locale">
-      <span style={styles.label}>Vista admin</span>
+    <div style={styles.wrapper} title={t("dailyUi.devOnly")}>
+      <span style={styles.label}>{t("dailyUi.preview")}</span>
       <div style={styles.segmented}>
         {planOptions.map((plan) => {
           const active = value === plan.id;
@@ -24,7 +26,7 @@ export default function DevelopmentPlanSwitcher({ value = "club", onChange }) {
                 ...(active ? styles.buttonActive : null),
               }}
             >
-              {plan.label}
+              {plan.id === "free" ? t("dailyUi.free") : plan.label}
             </button>
           );
         })}

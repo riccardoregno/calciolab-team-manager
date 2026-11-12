@@ -1,3 +1,4 @@
+import { defaultSeasonDate } from "../utils/seasons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -65,9 +66,11 @@ function isFriendlyMatch(match) {
 }
 
 function Trainings({
-  exercises, setExercises, sessions, setSessions, players = [], matches = [], appSettings = {}, loading = false, teamId = null }) {
+  exercises, setExercises, sessions, setSessions, players = [], matches = [], appSettings = {}, loading = false, teamId = null, seasonBounds = null }) {
 
   const { t } = useTranslation();
+  const defaultDate = defaultSeasonDate(seasonBounds, localDateString());
+  const trainingDraftKey = "trainings_draft:" + (teamId || "local") + ":" + (seasonBounds?.id || "legacy");
   const navigate = useNavigate();
   const location = useLocation();
   const { canManage } = useAreaPermission();
@@ -80,7 +83,7 @@ function Trainings({
   const [editingId, setEditingId] = useState(null);
   const [editorOpen, setEditorOpen] = useState(() => {
     if (location.state?.newSession || location.state?.draftTraining || location.state?.editSessionId != null) return true;
-    try { return Boolean(sessionStorage.getItem("trainings_draft")); } catch { return false; }
+    try { return Boolean(sessionStorage.getItem(trainingDraftKey)); } catch { return false; }
   });
   const [archiveView, setArchiveView] = useState("auto");
   const [formErrors, setFormErrors] = useState({});
@@ -124,17 +127,17 @@ function Trainings({
   const [form, setForm] = useState(() => {
     const fromState = location.state?.draftTraining;
     if (fromState) {
-      try { sessionStorage.removeItem("trainings_draft"); } catch { /* ignore */ }
-      return getInitialTrainingForm(fromState);
+      try { sessionStorage.removeItem(trainingDraftKey); } catch { /* ignore */ }
+      return getInitialTrainingForm(fromState, defaultDate);
     }
     try {
-      const stored = sessionStorage.getItem("trainings_draft");
+      const stored = sessionStorage.getItem(trainingDraftKey);
       if (stored) {
-        sessionStorage.removeItem("trainings_draft");
-        return getInitialTrainingForm(JSON.parse(stored));
+        sessionStorage.removeItem(trainingDraftKey);
+        return getInitialTrainingForm(JSON.parse(stored), defaultDate);
       }
     } catch { /* ignore */ }
-    return getInitialTrainingForm(null);
+    return getInitialTrainingForm(null, defaultDate);
   });
 
   // RPE calcolato dalla distanza dalla gara
@@ -243,6 +246,7 @@ function Trainings({
 
   function saveTraining() {
     if (!canManage) return;
+    if (seasonBounds && (form.date < seasonBounds.start_date || form.date > seasonBounds.end_date)) { showToast(t("seasons.errors.SEASON_EVENT_DATE"), "warn"); return; }
     const errors = {};
     if (!form.title.trim()) errors.title = true;
     if (!getAgendaDateKey(form.date)) errors.date = true;
@@ -281,7 +285,7 @@ function Trainings({
     setEditorOpen(false);
     setArchiveView(payload.completed || payload.date < localDateString() ? "history" : "upcoming");
     setSessionSearch("");
-    setForm(emptyTraining());
+    setForm(emptyTraining(defaultDate));
     showToast(editingId ? t("pages.trainings.sessionUpdated") : t("pages.trainings.sessionSaved"), "ok");
   }
 
@@ -339,7 +343,7 @@ function Trainings({
     if (!draftTraining && !newSession) return;
     const frame = requestAnimationFrame(() => {
       setEditingId(null);
-      setForm(draftTraining ? getInitialTrainingForm(draftTraining) : emptyTraining());
+      setForm(draftTraining ? getInitialTrainingForm(draftTraining, defaultDate) : emptyTraining(defaultDate));
       setEditorOpen(true);
       setFormErrors({});
       setLibraryCollapsed(true);
@@ -349,7 +353,7 @@ function Trainings({
       requestAnimationFrame(scrollToTrainingForm);
     });
     return () => cancelAnimationFrame(frame);
-  }, [location.pathname, location.state, navigate, showToast, t, sessions, editTraining, scrollToTrainingForm]);
+  }, [location.pathname, location.state, navigate, showToast, t, sessions, editTraining, scrollToTrainingForm, defaultDate]);
 
   function deleteTraining(id) {
     if (!canManage) return;
@@ -364,7 +368,7 @@ function Trainings({
         if (editingId === id) {
           setEditingId(null);
           setEditorOpen(false);
-          setForm(emptyTraining());
+          setForm(emptyTraining(defaultDate));
         }
         showToast(t("pages.trainings.sessionDeleted"), "info", {
           duration: 5000,
@@ -395,7 +399,7 @@ function Trainings({
   function cancelEdit() {
     setEditorOpen(false);
     setEditingId(null);
-    setForm(emptyTraining());
+    setForm(emptyTraining(defaultDate));
     setFormErrors({});
   }
 
@@ -412,7 +416,7 @@ function Trainings({
   function createTraining() {
     if (!canManage) return;
     setEditingId(null);
-    setForm(emptyTraining());
+    setForm(emptyTraining(defaultDate));
     setFormErrors({});
     setLibraryCollapsed(true);
     setShowPreview(false);
@@ -555,9 +559,9 @@ function Trainings({
   <div ref={formCardRef} className="training-editor-basic">
   <AppCard>
     <div className="training-editor-fields">
-      <FieldLabel label={t("pages.trainings.fieldTitle")}><input value={form.title} placeholder={t("pages.trainings.titlePlaceholder")} onChange={(event) => { setForm({ ...form, title: event.target.value }); setFormErrors((prev) => ({ ...prev, title: false })); }} style={styles.input} />{formErrors.title && <span style={trainingStyles.errorMsg}>{t("pages.trainings.titleRequired")}</span>}</FieldLabel>
-      <FieldLabel label={t("pages.trainings.fieldDate")}><input type="date" value={form.date} onChange={(event) => { setForm({ ...form, date: event.target.value }); setFormErrors((prev) => ({ ...prev, date: false })); }} style={styles.input} />{formErrors.date && <span style={trainingStyles.errorMsg}>{t("pages.trainings.dateRequired")}</span>}</FieldLabel>
-      <FieldLabel label={t("trainingHub.duration")}><input type="number" min="0" value={structuredMinutes || form.plannedDuration} readOnly={structuredMinutes > 0} onChange={(event) => { setForm({ ...form, plannedDuration: event.target.value }); setFormErrors((prev) => ({ ...prev, duration: false })); }} style={styles.input} />{structuredMinutes > 0 && <small>{t("trainingHub.durationFromPlan")}</small>}{formErrors.duration && <span style={trainingStyles.errorMsg}>{t("trainingHub.durationInvalid")}</span>}</FieldLabel>
+      <FieldLabel label={t("pages.trainings.fieldTitle")}><input value={form.title} placeholder={t("pages.trainings.titlePlaceholder")} onChange={(event) => { setForm(previous => ({ ...previous, title: event.target.value })); setFormErrors((prev) => ({ ...prev, title: false })); }} style={styles.input} />{formErrors.title && <span style={trainingStyles.errorMsg}>{t("pages.trainings.titleRequired")}</span>}</FieldLabel>
+      <FieldLabel label={t("pages.trainings.fieldDate")}><input type="date" min={seasonBounds?.start_date} max={seasonBounds?.end_date} value={form.date} onChange={(event) => { setForm(previous => ({ ...previous, date: event.target.value })); setFormErrors((prev) => ({ ...prev, date: false })); }} style={styles.input} />{formErrors.date && <span style={trainingStyles.errorMsg}>{t("pages.trainings.dateRequired")}</span>}</FieldLabel>
+      <FieldLabel label={t("trainingHub.duration")}><input type="number" min="0" value={structuredMinutes || form.plannedDuration} readOnly={structuredMinutes > 0} onChange={(event) => { setForm(previous => ({ ...previous, plannedDuration: event.target.value })); setFormErrors((prev) => ({ ...prev, duration: false })); }} style={styles.input} />{structuredMinutes > 0 && <small>{t("trainingHub.durationFromPlan")}</small>}{formErrors.duration && <span style={trainingStyles.errorMsg}>{t("trainingHub.durationInvalid")}</span>}</FieldLabel>
     </div>
     <details className="training-editor-notes"><summary>{t("trainingHub.objectiveNotes")}</summary><div className="training-editor-fields">
       <FieldLabel label={t("pages.trainings.fieldObjective")}><input value={form.objective} onChange={(event) => setForm({ ...form, objective: event.target.value })} style={styles.input} /></FieldLabel>
@@ -1094,11 +1098,11 @@ function Trainings({
   );
 }
 
-function emptyTraining() {
+function emptyTraining(defaultDate = localDateString()) {
   return {
     title: "",
     plannedDuration: "",
-    date: localDateString(),
+    date: defaultDate,
     type: "Allenamento",
     theme: "Costruzione",
     matchDayDistance: "MD-3",
@@ -1124,12 +1128,12 @@ function emptyTraining() {
   };
 }
 
-function getInitialTrainingForm(draftTraining) {
-  if (!draftTraining) return emptyTraining();
+function getInitialTrainingForm(draftTraining, defaultDate = localDateString()) {
+  if (!draftTraining) return emptyTraining(defaultDate);
   return {
-    ...emptyTraining(),
+    ...emptyTraining(defaultDate),
     ...draftTraining,
-    date: draftTraining.date ? getAgendaDateKey(draftTraining.date) : localDateString(),
+    date: draftTraining.date ? getAgendaDateKey(draftTraining.date) : defaultDate,
     plannedDuration: draftTraining.plannedDuration ?? getTrainingDuration(draftTraining) ?? "",
     exercises: draftTraining.exercises || [],
     attendance: draftTraining.attendance || {},
@@ -2192,81 +2196,85 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
   }
 
   return (
-    <AppCard>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={() => setCollapsed((v) => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 16, padding: 0 }}>
-            {collapsed ? "▶" : "▼"}
-          </button>
-          <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>Generatore squadre</h4>
-        </div>
+    <AppCard className="training-team-builder">
+      <div className="training-team-builder-header">
+        <button type="button" className="training-team-builder-toggle" onClick={() => setCollapsed((v) => !v)} aria-expanded={!collapsed}>
+          <span aria-hidden="true">{collapsed ? "▸" : "▾"}</span>
+          <span>Generatore squadre</span>
+        </button>
         {!collapsed && (
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
             {[2, 3, 4].map((n) => (
-              <button key={n} onClick={() => changeTeams(n)} style={{
+              <button key={n} onClick={() => changeTeams(n)} aria-pressed={numTeams === n} style={{
                 padding: "4px 10px", borderRadius: 7, border: "1px solid",
                 borderColor: numTeams === n ? "rgba(56,189,248,0.5)" : "rgba(255,255,255,0.1)",
                 background: numTeams === n ? "rgba(56,189,248,0.15)" : "transparent",
-                color: numTeams === n ? "#38bdf8" : "#64748b",
+                color: numTeams === n ? "#7dd3fc" : "#a9b8cb",
                 fontSize: 12, fontWeight: 700, cursor: "pointer",
               }}>{n} squadre</button>
             ))}
-            <div style={{ display: "flex", alignItems: "center", gap: 5, marginLeft: 4 }}>
-              <span style={{ fontSize: 11, color: "#94a6be", fontWeight: 700 }}>Gioc./squadra</span>
+            <label className="training-team-builder-size">
+              <span>Giocatori per squadra</span>
               <input
                 type="number" min={1} max={30} value={playersPerTeam}
                 onChange={(e) => setPlayersPerTeam(Math.max(1, Number(e.target.value)))}
                 style={{ width: 44, padding: "3px 6px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#e2e8f0", fontSize: 12, fontWeight: 700, textAlign: "center" }}
               />
-            </div>
+            </label>
           </div>
         )}
       </div>
 
       {!collapsed && (
         <>
+          <div className="training-team-builder-toolbar">
+            <span>{availablePlayers.length} disponibili · {unassigned.length} da assegnare</span>
+            <div className="training-team-builder-actions">
+              <button type="button" className="training-hub-primary" onClick={shuffle}>Genera casuale</button>
+              <button type="button" className="training-hub-secondary" onClick={printTeams}>Stampa</button>
+              <button type="button" className="training-hub-secondary" onClick={reset}>Reset</button>
+            </div>
+          </div>
           {/* Giocatori non assegnati */}
           {unassigned.length > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#94a6be", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Da assegnare ({unassigned.length})
-              </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <section className="training-team-builder-pool">
+              <h5>Da assegnare</h5>
+              <div className="training-team-builder-players">
                 {sortByRole(unassigned).map((p) => {
                   const tag = getRoleTag(p.role);
                   const name = getPlayerTeamLabel(p, duplicateLastNames);
                   return (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <span style={{
-                        fontSize: 12, fontWeight: 600, padding: "3px 8px", borderRadius: 6,
-                        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1",
-                        display: "flex", alignItems: "center", gap: 5,
-                      }} title={getPlayerFullName(p)}>
+                    <div key={p.id} className="training-team-builder-player">
+                      <span className="training-team-builder-name" title={getPlayerFullName(p)}>
                         {tag && (
-                          <span style={{ fontSize: 10, fontWeight: 750, color: ROLE_COLORS[tag], lineHeight: 1 }}>{tag}</span>
+                          <span className="training-team-builder-role" style={{ color: ROLE_COLORS[tag] }}>{tag}</span>
                         )}
                         {name}
                       </span>
-                      <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
-                        {Array.from({ length: numTeams }, (_, i) => (
-                          <button key={i} onClick={() => assign(p.id, i)} title={TEAM_COLORS[i].label} style={{
-                            width: 16, height: 16, borderRadius: 4, border: "none", cursor: "pointer",
-                            background: TEAM_COLORS[i].color, opacity: 0.85,
-                          }} />
-                        ))}
-                        {Array.from({ length: numTeams }, (_, i) => (
-                          <button key={i} onClick={() => sendToBench(p.id, i)} title={`A disposizione ${TEAM_COLORS[i].label}`} style={{ background: "none", border: "none", cursor: "pointer", color: TEAM_COLORS[i].color, fontSize: 10, padding: "0 2px", fontWeight: 700 }}>Disp.{String.fromCharCode(65+i)}</button>
-                        ))}
-                      </div>
+                      <select value="" aria-label={`Assegna ${getPlayerFullName(p)}`} onChange={(event) => {
+                        const value = event.target.value;
+                        if (value === "") return;
+                        const destination = Number(value);
+                        if (isBenchKey(destination)) sendToBench(p.id, destination - BENCH_BASE);
+                        else assign(p.id, destination);
+                      }}>
+                        <option value="" disabled>Assegna…</option>
+                        <optgroup label="In campo">
+                          {TEAM_COLORS.slice(0, numTeams).map(({ label }, i) => <option key={label} value={i}>{label}</option>)}
+                        </optgroup>
+                        <optgroup label="A disposizione">
+                          {TEAM_COLORS.slice(0, numTeams).map(({ label }, i) => <option key={label} value={benchKey(i)}>{label}</option>)}
+                        </optgroup>
+                      </select>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </section>
           )}
 
           {/* Squadre */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="training-team-builder-teams">
             {teams.map((members, i) => (
               <div key={i} style={{
                 borderRadius: 10, padding: "10px 12px",
@@ -2275,8 +2283,9 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
                 minHeight: 60,
               }}>
                 <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 750, color: TEAM_COLORS[i].color, textTransform: "uppercase" }}>
-                  {TEAM_COLORS[i].label} <span style={{ opacity: 0.7 }}>({members.length})</span>
+                  {TEAM_COLORS[i].label} <span className="training-team-builder-count">{members.length}/{playersPerTeam} in campo</span>
                 </p>
+                {members.length === 0 && <p className="training-team-builder-empty">Nessun giocatore in campo</p>}
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {sortByRole(members).map((p) => {
                     const tag = getRoleTag(p.role);
@@ -2304,7 +2313,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
 
           {/* A disposizione per squadra */}
           {benches.some((b) => b.length > 0) && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+            <div className="training-team-builder-teams" style={{ marginTop: 12 }}>
               {benches.map((b, i) => (
                 <div key={i} style={{ padding: "10px 12px", borderRadius: 10, background: TEAM_COLORS[i].bg, border: `1px solid ${TEAM_COLORS[i].border}` }}>
                   <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: TEAM_COLORS[i].color, textTransform: "uppercase", letterSpacing: 0.5 }}>
@@ -2416,24 +2425,6 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
             </div>
           )}
 
-          {/* Azioni */}
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <button onClick={shuffle} style={{
-              flex: 1, padding: "7px 0", borderRadius: 8,
-              background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.25)",
-              color: "#38bdf8", fontSize: 12, fontWeight: 700, cursor: "pointer",
-            }}>🔀 Genera casuale</button>
-            <button onClick={printTeams} style={{
-              padding: "7px 14px", borderRadius: 8,
-              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
-              color: "#94a3b8", fontSize: 12, fontWeight: 700, cursor: "pointer",
-            }}>🖨 Stampa</button>
-            <button onClick={reset} style={{
-              padding: "7px 14px", borderRadius: 8,
-              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
-              color: "#94a6be", fontSize: 12, fontWeight: 700, cursor: "pointer",
-            }}>Reset</button>
-          </div>
         </>
       )}
     </AppCard>

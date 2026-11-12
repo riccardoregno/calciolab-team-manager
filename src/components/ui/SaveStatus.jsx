@@ -2,7 +2,7 @@ import { AlertCircle, CloudCheck, CloudUpload, HardDrive, LoaderCircle } from "l
 import { useTranslation } from "../../i18n";
 import { getSaveStatus } from "../../utils/saveStatus";
 
-export default function SaveStatus({ loading, source, error, localError, saving, refreshing, lastSyncedAt, onRetry, onRetryLocal }) {
+export default function SaveStatus({ loading, source, error, localError, saving, refreshing, lastSyncedAt, onRetry, onRetryLocal, sticky = false }) {
   const { t, language } = useTranslation();
   const status = getSaveStatus({ loading, source, error, localError, saving, refreshing });
   const showLocalRetry = Boolean(localError) && !loading;
@@ -12,7 +12,7 @@ export default function SaveStatus({ loading, source, error, localError, saving,
   const timestamp = lastSyncedAt && !Number.isNaN(new Date(lastSyncedAt).getTime())
     ? new Date(lastSyncedAt).toLocaleTimeString(language === "en" ? "en-GB" : "it-IT", { hour: "2-digit", minute: "2-digit" }) : null;
   return (
-    <div className="save-status" data-save-status={status}>
+    <div className={"save-status" + (sticky ? " attendance-save-status" : "")} data-save-status={status}>
       <div role="status" aria-live="polite" aria-atomic="true" style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0, color: tone }}>
         <Icon size={17} aria-hidden="true" className={status === "saving" || status === "loading" ? "save-status-spinner" : undefined} style={{ flexShrink: 0 }} />
         <span className="save-status-copy"><strong style={{ fontSize: 12 }}>{t(`saveStatus.${status}`)}</strong>

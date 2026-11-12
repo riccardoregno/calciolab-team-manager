@@ -1,3 +1,4 @@
+import { teamBillingTestEnabled } from "../lib/teamBillingTest.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 const _supabaseBase = (import.meta.env.VITE_SUPABASE_URL || "https://sglevvqhlzpllrjrgbod.supabase.co")
@@ -140,7 +141,7 @@ export async function acceptTeamInvite(token) {
 
 /** @param {any} user
  * @returns {Promise<{data: any[], error: any}>} */
-export async function ensureDefaultTeam(user) {
+export async function ensureDefaultTeam(user, preferredTeamId) {
   if (!isSupabaseConfigured || !user) {
     return { team: null };
   }
@@ -180,7 +181,8 @@ export async function ensureDefaultTeam(user) {
     }
   }
 
-  const teamSelect = "id, name, season, category, subscription_plan, subscription_status, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used, stripe_customer_id, stripe_subscription_id, onboarding_completed, created_at";
+  const teamSelect = "id, name, season, category, subscription_plan, subscription_status, billing_status, trial_plan, trial_started_at, trial_ends_at, trial_used, stripe_customer_id, stripe_subscription_id, onboarding_completed, created_at" +
+    (teamBillingTestEnabled ? ",team_billing_test(status,period_end,cancel_at_period_end,subscription_id)" : "");
 
   const { data: memberships, error: membershipError } = await supabase
     .from("team_members")
@@ -191,13 +193,15 @@ export async function ensureDefaultTeam(user) {
     return { team: null, error: membershipError };
   }
 
-  const existingMembership = await pickBestMembership(memberships || []);
+  const availableMemberships = (memberships || []).filter((membership) => membership?.teams);
+  const existingMembership = availableMemberships.find((membership) => membership.team_id === preferredTeamId)
+    || await pickBestMembership(availableMemberships);
 
   if (existingMembership?.teams) {
     return { team: await attachPlayerAccount({
       ...existingMembership.teams,
       role: existingMembership.role,
-    }, user.id) };
+    }, user.id), teams: availableMemberships.map(({ team_id, role, teams }) => ({ id: team_id, name: teams.name, role, team_billing_test: teams.team_billing_test })) };
   }
 
   if (hadInviteToken) {

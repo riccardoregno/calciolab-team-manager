@@ -18,13 +18,14 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useAreaPermission } from "../components/auth/permissionContext";
 
 import PlayerCard from "../components/players/PlayerCard";
+import PlayerSecondaryActions from "../components/players/PlayerSecondaryActions";
 import Badge from "../components/ui/Badge";
 import ImportPlayersModal from "../components/players/ImportPlayersModal";
 import { useIsMobile } from "../hooks/useIsMobile";
 
 import { styles } from "../styles/index.js";
 import { emptyPlayer } from "../data/initialData";
-import { createUuid, isBirthdayToday, getTeamAverageAge, getPlayerQuickStats, formatTrainingAttendance, comparePlayersByName, getPlayerMatchTotals, getPlayerMatchEntries, hasPlayerTransferred, isGoalkeeper } from "../utils/helpers";
+import { createUuid, isBirthdayToday, getTeamAverageAge, getCompletedTrainingEvents, getTrainingAttendanceSummary, formatTrainingAttendance, comparePlayersByName, getPlayerMatchTotals, getPlayerMatchEntries, hasPlayerTransferred, isGoalkeeper } from "../utils/helpers";
 import { useTeamMatchRows } from "../hooks/useTeamMatchRows";
 
 // GROUP_LABELS is now built dynamically inside the component via t()
@@ -106,7 +107,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   const location = useLocation();
   const navigate = useNavigate();
   const { canManage } = useAreaPermission();
-  const urlGruppo = new URLSearchParams(location.search).get("gruppo") || "prima";
+  const urlGruppo = new URLSearchParams(location.search).get("gruppo") || "tutti";
   const openModal = new URLSearchParams(location.search).get("modal") === PLAYER_MODAL_QUERY;
 
   const { showToast, ToastContainer } = useToast();
@@ -182,7 +183,9 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   // I contatori "totale", "disponibili", "infortunati", "età media" e i reparti
   // riguardano solo la Prima Squadra: i Juniores sono un gruppo a parte e non
   // devono alterare le statistiche complessive della rosa principale.
-  const primaPlayers = players.filter((p) => (p.gruppo || "prima") === "prima");
+  const activePlayers = players.filter((player) => !hasPlayerTransferred(player));
+  const transferredCount = players.length - activePlayers.length;
+  const primaPlayers = activePlayers.filter((p) => (p.gruppo || "prima") === "prima");
 
   // Average team age (solo prima squadra)
   const averageAge = getTeamAverageAge(primaPlayers);
@@ -210,7 +213,8 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     (f) => f !== "tutti"
   ).length;
 
-  const filteredPlayers = searchNavigationItems(players, search, (player) => `${player.first_name || player.firstName || ""} ${
+  const rosterPool = filterStatus === "Trasferito" ? players : activePlayers;
+  const filteredPlayers = searchNavigationItems(rosterPool, search, (player) => `${player.first_name || player.firstName || ""} ${
       player.last_name || player.lastName || ""
     } ${player.name || ""} ${player.role || ""}`
   ).filter((player) => {
@@ -243,7 +247,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   });
 
   // Contatori per gruppo
-  const countByGroup = players.reduce((acc, p) => {
+  const countByGroup = activePlayers.reduce((acc, p) => {
     const g = p.gruppo || "prima";
     acc[g] = (acc[g] || 0) + 1;
     return acc;
@@ -275,14 +279,14 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     { P: 0, D: 0, C: 0, A: 0 }
   );
 
-  function resetRosterFilters() {
+  function resetRosterFilters(group = "tutti") {
     setSearch("");
     setFilterStatus("tutti");
     setFilterRole("tutti");
     setFilterRoleFamily("tutti");
     setFilterFoot("tutti");
     setFilterAge("tutti");
-    changeGroupFilter("prima", { replace: true });
+    changeGroupFilter(group, { replace: true });
   }
 
   function filterByStatus(status) {
@@ -304,13 +308,13 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
       label: t("pages.players.totalPlayers"),
       value: primaPlayers.length,
       color: "#60a5fa",
-      onClick: resetRosterFilters,
+      onClick: () => resetRosterFilters("prima"),
       active: activeFilterCount === 0 && gruppoFilter === "prima" && !search,
     },
     {
       key: "available",
       label: t("pages.players.available"),
-      value: primaPlayers.filter((p) => !hasPlayerTransferred(p) && (p.status || "Disponibile") === "Disponibile").length,
+      value: primaPlayers.filter((p) => (p.status || "Disponibile") === "Disponibile").length,
       color: "#22c55e",
       onClick: () => filterByStatus("Disponibile"),
       active: filterStatus === "Disponibile",
@@ -389,7 +393,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
 
   function changeGroupFilter(group, { replace = false } = {}) {
     const params = new URLSearchParams(location.search);
-    if (group && group !== "prima") {
+    if (group && group !== "tutti") {
       params.set("gruppo", group);
     } else {
       params.delete("gruppo");
@@ -489,8 +493,13 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
     });
   }
 
+  const archiveControl = transferredCount > 0 && <Button variant="ghost" aria-pressed={filterStatus === "Trasferito"} style={{ marginTop: isMobile ? 8 : 0, marginLeft: isMobile ? 8 : 0 }} onClick={() => {
+    resetRosterFilters();
+    setFilterStatus(filterStatus === "Trasferito" ? "tutti" : "Trasferito");
+  }}>{t("pages.players.transferredArchive")} ({transferredCount})</Button>;
+
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="roster-workspace">
       <ToastContainer />
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
 
@@ -510,15 +519,15 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
       )}
       <PageHeader
         title={t("pages.players.title")}
-        subtitle={t("pages.players.subtitle")}
+        subtitle={isMobile ? undefined : t("pages.players.subtitle")}
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "center", width: isMobile ? "100%" : "auto" }}>
             {canManage && (
               <>
                 <div style={{ position: "relative" }}>
-                  <Button variant="ghost" onClick={() => setShowPageTools((value) => !value)} aria-expanded={showPageTools} aria-label="Altre azioni sulla rosa">
+                  <Button variant="ghost" onClick={() => setShowPageTools((value) => !value)} aria-expanded={showPageTools} aria-label={t("dailyUi.rosterActions")}>
                     <Ellipsis size={18} />
-                    {!isMobile && "Altre azioni"}
+                    {!isMobile && t("dailyUi.otherActions")}
                   </Button>
                   {showPageTools && (
                     <div style={pStyles.pageToolsMenu}>
@@ -529,7 +538,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
                         <Upload size={16} /> {t("pages.importPlayers.btnLabel")}
                       </button>
                       <button type="button" className="page-tool-item" style={pStyles.pageToolItem} onClick={() => { exportPlayersCSV(filteredPlayers, gruppoFilter); setShowPageTools(false); }}>
-                        <Download size={16} /> Esporta rosa
+                        <Download size={16} /> {t("dailyUi.exportRoster")}
                       </button>
                     </div>
                   )}
@@ -568,9 +577,17 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
         <SkeletonGrid count={isMobile ? 4 : 8} />
       ) : (
       <div className="players-list-wrap">
-      <AppCard style={{ marginBottom: 22 }} className="players-toolbar">
-        <div style={pStyles.toolbar}>
-          <MetricStrip items={rosterMetricItems} min={isMobile ? 104 : 124} style={pStyles.counterGrid} className="mobile-scroll-x" />
+      <AppCard style={{ marginBottom: isMobile ? 8 : 22 }} className="players-toolbar">
+        <div style={{ ...pStyles.toolbar, gap: isMobile ? 8 : pStyles.toolbar.gap }}>
+          {isMobile ? (
+            <details className="roster-mobile-summary">
+              <summary><span><strong>{t("dailyUi.activeRoster", { count: primaPlayers.length })}</strong> · {t("dailyUi.availableCount", { count: primaPlayers.filter(p => (p.status || "Disponibile") === "Disponibile").length })}</span><span>{t("dailyUi.rosterDetails")}</span></summary>
+              <MetricStrip items={rosterMetricItems} min={104} className="mobile-scroll-x" />
+            </details>
+          ) : <div style={{ flex: "1 1 420px", minWidth: 0 }}>
+            <MetricStrip items={rosterMetricItems.slice(0, 3)} min={104} />
+            <details className="roster-desktop-summary"><summary>{t("dailyUi.rosterDetails")}</summary><MetricStrip items={rosterMetricItems.slice(3)} min={104} /></details>
+          </div>}
 
           <div style={pStyles.searchWrap}>
             <SearchBar
@@ -584,7 +601,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               aria-expanded={showFilters}
               aria-controls="roster-filters"
               style={{
-                marginTop: 8,
+                marginTop: 8, minHeight: 44,
                 display: "inline-flex", alignItems: "center", gap: 6,
                 padding: "7px 13px", borderRadius: 10,
                 background: activeFilterCount > 0 ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)",
@@ -606,14 +623,15 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               <span style={{ fontSize: 10, opacity: 0.7 }}>{showFilters ? "▲" : "▼"}</span>
             </button>
 
+            {isMobile && archiveControl}
             {/* Toggle vista griglia / elenco */}
-            <div style={{ display: "inline-flex", gap: 4, marginTop: 8, marginLeft: isMobile ? 0 : 8, padding: 3, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", width: isMobile ? "100%" : "auto" }}>
+            <div className="roster-view-switch" style={{ display: "inline-flex", gap: 4, marginTop: 8, marginLeft: isMobile ? 0 : 8, padding: 3, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", width: "auto" }}>
               <button
                 onClick={() => changeViewMode("grid")}
                 title={t("pages.players.viewGrid")}
                 style={{
                   flex: isMobile ? 1 : "0 0 auto",
-                  padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  minHeight: 44, padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer",
                   background: viewMode === "grid" ? "rgba(96,165,250,0.18)" : "transparent",
                   border: viewMode === "grid" ? "1px solid rgba(96,165,250,0.4)" : "1px solid transparent",
                   color: viewMode === "grid" ? "#93c5fd" : "#94a3b8",
@@ -626,7 +644,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
                 title={t("pages.players.viewList")}
                 style={{
                   flex: isMobile ? 1 : "0 0 auto",
-                  padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  minHeight: 44, padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer",
                   background: viewMode === "list" ? "rgba(96,165,250,0.18)" : "transparent",
                   border: viewMode === "list" ? "1px solid rgba(96,165,250,0.4)" : "1px solid transparent",
                   color: viewMode === "list" ? "#93c5fd" : "#94a3b8",
@@ -753,7 +771,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
             {/* Reset */}
             {activeFilterCount > 0 && (
               <button
-                onClick={resetRosterFilters}
+                onClick={() => resetRosterFilters()}
                 style={{
                   alignSelf: "flex-end", padding: "5px 13px", borderRadius: 8,
                   background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
@@ -767,32 +785,36 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
         )}
 
         {/* Tab filtro gruppo — visibili solo se ci sono più gruppi */}
-        {showTabs && (
+        {(showTabs || (!isMobile && transferredCount > 0)) && (
           <div style={pStyles.tabs}>
-            {["tutti", ...presentGroups].map((g) => (
+            {(showTabs ? ["tutti", ...presentGroups] : []).map((g) => (
               <button
                 key={g}
                 type="button"
-                onClick={() => changeGroupFilter(g)}
+                onClick={() => {
+                  if (filterStatus === "Trasferito") setFilterStatus("tutti");
+                  changeGroupFilter(g);
+                }}
                 style={{
                   ...pStyles.tab,
-                  background: gruppoFilter === g ? "rgba(37,99,235,0.18)" : "rgba(255,255,255,0.04)",
-                  border: gruppoFilter === g ? "1px solid rgba(96,165,250,0.45)" : "1px solid rgba(255,255,255,0.08)",
+                  background: gruppoFilter === g && filterStatus !== "Trasferito" ? "rgba(37,99,235,0.18)" : "rgba(255,255,255,0.04)",
+                  border: gruppoFilter === g && filterStatus !== "Trasferito" ? "1px solid rgba(96,165,250,0.45)" : "1px solid rgba(255,255,255,0.08)",
                   color: gruppoFilter === g ? "#e2e8f0" : "#94a3b8",
                 }}
               >
-                {g === "tutti" ? `${t("pages.players.all")} (${players.length})` : `${GROUP_LABELS[g] || g} (${countByGroup[g] || 0})`}
+                {g === "tutti" ? `${t("pages.players.all")} (${activePlayers.length})` : `${GROUP_LABELS[g] || g} (${countByGroup[g] || 0})`}
               </button>
             ))}
+            {!isMobile && archiveControl}
           </div>
         )}
       </AppCard>
 
-      <div className="roster-stats-status" role="status">
-        {matchRows.loading ? "Caricamento statistiche del campionato…" : matchRows.error
-          ? <>Statistiche online non aggiornate.{!matchRows.unavailable && " Mostriamo gli ultimi dati caricati."} <Button variant="ghost" onClick={matchRows.retry}>Riprova</Button></>
-          : "Statistiche del campionato · per i portieri sono indicati i gol subiti; — indica un dato non disponibile."}
-      </div>
+      {(!isMobile || matchRows.loading || matchRows.error) && <div className="roster-stats-status" role="status">
+        {matchRows.loading ? t("dailyUi.loadingLeagueStats") : matchRows.error
+          ? <>{t("dailyUi.statsNotUpdated")}{!matchRows.unavailable && " " + t("dailyUi.showCachedStats")} <Button variant="ghost" onClick={matchRows.retry}>{t("coachOverview.retry")}</Button></>
+          : t("dailyUi.statsLegend")}
+      </div>}
       {filteredPlayers.length === 0 ? (
         <EmptyState
           icon={activeFilterCount > 0 || search ? "🔍" : "⚽"}
@@ -809,15 +831,7 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
           action={
             (activeFilterCount > 0 || search) ? (
               <button
-                onClick={() => {
-                  setSearch("");
-                  setFilterStatus("tutti");
-                  setFilterRole("tutti");
-                  setFilterRoleFamily("tutti");
-                  setFilterFoot("tutti");
-                  setFilterAge("tutti");
-                  changeGroupFilter("prima", { replace: true });
-                }}
+                onClick={() => resetRosterFilters()}
                 style={{
                   marginTop: 12, padding: "8px 18px", borderRadius: 10,
                   background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)",
@@ -826,6 +840,11 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
               >
                 ✕ {t("pages.players.resetFilters")}
               </button>
+            ) : canManage && activePlayers.length === 0 ? (
+              <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 8 }}>
+                <Button onClick={() => setShowImport(true)}><Upload size={16} /> {t("pages.importPlayers.btnLabel")}</Button>
+                <Button variant="ghost" onClick={openNewPlayerModal}>{t("pages.players.newPlayer")}</Button>
+              </div>
             ) : canManage ? (
               <button
                 onClick={openNewPlayerModal}
@@ -1040,11 +1059,11 @@ function Players({ players, setPlayers, sessions = [], matches = [], loading = f
   );
 }
 
-function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchStats = {}, yellowCards = 0, avgRating = null, statsUnavailable = false }) {
+function PlayerListRow({ player, sessions = [], onDelete, matchStats = {}, yellowCards = 0, avgRating = null, statsUnavailable = false }) {
   const navigate = useNavigate();
-  const { t } = useTranslation();
-  const training = getPlayerQuickStats(player, sessions, matches);
-  const trainingPctValue = formatTrainingAttendance(training);
+  const { t, language } = useTranslation();
+  const training = getTrainingAttendanceSummary(player, getCompletedTrainingEvents(sessions), { requireConfirmedPresence: true });
+  const trainingPctValue = formatTrainingAttendance(training, language === "en");
   const statValue = (value) => statsUnavailable ? "—" : value;
   const cardsValue = statValue(`${matchStats.yellowCards || 0}/${matchStats.redCards || 0}`);
   const suspensionYellowCards = yellowCards || matchStats.yellowCards || 0;
@@ -1126,10 +1145,10 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchSta
       <div className="roster-list-metrics no-mobile-override" style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(46px, auto))", gap: 10, alignItems: "center", flexShrink: 0 }}>
         <InlineStat label="Pres" value={statValue(matchStats.appearances || 0)} />
         <InlineStat label="Min" value={statValue(matchStats.minutes || 0)} />
-        <InlineStat label={isGoalkeeper(player) ? "Gol subiti" : "Gol"} value={statValue(isGoalkeeper(player) ? (matchStats.goalsConceded ?? "—") : matchStats.goals || 0)} />
+        <InlineStat label={t(isGoalkeeper(player) ? "pages.dashboard.goalsConcededLabel" : "common.goals")} value={statValue(isGoalkeeper(player) ? (matchStats.goalsConceded ?? "—") : matchStats.goals || 0)} />
         <InlineStat label="Ass" value={statValue(matchStats.assists || 0)} />
         <InlineStat label="G/R" value={cardsValue} />
-        <InlineStat label="Allenamenti" value={trainingPctValue} tone={training.trainingPct === 100 ? "#22c55e" : undefined} />
+        <InlineStat label={t("dailyUi.training")} value={trainingPctValue} tone={training.trainingPct === 100 ? "#22c55e" : undefined} />
       </div>
 
       {/* Badge stato + alert */}
@@ -1161,14 +1180,10 @@ function PlayerListRow({ player, sessions = [], matches = [], onDelete, matchSta
 
       {/* Azioni inline */}
       <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
-        <Button variant="ghost" style={btnSm} onClick={() => navigate(`/players/${player.id}`)}>
+        <Button variant="primary" style={btnSm} onClick={() => navigate(`/players/${player.id}`)}>
           {t("components.playerCard.profile")}
         </Button>
-        {onDelete && (
-          <Button variant="danger" style={btnSm} onClick={onDelete}>
-            {t("common.delete")}
-          </Button>
-        )}
+        <PlayerSecondaryActions onDelete={onDelete} />
       </div>
     </div>
   );

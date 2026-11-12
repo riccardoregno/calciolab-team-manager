@@ -1,8 +1,11 @@
+import "./test-seasons.mjs";
+import "./test-daily-workflow.mjs";
 import "./test-season-trend.mjs";
 import "./test-training-archive.mjs";
 import "./test-coach-analysis.mjs";
 import "./test-coach-subscription.mjs";
 import "./test-coach-checkout.mjs";
+import "./test-team-billing.mjs";
 import "./test-opponent-lineup-import.mjs";
 import assert from "node:assert/strict";
 import "./test-player-statistics.mjs";

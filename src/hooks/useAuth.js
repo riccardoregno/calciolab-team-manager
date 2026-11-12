@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import { teamBillingTestEnabled } from "../lib/teamBillingTest";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { ensureDefaultTeam, getAuthSession, onAuthChange } from "../services/auth";
 
 const AUTH_REQUEST_TIMEOUT_MS = 10000;
 const AUTH_TEAM_CACHE_KEY = "calciolab_auth_team_cache_v1";
+const teamPreferenceKey = (userId) => "calciolab_selected_team:" + userId;
+
+function readPreferredTeam(userId) {
+  try { return window.localStorage.getItem(teamPreferenceKey(userId)); } catch { return null; }
+}
+
 const TEAM_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function withTimeout(promise, label) {
@@ -60,6 +67,7 @@ export function useAuth() {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
   const [team, setTeam] = useState(null);
+  const [teams, setTeams] = useState([]);
   const [authError, setAuthError] = useState(null);
   const [teamLoading, setTeamLoading] = useState(false);
 
@@ -81,22 +89,24 @@ export function useAuth() {
         if (!nextUser) {
           hydratedUserIdRef.current = null;
           setTeam(null);
+          setTeams([]);
           saveCachedTeam(null, null);
           setAuthLoading(false);
           setTeamLoading(false);
           return;
         }
 
-        const cachedTeam = loadCachedTeam(nextUser.id);
-        if (cachedTeam) {
+        const preferredTeamId = readPreferredTeam(nextUser.id);
+        const cachedTeam = teamBillingTestEnabled ? null : loadCachedTeam(nextUser.id);
+        if (cachedTeam && (!preferredTeamId || preferredTeamId === cachedTeam.id)) {
           setTeam(cachedTeam);
         }
 
         setAuthLoading(false);
         setTeamLoading(true);
 
-        const { team: ensuredTeam, error } = await withTimeout(
-          ensureDefaultTeam(nextUser),
+        const { team: ensuredTeam, teams: availableTeams = [], error } = await withTimeout(
+          ensureDefaultTeam(nextUser, preferredTeamId),
           "Team",
         );
 
@@ -107,6 +117,7 @@ export function useAuth() {
         hydratedUserIdRef.current = nextUser.id;
         lastTeamFetchAt.current = Date.now();
         setTeam(ensuredTeam);
+        setTeams(availableTeams);
         saveCachedTeam(nextUser.id, ensuredTeam);
         setAuthError(error?.message || null);
       } catch (error) {
@@ -168,12 +179,25 @@ export function useAuth() {
     };
   }, []);
 
+  function selectTeam(id) {
+    if (!user || id === team?.id || !teams.some((item) => item.id === id)) return;
+    try {
+      window.localStorage.setItem(teamPreferenceKey(user.id), id);
+    } catch {
+      setAuthError("Impossibile salvare la squadra selezionata sul dispositivo.");
+      return;
+    }
+    window.location.reload();
+  }
+
   return {
     authConfigured: isSupabaseConfigured,
     authLoading,
     session,
     user,
     team,
+    teams,
+    selectTeam,
     authError,
     teamLoading,
   };

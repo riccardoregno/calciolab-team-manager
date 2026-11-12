@@ -149,11 +149,11 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
               >
                 <span style={sidebarStyles.toolboxButtonLabel}>
                   <Wrench size={18} />
-                  {!collapsed && <span>Altri strumenti</span>}
+                  {!collapsed && <span>{t("dailyUi.moreTools")}</span>}
                 </span>
                 {!collapsed && (
                   <span style={sidebarStyles.toolboxMeta}>
-                    {!toolsOpen && `${visibleToolboxAreas} aree`}
+                    {!toolsOpen && t("dailyUi.areaCount", { count: visibleToolboxAreas })}
                     <ChevronDown size={15} style={{ transform: toolsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }} />
                   </span>
                 )}
@@ -177,7 +177,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
       <div className="sidebar-footer" style={collapsed ? sidebarStyles.footerCollapsed : sidebarStyles.footer}>
         {collapsed ? "MVP" : (
           <>
-            <strong style={{ color: "#fff" }}>Workspace Coach</strong>
+            <strong style={{ color: "#fff" }}>{t("common.coachPlatform")}</strong>
             <br />
             {t("common.roleView", { role: t(`roles.${currentRole}`) })}
           </>

@@ -1,5 +1,5 @@
 import { getAgendaDateKey, buildCoachAgenda } from "./coachAgenda.js";
-import { getMatchCompletionPlayerIds, getPlayerMatchTotals, parseRecordedMinutes, resolveMatchMinutes, getPlayerUnavailabilityOnDate, getSeasonRecord, isLeagueStatsMatch, parseMatchResult } from "./helpers.js";
+import { getMatchCompletionPlayerIds, getPlayerMatchTotals, parseRecordedMinutes, resolveMatchMinutes, getPlayerUnavailabilityOnDate, hasPlayerTransferred, getSeasonRecord, isLeagueStatsMatch, parseMatchResult } from "./helpers.js";
 
 const order = (a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time || "").localeCompare(String(b.time || ""));
 
@@ -28,8 +28,9 @@ export function buildCoachAnalysis({ matches = [], players = [], sessions = [], 
   });
   const agenda = buildCoachAgenda(sessions, scoped.filter((match) => !parseMatchResult(match.result, match)), now);
   const nextMatch = agenda.nextMatch;
-  const roster = players.filter((player) => group === "tutti" || (player.gruppo || "prima") === group);
+  const groupPlayers = players.filter((player) => group === "tutti" || (player.gruppo || "prima") === group);
   const referenceDate = nextMatch?.date || today;
+  const roster = groupPlayers.filter(player => !hasPlayerTransferred(player, referenceDate));
   const availability = { available: [], limited: [], unavailable: [], unknown: [] };
   for (const player of roster) {
     const period = getPlayerUnavailabilityOnDate(player, referenceDate);
@@ -38,7 +39,7 @@ export function buildCoachAnalysis({ matches = [], players = [], sessions = [], 
       ["Recupero", "Differenziato"].includes(status) ? "limited" : status === "Disponibile" ? "available" : "unknown";
     availability[category].push({ ...player, reason: period?.label || status || "" });
   }
-  const playerStats = canCheckStats ? roster.map((player) => ({ player, ...getPlayerMatchTotals(player, played, rows, roster, leagueOnly) })) : [];
+  const playerStats = canCheckStats ? groupPlayers.map((player) => ({ player, ...getPlayerMatchTotals(player, played, rows, groupPlayers, leagueOnly) })) : [];
   const leaders = (key) => [...playerStats].filter((item) => item[key] > 0).sort((a, b) => b[key] - a[key] || b.minutes - a.minutes || String(a.player.id).localeCompare(String(b.player.id))).slice(0, 3);
   const missingResults = past.filter((match) => !parseMatchResult(match.result, match)).reverse();
   const missingLineups = canCheckStats ? played.filter((match) => !hasRecordedLineup(match, rows)).reverse() : [];

@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 
 import Button from "../ui/Button";
 import Badge from "../ui/Badge";
+import PlayerSecondaryActions from "./PlayerSecondaryActions";
 import { useTranslation } from "../../i18n";
-import { calcPlayerAge, getPlayerQuickStats, hasPlayerTransferred, isGoalkeeper } from "../../utils/helpers";
+import { calcPlayerAge, getCompletedTrainingEvents, getTrainingAttendanceSummary, formatTrainingAttendance, hasPlayerTransferred, isGoalkeeper } from "../../utils/helpers";
 
 const SUSPENSION_THRESHOLD = 5;
 
@@ -26,10 +27,11 @@ function normalizeMatchStats(stats = {}) {
 }
 
 function FormDots({ ratings }) {
+  const { t } = useTranslation();
   if (!ratings || ratings.length === 0) return null;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 10 }}>
-      <span style={{ fontSize: 10, color: "#94a6be", fontWeight: 700, marginRight: 2 }}>FORMA</span>
+      <span style={{ fontSize: 10, color: "#94a6be", fontWeight: 700, marginRight: 2 }}>{t("dailyUi.form")}</span>
       {ratings.map((r, i) => (
         <span
           key={i}
@@ -45,19 +47,17 @@ function FormDots({ ratings }) {
   );
 }
 
-function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats = {}, yellowCards = 0, avgRating = null, recentRatings = null, statsUnavailable = false }) {
+function PlayerCard({ player, onDelete, sessions = [], matchStats = {}, yellowCards = 0, avgRating = null, recentRatings = null, statsUnavailable = false }) {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const computedAge = calcPlayerAge(player.birthDate);
   const ageValue = computedAge ?? player.age ?? "-";
-  const training = getPlayerQuickStats(player, sessions, matches);
+  const training = getTrainingAttendanceSummary(player, getCompletedTrainingEvents(sessions), { requireConfirmedPresence: true });
   const stats = normalizeMatchStats(matchStats);
   const statValue = (value) => statsUnavailable ? "—" : value;
   const suspensionYellowCards = yellowCards || stats.yellowCards || 0;
-  const trainingPresenceLabel = t(training.trainingPresences === 1
-    ? "components.playerCard.trainingPresence"
-    : "components.playerCard.trainingPresences", { count: training.trainingPresences });
+  const trainingPctValue = formatTrainingAttendance(training, language === "en");
 
   const initials = player.name
     ? player.name
@@ -126,7 +126,7 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
               player.status === "Recupero" || player.status === "Differenziato" ? "orange" :
               "green"
             }>
-              {hasPlayerTransferred(player) ? t("pages.playerDetail.profile.transferred") : player.status || "Disponibile"}
+              {hasPlayerTransferred(player) ? t("pages.playerDetail.profile.transferred") : (player.status || "Disponibile") === "Disponibile" ? t("pages.players.statusAvailable") : player.status === "Differenziato" ? t("pages.dashboard.statusDifferentiated") : t("pages.attendanceRegister.status." + player.status)}
             </Badge>
             {suspensionYellowCards >= SUSPENSION_THRESHOLD - 1 && (
               <span style={{
@@ -192,13 +192,13 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
         >
           <MiniValue label={t("components.playerCard.appearances")} value={statValue(stats.appearances)} />
           <MiniValue label="Min" value={statValue(stats.minutes)} />
-          <MiniValue label={isGoalkeeper(player) ? "Gol subiti" : "Gol"} value={statValue(isGoalkeeper(player) ? (stats.goalsConceded ?? "—") : stats.goals)} />
+          <MiniValue label={t(isGoalkeeper(player) ? "pages.dashboard.goalsConcededLabel" : "common.goals")} value={statValue(isGoalkeeper(player) ? (stats.goalsConceded ?? "—") : stats.goals)} />
           <MiniValue label="Assist" value={statValue(stats.assists)} />
           <MiniValue label="G/R" value={statValue(`${stats.yellowCards}/${stats.redCards}`)} />
           <MiniValue
             label={t("components.playerCard.trainingPct")}
             title={t("components.playerCard.trainingPct")}
-            value={trainingPresenceLabel}
+            value={trainingPctValue}
           />
         </div>
 
@@ -213,22 +213,14 @@ function PlayerCard({ player, onDelete, sessions = [], matches = [], matchStats 
           }}
         >
           <Button
-            variant="ghost"
+            variant="primary"
             onClick={() => navigate(`/players/${player.id}`)}
             style={{ flex: "1 1 110px" }}
           >
             {t("components.playerCard.profile")}
           </Button>
 
-          {onDelete && (
-            <Button
-              variant="danger"
-              onClick={onDelete}
-              style={{ flex: "1 1 110px" }}
-            >
-              {t("common.delete")}
-            </Button>
-          )}
+          <PlayerSecondaryActions onDelete={onDelete} />
         </div>
       </div>
     </div>

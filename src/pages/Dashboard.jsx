@@ -36,6 +36,7 @@ import {
   getCoachAlerts,
   getCoachRewardProfile,
   getCurrentUserRole,
+  getDevelopmentPreviewRole,
   getPhysicalReference,
   getPlayerSummary,
   getSeasonRecord,
@@ -188,7 +189,7 @@ function Dashboard({
   }
 
   const widgets = settings.dashboardWidgets;
-  const currentRole = getCurrentUserRole(settings);
+  const currentRole = getDevelopmentPreviewRole(settings) || auth.team?.role || getCurrentUserRole(settings);
   const showOperationalQueue = ["owner", "headCoach", "assistantCoach"].includes(currentRole) && !loading;
   const queueWithFocus = showOperationalQueue && (widgets.hero || widgets.nextEvent) && (simpleView || !isMobile || dashTab === "oggi");
 
@@ -1045,7 +1046,7 @@ function Dashboard({
   return (
     <div className="dashboard-workspace">
       {/* Header + gear button */}
-      <div className="dashboard-heading-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, gap: 16 }}>
+      <div className="dashboard-heading-row">
         <PageHeader
           title={t("pages.dashboard.title")}
           subtitle={t("pages.dashboard.subtitle")}
@@ -1370,8 +1371,10 @@ function PlayerRoleDashboard({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const player = players[0];
   const auth = useAuth();
+  const player = auth.team?.playerId
+    ? players.find((item) => String(item.id) === String(auth.team.playerId))
+    : undefined;
   const { rows } = usePlayerMatches(auth.team?.id, String(player?.id || ""), matches);
   const summary = getPlayerSummary(player, { sessions, matches, physicalTests, players, playerMatchesDB: rows });
   const latestTest = summary.latestTests[0];
@@ -1381,6 +1384,18 @@ function PlayerRoleDashboard({
     .sort((a, b) => new Date(a.date) - new Date(b.date))
     .slice(0, 3);
   const program = player ? (appSettings?.playerPortal?.programs?.[player.id] ?? "") : "";
+
+  if (!player) {
+    return (
+      <AppCard>
+        <h1>{t("pages.playerPortal.notLinkedTitle")}</h1>
+        <p>{t("pages.playerPortal.notLinkedBody")}</p>
+        <Button onClick={() => navigate("/player-portal")}>
+          {t("pages.dashboard.openPlayerArea")}
+        </Button>
+      </AppCard>
+    );
+  }
 
   return (
     <div>

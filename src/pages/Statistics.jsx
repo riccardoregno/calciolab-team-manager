@@ -15,7 +15,6 @@ import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
 import { getPlayerMatchEntries, getPlayerMatchTotals, formatDate, getCompletedTrainingEvents, getTrainingAttendanceSummary, getTrainingSessionStatus, hasPlayerTransferred, formatTrainingAttendance, getRecordedTrainingMinutes, isTrainingParticipation, isTrainingStatsEvent, localDateString, parseMatchResult } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { loadPlayerMatchesForPeriod, loadMatchStatsMatrix } from "../services/playerProfile";
-import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { getRecordedLineupRole } from "../utils/matchDayHelpers";
@@ -46,9 +45,8 @@ function getTopPlayerByStat(players = [], statKey) {
 }
 
 function Statistics({
-  events, players: roster, matchScope }) {
+  events, players: roster, matchScope, auth, selectableTeams }) {
   const { t, language } = useTranslation();
-  const auth = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const rosterOnly = params.get("roster") === "1";
@@ -215,6 +213,8 @@ function Statistics({
 
   // Keep the source badge honest when official match rows cannot be loaded.
   const [rosterStatsError, setRosterStatsError] = useState(false);
+  const [statsLoadedForTeam, setStatsLoadedForTeam] = useState(null);
+  const rosterStatsLoading = statsLoading || Boolean(auth.team?.id && statsLoadedForTeam !== auth.team.id);
   const [statsSource, setStatsSource] = useState("local"); // "supabase" | "local"
 
   useEffect(() => {
@@ -238,12 +238,14 @@ function Statistics({
         if (!active) return;
         setPlayerMatchStatsRows(data || []);
         setRosterStatsError(Boolean(error));
+        setStatsLoadedForTeam(auth.team.id);
         setStatsSource(error || !data?.length ? "local" : "supabase");
         setStatsLoading(false);
       }).catch(() => {
         if (!active) return;
         setStatsSource("local");
         setRosterStatsError(true);
+        setStatsLoadedForTeam(auth.team.id);
         setPlayerMatchStatsRows([]);
         setStatsLoading(false);
       });
@@ -372,10 +374,22 @@ function Statistics({
 
   if (rosterOnly) {
     return <div className="statistics-workspace" style={{ ...styles.page, ...s.page }}>
-      <PageHeader title="Quadro settimanale della rosa" />
-      <Link to="/">Torna alla Dashboard</Link>
-      <MatchScopeFilters scope={matchScope} />
-      <WeeklyRoster events={events} players={players} rows={playerMatchStatsRows} loading={statsLoading} statsError={rosterStatsError} standalone />
+      <PageHeader title={t("dailyUi.quadro")} />
+      <Link to="/">{t("dailyUi.backHome")}</Link>
+      {selectableTeams.length > 1 && <label style={{ display: "grid", gap: 4, maxWidth: 360 }}>
+        {t("dailyUi.team")}
+        <select name="weekly-roster-team" style={{ ...styles.input, minHeight: 44, minWidth: 0 }} value={auth.team?.id || ""} onChange={(event) => auth.selectTeam(event.target.value)}>
+          {selectableTeams.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
+        </select>
+      </label>}
+      {auth.authError && auth.team && <p role="alert">{t("dailyUi.teamError")}</p>}
+      {matchScope && <details style={{ marginBottom: 12 }}>
+        <summary style={{ cursor: "pointer", padding: "10px 0", color: "#cbd5e1" }}>
+          {t("dailyUi.scope")} · {matchScope.season === "all" ? t("dailyUi.allSeasons") : matchScope.season} · {matchScope.competitions.find(({ value }) => value === matchScope.competition)?.label || t(matchScope.competition === "league" ? "dailyUi.league" : "dailyUi.allCompetitions")}
+        </summary>
+        <MatchScopeFilters scope={matchScope} />
+      </details>}
+      <WeeklyRoster seasonBounds={matchScope?.seasonBounds} events={events} players={players} rows={playerMatchStatsRows} loading={rosterStatsLoading} statsError={rosterStatsError} standalone scopeLabel={matchScope ? (matchScope.season === "all" ? t("dailyUi.allSeasons") : matchScope.season) + " · " + (matchScope.competitions.find(({ value }) => value === matchScope.competition)?.label || t(matchScope.competition === "league" ? "dailyUi.league" : "dailyUi.allCompetitions")) : ""} />
     </div>;
   }
 
@@ -413,7 +427,7 @@ function Statistics({
         </div>
       </div>
       <MatchScopeFilters scope={matchScope} />
-      <WeeklyRoster events={events} players={players} rows={playerMatchStatsRows} loading={statsLoading} statsError={rosterStatsError} />
+      <WeeklyRoster seasonBounds={matchScope?.seasonBounds} events={events} players={players} rows={playerMatchStatsRows} loading={rosterStatsLoading} statsError={rosterStatsError} />
 
       {/* ── Filtri ── */}
       <AppCard>
@@ -1198,7 +1212,9 @@ function Statistics({
               {t("pages.statistics.eventHistory")}
             </h3>
 
-            {history.length === 0 ? (
+            {rosterStatsLoading ? (
+              <p role="status">{t("common.loadingData")}</p>
+            ) : history.length === 0 ? (
               <div style={s.emptyHistory}>
                 <span style={{ fontSize: 28 }}>📭</span>
                 <p style={{ margin: "8px 0 0", color: "#94a6be", fontSize: 13 }}>

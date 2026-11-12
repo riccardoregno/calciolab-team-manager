@@ -1,3 +1,4 @@
+import { useAuth } from "../../hooks/useAuth";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, CalendarDays, CheckCircle2, ClipboardList, ShieldCheck, Target, TrendingUp, Users } from "lucide-react";
@@ -20,7 +21,8 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
   const hasJuniors = players.some((player) => player.gruppo === "juniores");
   const effectiveGroup = group === "prima" && !hasFirst && hasJuniors ? "juniores" : group;
   const model = useMemo(() => buildCoachAnalysis({ players, matches, sessions, rows, now, group: effectiveGroup, season: matchScope ? "" : profile.currentSeason || "", leagueOnly: !matchScope, canCheckStats: !statsLoading && !statsError }), [players, matches, sessions, rows, now, effectiveGroup, matchScope, profile.currentSeason, statsLoading, statsError]);
-  const teamName = profile.teamName || profile.clubName || "CalcioLab";
+  const auth = useAuth();
+  const teamName = auth.team?.name || profile.teamName || profile.clubName || "CalcioLab";
   const statsPending = loading || statsLoading;
   const number = (value, digits = 0) => value == null ? "—" : Number(value).toLocaleString(language === "en" ? "en-GB" : "it-IT", { minimumFractionDigits: digits, maximumFractionDigits: digits });
   const count = (value) => loading ? "—" : number(value);
@@ -70,7 +72,14 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
 
   return <div className="coach-analysis" aria-busy={loading}>
     <header className="analysis-heading"><div><span className="analysis-overline">{text("eyebrow")}</span><h1>{teamName}</h1><p>{text("subtitle")}</p></div><Link to="/statistics" className="analysis-primary-link">{text("openAnalysis")} <ArrowUpRight size={18} /></Link></header>
-    <Link to="/statistics?roster=1" className="analysis-primary-link">Quadro settimanale della rosa <ArrowUpRight size={18} /></Link>
+    <section className="daily-actions" aria-label={t("dailyUi.dailyTitle")}>
+      <h2>{t("dailyUi.dailyTitle")}</h2>
+      <div className="daily-actions-grid">
+        <Link to="/statistics?roster=1" className="daily-action-primary"><strong>{t("dailyUi.openQuadro")}</strong><span>{t("dailyUi.quadroHint")}</span><ArrowUpRight size={18} /></Link>
+        {attendanceTask ? <Link to={attendanceTask.to} state={{ pendingOnly: true, fromDashboard: true }}><strong>{t("dailyUi.attendanceAction", { count: attendanceTask.count })}</strong><span>{attendanceTask.event.title} · {formatDate(attendanceTask.event.date)}</span><ArrowUpRight size={18} /></Link> : <Link to="/attendance-register"><strong>{t("dailyUi.register")}</strong><span>{t("dailyUi.trainingPresences")}</span><ArrowUpRight size={18} /></Link>}
+        {minuteTask && <Link to={`/match-completion/${encodeURIComponent(minuteTask.match.id)}`} state={{ fromDashboard: true }}><strong>{t("dailyUi.minutesAction", { count: minuteTask.missingMinutes })}</strong><span>{minuteTask.match.opponent} · {formatDate(minuteTask.match.date)}</span><ArrowUpRight size={18} /></Link>}
+      </div>
+    </section>
     <MatchScopeFilters scope={matchScope} />
     {loading && <p className="analysis-loading" role="status">{text("loading")}</p>}
     {statsError && <div className="analysis-data-warning" role="alert"><span>{text("syncError")}</span>{onRetryStats && <button type="button" onClick={onRetryStats} disabled={statsLoading}>{text(statsLoading ? "checking" : "retry")}</button>}</div>}
@@ -104,18 +113,6 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
 
       <section className="analysis-panel analysis-quality"><div className="analysis-panel-head"><div><span className="analysis-overline">{text("dataQuality")}</span><h2>{text("toComplete")}</h2></div><ClipboardList size={20} aria-hidden="true" /></div>
         <p className="analysis-muted">{text("qualityHint")}</p>
-        {(minuteTask || attendanceTask) && (
-          <ul className="analysis-quality-list">
-            {minuteTask && <li><Link to={`/match-completion/${encodeURIComponent(minuteTask.match.id)}`}>
-              <span><strong>{t("coachOverview.recordMinutes", { count: minuteTask.missingMinutes })}</strong>
-                <small>{minuteTask.match.opponent} / {formatDate(minuteTask.match.date)}</small></span><ArrowUpRight size={16} />
-            </Link></li>}
-            {attendanceTask && <li><Link to={attendanceTask.to} state={{ pendingOnly: true }}>
-              <span><strong>{t("coachOverview.recordAttendance", { count: attendanceTask.count })}</strong>
-                <small>{attendanceTask.event.title || text("nextTraining")} / {formatDate(attendanceTask.event.date)}</small></span><ArrowUpRight size={16} />
-            </Link></li>}
-          </ul>
-        )}
         <div className="analysis-quality-numbers"><Link to="/matches?view=pending"><strong>{count(model.missingResults.length)}</strong><span>{text("missingResults")}</span></Link><Link to="/matches?view=pending"><strong>{statsPending || statsError ? "—" : model.missingLineups.length}</strong><span>{text("missingLineups")}</span></Link></div>
         {statsPending || statsError ? <p className="analysis-muted" role="status">{text(statsError ? "unavailableStats" : "checking")}</p> : !model.missingResults.length && !model.missingLineups.length ? <p className="analysis-all-set"><CheckCircle2 size={18} />{text(model.record.played ? "allSet" : "noPlayedData")}</p> : <ul className="analysis-quality-list">{[...model.missingResults.map((match) => ({ match, kind: "result", to: `/match-completion/${encodeURIComponent(match.id)}` })), ...model.missingLineups.map((match) => ({ match, kind: "lineup", to: `/match-stats/${match.id}` }))].slice(0, 3).map(({ match, kind, to }) => <li key={`${kind}-${match.id}`}><Link to={canManage ? to : "/matches?view=pending"}><span><strong>{match.opponent || text("opponent")}</strong><small>{formatDate(match.date)} · {text(kind === "result" ? "resultMissing" : "lineupMissing")}</small></span><ArrowUpRight size={16} /></Link></li>)}</ul>}
         <small className="analysis-coverage">{statsPending || statsError ? text("coverageUnavailable") : text("coverage", { count: model.recordedLineups, total: model.record.played })}</small>

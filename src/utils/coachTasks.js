@@ -1,4 +1,5 @@
-import { getMatchCompletionPlayerIds, parseMatchResult, resolveMatchMinutes } from "./helpers.js";
+import { hasTrainingEnded } from "./trainingArchive.js";
+import { getTrainingConfirmationStatus, hasPlayerTransferred, TRAINING_ATTENDANCE_PENDING, getMatchCompletionPlayerIds, parseMatchResult, resolveMatchMinutes } from "./helpers.js";
 import { getAgendaDateKey, buildCoachAgenda } from "./coachAgenda.js";
 
 export function summarizeMatchRsvps(match, rsvps = []) {
@@ -35,6 +36,12 @@ export function buildCoachTasks({ sessions = [], matches = [], players = [], mat
     const rows = new Map(matchRows.filter((row) => String(row.match_id) === String(event.id)).map((row) => [String(row.player_id), row]));
     const missing = ids.filter((id) => resolveMatchMinutes(rows.get(id)?.minutes_played, event.attendance?.[id]?.minutes, rows.get(id)?.minutes_cleared) === null);
     if (missing.length) tasks.push({ id: `stats:${event.id}`, kind: "stats", event, count: missing.length, to: `/match-completion/${encodeURIComponent(event.id)}`, state: { fromDashboard: true, missingMinutesOnly: true } });
+  }
+  for (const event of [...sessions].sort((a,b) => String(b.date).localeCompare(String(a.date)))) {
+    const day = getAgendaDateKey(event.date);
+    if ((event.type || "Allenamento") !== "Allenamento" || day < from || day > today || !hasTrainingEnded(event, now)) continue;
+    const count = players.filter(player => (player.gruppo || "prima") === "prima" && !hasPlayerTransferred(player, day) && getTrainingConfirmationStatus(player, event) === TRAINING_ATTENDANCE_PENDING).length;
+    if (count) tasks.push({ id: `attendance:${event.id}`, kind: "attendance", event, count, to: `/session-attendance/${encodeURIComponent(event.id)}`, state: { fromDashboard: true, pendingOnly: true } });
   }
   return tasks;
 }

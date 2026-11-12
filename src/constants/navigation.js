@@ -90,9 +90,9 @@ export function navigationItem(path, overrides = {}) {
 
 export const primaryMenuGroups = [
   { titleKey: "navigation.groups.home", items: [navigationItem("/")] },
-  { titleKey: "navigation.groups.team", items: [navigationItem("/players", { label: "Squadra" })] },
-  { titleKey: "navigation.groups.field", items: [navigationItem("/trainings", { label: "Allenamenti" })] },
-  { titleKey: "navigation.groups.match", items: [navigationItem("/matches", { label: "Centro partite" })] },
+  { titleKey: "navigation.groups.team", items: [navigationItem("/players")] },
+  { titleKey: "navigation.groups.field", items: [navigationItem("/trainings")] },
+  { titleKey: "navigation.groups.match", items: [navigationItem("/matches")] },
   { titleKey: "navigation.groups.analysis", items: [navigationItem("/statistics")] },
 ];
 export const toolboxGroups = [

@@ -1,3 +1,5 @@
+import { teamBillingTestEnabled } from "../lib/teamBillingTest.js";
+import TeamBillingTestPanel from "../components/premium/TeamBillingTestPanel.jsx";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/ui/PageHeader";
@@ -21,10 +23,10 @@ import {
   getSubscriptionPlan,
   normalizeAppSettings,
 } from "../utils/helpers";
-import { COACH_PLANS as PLANS } from "../constants/coachPlans.js";
+import { CALCIOLAB_TEAM_PLAN } from "../constants/coachPlans.js";
 import { useTranslation } from "../i18n";
 
-/* ─── Plan definitions ──────────────────────────────────────── */
+const PLANS = [CALCIOLAB_TEAM_PLAN];
 
 const CHECKOUT_FUNCTION_URL =
   import.meta.env.VITE_STRIPE_CHECKOUT_URL ||
@@ -45,7 +47,11 @@ const BILLING_PORTAL_URL =
 const STRIPE_PRICE_IDS = { premium: { monthly: import.meta.env.VITE_STRIPE_PRICE_COACH_MONTHLY || "" } };
 
 /* ─── Component ─────────────────────────────────────────────── */
-export default function Premium({
+export default function Premium(props) {
+  return teamBillingTestEnabled ? <TeamBillingTestPanel team={props.team} /> : <LegacyPremium {...props} />;
+}
+
+function LegacyPremium({
   appSettings = {},
   setSubscription,
   players = [],

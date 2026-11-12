@@ -1,3 +1,4 @@
+import { defaultSeasonDate } from "../utils/seasons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "../i18n";
@@ -64,8 +65,10 @@ function getMatchPlayerIds(match) {
   ].map(String).filter(Boolean))];
 }
 
-function Matches({ matches, matchScope, setMatches, players = [], appSettings = {}, loading = false, teamId = null }) {
+function Matches({ matches, matchScope, setMatches, players = [], appSettings = {}, loading = false, teamId = null, seasonBounds = null }) {
   const { t } = useTranslation();
+  const defaultDate = defaultSeasonDate(seasonBounds, localDateString());
+  const draftPrefix = MATCH_DRAFT_KEY + ":" + (teamId || "local") + ":" + (seasonBounds?.id || "legacy");
   const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
@@ -86,7 +89,7 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
   const [matchSearch, setMatchSearch] = useState("");
   const matchView = searchParams.get("view") || "all";
   const matchRows = useTeamMatchRows(teamId);
-  const [form, setForm] = useState(() => loadMatchDraft(`${MATCH_DRAFT_KEY}:new`, emptyMatch(clubLogo)));
+  const [form, setForm] = useState(() => loadMatchDraft(`${draftPrefix}:new`, emptyMatch(clubLogo, defaultDate)));
   const [formErrors, setFormErrors] = useState({});
   const [importSummary, setImportSummary] = useState(null);
   const [importPreview, setImportPreview] = useState(null);
@@ -167,7 +170,7 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
       return;
     }
 
-    const draftKey = `${MATCH_DRAFT_KEY}:${modalEditId || "new"}`;
+    const draftKey = `${draftPrefix}:${modalEditId || "new"}`;
     if (modalKeyRef.current === draftKey) return;
 
     modalKeyRef.current = draftKey;
@@ -176,13 +179,13 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
       const match = matches.find((item) => String(item.id) === String(modalEditId));
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditingId(modalEditId);
-      clearMatchDraft(modalEditId);
-      setForm(match ? matchToForm(match) : emptyMatch(clubLogo));
+      clearMatchDraft(modalEditId, draftPrefix);
+      setForm(match ? matchToForm(match) : emptyMatch(clubLogo, defaultDate));
       return;
     }
 
     setEditingId(null);
-    const fallback = emptyMatch(clubLogo);
+    const fallback = emptyMatch(clubLogo, defaultDate);
     let stored = null;
     try { stored = localStorage.getItem(draftKey); } catch { /* noop */ }
     setForm(loadMatchDraft(draftKey, fallback));
@@ -195,7 +198,7 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
               label: t("pages.matches.discardDraft"),
               fn: () => {
                 try { localStorage.removeItem(draftKey); } catch { /* noop */ }
-                setForm(emptyMatch(clubLogo));
+                setForm(emptyMatch(clubLogo, defaultDate));
               },
             },
             duration: 6000,
@@ -203,7 +206,7 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
         }
       } catch { /* noop */ }
     }
-  }, [clubLogo, matches, modalEditId, openModal, showToast, t]);
+  }, [clubLogo, matches, modalEditId, openModal, showToast, t, defaultDate, draftPrefix]);
 
   useEffect(() => {
     if (!openModal || !modalKeyRef.current || modalEditId) return;
@@ -233,6 +236,7 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
   function saveMatch() {
     if (!canManage) return;
     if (savingRef.current) return;
+    if (seasonBounds && (form.date < seasonBounds.start_date || form.date > seasonBounds.end_date)) { showToast(t("seasons.errors.SEASON_EVENT_DATE"), "warn"); return; }
     const errors = {};
     if (!form.opponent.trim()) errors.opponent = true;
     if (!form.date) errors.date = true;
@@ -279,8 +283,8 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
       setMatches((prevMatches) => [...prevMatches, payload]);
     }
 
-    clearMatchDraft(editingId || "new");
-    setForm(emptyMatch(clubLogo));
+    clearMatchDraft(editingId || "new", draftPrefix);
+    setForm(emptyMatch(clubLogo, defaultDate));
     closeMatchModal();
     showToast(editingId ? t("pages.matches.matchUpdated") : t("pages.matches.matchSaved"), "ok");
     setTimeout(() => { savingRef.current = false; }, 500);
@@ -305,13 +309,13 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
   }
 
   function closeMatchModal({ resetDraft = false } = {}) {
-    if (resetDraft) clearMatchDraft(editingId || modalEditId || "new");
+    if (resetDraft) clearMatchDraft(editingId || modalEditId || "new", draftPrefix);
     const params = new URLSearchParams(location.search);
     params.delete("modal");
     params.delete("edit");
     const nextSearch = params.toString();
     setEditingId(null);
-    setForm(emptyMatch(clubLogo));
+    setForm(emptyMatch(clubLogo, defaultDate));
     setFormErrors({});
     navigate(
       { pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : "" },
@@ -332,7 +336,7 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
           const parsed = JSON.parse(rawText);
           const arr = Array.isArray(parsed) ? parsed : [parsed];
           imported = arr.map((m) => ({
-            ...emptyMatch(clubLogo),
+            ...emptyMatch(clubLogo, defaultDate),
             ...m,
             id: m.id || createId("match"),
           }));
@@ -597,7 +601,7 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
               <input
                 placeholder={t("pages.matches.opponentPlaceholder")}
                 value={form.opponent}
-                onChange={(e) => { setForm({ ...form, opponent: e.target.value }); if (formErrors.opponent) setFormErrors((p) => ({ ...p, opponent: false })); }}
+                onChange={(e) => { setForm(previous => ({ ...previous, opponent: e.target.value })); if (formErrors.opponent) setFormErrors((p) => ({ ...p, opponent: false })); }}
                 style={{ ...styles.input, ...(formErrors.opponent ? matchStyles.inputError : {}) }}
               />
               {formErrors.opponent && <span style={matchStyles.errorMsg}>{t("pages.matches.missingOpponent")}</span>}
@@ -605,9 +609,9 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
 
             <div>
               <input
-                type="date"
+                type="date" min={seasonBounds?.start_date} max={seasonBounds?.end_date}
                 value={form.date}
-                onChange={(e) => { setForm({ ...form, date: e.target.value }); if (formErrors.date) setFormErrors((p) => ({ ...p, date: false })); }}
+                onChange={(e) => { setForm(previous => ({ ...previous, date: e.target.value })); if (formErrors.date) setFormErrors((p) => ({ ...p, date: false })); }}
                 style={{ ...styles.input, ...(formErrors.date ? matchStyles.inputError : {}) }}
               />
               {formErrors.date && <span style={matchStyles.errorMsg}>{t("pages.matches.dateRequired")}</span>}
@@ -1269,9 +1273,9 @@ function loadMatchDraft(key, fallback) {
   }
 }
 
-function clearMatchDraft(id = "new") {
+function clearMatchDraft(id = "new", prefix = MATCH_DRAFT_KEY) {
   try {
-    localStorage.removeItem(`${MATCH_DRAFT_KEY}:${id}`);
+    localStorage.removeItem(`${prefix}:${id}`);
   } catch {
     /* localStorage can be unavailable in restricted browsers */
   }
@@ -1307,10 +1311,10 @@ function formatHomeAwayScore(score) {
   return `${score.homeGoals}-${score.awayGoals}`;
 }
 
-function emptyMatch(homeLogo = "") {
+function emptyMatch(homeLogo = "", defaultDate = localDateString()) {
   return {
     opponent: "",
-    date: localDateString(),
+    date: defaultDate,
     time: "",
     location: "Casa",
     result: "",

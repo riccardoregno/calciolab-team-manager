@@ -1,3 +1,4 @@
+import { getRosterReturnPath } from "../utils/rosterNavigation";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
@@ -63,7 +64,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
   const linkedPlayerId = state?.minutesPlayerId;
   const [missingOnly, setMissingOnly] = useState(Boolean(state?.missingMinutesOnly));
   const backTo = state?.fromDashboard ? "/" : "/matches?view=pending";
-  const rosterReturn = state?.rosterWeek ? "/statistics?roster=1&rosterWeek=" + encodeURIComponent(state.rosterWeek) + (state.rosterPending ? "&rosterPending=1" : "") : null;
+  const rosterReturn = getRosterReturnPath(state);
   const savedStarterNames = starters.map((id) => {
     const player = players.find((item) => String(item.id) === id);
     return player ? playerName(player) : id;

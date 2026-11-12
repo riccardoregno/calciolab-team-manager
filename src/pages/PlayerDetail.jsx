@@ -315,8 +315,8 @@ function PlayerDetail({
 
   function commitPlayerSave(nextForm) {
     if (!canManage) return;
-    // Stampa un nuovo _updatedAt affinché la conflict detection funzioni nei salvataggi successivi.
-    const stamped = { ...nextForm, _updatedAt: new Date().toISOString() };
+    // The sync layer supplies the acknowledged server version.
+    const stamped = { ...nextForm, _updatedAt: player._updatedAt };
     setPlayers((prev) => prev.map((item) => String(item.id) === String(id) ? stamped : item));
     setEditing(false);
     setEditBaseUpdatedAt(stamped._updatedAt);
@@ -764,7 +764,8 @@ function PlayerDetail({
 
   return (
     <div style={styles.page}>
-      <PageHeader title={player.name} subtitle={t("pages.playerDetail.subtitle")} />
+      <PageHeader title={player.name} subtitle={t("pages.playerDetail.subtitle")}
+        action={<Button variant="ghost" onClick={() => navigate("/players")}>{t("pages.playerDetail.back")}</Button>} />
 
       <div style={{ ...pageStyles.layout, gridTemplateColumns: isMobile ? "1fr" : pageStyles.layout.gridTemplateColumns }}>
         <div style={pageStyles.sidebar}>

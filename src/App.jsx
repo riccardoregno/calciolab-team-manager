@@ -1,5 +1,10 @@
+import { useSeasonWorkspace } from "./hooks/useSeasonWorkspace";
+import SeasonWorkspaceBar from "./components/layout/SeasonWorkspaceBar";
+import { PermissionContext, useAreaPermission } from "./components/auth/permissionContext";
+import TeamContextBar from "./components/layout/TeamContextBar";
+import { getTeamBillingTestState, teamBillingTestEnabled } from "./lib/teamBillingTest.js";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 
 import { styles } from "./styles/index.js";
 import { useTranslation } from "./i18n";
@@ -131,12 +136,23 @@ function extractRemoteSubscription(team) {
 
 function Blank() { return null; }
 
-const EMPTY_EVENTS = [];
+
+function RouteSaveStatus(props) {
+  const { pathname } = useLocation();
+  return <SaveStatus {...props} sticky={pathname === "/attendance-register" || pathname.startsWith("/session-attendance/")} />;
+}
+
+function SeasonPermission({ readOnly, children }) {
+  const permission = useAreaPermission();
+  return <PermissionContext.Provider value={readOnly ? { ...permission, canManage: false, level: "view" } : permission}>{children}</PermissionContext.Provider>;
+}
 
 function App() {
   const { t } = useTranslation();
   const auth = useAuth();
   const [profile, setProfile] = useState(null);
+  const [completedOnboardingTeam, setCompletedOnboardingTeam] = useState(null);
+  const [deferredOnboardingTeam, setDeferredOnboardingTeam] = useState(null);
   const [developmentPlanPreview, setDevelopmentPlanPreview] = useState(getInitialDevelopmentPlanPreview);
   const [developmentRolePreview, setDevelopmentRolePreview] = useState(getInitialDevelopmentRolePreview);
   const [remoteSubscription, setRemoteSubscription] = useState(() => extractRemoteSubscription(auth.team));
@@ -182,10 +198,12 @@ function App() {
     remoteSaving,
     refreshTeamData,
     retryLocalSave,
-    setPlayers,
+    setPlayers: setAllPlayers,
+    setSeasonRoster,
+    setSeasonEvents,
     setExercises,
-    setSessions,
-    setMatches,
+    setSessions: setAllSessions,
+    setMatches: setAllMatches,
     setPhysicalTests,
     setGpsSessions,
     setStaffTasks,
@@ -193,6 +211,14 @@ function App() {
     setSetPlays,
   } = useTeamData({ teamId: auth.team?.id });
 
+  const seasonWorkspace = useSeasonWorkspace({
+    teamId: auth.team?.id, role: auth.team?.role, state,
+    actions: { setPlayers: setAllPlayers, setSessions: setAllSessions, setMatches: setAllMatches, setSeasonRoster, setSeasonEvents },
+    synchronized: !loading && !refreshing && !remoteSaving && storageSource === "supabase" && !storageError,
+  });
+  const { players, sessions, matches, setPlayers, setSessions, setMatches } = seasonWorkspace;
+
+  const testBillingState = getTeamBillingTestState(auth.team?.team_billing_test);
   const previewAppSettings = useMemo(() => {
     const current = state.appSettings || {};
 
@@ -207,6 +233,10 @@ function App() {
       trialEndsAt:    remoteSubscription.trial_ends_at,
       customerId:     remoteSubscription.stripe_customer_id,
       subscriptionId: remoteSubscription.stripe_subscription_id,
+      ...(teamBillingTestEnabled ? {
+        plan: testBillingState === "active" ? "premium" : "free",
+        billingStatus: testBillingState,
+      } : {}),
     } : {};
 
     // FIX: i codici promo sono ora gestiti interamente lato server
@@ -230,17 +260,17 @@ function App() {
       developmentPreviewPlan: developmentPlanPreview,
       developmentPreviewRole: developmentRolePreview,
     };
-  }, [state.appSettings, remoteSubscription, developmentPlanPreview, developmentRolePreview]);
+  }, [state.appSettings, remoteSubscription, developmentPlanPreview, developmentRolePreview, testBillingState]);
 
-  const sessions = state.sessions || EMPTY_EVENTS;
-  const matches = state.matches || EMPTY_EVENTS;
   const [matchSelection, setMatchSelection] = useState({});
   const teamId = auth.team?.id;
   const matchScope = useMemo(() => {
     const scope = buildMatchScope(matches, matchSelection.teamId === teamId ? matchSelection : {},
       previewAppSettings.workspaceProfile?.currentSeason);
-    return { ...scope, onChange: (selection) => setMatchSelection({ ...selection, teamId }) };
-  }, [matches, matchSelection, previewAppSettings.workspaceProfile?.currentSeason, teamId]);
+    return { ...scope,
+      ...(seasonWorkspace.registered && seasonWorkspace.season ? { season: seasonWorkspace.season.name, seasons: [seasonWorkspace.season.name], lockSeason: true, seasonBounds: seasonWorkspace.season } : {}),
+      onChange: (selection) => setMatchSelection({ ...selection, teamId }) };
+  }, [matches, matchSelection, previewAppSettings.workspaceProfile?.currentSeason, teamId, seasonWorkspace.registered, seasonWorkspace.season]);
   const statisticsEvents = useMemo(() => buildStatisticsEvents(sessions, matches, matchScope), [sessions, matches, matchScope]);
 
   // FIX #9: active flag previene setState su componente smontato (memory leak)
@@ -275,9 +305,9 @@ function App() {
 
   // Wire automatic event reminders (fires on load + every hour when notifications are enabled)
   useEventReminders({
-    sessions: state.sessions || [],
-    matches:  state.matches  || [],
-    players:  state.players  || [],
+    sessions,
+    matches,
+    players,
     enabled:  Boolean(previewAppSettings?.notifications?.enabled),
   });
 
@@ -391,27 +421,41 @@ function App() {
   // quando non c'è ancora un team remoto (es. utente appena registrato,
   // prima che la riga team sia disponibile). Saltare l'onboarding non
   // concede privilegi aggiuntivi — è solo configurazione.
-  const onboardingDone = auth.team
+  const onboardingKey = auth.team?.id ?? "local";
+  const onboardingDone = completedOnboardingTeam === onboardingKey || (auth.team
     ? auth.team.onboarding_completed === true
-    : previewAppSettings?.onboarding?.completed === true;
+    : previewAppSettings?.onboarding?.completed === true);
   const canManageOnboarding = !auth.team || onboardingRoles.includes(auth.team.role);
-  const onboardingDeferred = typeof window !== "undefined"
-    && window.localStorage.getItem("calciolab_onboarding_deferred") === "1";
+  const onboardingDeferredKey = "calciolab_onboarding_deferred:" + (auth.user?.id ?? "local") + ":" + onboardingKey;
+  let onboardingDeferred = deferredOnboardingTeam === onboardingKey;
+  try {
+    onboardingDeferred ||= window.localStorage.getItem(onboardingDeferredKey) === "1";
+  } catch { /* Browser storage may be unavailable. */ }
+
+  function leaveOnboarding(completed) {
+    if (completed) setCompletedOnboardingTeam(onboardingKey);
+    else setDeferredOnboardingTeam(onboardingKey);
+    try {
+      if (completed) window.localStorage.removeItem(onboardingDeferredKey);
+      else window.localStorage.setItem(onboardingDeferredKey, "1");
+    } catch { /* The current session can still continue. */ }
+  }
   if (!auth.teamLoading && !loading && canManageOnboarding && !onboardingDone && !onboardingDeferred) {
     return (
       <BrowserRouter>
+        {auth.teams.length > 1 && <TeamContextBar auth={auth} />}
         <Suspense fallback={null}>
           <Onboarding
             appSettings={previewAppSettings}
             setAppSettings={setAppSettings}
             team={auth.team}
+            onExit={leaveOnboarding}
           />
         </Suspense>
       </BrowserRouter>
     );
   }
 
-  const players = state.players || [];
   const exercises = state.exercises || [];
   const physicalTests = state.physicalTests || [];
   const gpsSessions   = state.gpsSessions   || [];
@@ -486,6 +530,11 @@ function App() {
   })();
 
   function gate(allowedRoles, children, featureKey = null) {
+    if (teamBillingTestEnabled && auth.team && auth.team.role !== "player" &&
+        !["billing", "settings", "onboarding", "billingOverview"].includes(featureKey) &&
+        testBillingState !== "active") {
+      return <Navigate to="/premium" replace />;
+    }
     if (auth.team?.role === "player" && !allowedRoles.includes("player")) {
       return <Navigate to="/player-portal" replace />;
     }
@@ -498,7 +547,7 @@ function App() {
         member={currentMember}
         featureKey={featureKey}
       >
-        {children}
+        <SeasonPermission readOnly={(seasonWorkspace.readOnlyRoster && featureKey === "players") || ((seasonWorkspace.legacyView || seasonWorkspace.writeBlocked) && ["sessions", "matches", "players"].includes(featureKey))}>{children}</SeasonPermission>
       </RoleGate>
     );
   }
@@ -538,16 +587,24 @@ function App() {
             onSyncNow={auth.team?.id ? refreshTeamData : null}
           />
 
+          <TeamContextBar auth={auth} />
+          <SeasonWorkspaceBar model={seasonWorkspace} role={auth.team?.role} allPlayers={state.players} allSessions={state.sessions} allMatches={state.matches} memberships={state.seasonPlayers || []}
+            onCreated={async id => {
+              const result = await refreshTeamData();
+              if(result?.error || result?.source !== "supabase") throw new Error("SEASON_RETRY");
+              await seasonWorkspace.completeCreation(id);
+            }} />
+
           {/* Banner globale trial / billing — visibile su tutte le pagine */}
           <BillingBanner appSettings={previewAppSettings} />
 
-          <SaveStatus loading={loading || auth.authLoading} source={storageSource}
+          <RouteSaveStatus loading={loading || auth.authLoading || seasonWorkspace.catalogLoading} source={storageSource}
             error={storageError} localError={localSaveError} saving={remoteSaving} refreshing={refreshing}
             lastSyncedAt={lastSyncedAt} onRetryLocal={retryLocalSave} onRetry={auth.team?.id ? refreshTeamData : null} />
 
           <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>
-            <Routes>
+            <Routes key={(auth.team?.id || "local") + ":" + (seasonWorkspace.season?.id || "legacy")}>
               <Route path="/login" element={<Navigate to="/" replace />} />
 
               <Route
@@ -734,7 +791,8 @@ function App() {
               <Route
                 path="/premium"
                 element={
-                  gate(managementRoles, <Premium
+                  gate(teamBillingTestEnabled ? coachRoles : managementRoles, <Premium
+                    team={auth.team}
                     appSettings={previewAppSettings}
                     setAppSettings={setAppSettings}
                     setSubscription={setSubscription}
@@ -743,7 +801,7 @@ function App() {
                     sessions={sessions}
                     matches={matches}
                     physicalTests={physicalTests}
-                  />, "billing")
+                  />, teamBillingTestEnabled ? "billingOverview" : "billing")
                 }
               />
 
@@ -754,6 +812,7 @@ function App() {
                     appSettings={previewAppSettings}
                     setAppSettings={setAppSettings}
                     team={auth.team}
+                    onExit={leaveOnboarding}
                   />, "settings")
                 }
               />
@@ -910,7 +969,7 @@ function App() {
               <Route
                 path="/attendance-register"
                 element={
-                  gate(technicalRoles, <AttendanceRegister
+                  gate(technicalRoles, <AttendanceRegister seasonBounds={seasonWorkspace.season}
                     players={players}
                     sessions={sessions}
                     setSessions={setSessions}
@@ -939,7 +998,8 @@ function App() {
               <Route
                 path="/statistics"
                 element={
-                  gate(coachRoles, <Statistics events={statisticsEvents} players={players} matchScope={matchScope} />, "statistics")
+                  gate(coachRoles, <Statistics events={statisticsEvents} players={players} matchScope={matchScope}
+                    auth={auth} selectableTeams={auth.teams.filter(({ role }) => coachRoles.includes(role))} />, "statistics")
                 }
               />
 
@@ -1016,7 +1076,7 @@ function App() {
               <Route
                 path="/trainings"
                 element={
-                  gate(technicalRoles, <Trainings
+                  gate(technicalRoles, <Trainings seasonBounds={seasonWorkspace.season}
                     exercises={exercises}
                     setExercises={setExercises}
                     sessions={sessions}
@@ -1036,7 +1096,7 @@ function App() {
               <Route
                 path="/matches"
                 element={
-                  gate(coachRoles, <Matches
+                  gate(coachRoles, <Matches seasonBounds={seasonWorkspace.season}
                     matchScope={matchScope}
                     matches={matches}
                     setMatches={setMatches}

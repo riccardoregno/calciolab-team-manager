@@ -9,7 +9,7 @@ import {
   Network, Target, Users, X,
 } from "lucide-react";
 
-import { COACH_PLANS } from "../constants/coachPlans.js";
+import { CALCIOLAB_TEAM_PLAN } from "../constants/coachPlans.js";
 
 /* ─── Dati ────────────────────────────────────────────────────── */
 const FEATURES = [
@@ -23,17 +23,17 @@ const FEATURES = [
 ];
 
 const WORKFLOW = [
-  { step: "01", title: "Prepara", text: "Costruisci la seduta, controlla disponibilità e condividi il lavoro con lo staff." },
-  { step: "02", title: "Lavora sul campo", text: "Registra presenze, carico, test e note senza disperdere informazioni tra chat e fogli." },
-  { step: "03", title: "Analizza", text: "Trasforma partite e allenamenti in report, statistiche e prossime decisioni operative." },
+  { step: "01", title: "Registra le presenze", text: "Dopo la seduta, lo staff segna chi era presente, assente o in recupero nel registro." },
+  { step: "02", title: "Completa il tabellino", text: "Dopo la gara, lo staff registra risultato, formazione e minuti giocati." },
+  { step: "03", title: "Consulta il quadro settimanale", text: "Prima della prossima seduta, il mister controlla presenze, minuti di gara e dati ancora da completare." },
 ];
 
-const PLANS = COACH_PLANS.map((plan) => ({ ...plan, monthlyPrice: plan.price, cta: plan.id === "free" ? "Inizia gratis" : "Scopri Premium", ctaVariant: plan.id === "free" ? "ghost" : "primary" }));
+const PLANS = [{ ...CALCIOLAB_TEAM_PLAN, monthlyPrice: CALCIOLAB_TEAM_PLAN.price, cta: "Crea un account", ctaVariant: "primary" }];
 
 const FAQS = [
   {
-    q: "Posso usare CalcioLab gratis?",
-    a: "Sì. Free include rosa, partite, presenze, statistiche e confronti. Non serve carta di credito. Premium aggiunge report tecnici, scouting, test fisici ed esportazioni.",
+    q: "Quanto costa CalcioLab?",
+    a: "Creare un account è gratuito. Il listino per l’attivazione di una squadra è di 9,90 € al mese.",
   },
   {
     q: "Funziona su smartphone?",
@@ -49,7 +49,7 @@ const FAQS = [
   },
   {
     q: "Posso invitare il mio staff?",
-    a: "Sì, puoi invitare assistenti, preparatori e dirigenti anche nel piano Free. Ogni membro vede solo le sezioni pertinenti al suo ruolo.",
+    a: "Sì, puoi invitare assistenti, preparatori e dirigenti nella stessa squadra. Ogni membro vede solo le sezioni pertinenti al suo ruolo.",
   },
 ];
 
@@ -57,7 +57,7 @@ const STATS = [
   { value: "7+",    label: "moduli integrati" },
   { value: "100%",  label: "dati nelle tue mani" },
   { value: "0€",    label: "per iniziare" },
-  { value: "9,90€", label: "Premium al mese" },
+  { value: "9,90 €", label: "al mese per squadra" },
 ];
 
 /* ─── Componente principale ────────────────────────────────────── */
@@ -130,11 +130,10 @@ export default function Landing() {
       {/* ── Hero ── */}
       <section style={l.hero}>
         <div style={l.heroInner}>
-          <div style={l.heroBadge}>Dati e analisi per allenatori di calcio</div>
-          <h1 style={l.heroTitle}>CalcioLab</h1>
+          <div style={l.heroBadge}>Per allenatori e staff del calcio dilettantistico</div>
+          <h1 style={l.heroTitle}>Presenze e minutaggio della tua squadra, in un colpo d’occhio</h1>
           <p style={l.heroSubtitle}>
-            Leggi il rendimento della squadra, confronta i giocatori e tieni sotto controllo
-            partite, presenze e disponibilità in un unico spazio.
+            Lo staff registra presenze e tabellini. Prima della prossima seduta vedi chi si è allenato, quanto ha giocato e quali dati mancano.
           </p>
           <div style={l.heroActions}>
             <button style={l.btnHeroPrimary} onClick={goToSignup}>
@@ -146,27 +145,17 @@ export default function Landing() {
           </div>
           <p style={l.heroNote}>Nessuna carta di credito richiesta</p>
 
-          {/* Dashboard mockup */}
-          <div style={l.mockup}>
-            <div style={l.mockupBar}>
-              <span style={{ ...l.mockupDot, background: "#f87171" }} />
-              <span style={{ ...l.mockupDot, background: "#fbbf24" }} />
-              <span style={{ ...l.mockupDot, background: "#4ade80" }} />
-              <span style={l.mockupUrl}>calciolab.org/dashboard</span>
-            </div>
-            <div style={l.mockupBody}>
-              <MockDashboard />
-            </div>
-          </div>
+          <WeeklyRosterPreview />
         </div>
       </section>
 
-      <section style={l.workflowSection} aria-label="Come si usa CalcioLab">
+      <section style={l.workflowSection} aria-labelledby="landing-workflow-title">
+        <h2 id="landing-workflow-title" style={l.workflowHeading}>Come si usa</h2>
         <div style={l.workflowInner}>
           {WORKFLOW.map((item) => (
             <div key={item.step} style={l.workflowItem}>
               <span style={l.workflowStep}>{item.step}</span>
-              <h2 style={l.workflowTitle}>{item.title}</h2>
+              <h3 style={l.workflowTitle}>{item.title}</h3>
               <p style={l.workflowText}>{item.text}</p>
             </div>
           ))}
@@ -213,7 +202,7 @@ export default function Landing() {
           <div style={l.sectionHeader}>
             <span style={l.sectionEyebrow}>Prezzi</span>
             <h2 style={l.sectionTitle}>Semplice, trasparente, senza sorprese</h2>
-            <p style={l.sectionSubtitle}>Inizia gratis. Upgrada solo quando ne hai bisogno.</p>
+            <p style={l.sectionSubtitle}>Creare un account è gratuito. L’attivazione si paga per squadra.</p>
           </div>
 
           <div style={l.pricingGrid}>
@@ -244,7 +233,7 @@ export default function Landing() {
                     ) : (
                       <div style={l.priceBlock}>
                         <strong style={l.priceAmount}>€ {plan.monthlyPrice}</strong>
-                        <span style={l.pricePer}>/ mese</span>
+                        <span style={l.pricePer}>/mese per squadra</span>
                       </div>
                     )}
                   </div>
@@ -282,7 +271,7 @@ export default function Landing() {
         <div style={l.ctaBannerInner}>
           <h2 style={l.ctaBannerTitle}>Pronto a portare il tuo staff al livello successivo?</h2>
           <p style={l.ctaBannerSubtitle}>
-            Unisciti a CalcioLab. Inizia gratis, nessun impegno.
+            Crea gratuitamente il tuo account CalcioLab.
           </p>
           <button style={l.btnCtaBig} onClick={goToSignup}>
             Crea account gratuito →
@@ -339,51 +328,32 @@ export default function Landing() {
   );
 }
 
-/* ─── Mock dashboard ────────────────────────────────────────────── */
-function MockDashboard() {
+function WeeklyRosterPreview() {
+  const rows = [
+    { name: "Luca Riva", training: "3 presenti", match: "90 min" },
+    { name: "Marco Serra", training: "2 presenti · 1 recupero", match: "0 min · non impiegato" },
+    { name: "Andrea Costa", training: "2 presenti · 1 da registrare", match: "Minutaggio da completare", pending: true },
+  ];
   return (
-    <div style={{ display: "grid", gap: 10, padding: "16px" }}>
-      {/* KPI row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-        {[
-          { label: "Giocatori", value: "24", color: "#38bdf8" },
-          { label: "Partite",   value: "18",  color: "#4ade80" },
-          { label: "Gol fatti", value: "34",  color: "#a78bfa" },
-          { label: "% Presenze", value: "87%", color: "#fbbf24" },
-        ].map((k) => (
-          <div key={k.label} style={{ background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <p style={{ margin: "0 0 4px", fontSize: 9, color: "#475569", fontWeight: 700, textTransform: "uppercase" }}>{k.label}</p>
-            <strong style={{ fontSize: 20, color: k.color, lineHeight: 1 }}>{k.value}</strong>
-          </div>
+    <figure style={l.mockup}>
+      <figcaption style={l.previewCaption}>
+        <strong>Quadro settimanale della rosa</strong>
+        <span style={l.previewExample}>Dati di esempio</span>
+      </figcaption>
+      <div style={l.previewWeek}>2–8 novembre · 3 sedute · 1 gara</div>
+      <ul style={l.previewList}>
+        {rows.map(({ name, training, match, pending }) => (
+          <li key={name} className="no-mobile-override" style={l.previewRow}>
+            <strong>{name}</strong>
+            <div><span style={l.previewLabel}>Allenamenti</span>{training}</div>
+            <div><span style={l.previewLabel}>Gara</span><span style={pending ? l.previewPending : undefined}>{match}</span></div>
+          </li>
         ))}
-      </div>
-      {/* Content row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 8 }}>
-        {/* Chart placeholder */}
-        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "12px", border: "1px solid rgba(255,255,255,0.06)", height: 100 }}>
-          <p style={{ margin: "0 0 8px", fontSize: 9, color: "#475569", fontWeight: 700, textTransform: "uppercase" }}>Andamento stagione</p>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 56, paddingTop: 4 }}>
-            {[40, 55, 50, 70, 65, 80, 75, 90, 85, 95].map((h, i) => (
-              <div key={i} style={{ flex: 1, background: `rgba(56,189,248,${0.3 + i * 0.07})`, borderRadius: "3px 3px 0 0", height: `${h}%` }} />
-            ))}
-          </div>
-        </div>
-        {/* Players list */}
-        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "12px", border: "1px solid rgba(255,255,255,0.06)", height: 100, overflow: "hidden" }}>
-          <p style={{ margin: "0 0 8px", fontSize: 9, color: "#475569", fontWeight: 700, textTransform: "uppercase" }}>Rosa</p>
-          {["Bianchi M.", "Rossi F.", "Verdi L."].map((name, i) => (
-            <div key={name} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-              <span style={{ fontSize: 10, color: "#94a3b8" }}>{name}</span>
-              <span style={{ fontSize: 10, color: i === 1 ? "#fbbf24" : "#4ade80", fontWeight: 700 }}>{i === 1 ? "Indis." : "Disp."}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+      </ul>
+    </figure>
   );
 }
 
-/* ─── Stili ─────────────────────────────────────────────────────── */
 const l = {
   root: {
     minHeight: "100vh",
@@ -422,7 +392,7 @@ const l = {
   logoText: { fontWeight: 900, fontSize: 18, color: "white" },
   navLinks: { display: "flex", gap: 28, flex: 1 },
   navLink: {
-    color: "#64748b", fontSize: 14, fontWeight: 700,
+    color: "#aebed2", fontSize: 14, fontWeight: 700,
     textDecoration: "none",
     transition: "color 0.15s",
   },
@@ -478,7 +448,7 @@ const l = {
 
   /* Hero */
   hero: {
-    padding: "100px 24px 80px",
+    padding: "clamp(32px, 5vw, 68px) clamp(16px, 4vw, 24px) clamp(38px, 6vw, 72px)",
     background: "#0b0f17",
   },
   heroInner: { maxWidth: 860, margin: "0 auto", textAlign: "center" },
@@ -488,26 +458,21 @@ const l = {
     background: "rgba(37,99,235,0.15)",
     border: "1px solid rgba(96,165,250,0.3)",
     color: "#93c5fd", fontSize: 13, fontWeight: 700,
-    marginBottom: 28,
+    marginBottom: 16,
   },
   heroTitle: {
-    fontSize: 56,
-    fontWeight: 900, lineHeight: 1.1,
+    fontSize: "clamp(30px, 5vw, 56px)",
+    fontWeight: 900, lineHeight: 1.1, textWrap: "balance",
     margin: "0 0 18px", letterSpacing: 0,
   },
-  heroAccent: {
-    background: "linear-gradient(135deg,#38bdf8,#a78bfa)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-  },
   heroSubtitle: {
-    fontSize: 18,
-    color: "#94a3b8", lineHeight: 1.65,
-    maxWidth: 620, margin: "0 auto 36px",
+    fontSize: "clamp(16px, 2vw, 18px)",
+    color: "#cbd5e1", lineHeight: 1.55,
+    maxWidth: 620, margin: "0 auto 22px",
   },
   heroActions: {
     display: "flex", gap: 12, justifyContent: "center",
-    flexWrap: "wrap", marginBottom: 16,
+    flexWrap: "wrap", marginBottom: 12,
   },
   btnHeroPrimary: {
     background: "#2563eb",
@@ -520,11 +485,11 @@ const l = {
   btnHeroGhost: {
     background: "transparent",
     border: "1px solid rgba(255,255,255,0.15)",
-    color: "#94a3b8", borderRadius: 14,
+    color: "#cbd5e1", borderRadius: 14,
     padding: "15px 28px", fontSize: 15, fontWeight: 700,
     cursor: "pointer",
   },
-  heroNote: { color: "#334155", fontSize: 12, fontWeight: 600, margin: "0 0 48px" },
+  heroNote: { color: "#aebed2", fontSize: 13, fontWeight: 600, margin: "0 0 24px" },
 
   /* Mockup */
   mockup: {
@@ -535,18 +500,20 @@ const l = {
     background: "rgba(15,17,21,0.97)",
     maxWidth: 780, margin: "0 auto",
   },
-  mockupBar: {
-    height: 36,
-    background: "rgba(255,255,255,0.04)",
-    borderBottom: "1px solid rgba(255,255,255,0.07)",
-    display: "flex", alignItems: "center", gap: 6, padding: "0 14px",
+  previewCaption: {
+    display: "flex", alignItems: "baseline", flexWrap: "wrap", justifyContent: "space-between",
+    gap: "4px 12px", padding: "14px 14px 4px", fontSize: 16, textAlign: "left",
   },
-  mockupDot: { width: 10, height: 10, borderRadius: "50%" },
-  mockupUrl: {
-    flex: 1, textAlign: "center", fontSize: 11,
-    color: "#334155", fontFamily: "monospace",
+  previewExample: { color: "#aebed2", fontSize: 13 },
+  previewWeek: { color: "#cbd5e1", fontSize: 13, textAlign: "left", padding: "0 14px 10px" },
+  previewList: { listStyle: "none", margin: 0, padding: "0 10px 10px", display: "grid", gap: 6 },
+  previewRow: {
+    display: "grid", gridTemplateColumns: "minmax(0, .85fr) repeat(2, minmax(0, 1fr))",
+    alignItems: "center", gap: 8, textAlign: "left", overflowWrap: "anywhere",
+    background: "#172233", borderRadius: 10, padding: "9px 8px", fontSize: 14, lineHeight: 1.35,
   },
-  mockupBody: { minHeight: 180 },
+  previewLabel: { display: "block", color: "#b9c8db", fontSize: 12, marginBottom: 2 },
+  previewPending: { color: "#fde68a", fontWeight: 650 },
 
   /* Stats */
   statsSection: {
@@ -559,6 +526,7 @@ const l = {
     background: "#10151d",
     borderBottom: "1px solid rgba(255,255,255,0.07)",
   },
+  workflowHeading: { maxWidth: 1100, margin: "0 auto 22px", fontSize: 26 },
   workflowInner: {
     maxWidth: 1100, margin: "0 auto", display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))", gap: 32,
@@ -578,7 +546,7 @@ const l = {
     gap: 6, padding: "16px 8px",
   },
   statValue: { fontSize: 36, fontWeight: 900, color: "white", lineHeight: 1 },
-  statLabel: { fontSize: 13, color: "#475569", fontWeight: 600 },
+  statLabel: { fontSize: 13, color: "#aebed2", fontWeight: 600 },
 
   /* Sections */
   section: { padding: "80px 24px" },
@@ -594,7 +562,7 @@ const l = {
     margin: "0 0 14px", lineHeight: 1.2,
   },
   sectionSubtitle: {
-    color: "#64748b", fontSize: 16, lineHeight: 1.65,
+    color: "#aebed2", fontSize: 16, lineHeight: 1.65,
     maxWidth: 600, margin: "0 auto",
   },
 
@@ -616,7 +584,7 @@ const l = {
     display: "grid", placeItems: "center", color: "#38bdf8", background: "#111e2a",
   },
   featureTitle: { margin: "0 0 8px", fontSize: 16, fontWeight: 800 },
-  featureDesc: { margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.6 },
+  featureDesc: { margin: 0, color: "#aebed2", fontSize: 13, lineHeight: 1.6 },
 
   /* Pricing */
   periodToggle: {
@@ -627,7 +595,7 @@ const l = {
   },
   periodBtn: {
     padding: "10px 24px", background: "transparent",
-    border: "none", color: "#64748b", fontWeight: 800,
+    border: "none", color: "#aebed2", fontWeight: 800,
     fontSize: 13, cursor: "pointer",
     display: "flex", alignItems: "center", gap: 8,
   },
@@ -714,7 +682,7 @@ const l = {
     margin: "0 0 14px", lineHeight: 1.2,
   },
   ctaBannerSubtitle: {
-    color: "#64748b", fontSize: 16, margin: "0 0 32px", lineHeight: 1.6,
+    color: "#aebed2", fontSize: 16, margin: "0 0 32px", lineHeight: 1.6,
   },
   btnCtaBig: {
     background: "#2563eb",
@@ -740,7 +708,7 @@ const l = {
   },
   faqAnswer: {
     margin: 0, padding: "0 20px 18px",
-    color: "#64748b", fontSize: 14, lineHeight: 1.7,
+    color: "#aebed2", fontSize: 14, lineHeight: 1.7,
   },
 
   /* Footer */

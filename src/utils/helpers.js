@@ -93,7 +93,7 @@ export function normalizeSession(s){
     // FIX #12: ID sempre stringa
     id: s.id ? String(s.id) : s.id,
     type:s.type || "Allenamento",
-    date:s.date || new Date().toISOString().slice(0, 10),
+    date:s.date || "",
     title:s.title || "Seduta",
     exercises:s.exercises || [],
     attendance:s.attendance || {},
@@ -532,6 +532,7 @@ export function normalizeSetPlays(sp = {}) {
 export function normalizeAppState(state = {}){
   return {
     players: (state.players || []).map(normalizePlayer),
+    seasonPlayers: (state.seasonPlayers || []).map(row => ({ ...row, id: String(row.id) })),
     exercises: (state.exercises || []).map(normalizeExercise),
     sessions: (state.sessions || []).map(normalizeSession),
     matches: (state.matches || []).map(normalizeMatch).sort(compareMatchDateTime),
@@ -1521,7 +1522,8 @@ export function getCompletedTrainingEvents(events, today = localDateString(), no
     .filter((event) => isCompletedTrainingSession(event, today, nowTime));
 }
 
-const ATTENDANCE_STATUSES = new Set(["Presente", "Parziale", "Recupero", "Assente", "Permesso", "Infortunato", "Squalificato"]);
+export const TRAINING_ATTENDANCE_PENDING = "Da confermare";
+const ATTENDANCE_STATUSES = new Set(["Presente", "Parziale", "Recupero", "Assente", "Permesso", "Infortunato", "Squalificato", TRAINING_ATTENDANCE_PENDING]);
 
 export function isTrainingParticipation(status) {
   return status === "Presente" || status === "Parziale" || status === "Recupero";
@@ -1543,18 +1545,46 @@ export function getTrainingSessionStatus(player, event) {
   return getRecordedTrainingStatus(player, event) ?? getTrainingDefaultStatus(player, normalizeStatsDate(event.date));
 }
 
-export function getTrainingAttendanceSummary(player, completedEvents) {
-  let trainingPresences = 0, absences = 0, injuries = 0;
-  const eligibleEvents = completedEvents.filter((event) => !hasPlayerTransferred(player, event.date));
-  for (const event of eligibleEvents) {
-    const status = getTrainingSessionStatus(player, event);
+export function getTrainingConfirmationStatus(player, event) {
+  if (hasPlayerTransferred(player, event.date)) return null;
+  const recorded = getRecordedTrainingStatus(player, event);
+  if (recorded !== null) return recorded;
+  const suggested = getTrainingDefaultStatus(player, normalizeStatsDate(event.date));
+  return suggested === "Presente" ? TRAINING_ATTENDANCE_PENDING : suggested;
+}
+
+export function canConfirmUnrecordedTrainingPresence(player, event) {
+  return getRecordedTrainingStatus(player, event) === null &&
+    getTrainingConfirmationStatus(player, event) === TRAINING_ATTENDANCE_PENDING;
+}
+
+export function confirmUnrecordedTrainingPresences(event, players) {
+  const eligible = players.filter((player) => canConfirmUnrecordedTrainingPresence(player, event));
+  if (!eligible.length) return event;
+
+  const attendance = { ...event.attendance };
+  for (const { id } of eligible) {
+    const entry = attendance[id];
+    attendance[id] = { ...(typeof entry === "object" ? entry : {}), status: "Presente" };
+  }
+  return { ...event, attendance };
+}
+
+export function getTrainingAttendanceSummary(player, completedEvents, { requireConfirmedPresence = false } = {}) {
+  let trainingPresences = 0, absences = 0, injuries = 0, pendingTrainings = 0, totalTrainings = 0;
+  for (const event of completedEvents) {
+    if (hasPlayerTransferred(player, event.date)) continue;
+    totalTrainings++;
+    const status = requireConfirmedPresence
+      ? getTrainingConfirmationStatus(player, event)
+      : getTrainingSessionStatus(player, event);
+    if (status === TRAINING_ATTENDANCE_PENDING) pendingTrainings++;
     if (isTrainingParticipation(status)) trainingPresences++;
     if (status === "Assente" || status === "Permesso") absences++;
     if (status === "Infortunato") injuries++;
   }
-  const totalTrainings = eligibleEvents.length;
-  return { trainingPresences, absences, injuries, totalTrainings, pendingTrainings: 0,
-    trainingPct: totalTrainings ? Math.round(trainingPresences / totalTrainings * 100) : null };
+  return { trainingPresences, absences, injuries, totalTrainings, pendingTrainings,
+    trainingPct: totalTrainings && !pendingTrainings ? Math.round(trainingPresences / totalTrainings * 100) : null };
 }
 
 export function formatTrainingAttendance({ trainingPresences, pendingTrainings }, english = false) {

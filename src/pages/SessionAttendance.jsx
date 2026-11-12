@@ -1,3 +1,4 @@
+import { getRosterReturnPath } from "../utils/rosterNavigation";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import AppCard from "../components/ui/AppCard";
@@ -6,11 +7,12 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
-import { formatDate, getRecordedTrainingStatus, getTrainingSessionStatus, hasPlayerTransferred, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes } from "../utils/helpers";
+import { canConfirmUnrecordedTrainingPresence, confirmUnrecordedTrainingPresences, formatDate, getRecordedTrainingStatus, getTrainingConfirmationStatus, hasPlayerTransferred, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes, TRAINING_ATTENDANCE_PENDING } from "../utils/helpers";
 import { hasTrainingEnded } from "../utils/trainingArchive";
 import { useTranslation } from "../i18n";
 
-const STATUS_OPTIONS = ["Presente", "Parziale", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"];
+const STATUS_OPTIONS = ["Presente", "Parziale", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato", TRAINING_ATTENDANCE_PENDING];
+const needsConfirmation = (status) => status === null || status === TRAINING_ATTENDANCE_PENDING;
 
 const STATUS_TONE = {
   Presente:   "green",
@@ -39,7 +41,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const { id } = useParams();
   const navigate = useNavigate();
   const { state } = useLocation();
-  const rosterReturn = state?.rosterWeek ? "/statistics?roster=1&rosterWeek=" + encodeURIComponent(state.rosterWeek) + (state.rosterPending ? "&rosterPending=1" : "") : null;
+  const rosterReturn = getRosterReturnPath(state);
   const [pendingOnly, setPendingOnly] = useState(Boolean(state?.pendingOnly));
   const { canManage } = useAreaPermission();
   const [showSummaryList, setShowSummaryList] = useState(false);
@@ -53,11 +55,12 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const sessionPlayers = players.filter((player) => !hasPlayerTransferred(player, session?.date));
   const firstTeamPlayers = sessionPlayers.filter((player) => String(player.gruppo || "prima").trim().toLowerCase() === "prima");
   const ended = session && hasTrainingEnded(session);
-  const attendanceStatus = (player) => ended ? getTrainingSessionStatus(player, session) : getRecordedTrainingStatus(player, session);
-  const unrecordedPlayers = firstTeamPlayers.filter((player) => attendanceStatus(player) === null);
+  const attendanceStatus = (player) => ended ? getTrainingConfirmationStatus(player, session) : getRecordedTrainingStatus(player, session);
+  const unrecordedPlayers = firstTeamPlayers.filter((player) => needsConfirmation(attendanceStatus(player)));
   const visiblePlayers = pendingOnly
     ? unrecordedPlayers
     : sessionPlayers;
+  const eligibleCount = session ? visiblePlayers.filter((player) => canConfirmUnrecordedTrainingPresence(player, session)).length : 0;
 
   function updatePlayer(playerId, field, value) {
     if (!canManage) return;
@@ -71,30 +74,21 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
           ...item,
           attendance: {
             ...(item.attendance || {}),
-            [playerId]: { ...current, [field]: value },
+            [playerId]: { ...(typeof current === "string" ? { status: current } : current), [field]: value },
           },
         };
       })
     );
   }
 
-  function markAll(status) {
+  function confirmUnrecorded() {
     if (!canManage) return;
     if (!session) return;
     if (!updateEvents) return;
     updateEvents((prevSessions) =>
       prevSessions.map((item) => {
         if (String(item.id) !== String(id)) return item;
-        const newAttendance = { ...item.attendance };
-        visiblePlayers.forEach((p) => {
-          const playerId = String(p.id);
-          if (pendingOnly && getRecordedTrainingStatus(p, item)) return;
-          newAttendance[playerId] = {
-            ...(item.attendance?.[playerId] || {}),
-            status,
-          };
-        });
-        return { ...item, attendance: newAttendance };
+        return confirmUnrecordedTrainingPresences(item, visiblePlayers);
       })
     );
   }
@@ -159,28 +153,29 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
         <div style={s.topBar}>
           <div style={s.summary}>
             <SummaryPill color="#22c55e" icon="✔" label={t("pages.sessionAttendance.summaryPresenti")}    value={presenti} />
-            {partial > 0 && <SummaryPill color="#38bdf8" icon="◐" label="parziali" value={partial} />}
+            {partial > 0 && <SummaryPill color="#38bdf8" icon="◐" label={t("pages.attendanceRegister.status.Parziale")} value={partial} />}
             {assenti     > 0 && <SummaryPill color="#f87171"  icon="✖" label={t("pages.sessionAttendance.summaryAssenti")}     value={assenti} />}
             {infortunati > 0 && <SummaryPill color="#fb923c"  icon="⚠" label={t("pages.sessionAttendance.summaryInfortunati")} value={infortunati} />}
             {permesso    > 0 && <SummaryPill color="#38bdf8"  icon="◎" label={t("pages.sessionAttendance.summaryPermesso")}    value={permesso} />}
             {pending > 0 && <SummaryPill color="#facc15" icon="?" label={t("pages.sessionAttendance.pendingCount")} value={pending} />}
           </div>
           <div style={s.topActions}>
-            {canManage && visiblePlayers.length > 0 && (
-              <Button variant="ghost" onClick={() => setConfirmState({
-                message: t(pendingOnly ? "pages.sessionAttendance.markPendingMessage" : "pages.sessionAttendance.markAllMessage"),
-                confirmLabel: t(pendingOnly ? "pages.sessionAttendance.markPendingPresent" : "pages.sessionAttendance.markAllPresent"),
-                onConfirm: () => markAll("Presente"),
+            {canManage && eligibleCount > 0 && (
+              <Button style={{ minHeight: 44 }} onClick={() => setConfirmState({
+                message: t("pages.sessionAttendance.markPendingMessage"),
+                confirmLabel: t("pages.sessionAttendance.markPendingPresent", { count: eligibleCount }),
+                onConfirm: confirmUnrecorded,
               })}>
-                {t(pendingOnly ? "pages.sessionAttendance.markPendingPresent" : "pages.sessionAttendance.markAllPresent")}
+                {t("pages.sessionAttendance.markPendingPresent", { count: eligibleCount })}
               </Button>
             )}
             <Button variant="ghost" onClick={() => navigate(rosterReturn || (state?.fromDashboard ? "/" : "/trainings"))}>
-              {rosterReturn ? "Torna al riepilogo settimanale" : t(state?.fromDashboard ? "pages.sessionAttendance.backToDashboard" : "pages.sessionAttendance.back")}
+              {rosterReturn ? t("dailyUi.backQuadro") : t(state?.fromDashboard ? "pages.sessionAttendance.backToDashboard" : "pages.sessionAttendance.back")}
             </Button>
           </div>
         </div>
         {pending > 0 && <p style={s.pendingHelp}>{t("pages.sessionAttendance.pendingHelp")}</p>}
+        {canManage && <p style={s.pendingHelp}>{t("pages.sessionAttendance.autosaveHelp")}</p>}
       </AppCard>
 
       {/* Lista riepilogo presenti/assenti */}
@@ -204,12 +199,12 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
         const presentiList = sortByRole(firstTeamPlayers.filter((p) => isTrainingParticipation(attendanceStatus(p))));
         const assentiList = sortByRole(firstTeamPlayers.filter((p) => {
           const status = attendanceStatus(p);
-          return status !== null && !isTrainingParticipation(status);
+          return !needsConfirmation(status) && !isTrainingParticipation(status);
         }));
         const groups = [
           { label: t("pages.sessionAttendance.summaryPresenti"), color: "#22c55e", players: presentiList },
           { label: t("pages.sessionAttendance.notOnPitch"), color: "#f87171", players: assentiList },
-          ...(!ended ? [{ label: t("pages.sessionAttendance.pendingStatus"), color: "#facc15", players: sortByRole(unrecordedPlayers) }] : []),
+          ...(unrecordedPlayers.length ? [{ label: t("pages.sessionAttendance.pendingStatus"), color: "#facc15", players: sortByRole(unrecordedPlayers) }] : []),
         ];
         return (
           <AppCard>
@@ -230,7 +225,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                     {players.map((player) => (
                       <div key={player.id} style={s.summaryPlayer}>
                         <span>{getName(player)}</span>
-                        <small>{attendanceStatus(player) ?? player.role}</small>
+                        <small>{attendanceStatus(player) ? t("pages.attendanceRegister.status." + attendanceStatus(player)) : player.role}</small>
                       </div>
                     ))}
                   </div>
@@ -272,21 +267,21 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                 "—";
 
               return (
-                <div key={pid} style={s.playerCard}>
+                <div key={pid} className="attendance-player-card" role="group" aria-label={displayName} style={s.playerCard}>
                   {/* Header giocatore */}
                   <div style={s.playerHeader}>
                     <div style={{ minWidth: 0 }}>
                       <p style={s.playerName}>{displayName}</p>
                       <p style={s.playerRole}>{player.role || "—"}</p>
                     </div>
-                    <Badge tone={STATUS_TONE[recorded] || "slate"}>{recorded ?? t("pages.sessionAttendance.pendingStatus")}</Badge>
+                    <Badge tone={STATUS_TONE[recorded] || "slate"}>{t("pages.attendanceRegister.status." + (recorded ?? TRAINING_ATTENDANCE_PENDING))}</Badge>
                   </div>
 
                   {/* Bottoni stato */}
                   <div style={s.statusButtons}>
                     {STATUS_OPTIONS.map((opt) => (
                       <button
-                        key={opt}
+                        key={t("pages.attendanceRegister.status." + opt)}
                         type="button"
                         aria-pressed={recorded === opt}
                         onClick={() => updatePlayer(pid, "status", opt)}
@@ -296,7 +291,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                           ...(recorded === opt ? s.statusBtnActive : {}),
                         }}
                       >
-                        {opt}
+                        {t("pages.attendanceRegister.status." + opt)}
                       </button>
                     ))}
                   </div>
@@ -304,7 +299,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                   {/* RPE solo se presente */}
                   {recorded === "Parziale" && (
                     <label style={s.rpeRow}>
-                      <span>Minuti svolti (facoltativi)</span>
+                      <span>{t("dailyUi.partialMinutes")}</span>
                       <input style={s.rpeInput} type="number" min="1" step="1" inputMode="numeric"
                         value={data.partialMinutes ?? ""} disabled={!canManage}
                         onChange={(event) => {
@@ -451,7 +446,7 @@ const s = {
   },
   statusBtn: {
     borderRadius: 999,
-    minHeight: 36,
+    minHeight: 44,
     padding: "6px 11px",
     fontSize: 12,
     fontWeight: 700,

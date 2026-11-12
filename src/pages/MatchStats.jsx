@@ -84,6 +84,16 @@ function rowHasData(row) {
   ));
 }
 
+function hasRowChanges(row, previous) {
+  if (!row || (!previous && !rowHasData(row))) return false;
+  if (row.minutesEdited) return true;
+  const next = rowToStats(row);
+  return ["goals", "goals_conceded", "assists", "yellow_cards", "red_cards", "rating"].some((field) => {
+    const fallback = field === "goals_conceded" || field === "rating" ? "" : 0;
+    return String(next[field] ?? fallback) !== String(previous?.[field] ?? fallback);
+  });
+}
+
 function getMatchPlayerIds(match) {
   return [...new Set([
     ...(match?.lineup?.starterIds || []),
@@ -288,15 +298,7 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
   }, [currentCalledUpIds, currentStarterIds, matrixPlayers, playerFilter]);
   const hasUnsavedRows = matrixMatches.some((item) => matrixPlayers.some((player) => {
     const mid = String(item.id), pid = String(player.id);
-    const row = rows[mid]?.[pid];
-    const previous = savedSnapshot[`${mid}:${pid}`];
-    if (!row || (!previous && !rowHasData(row))) return false;
-    const next = rowToStats(row);
-    if (row.minutesEdited) return true;
-    return ["goals", "goals_conceded", "assists", "yellow_cards", "red_cards", "rating"].some((field) => {
-      const nullable = field === "goals_conceded" || field === "rating";
-      return String(next[field] ?? (nullable ? "" : 0)) !== String(previous?.[field] ?? (nullable ? "" : 0));
-    });
+    return hasRowChanges(rows[mid]?.[pid], savedSnapshot[mid + ":" + pid]);
   }));
 
   useEffect(() => {
@@ -468,29 +470,24 @@ export default function MatchStats({ players = [], matches = [], appSettings = {
     for (const matchItem of matrixMatches) {
       const mid = String(matchItem.id);
       for (const player of matrixPlayers) {
-      const pid = String(player.id);
-      const row = rows[mid]?.[pid];
-      if (!row) continue;
-
-      // Salta righe completamente vuote (nessun dato inserito)
-      if (!rowHasData(row) && !savedRef.current[`${mid}:${pid}`]) continue;
-
-      const newStats = rowToStats(row);
-        const oldStats = savedRef.current[`${mid}:${pid}`] || null;
-
-      const { error } = await savePlayerMatchStats(
+        const pid = String(player.id);
+        const row = rows[mid]?.[pid];
+        const oldStats = savedRef.current[mid + ":" + pid] || null;
+        if (!hasRowChanges(row, oldStats)) continue;
+        const newStats = rowToStats(row);
+        const { error } = await savePlayerMatchStats(
           auth.team.id, pid, mid, newStats, oldStats, activeSeason
-      ).catch((error) => ({ error }));
+        ).catch((error) => ({ error }));
 
-      if (error) {
-        hasError = true;
-      } else {
-        // Aggiorna savedRef con i nuovi valori per eventuali salvataggi successivi
+        if (error) {
+          hasError = true;
+        } else {
+          // Aggiorna savedRef con i nuovi valori per eventuali salvataggi successivi
           const key = mid + ":" + pid;
           const minutesUpdate = row.minutesEdited ? { minutes_cleared: newStats.minutes_played === null } : {};
           if (row.minutesEdited) confirmedMinutesEdits.add(key);
           savedRef.current[key] = { ...oldStats, ...newStats, ...minutesUpdate, player_id: pid, match_id: mid };
-      }
+        }
       }
     }
 

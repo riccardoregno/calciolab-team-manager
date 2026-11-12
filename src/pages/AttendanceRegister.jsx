@@ -11,7 +11,7 @@ import SearchBar from "../components/ui/SearchBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { useAuth } from "../hooks/useAuth";
 import { styles } from "../styles/index.js";
-import { comparePlayersByName, formatShortDate, getPlayerSortKey, getPlayerUnavailabilityOnDate, getTrainingSessionStatus, hasPlayerTransferred, getRecordedTrainingStatus, getRecordedTrainingMinutes, isTrainingParticipation, getCompletedTrainingEvents, getTrainingAttendanceSummary, formatTrainingAttendance, isFriendlyMatch } from "../utils/helpers";
+import { comparePlayersByName, confirmUnrecordedTrainingPresences, formatShortDate, getPlayerSortKey, getPlayerUnavailabilityOnDate, getTrainingConfirmationStatus, hasPlayerTransferred, getRecordedTrainingStatus, getRecordedTrainingMinutes, isTrainingParticipation, getCompletedTrainingEvents, getTrainingAttendanceSummary, formatTrainingAttendance, isFriendlyMatch, TRAINING_ATTENDANCE_PENDING } from "../utils/helpers";
 import { hasTrainingEnded } from "../utils/trainingArchive";
 import { fetchTeamRpe } from "../services/sessionRpe";
 import { useTranslation } from "../i18n";
@@ -19,6 +19,7 @@ import { useTranslation } from "../i18n";
 const STATUS_FLOW = ["Presente", "Parziale", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato"];
 
 const STATUS_META = {
+  [TRAINING_ATTENDANCE_PENDING]: { code: "?", tone: "orange", color: "#fbbf24", bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.36)" },
   Presente:     { code: "P",  tone: "green",  color: "#4ade80", bg: "rgba(34,197,94,0.13)", border: "rgba(34,197,94,0.36)" },
   Assente:      { code: "A",  tone: "red",    color: "#f87171", bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.34)" },
   Infortunato:  { code: "I",  tone: "orange", color: "#fbbf24", bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.36)" },
@@ -95,7 +96,7 @@ function getMatchStatus(player, session) {
 
 function getSessionStatus(player, session) {
   if (session.isMatch && !session.isFriendly) return getMatchStatus(player, session);
-  return getTrainingSessionStatus(player, session);
+  return getTrainingConfirmationStatus(player, session);
 }
 
 function findOverlappingAbsence(player, dateStr, { type, excludeType } = {}) {
@@ -176,8 +177,8 @@ function getDuration(session) {
   }, 0);
 }
 
-export default function AttendanceRegister({ players = [], sessions = [], setSessions, matches = [], setMatches, teamId }) {
-  const { t } = useTranslation();
+export default function AttendanceRegister({ players = [], sessions = [], setSessions, matches = [], setMatches, teamId, seasonBounds }) {
+  const { t, language } = useTranslation();
   const navigate = useNavigate();
   const { canManage } = useAreaPermission();
   const auth = useAuth();
@@ -191,7 +192,10 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   const [includeJuniorsInStats, setIncludeJuniorsInStats] = useState(false);
   const [finesRange, setFinesRange] = useState({ start: "", end: "" });
   const [exportingFines, setExportingFines] = useState(false);
-  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [month, setMonth] = useState(() => {
+    const current = new Date().toISOString().slice(0,7);
+    return seasonBounds ? current < seasonBounds.start_date.slice(0,7) ? seasonBounds.start_date.slice(0,7) : current > seasonBounds.end_date.slice(0,7) ? seasonBounds.end_date.slice(0,7) : current : current;
+  });
 
   // RPE autodichiarato dai giocatori dal portale (tabella session_rpe) — usato come
   // pre-compilazione quando il mister non ha ancora inserito/corretto un valore.
@@ -355,9 +359,9 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   function cycleStatus(session, player) {
     if (!canManage || hasPlayerTransferred(player, session.date) || (session.isMatch && !session.isFriendly)) return;
     const playerId = String(player.id);
-    const current = hasTrainingEnded(session) ? getTrainingSessionStatus(player, session) : getRecordedTrainingStatus(player, session);
+    const current = hasTrainingEnded(session) ? getTrainingConfirmationStatus(player, session) : getRecordedTrainingStatus(player, session);
     const currentIndex = STATUS_FLOW.indexOf(current);
-    const nextStatus = current === null ? getTrainingSessionStatus(player, session) : STATUS_FLOW[(currentIndex + 1) % STATUS_FLOW.length];
+    const nextStatus = current === null ? "Presente" : STATUS_FLOW[(currentIndex + 1) % STATUS_FLOW.length];
     updateAttendance(session, playerId, { status: nextStatus });
   }
 
@@ -366,6 +370,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
     const updater = (prevList) =>
       prevList.map((item) => {
         if (String(item.id) !== String(session.id)) return item;
+        if (status === "Presente") return confirmUnrecordedTrainingPresences(item, targetPlayers);
         const nextAttendance = { ...(item.attendance || {}) };
         targetPlayers.forEach((player) => {
           if (hasPlayerTransferred(player, session.date)) return;
@@ -405,42 +410,36 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                   padding: "10px 14px",
                   borderBottom: "1px solid rgba(255,255,255,0.05)",
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div className="attendance-register-player-heading">
                     <div>
                       <strong style={{ fontSize: 13, display: "block" }}>{getPlayerName(player)}</strong>
                       <span style={{ fontSize: 11, color: "#64748b" }}>{player.role || "-"}{player.shirtNumber ? ` · #${player.shirtNumber}` : ""}</span>
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <Badge tone={rowStats.pendingTrainings ? "orange" : "green"}>{formatTrainingAttendance(rowStats)}</Badge>
-                      <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>carico {rowStats.load}</span>
+                      <Badge tone={rowStats.pendingTrainings ? "orange" : "green"}>{formatTrainingAttendance(rowStats, language === "en")}</Badge>
+                      <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>{t("dailyUi.load")} {rowStats.load}</span>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
+                  <div className="attendance-register-days">
                     {visibleSessions.map((session) => {
                       const status = getSessionStatus(player, session);
                       const transferred = hasPlayerTransferred(player, session.date);
                       const meta = STATUS_META[status] || STATUS_META.Presente;
                       const isReadOnlyMatch = session.isMatch && !session.isFriendly;
-                      const pending = !isReadOnlyMatch && !hasTrainingEnded(session) && getRecordedTrainingStatus(player, session) === null;
+                      const pending = !isReadOnlyMatch && (status === TRAINING_ATTENDANCE_PENDING ||
+                        (!hasTrainingEnded(session) && getRecordedTrainingStatus(player, session) === null));
                       return (
-                        <div key={session.id} style={{ flexShrink: 0, textAlign: "center" }}>
-                          <div style={{ fontSize: 9, color: "#475569", fontWeight: 700, marginBottom: 2, whiteSpace: "nowrap" }}>
-                            {formatShortDate(session.date)}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => cycleStatus(session, player)}
-                            disabled={!canManage || isReadOnlyMatch || transferred}
-                            style={{
-                              width: 28, height: 28, borderRadius: 7, border: `1px solid ${meta.border}`,
-                              background: meta.bg, color: meta.color,
-                              fontWeight: 900, fontSize: 11, cursor: isReadOnlyMatch ? "default" : "pointer",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                            }}
-                          >
-                            {transferred ? "—" : pending ? "?" : meta.code}
-                          </button>
-                        </div>
+                        <label key={session.id} className="attendance-register-day">
+                          <span>{formatShortDate(session.date)}</span>
+                          {isReadOnlyMatch || transferred ? <span style={{ color: meta.color }}>{transferred ? t("pages.playerDetail.profile.transferred") : t("pages.attendanceRegister.status." + status)}</span> : <select
+                            value={pending ? TRAINING_ATTENDANCE_PENDING : status}
+                            disabled={!canManage}
+                            aria-label={t("dailyUi.statusFor", { name: getPlayerName(player), date: formatShortDate(session.date), status: t("pages.attendanceRegister.status." + (pending ? TRAINING_ATTENDANCE_PENDING : status)) })}
+                            onChange={(event) => updateAttendance(session, String(player.id), { status: event.target.value })}
+                            style={{ borderColor: meta.border }}>
+                            {[TRAINING_ATTENDANCE_PENDING, ...STATUS_FLOW].map(value => <option key={value} value={value}>{t("pages.attendanceRegister.status." + value)}</option>)}
+                          </select>}
+                        </label>
                       );
                     })}
                   </div>
@@ -499,13 +498,13 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                     )}
                     {canManage && (!session.isMatch || session.isFriendly) && (
                       <div style={ar.columnActions}>
-                        <button type="button" onClick={() => markSession(session, "Presente", tablePlayers)} style={ar.miniAction}>P</button>
+                        <button type="button" title={t("pages.sessionAttendance.markPendingMessage")} aria-label={t("pages.sessionAttendance.markPendingMessage")} onClick={() => markSession(session, "Presente", tablePlayers)} style={ar.miniAction}>P</button>
                         <button type="button" onClick={() => markSession(session, "Assente", tablePlayers)} style={ar.miniAction}>A</button>
                       </div>
                     )}
                   </th>
                 ))}
-                <th style={ar.th}>{"Presenze allenamento"}</th>
+                <th style={ar.th}>{t("dailyUi.trainingPresences")}</th>
                 <th style={ar.th}>{t("pages.attendanceRegister.load")}</th>
               </tr>
             </thead>
@@ -528,7 +527,8 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                       const transferred = hasPlayerTransferred(player, session.date);
                       const meta = STATUS_META[status] || STATUS_META.Presente;
                       const isReadOnlyMatch = session.isMatch && !session.isFriendly;
-                      const pending = !isReadOnlyMatch && !hasTrainingEnded(session) && getRecordedTrainingStatus(player, session) === null;
+                      const pending = !isReadOnlyMatch && (status === TRAINING_ATTENDANCE_PENDING ||
+                        (!hasTrainingEnded(session) && getRecordedTrainingStatus(player, session) === null));
                       const showRpe = isTrainingParticipation(status);
                       const playerSubmittedRpe = playerRpeIndex[`${playerId}:${session.id}`];
                       const effectiveRpe = entry.rpe ?? playerSubmittedRpe ?? "";
@@ -547,7 +547,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                                 borderColor: meta.border,
                                 cursor: isReadOnlyMatch ? "default" : "pointer",
                               }}
-                              title={pending ? "Da confermare · suggerito " + status : isReadOnlyMatch ? t("pages.attendanceRegister.editInConvocation") : t("pages.attendanceRegister.cycleStatus")}
+                              title={pending ? t("dailyUi.pending") : isReadOnlyMatch ? t("pages.attendanceRegister.editInConvocation") : t("pages.attendanceRegister.cycleStatus")}
                             >
                               {transferred ? "—" : pending ? "?" : meta.code}
                             </button>
@@ -575,7 +575,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                     })}
 
                     <td style={ar.td}>
-                      <Badge tone={rowStats.pendingTrainings ? "orange" : "green"}>{formatTrainingAttendance(rowStats)}</Badge>
+                      <Badge tone={rowStats.pendingTrainings ? "orange" : "green"}>{formatTrainingAttendance(rowStats, language === "en")}</Badge>
                     </td>
                     <td style={ar.td}>
                       <span style={ar.loadValue}>{rowStats.load}</span>
@@ -591,17 +591,17 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   }
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="attendance-register-workspace">
       <PageHeader
         title={t("pages.attendanceRegister.title")}
-        subtitle={t("pages.attendanceRegister.subtitle")}
+        subtitle={isMobile ? undefined : t("pages.attendanceRegister.subtitle")}
         action={
           <div style={ar.actions}>
             <Button variant="ghost" onClick={() => navigate("/trainings")}>
               {t("pages.attendanceRegister.backToTrainings")}
             </Button>
-            <Button onClick={() => navigate("/statistics")}>
-              {t("pages.attendanceRegister.openStats")}
+            <Button onClick={() => navigate("/statistics?roster=1")}>
+              {t("dailyUi.openQuadro")}
             </Button>
           </div>
         }
@@ -609,9 +609,9 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
 
       <AppCard>
         <div style={ar.toolbar}>
-          <div style={ar.metrics}>
+          <div className="attendance-register-metrics no-mobile-override" style={ar.metrics}>
             <Metric label={t("pages.attendanceRegister.metricSessions")} value={visibleSessions.length} tone="blue" />
-            <Metric label="Presenze allenamento" value={formatTrainingAttendance(registerStats)} tone="green" />
+            <Metric label={t("dailyUi.trainingPresences")} value={formatTrainingAttendance(registerStats, language === "en")} tone="green" />
             <Metric label={t("pages.attendanceRegister.metricAbsences")} value={registerStats.absences} tone="red" />
             <Metric label={t("pages.attendanceRegister.metricInjuries")} value={registerStats.injuries} tone="orange" />
             <Metric label={t("pages.attendanceRegister.metricAvgRpe")} value={registerStats.avgRpe || "-"} tone="purple" />
@@ -630,7 +630,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
             <p style={ar.statsScopeNote}>{t("pages.attendanceRegister.juniorsScopeNote")}</p>
           )}
 
-          <div style={ar.filters}>
+          <div className="attendance-register-filters no-mobile-override" style={ar.filters}>
             <input
               type="month"
               value={month}
@@ -646,7 +646,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
             >
               <option value="tutti">{t("pages.attendanceRegister.allGroups")}</option>
               {groups.map((group) => (
-                <option key={group} value={group}>{group}</option>
+                <option key={group} value={group}>{t("pages.players.group" + group.charAt(0).toUpperCase() + group.slice(1))}</option>
               ))}
             </select>
             <SearchBar
@@ -657,7 +657,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
           </div>
         </div>
 
-        <div style={ar.legend}>
+        <div className="attendance-register-legend" style={ar.legend}>
           {STATUS_FLOW.map((status) => (
             <span key={status} style={{ ...ar.legendItem, color: STATUS_META[status].color }}>
               <strong>{STATUS_META[status].code}</strong> {t(`pages.attendanceRegister.status.${status}`)}
@@ -666,7 +666,32 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
         </div>
       </AppCard>
 
+
+
+      {!visibleSessions.length ? (
+        <EmptyState
+          icon="📋"
+          title={t("pages.attendanceRegister.noSessionsTitle")}
+          text={t("pages.attendanceRegister.noSessionsText")}
+          action={canManage ? <Button onClick={() => navigate("/trainings")}>{t("pages.attendanceRegister.createSession")}</Button> : null}
+        />
+      ) : !visiblePlayers.length ? (
+        <EmptyState
+          icon="👥"
+          title={t("pages.attendanceRegister.noPlayersTitle")}
+          text={t("pages.attendanceRegister.noPlayersText")}
+        />
+      ) : (
+        <div style={ar.tableSections}>
+          {renderAttendanceTable(visiblePrimaryPlayers)}
+          {renderAttendanceTable(visibleJuniorPlayers, {
+            title: t("pages.players.groupJuniores"),
+            subtitle: t("pages.attendanceRegister.junioresHint"),
+          })}
+        </div>
+      )}
       <AppCard>
+        <details className="attendance-fines"><summary>{t("dailyUi.fines")}</summary>
         <div style={ar.finesHeader}>
           <div>
             <h3 style={ar.finesTitle}>{t("pages.attendanceRegister.fines.title")}</h3>
@@ -718,30 +743,8 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
             ))}
           </div>
         )}
+        </details>
       </AppCard>
-
-      {!visibleSessions.length ? (
-        <EmptyState
-          icon="📋"
-          title={t("pages.attendanceRegister.noSessionsTitle")}
-          text={t("pages.attendanceRegister.noSessionsText")}
-          action={canManage ? <Button onClick={() => navigate("/trainings")}>{t("pages.attendanceRegister.createSession")}</Button> : null}
-        />
-      ) : !visiblePlayers.length ? (
-        <EmptyState
-          icon="👥"
-          title={t("pages.attendanceRegister.noPlayersTitle")}
-          text={t("pages.attendanceRegister.noPlayersText")}
-        />
-      ) : (
-        <div style={ar.tableSections}>
-          {renderAttendanceTable(visiblePrimaryPlayers)}
-          {renderAttendanceTable(visibleJuniorPlayers, {
-            title: t("pages.players.groupJuniores"),
-            subtitle: t("pages.attendanceRegister.junioresHint"),
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -752,11 +755,13 @@ function buildRegisterStats(players, sessions, playerRpeIndex = {}) {
   let absences = 0;
   let injuries = 0;
   const rpes = [];
+  let pendingTrainings = 0;
 
   players.forEach((player) => {
     pastSessions.forEach((session) => {
       const entry = session.attendance?.[String(player.id)] || {};
-      const status = getTrainingSessionStatus(player, session);
+      const status = getTrainingConfirmationStatus(player, session);
+      if (status === TRAINING_ATTENDANCE_PENDING) pendingTrainings++;
       const effectiveRpe = entry.rpe ?? playerRpeIndex[`${player.id}:${session.id}`];
       if (isTrainingParticipation(status)) present += 1;
       if (ABSENT_STATUSES.has(status)) absences += 1;
@@ -767,6 +772,7 @@ function buildRegisterStats(players, sessions, playerRpeIndex = {}) {
 
   return {
     trainingPresences: present,
+    pendingTrainings,
     absences,
     injuries,
     avgRpe: rpes.length ? Number((rpes.reduce((sum, value) => sum + value, 0) / rpes.length).toFixed(1)) : 0,
@@ -779,7 +785,7 @@ function buildPlayerStats(player, sessions, playerRpeIndex = {}) {
 
   pastSessions.forEach((session) => {
     const entry = session.attendance?.[String(player.id)] || {};
-    const status = getTrainingSessionStatus(player, session);
+    const status = getTrainingConfirmationStatus(player, session);
     const effectiveRpe = entry.rpe ?? playerRpeIndex[`${player.id}:${session.id}`];
     if (isTrainingParticipation(status)) {
       const minutes = getRecordedTrainingMinutes(entry) ?? (status === "Parziale" ? 0 : getDuration(session));
@@ -788,7 +794,7 @@ function buildPlayerStats(player, sessions, playerRpeIndex = {}) {
   });
 
   return {
-    ...getTrainingAttendanceSummary(player, pastSessions),
+    ...getTrainingAttendanceSummary(player, pastSessions, { requireConfirmedPresence: true }),
     load,
   };
 }

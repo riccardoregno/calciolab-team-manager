@@ -1,3 +1,4 @@
+import { useTranslation } from "../../i18n";
 import Modal from "./Modal";
 
 /**
@@ -18,9 +19,10 @@ import Modal from "./Modal";
  *   <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
  */
 export default function ConfirmDialog({ state, onClose }) {
+  const { t } = useTranslation();
   if (!state) return null;
 
-  const { message, onConfirm, confirmLabel = "Conferma", confirmTone = "blue" } = state;
+  const { message, onConfirm, confirmLabel = t("common.confirm"), confirmTone = "blue" } = state;
 
   function handleConfirm() {
     onConfirm?.();
@@ -28,12 +30,12 @@ export default function ConfirmDialog({ state, onClose }) {
   }
 
   return (
-    <Modal title="Conferma operazione" onClose={onClose} role="alertdialog" compact>
+    <Modal title={t("dailyUi.confirmTitle")} onClose={onClose} role="alertdialog" compact>
       <div style={dlgStyles.panel}>
         <div style={dlgStyles.iconWrap}>⚠️</div>
         <p style={dlgStyles.message}>{message}</p>
         <div style={dlgStyles.actions}>
-          <button type="button" style={dlgStyles.cancel} onClick={onClose}>Annulla</button>
+          <button type="button" style={dlgStyles.cancel} onClick={onClose}>{t("common.cancel")}</button>
           <button
             type="button"
             style={{ ...dlgStyles.confirm, ...(confirmTone === "red" ? dlgStyles.confirmRed : dlgStyles.confirmBlue) }}
@@ -70,6 +72,7 @@ const dlgStyles = {
     marginTop: 4,
   },
   cancel: {
+    minHeight: 44,
     padding: "9px 20px",
     borderRadius: 8,
     border: "1px solid rgba(255,255,255,0.15)",
@@ -80,6 +83,7 @@ const dlgStyles = {
     fontWeight: 500,
   },
   confirm: {
+    minHeight: 44,
     padding: "9px 20px",
     borderRadius: 8,
     border: "none",

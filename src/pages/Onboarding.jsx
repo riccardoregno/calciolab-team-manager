@@ -70,7 +70,7 @@ function recommendPlan(modules) {
 // ─────────────────────────────────────────────
 // Componente principale
 // ─────────────────────────────────────────────
-export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
+export default function Onboarding({ appSettings = {}, setAppSettings, team, onExit }) {
   const { t }     = useTranslation();
   const navigate  = useNavigate();
   const settings  = useMemo(() => normalizeAppSettings(appSettings) || {}, [appSettings]);
@@ -84,6 +84,7 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
   const [step, setStep]         = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
   const [saving, setSaving]     = useState(false);
+  const [finishError, setFinishError] = useState(false);
   const [inviteToken, setInviteToken] = useState(null);
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== "undefined" && window.innerWidth < 760
@@ -162,38 +163,39 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
     }
   }
 
-  // Step 2: marks onboarding done on Supabase + local, then navigates
   async function finalize(path = "/") {
-    // Always mark locally first — this survives even if Supabase fails
-    setAppSettings?.((prev) => ({
-      ...normalizeAppSettings(prev),
-      onboarding: { completed: true, completedAt: new Date().toISOString(), currentStep: 3 },
-    }));
+    if (saving) return;
+    setSaving(true);
+    setFinishError(false);
     try {
       if (team?.id) {
-        await supabase
+        const { error } = await supabase
           .from("teams")
           .update({
             ...(form.clubName?.trim() ? { name: form.clubName.trim() } : {}),
             onboarding_completed: true,
           })
-          .eq("id", team.id);
+          .eq("id", team.id)
+          .select("id")
+          .single();
+        if (error) throw error;
       }
+      setAppSettings?.((prev) => ({
+        ...normalizeAppSettings(prev),
+        onboarding: { completed: true, completedAt: new Date().toISOString(), currentStep: 3 },
+      }));
+      navigate(path, { replace: true });
+      onExit?.(true);
     } catch {
-      // Local state already saved above — Supabase will sync on next load
+      setFinishError(true);
+    } finally {
+      setSaving(false);
     }
-    navigate(path);
   }
 
-  // Rimanda l'onboarding: l'utente può proseguire più tardi dal banner
-  // di "setup progress" in Dashboard. Non marca onboarding_completed —
-  // resta come fonte di verità per riproporre l'onboarding completo
-  // se l'utente non lo riprende mai.
   function skipForNow() {
-    if (typeof window !== "undefined") {
-      try { window.localStorage.setItem("calciolab_onboarding_deferred", "1"); } catch { /* storage unavailable */ }
-    }
-    navigate("/");
+    navigate("/", { replace: true });
+    onExit?.(false);
   }
 
   const layoutStyle = isMobile
@@ -275,7 +277,7 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team }) {
           />
         )}
         {showSuccess && (
-          <SuccessScreen form={form} onNavigate={finalize} isMobile={isMobile} />
+          <SuccessScreen form={form} onNavigate={finalize} saving={saving} finishError={finishError} isMobile={isMobile} />
         )}
       </main>
     </div>
@@ -858,7 +860,7 @@ function Step4({ form: _form, appSettings, setAppSettings, team, inviteToken, on
 // ─────────────────────────────────────────────
 // Step 5 — Success / Quick-start
 // ─────────────────────────────────────────────
-function SuccessScreen({ form, onNavigate, isMobile }) {
+function SuccessScreen({ form, onNavigate, saving, finishError, isMobile }) {
   const { t } = useTranslation();
   const clubName  = form.clubName  || t("pages.onboarding.success.defaultClub");
   const modules   = form.modules   || [];
@@ -890,6 +892,7 @@ function SuccessScreen({ form, onNavigate, isMobile }) {
         {actions.map((action, i) => (
           <button
             key={action.key}
+            disabled={saving}
             onClick={() => onNavigate(action.path)}
             style={{
               ...ob.quickCard,
@@ -910,12 +913,14 @@ function SuccessScreen({ form, onNavigate, isMobile }) {
         ))}
       </div>
 
+      {finishError && <p role="alert">{t("teamContext.onboardingError")}</p>}
+      {saving && <p role="status">{t("teamContext.saving")}</p>}
       {/* Footer CTA */}
       <div style={{ ...ob.actions, justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <button onClick={() => onNavigate("/")} style={ob.backBtn}>
+        <button disabled={saving} onClick={() => onNavigate("/")} style={ob.backBtn}>
           {t("pages.onboarding.success.dashboard")}
         </button>
-        <button onClick={() => onNavigate("/players")} style={ob.completeBtn}>
+        <button disabled={saving} onClick={() => onNavigate("/players")} style={ob.completeBtn}>
           {t("pages.onboarding.success.startRoster")} →
         </button>
       </div>

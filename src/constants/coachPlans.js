@@ -12,3 +12,16 @@ export const COACH_PLANS = [
     features: ["Tutto il piano Free", "Scheda gara avanzata, distinta e piano partita", "Report post gara e osservazioni tecniche", "Scouting e archivio avversari", "Test fisici e lavori individuali", "Esportazione dei report in PDF", "Area giocatori: rendimento, obiettivi e programmi"],
   },
 ];
+
+export const CALCIOLAB_TEAM_PLAN = {
+  ...COACH_PLANS[1],
+  name: "CalcioLab",
+  badge: null,
+  description: "Un abbonamento per squadra, per il mister e i collaboratori autorizzati.",
+  features: [
+    "Rosa e importazione giocatori da CSV",
+    "Calendario, sedute e registro presenze",
+    "Partite e tabellini",
+    "Quadro settimanale della rosa e statistiche",
+  ],
+};

@@ -9,6 +9,7 @@ import {
 } from "../data/initialData";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { normalizeAppState } from "../utils/helpers";
+import { sameSyncData } from "../utils/syncHelpers";
 
 const ENTITY_TABLES = {
   players:       "players",
@@ -19,6 +20,7 @@ const ENTITY_TABLES = {
   gpsSessions:   "gps_sessions",
   staffTasks:    "staff_tasks",
   injuryRecords: "injury_records",
+  seasonPlayers: "team_season_players",
 };
 function storageKeys(teamId) {
   const primary = teamId ? STORAGE_KEY + ":team:" + encodeURIComponent(teamId) : STORAGE_KEY;
@@ -134,22 +136,25 @@ export async function saveTeamTablesState(state, teamId, { keys, entityChanges }
     const selectedKeys = Array.isArray(keys) && keys.length > 0 ? new Set(keys) : null;
     const shouldSyncKey = (key) => !selectedKeys || selectedKeys.has(key);
 
-    const entityResults = await Promise.allSettled(
-      Object.entries(ENTITY_TABLES)
-        .filter(([stateKey]) => shouldSyncKey(stateKey))
-        .map(async ([stateKey, table]) => {
-          try {
-            const versions = await syncEntityTable(table, teamId, normalized[stateKey] || [], {
-              allowEmptyDelete: hasEmptyEntityIntent(stateKey, teamId),
-              changes: entityChanges?.[stateKey],
-            });
-            return { key: stateKey, table, versions };
-          } catch (error) {
-            error._syncTable = table;
-            throw error;
-          }
-        })
-    );
+    const writes = new Map();
+    for (const [stateKey, table] of Object.entries(ENTITY_TABLES).filter(([key]) => shouldSyncKey(key))) {
+      const playerWrite = stateKey === "seasonPlayers" ? writes.get("players") : null;
+      const job = (async () => {
+        try {
+          // An imported/new identity must exist before its seasonal membership.
+          if (playerWrite) await playerWrite;
+          const versions = await syncEntityTable(table, teamId, normalized[stateKey] || [], {
+            allowEmptyDelete: hasEmptyEntityIntent(stateKey, teamId), changes: entityChanges?.[stateKey],
+          });
+          return { key: stateKey, table, versions };
+        } catch (error) {
+          const failure = new Error(error.message); failure._syncTable = table;
+          throw failure;
+        }
+      })();
+      writes.set(stateKey,job);
+    }
+    const entityResults = await Promise.allSettled([...writes.values()]);
 
     // Salva appSettings nella colonna `settings` e setPlays nella colonna `set_plays`.
     const settingsSyncs = [];
@@ -171,18 +176,20 @@ export async function saveTeamTablesState(state, teamId, { keys, entityChanges }
     }
     const settingsResults = await Promise.allSettled(settingsSyncs);
 
-    const failures = collectSyncFailures([...entityResults, ...settingsResults]);
+    const settled = [...entityResults, ...settingsResults];
+    const versions = Object.fromEntries(entityResults.flatMap(({ value }) =>
+      value?.versions ? [[value.key, value.versions]] : []));
+    const savedKeys = settled.filter((result) => result.status === "fulfilled").map(({ value }) => value.key);
+    const failures = collectSyncFailures(settled);
     if (failures.length > 0) {
       const error = new Error(`Sync parziale: ${failures.map((failure) => failure.table).join(", ")}`);
       if (import.meta.env.DEV) {
         console.warn("[teamData] Sync parziale Supabase:", failures);
       }
-      return { source: "partial", error, failures };
+      return { source: "partial", error, failures, versions, savedKeys };
     }
 
-    const versions = Object.fromEntries(entityResults.flatMap(({ value }) =>
-      value?.versions ? [[value.key, value.versions]] : []));
-    return { source: "supabase", versions };
+    return { source: "supabase", versions, savedKeys };
   } catch (error) {
     if (import.meta.env.DEV) {
       console.warn("Sync tabelle Supabase fallita, mantenuto localStorage:", error.message);
@@ -245,6 +252,8 @@ async function loadTeamTablesState(teamId, { entityKeys } = {}) {
           if (cursor !== undefined) query = query.gt("id", cursor);
           const { data: page, error } = await query;
           if (error) {
+            // Older installations keep the legacy model until the additive migration is installed.
+            if (stateKey === "seasonPlayers" && ["42P01", "PGRST205"].includes(error.code)) return [stateKey, []];
             error._syncTable = table;
             throw error;
           }
@@ -669,12 +678,15 @@ async function syncEntityChanges(table, teamId, { changedOrAdded = [], deleted =
         .eq("updated_at", _updatedAt)
         .select("updated_at");
       if (error) throw error;
-      if (!updated?.length) throw new Error(`Conflitto di sincronizzazione su ${table}:${id}`);
-      versions.set(originalId, updated[0].updated_at);
+      const version = updated?.[0]?.updated_at ?? await acknowledgeRepeatedWrite(table, teamId, id, data);
+      versions.set(originalId, version);
     } else {
       const { data: inserted, error } = await supabase.from(table).insert(row).select("updated_at").single();
       if (error) {
-        if (error.code === "23505") throw new Error(`Conflitto di sincronizzazione su ${table}:${id}`);
+        if (error.code === "23505") {
+          versions.set(originalId, await acknowledgeRepeatedWrite(table, teamId, id, data));
+          continue;
+        }
         throw error;
       }
       versions.set(originalId, inserted.updated_at);
@@ -693,6 +705,19 @@ async function syncEntityChanges(table, teamId, { changedOrAdded = [], deleted =
     }
   }
   return versions;
+}
+
+async function acknowledgeRepeatedWrite(table, teamId, id, data) {
+  const { data: remote, error } = await supabase
+    .from(table)
+    .select("data, updated_at")
+    .eq("team_id", teamId)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  const expected = JSON.parse(JSON.stringify(data));
+  if (remote?.updated_at && sameSyncData(remote.data, expected)) return remote.updated_at;
+  throw new Error(`Conflitto di sincronizzazione su ${table}:${id}`);
 }
 
 function loadEmptyEntityIntents(teamId) {
