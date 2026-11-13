@@ -1,7 +1,7 @@
 import { useTranslation } from "../../i18n";
 import { useAuth } from "../../hooks/useAuth";
-import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import AppCard from "../ui/AppCard";
 import Button from "../ui/Button";
 import { getAgendaDateKey } from "../../utils/coachAgenda";
@@ -100,34 +100,36 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
   const text = (key, params) => t("dailyUi." + key, params);
   const dateLabel = (date) => new Date(date + "T12:00:00").toLocaleDateString(language === "en" ? "en-GB" : "it-IT", { day: "numeric", month: "short", year: "numeric" });
   const auth = useAuth();
+  const navigate = useNavigate();
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonPlayerId, setComparisonPlayerId] = useState("");
   const comparisonPlayer = players.find((player) => String(player.id) === comparisonPlayerId);
   const now = new Date();
   const today = localDateString(now);
   const [params, setParams] = useSearchParams();
+  const paramsRef = useRef(params);
+  useEffect(() => { paramsRef.current = params; }, [params]);
+  const updateParams = update => {
+    const next = new URLSearchParams(paramsRef.current);
+    update(next);
+    paramsRef.current = next;
+    setParams(next, { replace: true });
+  };
   const fourWeeks = params.get("rosterView") === "4";
   const sortByMinutes = params.get("rosterSort") === "minutes";
   const setSortByMinutes = (enabled) => {
-    const next = new URLSearchParams(params);
-    if (enabled) next.set("rosterSort", "minutes"); else next.delete("rosterSort");
-    setParams(next, { replace: true });
+    updateParams(next => { if (enabled) next.set("rosterSort", "minutes"); else next.delete("rosterSort"); });
   };
-  const rosterReturn = "/statistics?" + new URLSearchParams({ ...Object.fromEntries(params), roster: "1" }).toString();
   const setFourWeeks = (enabled) => {
-    const next = new URLSearchParams(params);
-    if (enabled) next.set("rosterView", "4");
-    else next.delete("rosterView");
-    setParams(next, { replace: true });
+    updateParams(next => { if (enabled) next.set("rosterView", "4"); else next.delete("rosterView"); });
   };
   const requestedWeek = getAgendaDateKey(params.get("rosterWeek"));
   const currentWeek = monday(today);
   const defaultWeek = seasonBounds ? monday(today < seasonBounds.start_date ? seasonBounds.start_date : today > seasonBounds.end_date ? seasonBounds.end_date : today) : currentWeek;
   const start = requestedWeek && requestedWeek <= today ? monday(requestedWeek) : defaultWeek;
+  const rosterReturn = "/statistics?" + new URLSearchParams({ ...Object.fromEntries(params), roster: "1", rosterWeek: start }).toString();
   const setStart = (date) => {
-    const next = new URLSearchParams(params);
-    next.set("rosterWeek", date);
-    setParams(next, { replace: true });
+    updateParams(next => next.set("rosterWeek", date));
   };
   const rawStart = fourWeeks ? moveDate(start, -21) : start;
   const rawEnd = moveDate(start, 6);
@@ -184,10 +186,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
   ] : [{ label: "", rows: visibleRows }];
   const checkingMinutes = loading && matches.length > 0;
   const togglePending = () => {
-    const next = new URLSearchParams(params);
-    if (pendingOnly) next.delete("rosterPending");
-    else next.set("rosterPending", "1");
-    setParams(next, { replace: true });
+    updateParams(next => { if (next.get('rosterPending') === '1') next.delete("rosterPending"); else next.set("rosterPending", "1"); });
   };
 
   return <AppCard className="weekly-roster">
@@ -195,6 +194,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
       <summary hidden={standalone} style={{ cursor: "pointer", fontWeight: 700 }}>{text(standalone ? "firstTeamWeek" : "quadro")}</summary>
       <div className="weekly-roster-controls">
       <div className="weekly-roster-context"><strong>{auth.team?.name || text("firstTeam")}</strong>{scopeLabel && <span>{scopeLabel}</span>}</div>
+      <Button variant="ghost" onClick={() => navigate('/attendance-register?month=' + start.slice(0, 7), { state: { rosterReturn } })}>{text('openRegister')}</Button>
       <div role="group" aria-label={text("period")} style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
         <Button variant={fourWeeks ? "ghost" : "primary"} aria-pressed={!fourWeeks} onClick={() => setFourWeeks(false)}>{text("week")}</Button>
         <Button variant={fourWeeks ? "primary" : "ghost"} aria-pressed={fourWeeks} onClick={() => setFourWeeks(true)}>{text("fourWeeks")}</Button>

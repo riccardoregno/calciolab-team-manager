@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { getRosterReturnPath } from "../src/utils/rosterNavigation.js";
+import { getRosterReturnPath, getRosterWeekPath, getRegisterReturnPath, getRegisterRosterPath } from "../src/utils/rosterNavigation.js";
 import { buildCoachTasks } from "../src/utils/coachTasks.js";
 import { buildCoachAnalysis } from "../src/utils/coachAnalysis.js";
 import { confirmUnrecordedTrainingPresences } from "../src/utils/helpers.js";
@@ -9,7 +9,17 @@ import { en } from "../src/i18n/locales/en.js";
 const path = "/statistics?roster=1&rosterView=4&rosterWeek=2026-11-02&rosterPending=1&rosterSort=minutes";
 assert.equal(getRosterReturnPath({ rosterReturn: path }), path, "Correction returns to the same view, week, pending filter and order");
 assert.equal(getRosterReturnPath({ rosterReturn: "https://example.com" }), null);
+assert.equal(getRosterReturnPath({ rosterReturn: '/statistics?competition=league&roster=1&rosterView=4' }), '/statistics?competition=league&roster=1&rosterView=4', 'Return does not depend on query parameter order');
 assert.equal(getRosterReturnPath({ rosterWeek: "2026-11-02", rosterView: "4", rosterPending: true }), "/statistics?roster=1&rosterWeek=2026-11-02&rosterView=4&rosterPending=1");
+assert.equal(getRosterWeekPath('2026-10-04'), '/statistics?roster=1&rosterWeek=2026-09-28', 'Sunday correction opens the week spanning two months');
+assert.equal(getRosterWeekPath('2026-10-05'), '/statistics?roster=1&rosterWeek=2026-10-05');
+assert.equal(getRosterWeekPath('2026-02-30'), '/statistics?roster=1', 'Invalid calendar dates do not invent a week');
+assert.equal(getRegisterReturnPath({ registerReturn: '/attendance-register?month=2026-10&group=prima&search=Rossi' }), '/attendance-register?month=2026-10&group=prima&search=Rossi');
+assert.equal(getRegisterReturnPath({ registerReturn: 'https://example.com/attendance-register' }), null);
+assert.equal(getRegisterReturnPath({ registerReturn: '/attendance-register-other' }), null);
+const registerEvents = [{ date: '2026-10-05' }, { date: '2026-10-20' }, { date: '2026-11-10' }];
+assert.equal(getRegisterRosterPath('2026-10', registerEvents, new Date(2026,10,13)), '/statistics?roster=1&rosterWeek=2026-10-19', 'Past month uses its latest session rather than the current week');
+assert.equal(getRegisterRosterPath('2026-10', [], new Date(2026,10,13)), '/statistics?roster=1&rosterWeek=2026-09-28', 'Empty past month opens its first week');
 
 const now = new Date(2026, 10, 11, 12);
 const players = ["present", "pending", "missing", "absent", "injured", "transferred", "future"].map(id => ({ id, status: "Disponibile", gruppo: "prima", ...(id === "transferred" ? { transferDate: "2026-11-09" } : id === "future" ? { transferDate: "2026-11-20" } : {}) }));

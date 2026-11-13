@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useIsMobile } from "../hooks/useIsMobile";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { getRegisterRosterPath, getRosterReturnPath } from "../utils/rosterNavigation";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -180,22 +181,39 @@ function getDuration(session) {
 export default function AttendanceRegister({ players = [], sessions = [], setSessions, matches = [], setMatches, teamId, seasonBounds }) {
   const { t, language } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [params, setParams] = useSearchParams();
+  const filtersRef = useRef(params);
+  useEffect(() => { filtersRef.current = params; }, [params]);
+  const changeFilter = (key, value) => {
+    const next = new URLSearchParams(filtersRef.current);
+    if (value) next.set(key, value); else next.delete(key);
+    filtersRef.current = next;
+    setParams(next, { replace: true, state: location.state });
+  };
   const { canManage } = useAreaPermission();
   const auth = useAuth();
   const isMobile = useIsMobile();
   const teamName = auth.profile?.teamName || auth.profile?.clubName || auth.team?.name || "Squadra";
-  const [search, setSearch] = useState("");
-  const [groupFilter, setGroupFilter] = useState("tutti");
+  const search = params.get('search') || '';
+  const setSearch = value => changeFilter('search', value);
+  const groupFilter = ['prima', 'juniores'].includes(params.get('group')) ? params.get('group') : 'tutti';
+  const setGroupFilter = value => changeFilter('group', value === 'tutti' ? '' : value);
   // Le statistiche aggregate in testa alla pagina rappresentano di default
   // solo la Prima Squadra (coerente con Players.jsx/Availability.jsx); i
   // Juniores entrano nel calcolo solo se il mister lo richiede esplicitamente.
   const [includeJuniorsInStats, setIncludeJuniorsInStats] = useState(false);
   const [finesRange, setFinesRange] = useState({ start: "", end: "" });
   const [exportingFines, setExportingFines] = useState(false);
-  const [month, setMonth] = useState(() => {
+  const defaultMonth = (() => {
     const current = new Date().toISOString().slice(0,7);
     return seasonBounds ? current < seasonBounds.start_date.slice(0,7) ? seasonBounds.start_date.slice(0,7) : current > seasonBounds.end_date.slice(0,7) ? seasonBounds.end_date.slice(0,7) : current : current;
-  });
+  })();
+  const requestedMonth = params.get('month') || '';
+  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth) ? requestedMonth : defaultMonth;
+  const setMonth = value => changeFilter('month', value);
+  const registerReturn = location.pathname + location.search;
+  const rosterReturn = getRosterReturnPath(location.state);
 
   // RPE autodichiarato dai giocatori dal portale (tabella session_rpe) — usato come
   // pre-compilazione quando il mister non ha ancora inserito/corretto un valore.
@@ -488,7 +506,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                     ) : (
                       <button
                         type="button"
-                        onClick={() => navigate(`/session-attendance/${session.id}`)}
+                        onClick={() => navigate(`/session-attendance/${encodeURIComponent(session.id)}`, { state: { registerReturn, registerRosterReturn: rosterReturn } })}
                         style={ar.sessionLink}
                         title={session.title || t("pages.attendanceRegister.sessionFallback")}
                       >
@@ -600,8 +618,8 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
             <Button variant="ghost" onClick={() => navigate("/trainings")}>
               {t("pages.attendanceRegister.backToTrainings")}
             </Button>
-            <Button onClick={() => navigate("/statistics?roster=1")}>
-              {t("dailyUi.openQuadro")}
+            <Button onClick={() => navigate(rosterReturn || getRegisterRosterPath(month, visibleSessions))}>
+              {t(rosterReturn ? "dailyUi.backQuadro" : "dailyUi.openQuadro")}
             </Button>
           </div>
         }

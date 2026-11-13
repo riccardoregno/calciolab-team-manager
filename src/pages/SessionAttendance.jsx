@@ -1,4 +1,4 @@
-import { getRosterReturnPath } from "../utils/rosterNavigation";
+import { getRosterReturnPath, getRosterWeekPath, getRegisterReturnPath } from "../utils/rosterNavigation";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import AppCard from "../components/ui/AppCard";
@@ -42,6 +42,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const navigate = useNavigate();
   const { state } = useLocation();
   const rosterReturn = getRosterReturnPath(state);
+  const registerReturn = getRegisterReturnPath(state);
   const [pendingOnly, setPendingOnly] = useState(Boolean(state?.pendingOnly));
   const { canManage } = useAreaPermission();
   const [showSummaryList, setShowSummaryList] = useState(false);
@@ -169,8 +170,11 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                 {t("pages.sessionAttendance.markPendingPresent", { count: eligibleCount })}
               </Button>
             )}
-            <Button variant="ghost" onClick={() => navigate(rosterReturn || (state?.fromDashboard ? "/" : "/trainings"))}>
-              {rosterReturn ? t("dailyUi.backQuadro") : t(state?.fromDashboard ? "pages.sessionAttendance.backToDashboard" : "pages.sessionAttendance.back")}
+            {!rosterReturn && <Button onClick={() => navigate(getRosterWeekPath(session.date))}>
+              {t("dailyUi.sessionQuadro")}
+            </Button>}
+            <Button variant={rosterReturn ? "primary" : "ghost"} onClick={() => navigate(rosterReturn || registerReturn || (state?.fromDashboard ? "/" : "/trainings"), registerReturn && !rosterReturn ? { state: { rosterReturn: getRosterReturnPath({ rosterReturn: state?.registerRosterReturn }) } } : undefined)}>
+              {rosterReturn ? t("dailyUi.backQuadro") : registerReturn ? t("dailyUi.backRegister") : t(state?.fromDashboard ? "pages.sessionAttendance.backToDashboard" : "pages.sessionAttendance.back")}
             </Button>
           </div>
         </div>
