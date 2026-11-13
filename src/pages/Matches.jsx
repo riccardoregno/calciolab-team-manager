@@ -710,6 +710,7 @@ function Matches({ matches, matchScope, setMatches, players = [], appSettings = 
               <option>4-3-3</option>
               <option>4-4-2</option>
               <option>3-5-2</option>
+              <option>3-4-1-2</option>
               <option>3-4-2-1</option>
               <option>4-3-1-2</option>
             </select>

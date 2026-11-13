@@ -1,5 +1,17 @@
 import assert from "node:assert/strict";
 import { getRecordedLineupRole, syncFormationLineup } from "../src/utils/matchDayHelpers.js";
+import { MATCH_FORMATIONS } from "../src/utils/matchFormations.js";
+
+const threeFourOneTwo = MATCH_FORMATIONS['3-4-1-2'];
+assert.equal(threeFourOneTwo.length, 11);
+assert.deepEqual(threeFourOneTwo.map(slot => slot.role), ['P','D','D','D','C','C','C','C','C','A','A']);
+assert.equal(threeFourOneTwo[8].x, 50, 'Central attacking midfielder behind the two strikers');
+assert.ok(threeFourOneTwo.slice(4, 8).every(slot => slot.y > threeFourOneTwo[8].y));
+assert.ok(threeFourOneTwo.slice(9).every(slot => slot.y < threeFourOneTwo[8].y));
+for (const [formation, slots] of Object.entries(MATCH_FORMATIONS)) {
+  assert.equal(slots.length, 11, formation);
+  assert.equal(new Set(slots.map(slot => `${slot.x}:${slot.y}`)).size, 11, 'No overlapping starting positions: ' + formation);
+}
 
 const calledUpIds = Array.from({ length: 20 }, (_, index) => index + 1);
 const firstHalf = { slots: Object.fromEntries(calledUpIds.slice(0, 11).map((id, index) => [index, String(id)])) };

@@ -598,7 +598,8 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
     .map((pid) => players.find((p) => String(p.id) === pid))
     .filter(Boolean);
   const orderedConvocati = sortPlayersByName(convocati);
-  const availablePlayers = eligiblePlayers.filter((player) => !selectedIds.includes(String(player.id)));
+  // Keep the selectable roster stable: selection must not remove or move a row.
+  const availablePlayers = eligiblePlayers;
   const groups = groupByRole(availablePlayers);
   const rsvpMap = new Map(rsvps.map((rsvp) => [String(rsvp.player_id), rsvp]));
   const emailTargets = convocati.filter((p) => String(p.email || "").trim());
@@ -678,7 +679,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
             {published && (
               <Badge tone="green" style={{ marginLeft: 8 }}>{t("pages.matchConvocation.badgePublished")}</Badge>
             )}
-            {count > 0 && (
+            {(
               <Badge tone="blue" style={{ marginLeft: 8 }}>
                 {t("pages.matchConvocation.rsvpSummary", {
                   yes: rsvpStats.yes || 0,
@@ -687,7 +688,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
                 })}
               </Badge>
             )}
-            {!published && count > 0 && (
+            {!published && (
               <Badge tone="orange" style={{ marginLeft: 8 }}>{t("pages.matchConvocation.draftLabel")}</Badge>
             )}
           </div>
@@ -719,9 +720,9 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
           </div>
         </div>
 
-        {saved && (
-          <p style={s.savedMsg}>
-            {published ? t("pages.matchConvocation.savedPublished") : t("pages.matchConvocation.savedDraft")}
+        {(
+          <p style={{ ...s.savedMsg, minHeight: '1.5em' }} role="status">
+            {saved ? (published ? t("pages.matchConvocation.savedPublished") : t("pages.matchConvocation.savedDraft")) : '\u00a0'}
           </p>
         )}
         {published && (
@@ -922,7 +923,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
             <h3 style={{ margin: "0 0 4px", lineHeight: 1.2 }}>{t("pages.matchConvocation.selectPlayersTitle")}</h3>
             <p style={s.muted}>
               {t("pages.matchConvocation.selectPlayersHint", { max: MAX_PLAYERS })}
-              {full && <span style={{ color: "#f87171", marginLeft: 6 }}>{t("pages.matchConvocation.limitReached")}</span>}
+              <span style={{ display: 'block', minHeight: '1.5em', color: "#f87171", visibility: full ? 'visible' : 'hidden' }}>{t("pages.matchConvocation.limitReached")}</span>
             </p>
           </div>
           <Badge tone={full ? "red" : count > 0 ? "blue" : "orange"}>
@@ -938,28 +939,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
             </div>
             <span>{orderedConvocati.length} giocatori</span>
           </div>
-          {orderedConvocati.length > 0 ? (
-            <div style={s.selectedGrid}>
-              {orderedConvocati.map((player) => (
-                <button
-                  key={player.id}
-                  onClick={() => toggle(player.id)}
-                  disabled={!canManage}
-                  style={{
-                    ...s.selectedChip,
-                    ...(!canManage ? s.playerBtnDisabled : {}),
-                  }}
-                  title="Rimuovi dai convocati"
-                >
-                  <span style={s.shirtNum}>{player.shirtNumber || "-"}</span>
-                  <span style={s.playerBtnName}>{getPlayerDisplayName(player)}</span>
-                  <span style={s.removeMark}>×</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p style={s.emptySelected}>Nessun convocato selezionato.</p>
-          )}
+          <p style={s.emptySelected}>{t('pages.matchConvocation.stableSelectionHint')}</p>
           {canManage && (
             <div style={s.selectedPanelActions}>
               <Button variant="ghost" onClick={() => persistConvocazione(false)} disabled={count === 0}>
@@ -972,9 +952,9 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
           )}
         </div>
 
-        <div style={s.groups}>
+        <div style={s.groups} role="group" aria-label={t('pages.matchConvocation.playerSelection')}>
           {availablePlayers.length === 0 ? (
-            <p style={s.emptySelected}>Tutti i giocatori disponibili sono gia' nella convocazione.</p>
+            <p style={s.emptySelected}>{t('pages.matchConvocation.noEligiblePlayers')}</p>
           ) : Object.entries(groups).map(([role, rolePlayers]) => {
             const meta = ROLE_LABEL[role] || { short: "?", tone: "blue" };
             return (
@@ -983,7 +963,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
                   <Badge tone={meta.tone}>{meta.short}</Badge>
                   <span style={s.roleLabel}>{ROLE_I18N_KEY[role] ? t(ROLE_I18N_KEY[role]) : role}</span>
                   <span style={s.roleCount}>
-                    {rolePlayers.length} disponibili
+                    {t('pages.matchConvocation.playersCount', { count: rolePlayers.length })}
                   </span>
                 </div>
 
@@ -999,6 +979,11 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
                     return (
                       <button
                         key={pid}
+                        type="button"
+                        data-player-id={pid}
+                        aria-label={displayName}
+                        aria-pressed={selected}
+                        disabled={disabled}
                         onClick={() => !disabled && toggle(pid)}
                         style={{
                           ...s.playerBtn,
@@ -1010,7 +995,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
                           {player.shirtNumber || "—"}
                         </span>
                         <span style={s.playerBtnName}>{displayName}</span>
-                        {selected && <span style={s.checkMark}>✓</span>}
+                        <span aria-hidden="true" style={{ ...s.checkMark, visibility: selected ? 'visible' : 'hidden' }}>✓</span>
                       </button>
                     );
                   })}
@@ -1019,6 +1004,16 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
             );
           })}
         </div>
+        <details style={{ marginTop: 16 }}>
+          <summary style={{ cursor: 'pointer', minHeight: 44 }}>{t('pages.matchConvocation.selectionSummary', { count })}</summary>
+          <div style={{ ...s.selectedGrid, maxHeight: 240, overflowY: 'auto' }}>
+            {orderedConvocati.map(player => <div key={player.id} style={{ ...s.selectedChip, cursor: 'default' }}>
+              <span style={s.shirtNum}>{player.shirtNumber || '—'}</span>
+              <span style={s.playerBtnName}>{getPlayerDisplayName(player)}</span>
+              <span aria-hidden="true" style={s.checkMark}>✓</span>
+            </div>)}
+          </div>
+        </details>
       </AppCard>
 
       {/* ── RSVP disponibilità ── */}
