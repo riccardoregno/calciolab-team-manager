@@ -6,6 +6,7 @@ const threeFourOneTwo = MATCH_FORMATIONS['3-4-1-2'];
 assert.equal(threeFourOneTwo.length, 11);
 assert.deepEqual(threeFourOneTwo.map(slot => slot.role), ['P','D','D','D','C','C','C','C','C','A','A']);
 assert.equal(threeFourOneTwo[8].x, 50, 'Central attacking midfielder behind the two strikers');
+assert.equal(new Set(threeFourOneTwo.slice(1, 4).map(slot => slot.y)).size, 1, 'All three defenders stay on the same line, clear of the goalkeeper');
 assert.ok(threeFourOneTwo.slice(4, 8).every(slot => slot.y > threeFourOneTwo[8].y));
 assert.ok(threeFourOneTwo.slice(9).every(slot => slot.y < threeFourOneTwo[8].y));
 for (const [formation, slots] of Object.entries(MATCH_FORMATIONS)) {

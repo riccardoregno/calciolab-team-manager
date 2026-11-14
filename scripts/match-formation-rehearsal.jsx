@@ -26,4 +26,15 @@ export default function Rehearsal() {
           ? { ...item, lineup: syncFormationLineup({ ...getLineup(item), ...patch }) } : item))} />}
   </>;
 }
-createRoot(document.getElementById('root')).render(<I18nProvider><Rehearsal /></I18nProvider>);
+function AlignmentPreview() {
+  const mobile = useIsMobile();
+  const players = ['Portiere', 'Difensore sinistro', 'Difensore centrale', 'Difensore destro',
+    'Esterno sinistro', 'Mediano sinistro', 'Mediano destro', 'Esterno destro', 'Trequartista', 'Punta sinistra', 'Punta destra']
+    .map((name, i) => ({ id: String(i + 1), name, shirtNumber: String(i + 1) }));
+  const plan = { formation: '3-4-1-2', slots: Object.fromEntries(players.map((player, i) => [i, player.id])) };
+  return <><h1>Prova fittizia · allineamento difesa</h1><MatchFormationPlanner match={{ formation: '3-4-1-2' }}
+    lineup={{ calledUpIds: players.map(player => player.id), formationPlans: { firstHalf: plan, secondHalf: plan } }}
+    players={players} isMobile={mobile} onChange={() => {}} /></>;
+}
+createRoot(document.getElementById('root')).render(<I18nProvider>{new URLSearchParams(location.search).get('layout') === '3412'
+  ? <AlignmentPreview /> : <Rehearsal />}</I18nProvider>);

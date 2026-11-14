@@ -27,7 +27,7 @@ export const MATCH_FORMATIONS = {
   ],
   "3-4-1-2": [
     { role: "P", x: 50, y: 90 },
-    { role: "D", x: 28, y: 74 }, { role: "D", x: 50, y: 78 }, { role: "D", x: 72, y: 74 },
+    { role: "D", x: 28, y: 74 }, { role: "D", x: 50, y: 74 }, { role: "D", x: 72, y: 74 },
     { role: "C", x: 16, y: 53 }, { role: "C", x: 39, y: 57 }, { role: "C", x: 61, y: 57 }, { role: "C", x: 84, y: 53 },
     { role: "C", x: 50, y: 36 },
     { role: "A", x: 38, y: 19 }, { role: "A", x: 62, y: 19 },
