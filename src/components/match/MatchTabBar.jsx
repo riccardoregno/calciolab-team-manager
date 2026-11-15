@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { useTranslation } from '../../i18n';
 import { ArrowRight, BarChart3, ClipboardCheck, FileText, Shirt } from "lucide-react";
 
 const TABS = [
@@ -37,6 +38,16 @@ const TABS = [
     },
   },
   {
+    key: 'live', label: 'Cambi', shortLabel: 'Cambi', icon: Shirt,
+    path: id => `/match-live/${id}`,
+    getStatus: d => d?.liveEvents?.some(event => event.type === 'substitution') ? 'draft' : null,
+    getCount: () => null,
+  },
+  {
+    key: 'tabellino', label: 'Tabellino', shortLabel: 'Tabellino', icon: ClipboardCheck,
+    path: id => `/match-completion/${id}`, getStatus: () => null, getCount: () => null,
+  },
+  {
     key: "postgara",
     label: "Dopo gara",
     shortLabel: "Dopo gara",
@@ -64,7 +75,9 @@ const TABS = [
 ];
 
 export default function MatchTabBar({ matchId, active, matchLabel, matchData }) {
-  const normalizedActive = active === "live" ? "scheda" : active;
+  const { t } = useTranslation();
+  const { state } = useLocation();
+  const normalizedActive = active;
   const activeIndex = TABS.findIndex((tab) => tab.key === normalizedActive);
   const nextTab = activeIndex >= 0 ? TABS[activeIndex + 1] : null;
 
@@ -85,6 +98,7 @@ export default function MatchTabBar({ matchId, active, matchLabel, matchData }) 
             <Link
               key={tab.key}
               to={tab.path(matchId)}
+              state={state}
               aria-current={isActive ? "page" : undefined}
               style={{
                 ...s.tab,
@@ -92,7 +106,7 @@ export default function MatchTabBar({ matchId, active, matchLabel, matchData }) 
               }}
             >
               <Icon size={15} aria-hidden="true" />
-              <span>{tab.label}</span>
+              <span>{t('matchFlow.' + tab.key)}</span>
               {status === "done" && (
                 <span style={s.badgeDone}>✓</span>
               )}
@@ -108,8 +122,8 @@ export default function MatchTabBar({ matchId, active, matchLabel, matchData }) 
         })}
       </div>
       {nextTab && (
-        <Link to={nextTab.path(matchId)} className="match-flow-next" style={s.nextButton}>
-          Avanti: {nextTab.shortLabel}
+        <Link to={nextTab.path(matchId)} state={state} className="match-flow-next" style={s.nextButton}>
+          {t('matchFlow.next', { page: t('matchFlow.' + nextTab.key) })}
           <ArrowRight size={15} />
         </Link>
       )}

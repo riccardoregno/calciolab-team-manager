@@ -12,13 +12,15 @@ if (location.hostname !== '127.0.0.1' || location.port !== '4182' ||
   !/^http:\/\/(127\.0\.0\.1|localhost):54321\/?$/.test(import.meta.env.VITE_SUPABASE_URL)) throw new Error('Solo pilot locale');
 
 const teamId = '247a6550-5fdc-4f13-a1a8-817fabc33b5e';
-const matchId = '9ee2e414-9d2d-43f5-a46b-4979358ebb61';
+const matchId = new URLSearchParams(location.search).get('flow') === '1'
+  ? 'e1e4eb36-30c1-4e3f-a5a2-a21aa9026115' : '9ee2e414-9d2d-43f5-a46b-4979358ebb61';
 export default function Rehearsal() {
   const data = useTeamData({ teamId });
   const isMobile = useIsMobile();
   const match = data.state.matches.find(item => item.id === matchId);
   return <>
     <h1>Formazione · solo squadra fittizia locale</h1>
+    <p><a href={'/match-live/' + matchId}>Registra cambi e uscite</a></p>
     <SaveStatus source={data.storageSource} error={data.storageError} saving={data.remoteSaving} lastSyncedAt={data.lastSyncedAt} />
     {data.loading ? <p>Caricamento…</p> : !match ? <p>Accedi prima con l'account QA locale.</p> :
       <MatchFormationPlanner match={match} lineup={getLineup(match)} players={data.state.players} isMobile={isMobile}

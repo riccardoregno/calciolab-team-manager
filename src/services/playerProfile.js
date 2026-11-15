@@ -333,7 +333,25 @@ export async function upsertPlayerMatch(teamId, playerId, matchId, fields) {
   return { error };
 }
 
-export async function saveMatchMinutes(teamId, playerId, matchId, minutes, legacyAttendance) {
+export async function saveMatchMinutes(teamId, playerId, matchId, minutes, legacyAttendance, { onlyIfMissing = false } = {}) {
+  if (onlyIfMissing) {
+    // Insert absent rows without replacing a concurrent tabellino. Existing rows
+    // are filled with a conditional UPDATE, so a recorded zero is protected too.
+    const inserted = await supabase.from('player_matches').upsert({
+      team_id: teamId, player_id: String(playerId), match_id: String(matchId),
+      minutes_played: minutes, minutes_cleared: false,
+      ...(legacyAttendance ? {
+        goals: Number(legacyAttendance.goals) || 0, assists: Number(legacyAttendance.assists) || 0,
+        yellow_cards: Number(legacyAttendance.yellowCards) || 0, red_cards: Number(legacyAttendance.redCards) || 0,
+        rating: legacyAttendance.rating ?? null, goals_conceded: legacyAttendance.goalsConceded ?? null,
+      } : {}),
+    }, { onConflict: 'team_id,player_id,match_id', ignoreDuplicates: true }).select('player_id');
+    if (inserted.error || inserted.data?.length) return { error: inserted.error };
+    const updated = await supabase.from('player_matches').update({ minutes_played: minutes, minutes_cleared: false })
+      .eq('team_id', teamId).eq('player_id', String(playerId)).eq('match_id', String(matchId))
+      .or('minutes_played.is.null,minutes_cleared.eq.true').select('player_id');
+    return { error: updated.error, unchanged: !updated.error && !updated.data?.length };
+  }
   if (legacyAttendance) {
     // Seed an older local tabellino only if nobody has created a cloud row.
     const { error } = await supabase.from("player_matches").upsert({

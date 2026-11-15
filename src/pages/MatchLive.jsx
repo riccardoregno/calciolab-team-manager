@@ -5,8 +5,11 @@ import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import MatchTabBar from "../components/match/MatchTabBar";
 import { useAreaPermission } from "../components/auth/permissionContext";
-import { createId, formatDate, getLineup, normalizeAppSettings } from "../utils/helpers";
+import { createId, formatDate, getLineup, normalizeAppSettings, parseMatchResult } from "../utils/helpers";
+import { buildHomeAwayScorePayload } from '../utils/matchScore';
 import { useIsMobile } from "../hooks/useIsMobile";
+import { useTranslation } from '../i18n';
+import { analyzeMatchTimeline, getMatchParticipation } from '../utils/matchTimeline';
 
 const EVENT_TYPES = [
   { key: "goal",         label: "Gol",            icon: "⚽", color: "#22c55e" },
@@ -16,6 +19,7 @@ const EVENT_TYPES = [
   { key: "red_card",     label: "Rosso",           icon: "🟥", color: "#f87171" },
   { key: "substitution", label: "Sostituzione",    icon: "🔄", color: "#a78bfa" },
   { key: "injury",       label: "Infortunio",      icon: "🩹", color: "#fb923c" },
+  { key: "player_exit", label: "Uscita senza cambio", icon: "↘", color: "#fb923c" },
   { key: "note",         label: "Nota",            icon: "📝", color: "#94a3b8" },
 ];
 
@@ -59,6 +63,7 @@ function buildSummaryText(match, liveEvents, players, homeScore, awayScore) {
 const EMPTY_FORM = { minute: "", type: "goal", playerId: "", playerOutId: "", note: "" };
 
 export default function MatchLive({ matches = [], setMatches, players = [], appSettings = {} }) {
+  const { t } = useTranslation();
   const { id } = useParams();
   const isMobile = useIsMobile();
   const { canManage } = useAreaPermission();
@@ -70,6 +75,7 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
   const [addingEvent, setAddingEvent] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [copied, setCopied] = useState(false);
+  const [eventError, setEventError] = useState('');
 
   if (!match) {
     return (
@@ -80,18 +86,24 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
   }
 
   const liveEvents = Array.isArray(match.liveEvents) ? match.liveEvents : [];
-  const homeScore = match.homeScore ?? liveEvents.filter((e) => e.type === "goal").length;
-  const awayScore = match.awayScore ?? 0;
+  const score = parseMatchResult(match.result, match);
+  const awayFixture = match.location === 'Trasferta';
+  const liveGoals = liveEvents.filter(event => event.type === 'goal').length;
+  const homeScore = score?.homeGoals ?? match.homeScore ?? (awayFixture ? 0 : liveGoals);
+  const awayScore = score?.awayGoals ?? match.awayScore ?? (awayFixture ? liveGoals : 0);
 
   const lineup = getLineup(match);
-  const calledIds = [
-    ...lineup.starterIds,
-    ...lineup.benchIds,
-    ...lineup.calledUpIds,
-  ];
+  const calledIds = getMatchParticipation(match).called;
   const calledPlayers = calledIds.length
     ? players.filter((p) => calledIds.some((cid) => String(cid) === String(p.id)))
     : players;
+  const atMinute = analyzeMatchTimeline({ ...match, liveEvents: liveEvents.filter(event => Number(event.minute) <= Number(form.minute)) }, 120, players.map(player => player.id));
+  const enteringPlayers = atMinute.valid ? calledPlayers.filter(player => !atMinute.played.includes(String(player.id))) : calledPlayers;
+  const exitingPlayers = atMinute.valid ? calledPlayers.filter(player => atMinute.active.includes(String(player.id))) : calledPlayers;
+
+  function updateEvents(events) {
+    patchMatch({ liveEvents: events, lineup: { ...lineup, subsMade: events.filter(event => event.type === 'substitution').length } });
+  }
 
   function patchMatch(patch) {
     setMatches((prev) => prev.map((m) => String(m.id) === String(id) ? { ...m, ...patch } : m));
@@ -99,9 +111,11 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
 
   function adjustScore(team, delta) {
     if (!canManage) return;
-    const key = team === "home" ? "homeScore" : "awayScore";
-    const current = match[key] ?? (team === "home" ? liveEvents.filter((e) => e.type === "goal").length : 0);
-    patchMatch({ [key]: Math.max(0, current + delta) });
+    const current = team === 'home' ? homeScore : awayScore;
+    const value = Math.max(0, current + delta);
+    const home = team === 'home' ? value : homeScore;
+    const away = team === 'away' ? value : awayScore;
+    patchMatch({ ...buildHomeAwayScorePayload(match, home, away), homeScore: home, awayScore: away });
   }
 
   function addEvent() {
@@ -114,14 +128,19 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
       playerOutId: form.type === "substitution" ? form.playerOutId : "",
       note: form.note.trim(),
     };
-    patchMatch({ liveEvents: [...liveEvents, ev] });
+    if (['substitution', 'red_card', 'player_exit'].includes(ev.type)) {
+      const analysis = analyzeMatchTimeline({ ...match, liveEvents: [...liveEvents, ev] }, 120, players.map(player => player.id));
+      if (!analysis.valid) { setEventError(t('matchFlow.' + analysis.issues[0].code)); return; }
+    }
+    setEventError('');
+    updateEvents([...liveEvents, ev]);
     setForm(EMPTY_FORM);
     setAddingEvent(false);
   }
 
   function removeEvent(eventId) {
     if (!canManage) return;
-    patchMatch({ liveEvents: liveEvents.filter((e) => e.id !== eventId) });
+    updateEvents(liveEvents.filter((e) => e.id !== eventId));
   }
 
   async function copyTabellino() {
@@ -152,7 +171,7 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
   return (
     <div style={s.page}>
       <PageHeader
-        title="Live Match"
+        title={t('matchFlow.liveTitle')}
         subtitle={`${clubName} vs ${match.opponent || "Avversario"} · ${formatDate(match.date)}`}
       />
 
@@ -162,7 +181,7 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
       <AppCard>
         <div style={{ ...s.scoreboard, flexDirection: isMobile ? "column" : "row" }}>
           <div style={s.teamBlock}>
-            <div style={s.teamName}>{clubName}</div>
+            <div style={s.teamName}>{awayFixture ? match.opponent || 'Avversario' : clubName}</div>
             <div style={s.teamSub}>Casa</div>
           </div>
 
@@ -193,7 +212,7 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
           </div>
 
           <div style={{ ...s.teamBlock, textAlign: "right" }}>
-            <div style={s.teamName}>{match.opponent || "Avversario"}</div>
+            <div style={s.teamName}>{awayFixture ? clubName : match.opponent || "Avversario"}</div>
             <div style={s.teamSub}>Ospite</div>
           </div>
         </div>
@@ -208,6 +227,7 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
         <div style={s.timelineHeader}>
           <h3 style={s.sectionTitle}>Cronaca eventi</h3>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {canManage && <Button onClick={() => { setAddingEvent(true); setEventError(''); setForm({ ...EMPTY_FORM, type: 'substitution' }); }}>{t('matchFlow.addSubstitution')}</Button>}
             {canManage && (
               <Button onClick={() => { setAddingEvent((v) => !v); setForm(EMPTY_FORM); }}>
                 {addingEvent ? "Annulla" : "+ Evento"}
@@ -227,9 +247,9 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
                 Minuto
                 <input
                   type="number"
-                  min="1" max="120"
+                  min="0" max="120"
                   value={form.minute}
-                  onChange={(e) => setForm({ ...form, minute: e.target.value })}
+                  onChange={(e) => setForm(previous => ({ ...previous, minute: e.target.value }))}
                   placeholder="45"
                   style={{ ...s.input, width: 80 }}
                 />
@@ -237,7 +257,7 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
 
               <label style={s.fieldLabel}>
                 Tipo evento
-                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={s.input}>
+                <select value={form.type} onChange={(e) => setForm(previous => ({ ...previous, type: e.target.value, playerId: '', playerOutId: '' }))} style={s.input}>
                   {EVENT_TYPES.map((et) => (
                     <option key={et.key} value={et.key}>{et.icon} {et.label}</option>
                   ))}
@@ -246,9 +266,9 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
 
               <label style={s.fieldLabel}>
                 {form.type === "substitution" ? "Entra" : "Giocatore"}
-                <select value={form.playerId} onChange={(e) => setForm({ ...form, playerId: e.target.value })} style={s.input}>
+                <select value={form.playerId} onChange={(e) => setForm(previous => ({ ...previous, playerId: e.target.value }))} style={s.input}>
                   <option value="">— Seleziona —</option>
-                  {calledPlayers.map((p) => (
+                  {(form.type === 'substitution' ? enteringPlayers : ['red_card','player_exit'].includes(form.type) ? exitingPlayers : calledPlayers).map((p) => (
                     <option key={p.id} value={String(p.id)}>
                       {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{p.name || [p.firstName, p.lastName].filter(Boolean).join(" ")}
                     </option>
@@ -259,9 +279,9 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
               {form.type === "substitution" && (
                 <label style={s.fieldLabel}>
                   Esce
-                  <select value={form.playerOutId} onChange={(e) => setForm({ ...form, playerOutId: e.target.value })} style={s.input}>
+                  <select value={form.playerOutId} onChange={(e) => setForm(previous => ({ ...previous, playerOutId: e.target.value }))} style={s.input}>
                     <option value="">— Seleziona —</option>
-                    {calledPlayers.map((p) => (
+                    {exitingPlayers.map((p) => (
                       <option key={p.id} value={String(p.id)}>
                         {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{p.name || [p.firstName, p.lastName].filter(Boolean).join(" ")}
                       </option>
@@ -275,7 +295,7 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
                   Nota
                   <input
                     value={form.note}
-                    onChange={(e) => setForm({ ...form, note: e.target.value })}
+                    onChange={(e) => setForm(previous => ({ ...previous, note: e.target.value }))}
                     placeholder="Descrizione breve..."
                     style={s.input}
                   />
@@ -288,6 +308,7 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
                 Aggiungi
               </Button>
             </div>
+            {eventError && <p role="alert">{eventError}</p>}
           </div>
         )}
 
@@ -329,7 +350,7 @@ export default function MatchLive({ matches = [], setMatches, players = [], appS
           <h3 style={s.sectionTitle}>Riepilogo partita</h3>
           <div style={s.statsGrid}>
             {[
-              { label: "Gol segnati",    value: liveEvents.filter((e) => e.type === "goal").length },
+              { label: t('matchFlow.timelineGoals'), value: liveEvents.filter((e) => e.type === "goal").length },
               { label: "Assist",         value: liveEvents.filter((e) => e.type === "assist").length },
               { label: "Gialli",         value: yellowCards },
               { label: "Rossi",          value: redCards },

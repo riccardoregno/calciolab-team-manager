@@ -4,6 +4,10 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
+import MatchTabBar from '../components/match/MatchTabBar';
+import MatchMinutesProposal from '../components/match/MatchMinutesProposal';
+import { useTranslation } from '../i18n';
+import { analyzeMatchTimeline, getMatchParticipation, proposeMinutesDraft, editMinutesDraft } from '../utils/matchTimeline';
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { loadMatchStats, saveMatchMinutes } from "../services/playerProfile";
@@ -27,6 +31,7 @@ export default function MatchCompletion({ matches, setMatches, players, teamId, 
 }
 
 function CompletionForm({ match, setMatches, players, teamId, clubName }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { canManage } = useAreaPermission();
   const remote = Boolean(teamId && isSupabaseConfigured);
@@ -37,8 +42,11 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
   const { score: scoreDraft, starters: starterDraft, minutes: edits } = draft;
   const home = scoreDraft.home ?? String(score?.homeGoals ?? "");
   const away = scoreDraft.away ?? String(score?.awayGoals ?? "");
-  const missingSavedLineup = !match.lineup?.starterIds?.length;
-  const starters = missingSavedLineup ? starterDraft : match.lineup.starterIds.map(String);
+  const recordedStarters = getMatchParticipation(match).starters;
+  const missingSavedLineup = !recordedStarters.length;
+  const starters = missingSavedLineup ? starterDraft : recordedStarters;
+  const [duration, setDuration] = useState(String(draft.minutesProposal?.duration || 90));
+  const timeline = analyzeMatchTimeline(match, duration, players.filter(player => !hasPlayerTransferred(player, match.date)).map(player => player.id));
   const [saved, setSaved] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -102,6 +110,10 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
   async function save(event) {
     event.preventDefault();
     if (!canManage || saveLock.current || (remote && !saved)) return;
+    if (draft.minutesProposal && (!timeline.valid || draft.minutesProposal.fingerprint !== timeline.fingerprint)) {
+      setError(t('matchFlow.staleProposal'));
+      return;
+    }
     if (!home.trim() || !away.trim() || !isValidMatchScore(home, away)) {
       setError("Inserisci entrambi i punteggi con numeri interi da zero in su.");
       return;
@@ -124,10 +136,32 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
       .map((id) => [id, Number(edits[id])]));
     try {
       if (remote) {
+        // Recheck generated values immediately before writing: another staff member
+        // may have completed the same player since this page was loaded.
+        const generated = new Set(draft.minutesProposal?.ids || []);
+        if (Object.keys(updates).some(id => generated.has(id))) {
+          const fresh = await loadMatchStats(teamId, matchId);
+          if (fresh.error) throw new Error('minutes-refresh');
+          const freshRows = Object.fromEntries((fresh.data || []).map(row => [String(row.player_id), row]));
+          const protectedIds = Object.keys(updates).filter(id => generated.has(id) &&
+            resolveMatchMinutes(freshRows[id]?.minutes_played, match.attendance?.[id]?.minutes, freshRows[id]?.minutes_cleared) !== null);
+          if (protectedIds.length) {
+            const next = { ...draft, minutes: { ...edits } };
+            for (const id of protectedIds) delete next.minutes[id];
+            const remaining = draft.minutesProposal.ids.filter(id => !protectedIds.includes(id));
+            if (remaining.length) next.minutesProposal = { ...draft.minutesProposal, ids: remaining };
+            else delete next.minutesProposal;
+            updateDraft(next);
+            setSaved(freshRows);
+            setError(t('matchFlow.minutesChanged'));
+            return;
+          }
+        }
         const results = await Promise.allSettled(Object.entries(updates).map(([id, minutes_played]) =>
-          saveMatchMinutes(teamId, id, matchId, minutes_played, Object.hasOwn(saved, id) ? null : match.attendance?.[id])
+          saveMatchMinutes(teamId, id, matchId, minutes_played, Object.hasOwn(saved, id) ? null : match.attendance?.[id],
+            { onlyIfMissing: (draft.minutesProposal?.ids || []).includes(id) })
         ));
-        if (results.some((result) => result.status === "rejected" || result.value.error)) {
+        if (results.some((result) => result.status === "rejected" || result.value.error || result.value.unchanged)) {
           throw new Error("minutes");
         }
       }
@@ -158,6 +192,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
   return (
     <div style={{ maxWidth: 720, marginInline: "auto", display: "grid", gap: 14 }}>
       <PageHeader title="Completa tabellino" subtitle={formatDate(match.date)} />
+      <MatchTabBar matchId={match.id} active="tabellino" matchLabel={match.opponent} matchData={match} />
       <Link to={rosterReturn || backTo}>{rosterReturn ? "Torna al riepilogo settimanale" : state?.fromDashboard ? "Torna alla Dashboard" : "Torna alle gare da completare"}</Link>
       <form onSubmit={save}>
         <fieldset disabled={!canManage || saving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: "grid", gap: 14 }}>
@@ -194,6 +229,12 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
             </div> : <p>{savedStarterNames.join(", ")}</p>}
           </AppCard>
           <AppCard title="3. Minuti" subtitle="Inserisci 0 per chi non ha giocato.">
+            {(!remote || saved) && !loadError && <MatchMinutesProposal key={timeline.timelineFingerprint} matchId={match.id} analysis={timeline}
+              duration={duration} onDuration={setDuration} canManage={canManage} proposal={draft.minutesProposal}
+              hasTargets={minutesPlayers.some(player => !hasRecordedMinutes(getSavedMinutes(String(player.id))) &&
+                (!Object.hasOwn(edits, String(player.id)) || draft.minutesProposal?.ids.includes(String(player.id))))}
+              onApply={() => updateDraft(proposeMinutesDraft(draft, timeline,
+                Object.fromEntries(minutesPlayers.map(player => [String(player.id), getSavedMinutes(String(player.id))]))))} />}
             {(!remote || saved) && minutesPlayers.length > 0 && (
               <p role="status">{minutesPlayers.length - missingMinutes} di {minutesPlayers.length} con minuti registrati o compilati</p>
             )}
@@ -209,7 +250,8 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
                 return <label key={id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
                   <span>{playerName(player)}{starters.includes(id) ? " · Titolare" : ""}{!hasRecordedMinutes(getMinutes(id)) ? " · Minutaggio da completare" : Number(getMinutes(id)) === 0 ? " · Non impiegato · 0 min" : ""}</span>
                   <input style={control} type="number" inputMode="numeric" min="0" max="120" step="1" required
-                    value={getMinutes(id)} autoFocus={id === linkedPlayerId} onChange={(e) => updateDraft({ ...draft, minutes: { ...edits, [id]: e.target.value } })} />
+                    aria-label={t('matchFlow.playerMinutes', { name: playerName(player) })}
+                    value={getMinutes(id)} autoFocus={id === linkedPlayerId} onChange={(e) => updateDraft(editMinutesDraft(draft, id, e.target.value))} />
                 </label>;
               })}
           </AppCard>
