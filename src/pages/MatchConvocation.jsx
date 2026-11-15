@@ -11,6 +11,7 @@ import { formatDate, getLineup, hasPlayerTransferred, normalizeAppSettings } fro
 import { useTranslation } from "../i18n";
 import { createRsvpLink, fetchMatchRsvps, sendMatchConvocationEmail } from "../services/rsvp";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { loadMatchReportRows } from '../services/playerProfile';
 
 const MAX_PLAYERS_COMPETITIVE = 22;
 const MAX_PLAYERS_FRIENDLY    = 30;
@@ -258,7 +259,7 @@ async function copyText(text) {
 }
 
 export default function MatchConvocation({ teamId, players = [], matches = [], setMatches, appSettings = {} }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const isMobile = useIsMobile();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -300,6 +301,8 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   const [copyingRsvpId, setCopyingRsvpId] = useState("");
   const [sendingConvocations, setSendingConvocations] = useState(false);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [packageExporting, setPackageExporting] = useState(false);
+  const [packageError, setPackageError] = useState(false);
 
   // resync se il match cambia dall'esterno
   useEffect(() => {
@@ -445,10 +448,16 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
   }
 
   async function downloadMatchPackage() {
+    if (packageExporting) return;
+    setPackageExporting(true); setPackageError(false);
+    try {
     const profile = normalizeAppSettings(appSettings).workspaceProfile;
     const staff   = normalizeAppSettings(appSettings).members || [];
     const { generateMatchPackagePDF } = await import("../utils/generateMatchPackagePDF");
-    await generateMatchPackagePDF({ match, allPlayers: players, profile, staffList: staff, appSettings });
+    const reportRows = await loadMatchReportRows(teamId,match.id);
+    await generateMatchPackagePDF({ match, allPlayers: players, profile, staffList: staff, appSettings, language, ...reportRows });
+    } catch { setPackageError(true); }
+    finally { setPackageExporting(false); }
   }
 
   async function copyConvocation(kind, text) {
@@ -704,7 +713,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
             <Button variant="ghost" onClick={downloadDistinta} title="Scarica distinta FIGC in PDF">
               📄 {t("pages.matchConvocation.downloadDistinta")}
             </Button>
-            <Button variant="ghost" onClick={downloadMatchPackage} title={t("pages.matchConvocation.downloadPackage")}>
+            <Button variant="ghost" onClick={downloadMatchPackage} disabled={packageExporting} title={t("pages.matchConvocation.downloadPackage")}>
               🗂️ {t("pages.matchConvocation.downloadPackage")}
             </Button>
             {canManage && (
@@ -720,6 +729,7 @@ export default function MatchConvocation({ teamId, players = [], matches = [], s
           </div>
         </div>
 
+        {packageError && <p role="alert">{t('matchReport.exportFailed')}</p>}
         {(
           <p style={{ ...s.savedMsg, minHeight: '1.5em' }} role="status">
             {saved ? (published ? t("pages.matchConvocation.savedPublished") : t("pages.matchConvocation.savedDraft")) : '\u00a0'}

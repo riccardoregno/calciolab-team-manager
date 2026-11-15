@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -10,6 +10,10 @@ import { createId, formatDate, normalizeAppSettings } from "../utils/helpers";
 import { useTranslation } from "../i18n";
 import { getObjectiveStatusMeta } from "../constants/objectiveStatus";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { useTeamMatchRows } from '../hooks/useTeamMatchRows';
+import { useAreaPermission } from '../components/auth/permissionContext';
+import MatchReportSummary from '../components/match/MatchReportSummary';
+import { buildMatchReportSummary, formatMatchReportSummary } from '../utils/matchReportSummary';
 
 const clipCategories = [
   { value: "Tattica",        labelKey: "pages.postMatch.clipCatTactics" },
@@ -38,9 +42,11 @@ const clipAudiences = [
 ];
 
 export default function PostMatch({
-  matches = [], setMatches, players = [], sessions = [], setStaffTasks, appSettings = {} }) {
+  matches = [], setMatches, players = [], sessions = [], setStaffTasks, appSettings = {}, teamId }) {
 
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const { canManage } = useAreaPermission();
+  const stats = useTeamMatchRows(teamId);
   const isMobile = useIsMobile();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -52,11 +58,12 @@ export default function PostMatch({
     ? matches.find((m) => String(m.id) === String(id))
     : [...matches].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
-  const [lastSaved, setLastSaved] = useState(null);
-  const saveTimerRef = useRef(null);
+  const [tasksPreparedFor, setTasksPreparedFor] = useState(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportError, setExportError] = useState(false);
 
   function updateReport(field, value) {
-    if (!match) return;
+    if (!match || !canManage) return;
     setMatches((prevMatches) =>
       prevMatches.map((item) =>
         item.id === match.id
@@ -64,26 +71,19 @@ export default function PostMatch({
           : item
       )
     );
-    // Feedback visivo auto-salvataggio
-    clearTimeout(saveTimerRef.current);
-    setLastSaved(null);
-    saveTimerRef.current = setTimeout(() => setLastSaved(Date.now()), 300);
   }
 
   function updateVideoAnalysis(nextClips) {
-    if (!match) return;
+    if (!match || !canManage) return;
     setMatches((prevMatches) =>
       prevMatches.map((item) =>
         item.id === match.id ? { ...item, videoAnalysis: nextClips } : item
       )
     );
-    clearTimeout(saveTimerRef.current);
-    setLastSaved(null);
-    saveTimerRef.current = setTimeout(() => setLastSaved(Date.now()), 300);
   }
 
   function createStaffTasksFromReport() {
-    if (!match || !setStaffTasks) return;
+    if (!match || !setStaffTasks || !canManage) return;
 
     const report = match.postMatch || {};
     const candidates = [
@@ -143,11 +143,11 @@ export default function PostMatch({
 
       return nextTasks.length ? [...nextTasks, ...prev] : prev;
     });
-    setLastSaved("staff-tasks");
+    setTasksPreparedFor(match.id);
   }
 
   function createTrainingFromReport() {
-    if (!match) return;
+    if (!match || !canManage) return;
     const report = match.postMatch || {};
     const objective = report.trainingActions || report.nextWeekFocus || report.tacticalCorrections || "";
     const notes = [
@@ -184,8 +184,13 @@ export default function PostMatch({
   }
 
   async function exportMatchReportPDF() {
-    const { generateMatchReportPDF } = await import("../utils/generateMatchReportPDF");
-    await generateMatchReportPDF({ match, players, appSettings });
+    if (exportingPdf || stats.loading) return;
+    setExportingPdf(true); setExportError(false);
+    try {
+      const { generateMatchReportPDF } = await import("../utils/generateMatchReportPDF");
+      await generateMatchReportPDF({ match, players, appSettings, rows:stats.rows, statsUnavailable:!!stats.error || stats.unavailable, language });
+    } catch { setExportError(true); }
+    finally { setExportingPdf(false); }
   }
 
   if (!match) {
@@ -206,6 +211,8 @@ export default function PostMatch({
   }
 
   const report   = match.postMatch || {};
+  const summary = buildMatchReportSummary({match,players,rows:stats.rows,statsUnavailable:!!stats.error || stats.unavailable,teamName:clubName});
+  const summaryView = formatMatchReportSummary(summary,language);
   const videoAnalysis = match.videoAnalysis || [];
   const subtitle = [formatDate(match.date), match.location, match.result]
     .filter(Boolean)
@@ -267,9 +274,9 @@ export default function PostMatch({
         matchData={match}
       />
 
-      {lastSaved && (
+      {tasksPreparedFor === match.id && (
         <div style={s.savedBanner}>
-          {t("pages.postMatch.savedBanner")}
+          {t('matchReport.tasksPrepared')}
         </div>
       )}
 
@@ -279,17 +286,20 @@ export default function PostMatch({
           <div>
             <Badge tone="orange">{t("pages.postMatch.reportBadge")}</Badge>
             <h2 style={{ margin: "10px 0 4px", lineHeight: 1.15 }}>
-              {match.title || `${clubName} vs ${match.opponent}`}
+              {summaryView.title}
             </h2>
             <p style={s.muted}>{subtitle}</p>
           </div>
 
           <div style={s.resultBox}>
             <span style={s.resultLabel}>{t("pages.postMatch.resultLabel")}</span>
-            <strong style={s.resultValue}>{match.result || "—"}</strong>
+            <strong style={s.resultValue}>{summaryView.scoreLabel}</strong>
           </div>
         </div>
       </AppCard>
+
+      <MatchReportSummary summary={summary} matchId={match.id} loading={stats.loading} error={stats.error} onRetry={stats.retry} />
+      {exportError && <p role="alert">{t('matchReport.exportFailed')}</p>}
 
       <AppCard>
         <div style={s.reportHead}>
@@ -333,9 +343,9 @@ export default function PostMatch({
           <Button variant="ghost" onClick={() => navigate(`/match-stats/${match.id}`)}>{t("pages.postMatch.btnStats")}</Button>
           <Button variant="ghost" onClick={() => navigate(`/match-day/${match.id}`)}>{t("pages.postMatch.btnMatchDay")}</Button>
           <Button variant="ghost" onClick={() => navigate("/calendar")}>{t("navigation.items.calendar")}</Button>
-          <Button variant="ghost" onClick={exportMatchReportPDF}>{t("pages.postMatch.btnPrint")}</Button>
-          <Button variant="ghost" onClick={createStaffTasksFromReport}>{t("pages.postMatch.btnCreateTasks")}</Button>
-          <Button onClick={createTrainingFromReport}>{t("pages.postMatch.btnCreateSession")}</Button>
+          <Button variant="ghost" onClick={exportMatchReportPDF} disabled={exportingPdf || stats.loading}>{exportingPdf ? t('matchReport.exporting') : t("pages.postMatch.btnPrint")}</Button>
+          {canManage && <Button variant="ghost" onClick={createStaffTasksFromReport}>{t("pages.postMatch.btnCreateTasks")}</Button>}
+          {canManage && <Button onClick={createTrainingFromReport}>{t("pages.postMatch.btnCreateSession")}</Button>}
         </div>
 
         {openSections.length > 0 && (
@@ -393,7 +403,7 @@ export default function PostMatch({
         ) : (
           <div style={s.emptyLinkedSessions}>
             <span>{t("pages.postMatch.noLinkedSessions")}</span>
-            <Button variant="ghost" onClick={createTrainingFromReport}>{t("pages.postMatch.btnCreateSession")}</Button>
+            {canManage && <Button variant="ghost" onClick={createTrainingFromReport}>{t("pages.postMatch.btnCreateSession")}</Button>}
           </div>
         )}
       </AppCard>
@@ -511,6 +521,7 @@ export default function PostMatch({
         </section>
       </div>
 
+      <fieldset disabled={!canManage} className="no-print" style={{border:0,padding:0,margin:0,minWidth:0,display:'grid',gap:18}}>
       <AppCard>
         <div style={s.reportHead}>
           <div>
@@ -610,6 +621,7 @@ export default function PostMatch({
         onAppendReport={(text) => updateReport("videoClips", text)}
         reportNotes={report.videoClips || ""}
       />
+      </fieldset>
 
       {/* Selezione partita (se accedono da /post-match senza ID) */}
       {!id && matches.length > 1 && (

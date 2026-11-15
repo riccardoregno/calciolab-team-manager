@@ -2,6 +2,7 @@ import "./test-seasons.mjs";
 import "./test-daily-workflow.mjs";
 import "./test-formation-lineup.mjs";
 import "./test-match-timeline.mjs";
+import "./test-match-report.mjs";
 import "./test-season-trend.mjs";
 import "./test-training-archive.mjs";
 import "./test-coach-analysis.mjs";

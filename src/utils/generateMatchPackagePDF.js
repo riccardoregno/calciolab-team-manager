@@ -10,15 +10,16 @@ import { generateMatchReportPDF } from "./generateMatchReportPDF";
  * @param {object[]} staffList
  * @param {object} appSettings
  */
-export function generateMatchPackagePDF({ match, allPlayers = [], profile = {}, staffList = [], appSettings = {} }) {
+export async function generateMatchPackagePDF({ match, allPlayers = [], profile = {}, staffList = [], appSettings = {}, rows = [], statsUnavailable = false, language = 'it', save = true, brandingAssets }) {
   if (!match) return;
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
   generateDistintaPDF(match, allPlayers, profile, staffList, { doc, save: false });
-  generateMatchReportPDF({ match, players: allPlayers, appSettings, doc, save: false });
+  await generateMatchReportPDF({ match, players: allPlayers, appSettings, rows, statsUnavailable, language, brandingAssets, doc, save: false });
 
   const safeOpponent = (match.opponent || "Avversario").replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_");
   const dateStr = (match.date || new Date().toISOString()).slice(0, 10);
-  doc.save(`Pacchetto_${safeOpponent}_${dateStr}.pdf`);
+  if (save) doc.save(`Pacchetto_${safeOpponent}_${dateStr}.pdf`);
+  return doc;
 }

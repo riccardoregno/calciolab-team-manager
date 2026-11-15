@@ -1,4 +1,18 @@
 export const it = {
+  matchReport: {
+    analysisTopic:'Aspetto',analysisNotes:'Note dello staff',analysisPending:'Analisi post-gara da completare.',staffDecisions:'Decisioni staff',clipMinute:'Minuto',clipCategory:'Categoria',
+    retry:'Riprova',exportFailed:'Impossibile generare il PDF. Riprova.',exporting:'Generazione PDF...',
+    title:'Riepilogo del tabellino',resultPending:'Risultato da inserire',loading:'Caricamento dei minutaggi...',
+    unavailable:'Minutaggi non verificabili: dati online non disponibili.',unverified:'Non verificabile',
+    registeredCount:'{{known}}/{{total}} minutaggi registrati',totalMinutes:'{{count}} min complessivi registrati',noRecorded:'Nessun minuto registrato',
+    pendingCount:'{{count}} da completare',noPlayers:'Nessun giocatore registrato per questa gara.',
+    playerDetail:'Giocatori e minuti',player:'Giocatore',role:'Ruolo',minutes:'Minuti',starter:'Titolare',bench:'Riserva',unknownRole:'Ruolo da verificare',
+    recorded:'{{count}} min registrati',unused:'0 min - non impiegato',pending:'Da completare',unknownPlayer:'Giocatore non identificato',
+    unresolved:'{{count}} riferimenti giocatore da verificare. Lo storico resta conservato.',
+    changes:'Cambi e uscite registrati',noChanges:'Nessun cambio o uscita registrati in cronaca.',
+    substitution:"{{minute}}' - Esce {{outgoing}}, entra {{incoming}}",redCard:"{{minute}}' - Espulso {{incoming}}",exit:"{{minute}}' - Uscita senza cambio: {{incoming}}",
+    openSheet:'Completa o correggi il tabellino',openChanges:'Rivedi cambi e uscite',tasksPrepared:'Attività del report preparate. Attendi la conferma online nella barra di salvataggio.',
+  },
   matchFlow: {
     convocazione: 'Convocazione', scheda: 'Formazione', live: 'Cambi', tabellino: 'Tabellino', postgara: 'Dopo gara', statistiche: 'Statistiche',
     next: 'Avanti: {{page}}', liveTitle: 'Cambi e cronaca', addSubstitution: '+ Sostituzione',

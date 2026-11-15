@@ -10,6 +10,7 @@
  */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getRecordedLineupRole } from './matchDayHelpers';
 
 // ─── Costanti colori ─────────────────────────────────────────────────────────
 const C = {
@@ -108,7 +109,6 @@ export function generateDistintaPDF(match, allPlayers, profile = {}, staffList =
     ...(match.convocazione?.playerIds || []),
     ...(match.lineup?.calledUpIds     || []),
   ].map(String));
-  const starterIds = new Set((match.lineup?.starterIds || []).map(String));
   const captainId  = String(match.lineup?.captainId || "");
   const viceCaptainId = String(match.lineup?.viceCaptainId || "");
 
@@ -116,7 +116,7 @@ export function generateDistintaPDF(match, allPlayers, profile = {}, staffList =
     .filter((p) => calledIds.has(String(p.id)))
     .map((p) => ({
       ...p,
-      isStarter: starterIds.has(String(p.id)),
+      isStarter: getRecordedLineupRole(match,p.id) === 'starter',
     }))
     .sort((a, b) => compareByMatchShirtNumber(a, b, match.lineup));
 
@@ -167,7 +167,7 @@ export function generateDistintaPDF(match, allPlayers, profile = {}, staffList =
     match.date   ? `Data: ${fmtDate(match.date)}` : null,
     match.time   ? `Ore: ${match.time}` : null,
     venue        ? `Campo: ${venue}` : null,
-    match.location ? `${isHome ? "🏠 Casa" : "✈ Trasferta"}` : null,
+    match.location ? (isHome ? "Casa" : "Trasferta") : null,
   ].filter(Boolean);
 
   const infoStr = infoItems.join("   |   ");
@@ -226,11 +226,11 @@ export function generateDistintaPDF(match, allPlayers, profile = {}, staffList =
     },
     columnStyles: {
       0: { cellWidth: 10, halign: "center" },
-      1: { cellWidth: 48, fontStyle: "bold" },
-      2: { cellWidth: 38 },
+      1: { cellWidth: 64, fontStyle: "bold" },
+      2: { cellWidth: 52 },
       3: { cellWidth: 26, halign: "center" },
-      4: { cellWidth: 16, halign: "center" },
-      5: { cellWidth: 10, halign: "center" },
+      4: { cellWidth: 20, halign: "center" },
+      5: { cellWidth: 10, halign: "center", cellPadding: 1 },
     },
     alternateRowStyles: { fillColor: C.rowAlt },
     margin: { left: 14, right: 14 },
@@ -276,7 +276,7 @@ export function generateDistintaPDF(match, allPlayers, profile = {}, staffList =
       theme: "plain",
       styles: { fontSize: 8.5, cellPadding: { top: 2, bottom: 2, left: 3, right: 3 }, textColor: C.dark, lineColor: C.border, lineWidth: 0.2 },
       headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: "bold", fontSize: 8 },
-      columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 60 } },
+      columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 82 } },
       alternateRowStyles: { fillColor: C.rowAlt },
       margin: { left: 14, right: 14 },
     });

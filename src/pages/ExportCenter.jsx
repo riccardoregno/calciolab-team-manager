@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import MatchScopeFilters from "../components/statistics/MatchScopeFilters";
 import { buildCoachAnalysis } from "../utils/coachAnalysis";
 import { getMatchSeason } from "../utils/matchScope";
-import { loadMatchStatsMatrix } from "../services/playerProfile";
+import { loadMatchStatsMatrix, loadMatchReportRows } from "../services/playerProfile";
 import { useTranslation } from "../i18n";
 import AppCard from "../components/ui/AppCard";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -39,7 +39,7 @@ export default function ExportCenter({
   matchScope,
   teamId,
 }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedType = searchParams.get("type");
   const type = EXPORT_TYPE_KEYS.some((item) => item.id === requestedType) ? requestedType : "training";
@@ -90,9 +90,12 @@ export default function ExportCenter({
   const activeType = exportTypes.find((item) => item.id === type) || exportTypes[0];
 
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
 
   async function handlePdfDownload() {
+    if (generatingPdf) return;
     setGeneratingPdf(true);
+    setPdfError(false);
     try {
       if (type === "training") {
         const { generateTrainingPDF } = await import("../utils/generateTrainingPDF");
@@ -102,7 +105,8 @@ export default function ExportCenter({
         await generateMatchDayPDF({ match: selectedMatch, players, appSettings });
       } else if (type === "postmatch") {
         const { generateMatchReportPDF } = await import("../utils/generateMatchReportPDF");
-        await generateMatchReportPDF({ match: selectedMatch, players, appSettings });
+        const reportRows = await loadMatchReportRows(teamId,selectedMatch.id);
+        await generateMatchReportPDF({ match: selectedMatch, players, appSettings, language, ...reportRows });
       } else if (type === "player") {
         const { generatePlayerReportPDF } = await import("../utils/generatePlayerReportPDF");
         await generatePlayerReportPDF({ player: selectedPlayer, sessions, matches, physicalTests, appSettings });
@@ -110,7 +114,8 @@ export default function ExportCenter({
         const { generateMicrocyclePDF } = await import("../utils/generateMicrocyclePDF");
         await generateMicrocyclePDF({ match: selectedMatch, sessions, gpsSessions, appSettings });
       }
-    } finally {
+    } catch { setPdfError(true); }
+    finally {
       setTimeout(() => setGeneratingPdf(false), 800);
     }
   }
@@ -135,6 +140,7 @@ export default function ExportCenter({
         )}
       />
 
+      {pdfError && <p role="alert">{t('matchReport.exportFailed')}</p>}
       <div className="export-workspace" style={{ ...pageStyles.workspace, gridTemplateColumns: isMobile ? "1fr" : "360px 1fr" }}>
         <AppCard title={t("pages.exportCenter.contentTitle")} subtitle={t("pages.exportCenter.contentSubtitle")}>
           <div style={pageStyles.typeGrid}>

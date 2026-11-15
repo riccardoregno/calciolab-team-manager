@@ -1,4 +1,18 @@
 export const en = {
+  matchReport: {
+    analysisTopic:'Topic',analysisNotes:'Staff notes',analysisPending:'Post-match analysis not completed.',staffDecisions:'Staff decisions',clipMinute:'Minute',clipCategory:'Category',
+    retry:'Retry',exportFailed:'Unable to generate the PDF. Please retry.',exporting:'Generating PDF...',
+    title:'Match sheet summary',resultPending:'Result not recorded',loading:'Loading minutes...',
+    unavailable:'Minutes cannot be verified: online data is unavailable.',unverified:'Unverifiable',
+    registeredCount:'{{known}}/{{total}} minute totals recorded',totalMinutes:'{{count}} total minutes recorded',noRecorded:'No minutes recorded',
+    pendingCount:'{{count}} incomplete',noPlayers:'No players recorded for this match.',
+    playerDetail:'Players and minutes',player:'Player',role:'Role',minutes:'Minutes',starter:'Starter',bench:'Substitute',unknownRole:'Role to verify',
+    recorded:'{{count}} min recorded',unused:'0 min - unused',pending:'Incomplete',unknownPlayer:'Unidentified player',
+    unresolved:'{{count}} player references need review. Historical records are preserved.',
+    changes:'Recorded substitutions and exits',noChanges:'No substitutions or exits recorded in the timeline.',
+    substitution:"{{minute}}' - Off: {{outgoing}}, on: {{incoming}}",redCard:"{{minute}}' - Sent off: {{incoming}}",exit:"{{minute}}' - Exit without replacement: {{incoming}}",
+    openSheet:'Complete or correct the match sheet',openChanges:'Review substitutions and exits',tasksPrepared:'Report tasks prepared. Wait for online confirmation in the save status bar.',
+  },
   matchFlow: {
     convocazione: 'Call-up', scheda: 'Lineup', live: 'Substitutions', tabellino: 'Match sheet', postgara: 'Post-match', statistiche: 'Statistics',
     next: 'Next: {{page}}', liveTitle: 'Substitutions and timeline', addSubstitution: '+ Substitution',

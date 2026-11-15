@@ -1,255 +1,107 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { loadBrandingAssets } from "./pdfBranding";
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { loadBrandingAssets } from './pdfBranding';
+import { buildMatchReportSummary, formatMatchReportSummary } from './matchReportSummary';
+import { it } from '../i18n/locales/it.js';
+import { en } from '../i18n/locales/en.js';
 
-// ─── Palette ────────────────────────────────────────────────────────────────
-const C = {
-  dark:    [15,  23,  42],   // #0f172a
-  mid:     [30,  41,  59],   // #1e293b
-  accent:  [37,  99, 235],   // #2563eb
-  accentL: [96, 165, 250],   // #60a5fa
-  white:   [255, 255, 255],
-  muted:   [148, 163, 184],  // #94a3b8
-  green:   [34,  197,  94],  // #22c55e
-  red:     [239,  68,  68],  // #ef4444
-  border:  [51,  65,  85],   // #334155
-};
-
-function fmt(date) {
-  if (!date) return "—";
-  try { return new Date(date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" }); }
-  catch { return "—"; }
+const C = { dark:[15,23,42], mid:[30,41,59], accent:[37,99,235], light:[96,165,250],
+  white:[255,255,255], muted:[148,163,184], green:[34,197,94], red:[239,68,68], border:[51,65,85] };
+const clean = value => String(value ?? '').replace(/[\u2010-\u2015]/g,'-').replace(/[\u2018\u2019]/g,"'").replace(/[\u201c\u201d]/g,'"');
+function dateLabel(date,language) {
+  const parsed = new Date(String(date || '').slice(0,10)+'T12:00:00');
+  return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleDateString(language==='en'?'en-GB':'it-IT');
+}
+function chrome(doc,teamName,logos) {
+  const W=doc.internal.pageSize.width,H=doc.internal.pageSize.height;
+  doc.setFillColor(...C.dark);doc.rect(0,0,W,H,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...C.light);
+  if(logos.calciolabLogo) { try {doc.addImage(logos.calciolabLogo,'PNG',14,2,10,10);} catch { /* Text brand remains. */ } }
+  doc.text('CalcioLab',logos.calciolabLogo?26:14,9);
+  if(logos.teamLogo) {try {doc.addImage(logos.teamLogo,'PNG',W-24,2,10,10);} catch { /* Body identifies the team. */ }}
+  else {doc.setFont('helvetica','normal');doc.setTextColor(...C.muted);doc.text(doc.splitTextToSize(clean(teamName),125).slice(0,2),W-14,6,{align:'right'});}
+  doc.setDrawColor(...C.border);doc.line(14,H-11,W-14,H-11);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...C.muted);
+  doc.text(String(doc.internal.getCurrentPageInfo().pageNumber),W/2,H-5,{align:'center'});
+  doc.text('calciolab.org',W-14,H-5,{align:'right'});
 }
 
-function sectionHeader(doc, title, y) {
-  doc.setFillColor(...C.accent);
-  doc.roundedRect(14, y, doc.internal.pageSize.width - 28, 8, 2, 2, "F");
-  doc.setTextColor(...C.white);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text(title.toUpperCase(), 18, y + 5.5);
-  return y + 13;
-}
-
-function addPageChrome(doc, teamName, calciolabLogo, teamLogo) {
-  const W = doc.internal.pageSize.width;
-  const H = doc.internal.pageSize.height;
-
-  doc.setFillColor(...C.dark);
-  doc.rect(0, 0, W, 14, "F");
-
-  // CalcioLab logo or text on left
-  if (calciolabLogo) {
-    try { doc.addImage(calciolabLogo, "PNG", 14, 2, 10, 10); } catch { /* skip */ }
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C.accentL);
-    doc.text("CalcioLab", 26, 9);
-  } else {
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C.accentL);
-    doc.text("⚽ CalcioLab", 14, 9);
-  }
-
-  // Team logo or name on right
-  if (teamLogo) {
-    try { doc.addImage(teamLogo, "PNG", W - 24, 2, 10, 10); } catch { /* skip */ }
-  } else {
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...C.muted);
-    doc.text(teamName || "", W - 14, 9, { align: "right" });
-  }
-
-  doc.setDrawColor(...C.border);
-  doc.line(14, H - 10, W - 14, H - 10);
-  doc.setFontSize(8);
-  doc.setTextColor(...C.muted);
-  doc.text(`Pagina ${doc.internal.getCurrentPageInfo().pageNumber}`, W / 2, H - 5, { align: "center" });
-  doc.text("calciolab.org", W - 14, H - 5, { align: "right" });
-}
-
-function box(doc, label, value, x, y, w, h) {
-  doc.setFillColor(...C.mid);
-  doc.roundedRect(x, y, w, h, 2, 2, "F");
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...C.muted);
-  doc.text(label.toUpperCase(), x + 4, y + 6);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...C.white);
-  const lines = doc.splitTextToSize(String(value || "—"), w - 8);
-  doc.text(lines.slice(0, 4), x + 4, y + 12);
-}
-
-function getLineup(match) {
-  const lineup = match.lineup || {};
-  return {
-    starterIds: lineup.starters || lineup.starterIds || [],
-    benchIds: lineup.bench || lineup.benchIds || [],
-    roles: lineup.roles || {},
-    captainId: lineup.captainId || null,
+export async function generateMatchReportPDF({match,players=[],appSettings={},rows=[],statsUnavailable=false,
+  language='it',doc:sharedDoc,save=true,brandingAssets}) {
+  if(!match) return;
+  const profile=appSettings.workspaceProfile || {};
+  const teamName=profile.teamName || profile.clubName || 'CalcioLab';
+  const summary=buildMatchReportSummary({match,players,rows,statsUnavailable,teamName});
+  const view=formatMatchReportSummary(summary,language);
+  const labels=view.labels;
+  const messages=(language==='en'?en:it).pages.postMatch;
+  const logos=brandingAssets || await loadBrandingAssets(profile.logo || null);
+  const doc=sharedDoc || new jsPDF({unit:'mm',format:'a4',putOnlyUsedFonts:true});
+  const W=doc.internal.pageSize.width,H=doc.internal.pageSize.height;
+  if(sharedDoc) doc.addPage();
+  const painted=new Set();
+  const paint=()=>{const n=doc.internal.getCurrentPageInfo().pageNumber;if(!painted.has(n)){chrome(doc,teamName,logos);painted.add(n);}};
+  const newPage=()=>{doc.addPage();paint();};
+  paint();let y=23;
+  const reserve=height=>{if(y+height>H-20){newPage();y=24;}};
+  const paragraph=(value,color=C.white)=>{
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...color);
+    for(const line of doc.splitTextToSize(clean(value),W-28)){reserve(6);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...color);doc.text(line,14,y);y+=5;}
   };
-}
+  const section=title=>{reserve(28);doc.setFillColor(...C.accent);doc.roundedRect(14,y,W-28,8,2,2,'F');doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...C.white);doc.text(clean(title).toUpperCase(),18,y+5.5);y+=13;};
+  const table=(head,body,columnStyles={})=>{
+    reserve(20);
+    autoTable(doc,{startY:y,head:[head.map(clean)],body:body.map(row=>row.map(clean)),theme:'plain',
+      margin:{left:14,right:14,top:24,bottom:20},styles:{font:'helvetica',fontSize:8.5,cellPadding:3,fillColor:C.dark,textColor:C.white,overflow:'linebreak'},
+      headStyles:{fillColor:C.mid,textColor:C.light,fontStyle:'bold'},alternateRowStyles:{fillColor:[20,30,48]},
+      columnStyles,willDrawPage:paint});
+    y=doc.lastAutoTable.finalY+9;
+  };
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...C.light);doc.text(language==='en'?'MATCH REPORT':'REFERTO GARA',14,y);y+=8;
+  doc.setFontSize(17);doc.setTextColor(...C.white);
+  const title=doc.splitTextToSize(clean(view.title),W-78);doc.text(title,14,y);y+=title.length*7+2;
+  doc.setFontSize(summary.score?25:9);
+  doc.setTextColor(...(summary.score ? summary.score.goalsFor>summary.score.goalsAgainst?C.green:summary.score.goalsFor<summary.score.goalsAgainst?C.red:C.muted : C.muted));
+  doc.text(doc.splitTextToSize(clean(view.scoreLabel),45),W-14,31,{align:'right'});
+  paragraph([dateLabel(match.date,language),match.competition,match.location].filter(Boolean).join(' - '),C.muted);y+=4;
 
-/**
- * Genera e scarica il referto gara (post-match report) in PDF.
- *
- * @param {object} opts
- * @param {object} opts.match
- * @param {array}  opts.players
- * @param {object} opts.appSettings
- */
-export async function generateMatchReportPDF({ match, players = [], appSettings = {}, doc: sharedDoc, save = true }) {
-  if (!match) return;
+  section(labels.title);
+  paragraph(view.countLabel,C.muted);
+  paragraph(view.totalLabel);
+  if(view.pendingLabel) paragraph(view.pendingLabel,C.light);
+  if(summary.unresolvedCount) paragraph(labels.unresolved.replace('{{count}}',summary.unresolvedCount),C.light);
+  y+=3;
+  if(view.entries.length) table([labels.player,labels.role,labels.minutes],view.entries.map(entry=>[entry.name,entry.roleLabel,entry.minutesLabel]),{1:{cellWidth:31},2:{cellWidth:54}});
+  else paragraph(labels.noPlayers,C.muted);
 
-  const teamLogoUrl = appSettings?.workspaceProfile?.logo || null;
-  const { calciolabLogo, teamLogo } = await loadBrandingAssets(teamLogoUrl);
+  section(labels.changes);
+  if(view.changes.length) table([labels.changes],view.changes.map(change=>[change.label]));
+  else paragraph(labels.noChanges,C.muted);
+  y+=3;
 
-  const doc = sharedDoc || new jsPDF({ unit: "mm", format: "a4", putOnlyUsedFonts: true });
-  const W = doc.internal.pageSize.width;
-  const teamName = appSettings?.workspaceProfile?.clubName || "La mia squadra";
-  const report = match.postMatch || {};
+  const report=match.postMatch || {};
+  const positivePlayers=Array.isArray(report.positivePlayers)
+    ? report.positivePlayers.map(id=>players.find(player=>String(player.id)===String(id))?.name || labels.unknownPlayer).join(', ')
+    : report.positivePlayers;
+  const fields=[
+    [messages.sectionWorked,report.worked],[messages.sectionNotWorked,report.notWorked],[messages.sectionKeyMoments,report.keyMoments],
+    [messages.sectionPerformanceScore,report.performanceScore],[messages.sectionGameModelScore,report.gameModelScore],
+    [messages.sectionIntensityScore,report.intensityScore],[messages.scoreStaff,report.staffRating],[messages.sectionTacticalCorrections,report.tacticalCorrections],
+    [messages.sectionNextWeekFocus,report.nextWeekFocus],[messages.sectionTrainingActions,report.trainingActions],
+    [messages.sectionRecoveryPlan,report.recoveryPlan],[messages.sectionPositivePlayers,positivePlayers],
+    [messages.sectionPhysicalAlerts,report.physicalAlerts],[messages.sectionSetPiecesReview,report.setPiecesReview],
+    [messages.sectionOpponentLessons,report.opponentLessons],[labels.staffDecisions,report.staffDecisions],[messages.sectionVideoAnalysis,report.videoClips],
+  ].filter(([,value])=>String(value??'').trim());
+  section(messages.reportTitle);
+  if(fields.length) table([labels.analysisTopic,labels.analysisNotes],fields,{0:{cellWidth:48}});
+  else paragraph(labels.analysisPending,C.muted);
 
-  if (sharedDoc) doc.addPage();
-  addPageChrome(doc, teamName, calciolabLogo, teamLogo);
-  let y = 22;
-
-  // ── Header partita ──────────────────────────────────────────────────────
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...C.accentL);
-  doc.text("REFERTO GARA", 14, y);
-  y += 6;
-
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...C.white);
-  doc.text(`${teamName} vs ${match.opponent || "—"}`, 14, y);
-  y += 7;
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...C.muted);
-  doc.text(
-    [fmt(match.date), match.competition || "", match.location || ""].filter(Boolean).join("  ·  "),
-    14, y
-  );
-  y += 4;
-
-  // Risultato
-  const gs = match.goalsScored ?? match.goals_scored;
-  const gc = match.goalsConceded ?? match.goals_conceded;
-  if (gs !== undefined && gc !== undefined) {
-    doc.setFontSize(28);
-    doc.setFont("helvetica", "bold");
-    const outcome = Number(gs) > Number(gc) ? C.green : Number(gs) < Number(gc) ? C.red : C.muted;
-    doc.setTextColor(...outcome);
-    doc.text(`${gs} - ${gc}`, W - 14, 26, { align: "right" });
-  }
-
-  y += 8;
-
-  // ── Formazione ───────────────────────────────────────────────────────────
-  y = sectionHeader(doc, "Formazione", y);
-  const lineup = getLineup(match);
-  const starters = lineup.starterIds.map((id) => players.find((p) => String(p.id) === String(id))).filter(Boolean);
-  const bench = lineup.benchIds.map((id) => players.find((p) => String(p.id) === String(id))).filter(Boolean);
-
-  const formationRows = Math.max(starters.length, bench.length, 1);
-  const startersBody = [];
-  for (let i = 0; i < formationRows; i++) {
-    const s = starters[i];
-    const b = bench[i];
-    startersBody.push([
-      s ? `${s.shirtNumber ? `${s.shirtNumber}. ` : ""}${s.name}${lineup.captainId && String(s.id) === String(lineup.captainId) ? " (C)" : ""}` : "",
-      b ? `${b.shirtNumber ? `${b.shirtNumber}. ` : ""}${b.name}` : "",
-    ]);
-  }
-
-  autoTable(doc, {
-    startY: y,
-    head: [["Titolari", "Riserve"]],
-    body: startersBody,
-    headStyles: { fillColor: C.mid, textColor: C.accentL, fontSize: 8, fontStyle: "bold" },
-    styles: { fillColor: C.dark, textColor: C.white, fontSize: 8, cellPadding: 2.5 },
-    alternateRowStyles: { fillColor: [20, 30, 48] },
-    theme: "plain",
-    margin: { left: 14, right: 14 },
-  });
-
-  // ── Analisi post-gara ────────────────────────────────────────────────────
-  y = doc.lastAutoTable.finalY + 10;
-  if (y > 230) { doc.addPage(); addPageChrome(doc, teamName); y = 22; }
-  y = sectionHeader(doc, "Analisi post-gara", y);
-
-  const boxW = (W - 28 - 8) / 2;
-  const boxH = 26;
-  const analysisFields = [
-    ["Cosa ha funzionato", report.worked],
-    ["Cosa non ha funzionato", report.notWorked],
-    ["Episodi chiave", report.keyMoments],
-    ["Focus settimana prossima", report.nextWeekFocus],
-    ["Correzioni tattiche", report.tacticalCorrections],
-    ["Azioni in allenamento", report.trainingActions],
-  ];
-
-  for (let i = 0; i < analysisFields.length; i += 2) {
-    if (y + boxH > 280) { doc.addPage(); addPageChrome(doc, teamName); y = 22; }
-    const [l1, v1] = analysisFields[i];
-    box(doc, l1, v1, 14, y, boxW, boxH);
-    if (analysisFields[i + 1]) {
-      const [l2, v2] = analysisFields[i + 1];
-      box(doc, l2, v2, 14 + boxW + 8, y, boxW, boxH);
-    }
-    y += boxH + 6;
-  }
-
-  // ── Giocatori e situazione fisica ───────────────────────────────────────
-  if (y + 26 > 280) { doc.addPage(); addPageChrome(doc, teamName); y = 22; }
-  const positivePlayers = Array.isArray(report.positivePlayers)
-    ? report.positivePlayers.map((id) => players.find((p) => String(p.id) === String(id))?.name || id).filter(Boolean).join(", ")
-    : (report.positivePlayers || "");
-  box(doc, "Giocatori in evidenza", positivePlayers, 14, y, boxW, boxH);
-  box(doc, "Allarmi fisici", report.physicalAlerts, 14 + boxW + 8, y, boxW, boxH);
-  y += boxH + 6;
-
-  // ── Note set piece e video ──────────────────────────────────────────────
-  if (y + 26 > 280) { doc.addPage(); addPageChrome(doc, teamName); y = 22; }
-  box(doc, "Calci piazzati", report.setPiecesReview, 14, y, boxW, boxH);
-  box(doc, "Decisioni staff", report.staffDecisions, 14 + boxW + 8, y, boxW, boxH);
-  y += boxH + 6;
-
-  // ── Clip video ───────────────────────────────────────────────────────────
-  const videoClips = match.videoAnalysis || [];
-  if (videoClips.length) {
-    if (y > 230) { doc.addPage(); addPageChrome(doc, teamName); y = 22; }
-    y = sectionHeader(doc, "Clip video", y);
-
-    const clipRows = videoClips.map((clip) => [
-      clip.minute || "—",
-      clip.category || "—",
-      clip.phase || "—",
-      players.find((p) => String(p.id) === String(clip.playerId))?.name || "—",
-      clip.note || clip.tags || "—",
-    ]);
-
-    autoTable(doc, {
-      startY: y,
-      head: [["Minuto", "Categoria", "Fase", "Giocatore", "Note"]],
-      body: clipRows,
-      headStyles: { fillColor: C.mid, textColor: C.accentL, fontSize: 8, fontStyle: "bold" },
-      styles: { fillColor: C.dark, textColor: C.white, fontSize: 8, cellPadding: 2.5 },
-      alternateRowStyles: { fillColor: [20, 30, 48] },
-      theme: "plain",
-      margin: { left: 14, right: 14 },
-    });
-  }
-
-  // ── Salva ─────────────────────────────────────────────────────────────────
-  if (!save) return doc;
-  const safeOpponent = (match.opponent || "Avversario").replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_");
-  const dateStr = (match.date || new Date().toISOString()).slice(0, 10);
-  doc.save(`Referto_${safeOpponent}_${dateStr}.pdf`);
+  const clips=match.videoAnalysis || [];
+  if(clips.length){section(messages.sectionVideoAnalysis);table([labels.clipMinute,labels.clipCategory,labels.player,labels.analysisNotes],clips.map(clip=>[
+    clip.minute??'-',clip.category||'-',players.find(player=>String(player.id)===String(clip.playerId))?.name || '-',[clip.note,clip.tags,clip.url].filter(Boolean).join('\n') || '-'
+  ]),{0:{cellWidth:18},1:{cellWidth:28},2:{cellWidth:45}});}
+  if(!save) return doc;
+  const opponent=(match.opponent||'Avversario').replace(/[^a-zA-Z0-9\s]/g,'').trim().replace(/\s+/g,'_');
+  doc.save(`Referto_${opponent}_${String(match.date||'senza-data').slice(0,10)}.pdf`);
+  return doc;
 }

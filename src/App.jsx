@@ -139,7 +139,7 @@ function Blank() { return null; }
 
 function RouteSaveStatus(props) {
   const { pathname } = useLocation();
-  return <SaveStatus {...props} sticky={pathname === "/attendance-register" || pathname.startsWith("/session-attendance/")} />;
+  return <SaveStatus {...props} sticky={pathname === "/attendance-register" || pathname.startsWith("/session-attendance/") || pathname.startsWith('/post-match')} />;
 }
 
 function SeasonPermission({ readOnly, children }) {
@@ -687,6 +687,7 @@ function App() {
                 element={
                   gate(technicalRoles, <FeatureGate featureKey="postMatch" appSettings={previewAppSettings}>
                     <PostMatch
+                      teamId={auth.team?.id}
                       matches={matches}
                       setMatches={setMatches}
                       players={players}
@@ -703,6 +704,7 @@ function App() {
                 element={
                   gate(technicalRoles, <FeatureGate featureKey="postMatch" appSettings={previewAppSettings}>
                     <PostMatch
+                      teamId={auth.team?.id}
                       matches={matches}
                       setMatches={setMatches}
                       players={players}

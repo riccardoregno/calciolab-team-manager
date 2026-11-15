@@ -230,6 +230,14 @@ export async function loadMatchStats(teamId, matchId) {
   return readMatchRows(teamId, matchId ? [matchId] : []);
 }
 
+export async function loadMatchReportRows(teamId, matchId) {
+  if (!teamId || !isSupabaseConfigured) return { rows: [], statsUnavailable: false };
+  try {
+    const result = await loadMatchStats(teamId, matchId);
+    return { rows: result.data || [], statsUnavailable: !!result.error };
+  } catch { return { rows: [], statsUnavailable: true }; }
+}
+
 /** @param {string} teamId
  * @param {string[]} matchIds
  * @returns {Promise<{data: any[], error: any}>} */
