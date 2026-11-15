@@ -23,7 +23,7 @@ export default function MatchMinutesProposal({ matchId, analysis, duration, onDu
       <span>{text('confirmTimeline')}</span>
     </label>
     <Button type="button" disabled={!canManage || !confirmed || !analysis.valid || !hasTargets} onClick={onApply}>{text('applyMissing')}</Button>
-    {!hasTargets && <p>{text('nothingToPropose')}</p>}
+    {!hasTargets && analysis.valid && <p>{text('nothingToPropose')}</p>}
     {proposal && <p role="status">{text(proposal.fingerprint === analysis.fingerprint ? 'proposalApplied' : 'staleProposal', { count: proposal.ids.length, duration: proposal.duration })}</p>}
     <p style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 0 }}>
       <Link to={'/match-live/' + encodeURIComponent(matchId)}>{text('reviewChanges')}</Link>
