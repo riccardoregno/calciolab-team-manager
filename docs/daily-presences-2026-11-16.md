@@ -4,7 +4,7 @@
 
 Aprendo dalla Home le presenze da confermare, assegnare uno stato non rimuove più immediatamente la riga. Il giocatore resta modificabile fino alla selezione di «Aggiorna elenco da confermare». I contatori seguono gli stati registrati; mantenere una riga visibile non la mantiene nel conteggio dei dati mancanti. Passando a Mostra tutti o a un'altra seduta non vengono riutilizzate le righe trattenute della compilazione precedente.
 
-La conferma collettiva conserva le eccezioni individuali e i «Da confermare» salvati. Non cambia la regola che richiede una presenza effettivamente registrata: un valore predefinito continua a essere da confermare.
+Aggiornamento della regola di conteggio: una seduta già svolta nel calendario conta come presenza per chi era a disposizione, salvo eccezioni individuali o indisponibilità nel periodo. Non serve registrare retroattivamente le presenze predefinite. La conferma collettiva conserva le eccezioni e i «Da confermare» salvati intenzionalmente; non viene più proposta come operazione necessaria per una seduta passata. I controlli riportati sotto descrivono il collaudo precedente alla correzione; la regressione aggiornata è in `calendar-attendance-2026-11-16.md`.
 
 Nel Quadro il pannello completo dei filtri scorre con la pagina. Rimane fisso un riepilogo più piccolo di squadra, periodo, vista e filtri attivi. Il pannello precedente copriva i link agli eventi a 390 px e impediva il tocco. Il nuovo riepilogo libera quei collegamenti.
 

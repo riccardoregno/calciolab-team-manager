@@ -12,6 +12,7 @@ try {
   const { default: PostMatch } = await server.ssrLoadModule('/src/pages/PostMatch.jsx');
   const { default: CoachAnalysisDashboard } = await server.ssrLoadModule('/src/components/dashboard/CoachAnalysisDashboard.jsx');
   const { default: MatchCompletion } = await server.ssrLoadModule('/src/pages/MatchCompletion.jsx');
+  const { default: SessionAttendance } = await server.ssrLoadModule('/src/pages/SessionAttendance.jsx');
   const h = React.createElement;
   const players = Array.from({length:14},(_,i)=>({id:String(i+1),name:'Fittizio '+(i+1)}));
   const match = {id:'fixture',date:'2026-11-14',opponent:'QA',lineup:{starterIds:players.slice(0,11).map(p=>p.id),calledUpIds:players.map(p=>p.id)}};
@@ -50,5 +51,8 @@ try {
   assert.match(completion,/value="quadro"/,'Save and open overview submits the same validated form');
   assert.match(completion,/Salva e apri il Quadro/);
   assert.match(completion,/rosterWeek=2026-11-09/,'Sunday match links to its actual week');
+  const calendarRegister=renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/session-attendance/past']},h(Routes,null,h(Route,{path:'/session-attendance/:id',element:h(SessionAttendance,{sessions:[{id:'past',date:'2020-01-01',completed:true}],players,setSessions(){}})})))));
+  assert.match(calendarRegister,/Registra solo le eccezioni/);
+  assert.doesNotMatch(calendarRegister,/Conferma presenze mancanti/,'Past calendar sessions must not ask for redundant confirmation');
   console.log('Match flow rendering: linked stages, active substitutions and read-only controls passed');
 } finally { await server.close(); }

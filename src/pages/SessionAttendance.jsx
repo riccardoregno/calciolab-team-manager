@@ -63,7 +63,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const visiblePlayers = pendingOnly
     ? getAttendanceWorklistPlayers(firstTeamPlayers,unrecordedPlayers.map(player=>player.id),reviewed,id)
     : sessionPlayers;
-  const eligibleCount = session ? visiblePlayers.filter((player) => canConfirmUnrecordedTrainingPresence(player, session)).length : 0;
+  const eligibleCount = session && !ended ? visiblePlayers.filter((player) => canConfirmUnrecordedTrainingPresence(player, session)).length : 0;
 
   function updatePlayer(playerId, field, value) {
     if (!canManage) return;
@@ -188,7 +188,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
             </Button>
           </div>
         </div>
-        {pending > 0 && <p style={s.pendingHelp}>{t("pages.sessionAttendance.pendingHelp")}</p>}
+        {ended && <p style={s.pendingHelp}>{t('pages.sessionAttendance.calendarHelp')}</p>}
+        {!ended && pending > 0 && <p style={s.pendingHelp}>{t("pages.sessionAttendance.pendingHelp")}</p>}
         {canManage && <p style={s.pendingHelp}>{t("pages.sessionAttendance.autosaveHelp")}</p>}
       </AppCard>
 

@@ -33,7 +33,7 @@ try {
   for (const period of [[session], sessions]) {
     const summaries = selected.map(player => helpers.getTrainingAttendanceSummary(player,period,{requireConfirmedPresence:true}));
     const previous = period.length-1;
-    assert.deepEqual(summaries.map(row=>[row.trainingPresences,row.pendingTrainings]), [[previous+1,0],[previous,1],[previous,1]]);
+    assert.deepEqual(summaries.map(row=>[row.trainingPresences,row.pendingTrainings]), [[previous+1,0],[previous,1],[previous+1,0]]);
   }
   const match = matches.find(event => event.id === fixture.matchId);
   const minutes = selected.map(player => helpers.getPlayerMatchEntries(player,[match],[],false)[0].data.minutes);

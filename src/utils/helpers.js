@@ -244,11 +244,12 @@ export function getPlayerUnavailabilityOnDate(player, dateStr) {
   if (Number.isNaN(date.getTime())) return null;
 
   for (const injury of player?.injuries || []) {
-    if (!injury?.startDate) continue;
-    const start = new Date(injury.startDate);
+    const startRaw = injury?.startDate || injury?.dateStart;
+    if (!startRaw) continue;
+    const start = new Date(startRaw);
     if (Number.isNaN(start.getTime()) || date < start) continue;
 
-    const endRaw = injury.endDate || injury.expectedReturn || null;
+    const endRaw = injury.endDate || injury.dateEnd || injury.expectedReturn || null;
     const end = endRaw ? new Date(endRaw) : null;
     if (end && !Number.isNaN(end.getTime()) && date > end) continue;
 
@@ -1546,16 +1547,14 @@ export function getTrainingSessionStatus(player, event) {
 }
 
 export function getTrainingConfirmationStatus(player, event) {
-  if (hasPlayerTransferred(player, event.date)) return null;
-  const recorded = getRecordedTrainingStatus(player, event);
-  if (recorded !== null) return recorded;
-  const suggested = getTrainingDefaultStatus(player, normalizeStatsDate(event.date));
-  return suggested === "Presente" ? TRAINING_ATTENDANCE_PENDING : suggested;
+  // Completed calendar sessions count as attended unless an individual exception
+  // or dated unavailability applies. Do not turn historical defaults into backlog.
+  return getTrainingSessionStatus(player, event);
 }
 
 export function canConfirmUnrecordedTrainingPresence(player, event) {
-  return getRecordedTrainingStatus(player, event) === null &&
-    getTrainingConfirmationStatus(player, event) === TRAINING_ATTENDANCE_PENDING;
+  return !hasPlayerTransferred(player,event.date) && getRecordedTrainingStatus(player, event) === null &&
+    getTrainingDefaultStatus(player,normalizeStatsDate(event.date)) === 'Presente';
 }
 
 export function confirmUnrecordedTrainingPresences(event, players) {

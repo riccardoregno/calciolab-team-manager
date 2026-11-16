@@ -32,7 +32,7 @@ const session = { id: "session", type: "Allenamento", date: "2026-11-10", comple
 } };
 const tasks = buildCoachTasks({ players, sessions: [session], now });
 assert.equal(tasks.length, 1);
-assert.equal(tasks[0].count, 2, "Saved pending and absent record both need confirmation; absence, injury and transfer are exceptions");
+assert.equal(tasks[0].count, 1, "Only an explicitly saved pending status requires confirmation; missing records follow the calendar rule");
 assert.equal(tasks[0].to, "/session-attendance/session");
 const confirmed = confirmUnrecordedTrainingPresences(session, players);
 const after = buildCoachTasks({ players, sessions: [confirmed], now });

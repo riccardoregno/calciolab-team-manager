@@ -118,8 +118,8 @@ assert.deepEqual(getPlayerMatchEntries(transferredPlayer, transferMatches, [], f
 const confirmedSummary = getTrainingAttendanceSummary(striker,
   [{ ...attendanceCases[0], completed: true }, pendingSession, unrecordedSession],
   { requireConfirmedPresence: true });
-assert.equal(confirmedSummary.trainingPresences, 1);
-assert.equal(confirmedSummary.pendingTrainings, 2);
+assert.equal(confirmedSummary.trainingPresences, 2);
+assert.equal(confirmedSummary.pendingTrainings, 1,'Only explicitly saved pending attendance remains pending');
 
 const roster = Array.from({ length: 25 }, (_, index) => ({ id: String(index) }));
 const unconfirmed = {
@@ -142,7 +142,7 @@ const countConfirmed = (event) => roster.map((player) =>
   getTrainingAttendanceSummary(player, [event], { requireConfirmedPresence: true }));
 const beforeBulk = countConfirmed(unconfirmed);
 assert.deepEqual(beforeBulk.slice(1, 4).map(({ trainingPresences, pendingTrainings }) =>
-  [trainingPresences, pendingTrainings]), [[0, 1], [1, 0], [0, 1]]);
+  [trainingPresences, pendingTrainings]), [[0, 1], [1, 0], [1, 0]]);
 assert.equal(countConfirmed(reloaded).filter(({ trainingPresences }) => trainingPresences === 1).length, 23);
 assert.equal(countConfirmed(reloaded).filter(({ pendingTrainings }) => pendingTrainings === 1).length, 1);
 assert.equal(confirmUnrecordedTrainingPresences(reloaded, roster), reloaded);
