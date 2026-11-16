@@ -177,6 +177,16 @@ const completeLegacy = { ...legacyMinutes, lineup: { starterIds: ["forward"] } }
 const tasks = getMatchCompletionTasks({ matches: [starterWithoutMinutes, completeLegacy], players,
   rows: [{ player_id: "forward", match_id: "legacy", minutes_played: null }], canCheckMinutes: true, now: new Date("2020-02-01") });
 assert.deepEqual(tasks.map(({ match: event, missingMinutes }) => [event.id, missingMinutes]), [["starter", 1]]);
+const resultOnly = {...completeLegacy,id:'result-only',result:'',goalsScored:null,goalsConceded:null,
+  lineup:{starterIds:[],formationPlans:{firstHalf:{slots:{0:'forward'}}}},attendance:{forward:{minutes:0}}};
+const missingResultTasks=getMatchCompletionTasks({matches:[resultOnly],players,rows:[],canCheckMinutes:true,now:new Date('2020-02-01')});
+assert.equal(missingResultTasks.length,1,'A missing result remains actionable even when all minutes are recorded');
+assert.equal(missingResultTasks[0].missingResult,true);
+assert.equal(missingResultTasks[0].missingFormation,false,'Saved first-half field wins over empty legacy starter IDs');
+assert.equal(missingResultTasks[0].missingMinutes,0,'Confirmed zero is not missing');
+const unknownMinutes={...resultOnly,id:'unknown-minutes',result:'0-0',attendance:{}};
+assert.equal(getMatchCompletionTasks({matches:[unknownMinutes],players,rows:[],canCheckMinutes:true,now:new Date('2020-02-01')})[0].missingMinutes,1);
+assert.equal(getMatchCompletionTasks({matches:[resultOnly],players,rows:[],canCheckMinutes:false,now:new Date('2020-02-01')})[0].missingResult,true,'Unavailable minute rows do not hide a missing result');
 
 const partialSession = { date: "2020-01-02", type: "Allenamento", duration: 90,
   attendance: { forward: { status: "Parziale", partialMinutes: 30, rpe: 4 } } };

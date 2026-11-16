@@ -30,7 +30,7 @@ export function buildCoachTasks({ sessions = [], matches = [], players = [], mat
       (day < today || event.completed || Boolean(parseMatchResult(event.result, event)));
   }).reverse();
   for (const event of recent) {
-    if (!parseMatchResult(event.result, event)) tasks.push({ id: `result:${event.id}`, kind: "result", event, count: 0, to: `/post-match/${event.id}` });
+    if (!parseMatchResult(event.result, event)) tasks.push({ id: `result:${event.id}`, kind: "result", event, count: 0, to: `/match-completion/${encodeURIComponent(event.id)}`, state: { fromDashboard: true } });
     if (!canCheckMatchStats) continue;
     const ids = getMatchCompletionPlayerIds(event).filter((id) => playerIds.has(id));
     const rows = new Map(matchRows.filter((row) => String(row.match_id) === String(event.id)).map((row) => [String(row.player_id), row]));

@@ -96,6 +96,11 @@ export const it = {
   }
 },
   dailyUi: {
+    completeMatchAction: 'Completa tabellino',
+    pendingMatchResult: 'Risultato da inserire',
+    pendingMatchFormation: 'Formazione da registrare',
+    pendingMatchMinutes: '{{count}} minutaggi da completare',
+    pendingMatchMinute: '1 minutaggio da completare',
     refreshPendingList: 'Aggiorna elenco da confermare',
     stablePendingList: 'Le righe modificate restano visibili per controllare o correggere la scelta. Aggiorna l’elenco quando vuoi nascondere quelle completate.',
     devTools: "Sviluppo locale",

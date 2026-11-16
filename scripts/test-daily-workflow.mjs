@@ -23,6 +23,9 @@ assert.equal(getRegisterRosterPath('2026-10', registerEvents, new Date(2026,10,1
 assert.equal(getRegisterRosterPath('2026-10', [], new Date(2026,10,13)), '/statistics?roster=1&rosterWeek=2026-09-28', 'Empty past month opens its first week');
 
 const now = new Date(2026, 10, 11, 12);
+const missingScoreTask=buildCoachTasks({matches:[{id:'score / missing',date:'2026-11-10',type:'Partita'}],now}).find(task=>task.kind==='result');
+assert.equal(missingScoreTask.to,'/match-completion/score%20%2F%20missing','A result task opens the editable match sheet, not the narrative report');
+assert.equal(missingScoreTask.state.fromDashboard,true);
 const players = ["present", "pending", "missing", "absent", "injured", "transferred", "future"].map(id => ({ id, status: "Disponibile", gruppo: "prima", ...(id === "transferred" ? { transferDate: "2026-11-09" } : id === "future" ? { transferDate: "2026-11-20" } : {}) }));
 const session = { id: "session", type: "Allenamento", date: "2026-11-10", completed: true, attendance: {
   present: { status: "Presente" }, pending: { status: "Da confermare" }, absent: { status: "Assente" }, injured: { status: "Infortunato" }, future: { status: "Presente" },

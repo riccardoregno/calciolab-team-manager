@@ -1,5 +1,6 @@
 import { getAgendaDateKey } from "./coachAgenda.js";
-import { getLineup, parseMatchResult, getMatchCompletionPlayerIds, resolveMatchMinutes, parseRecordedMinutes } from "./helpers.js";
+import { parseMatchResult, getMatchCompletionPlayerIds, resolveMatchMinutes, parseRecordedMinutes } from "./helpers.js";
+import { getMatchParticipation } from './matchTimeline.js';
 
 export { getMatchCompletionPlayerIds };
 
@@ -23,14 +24,14 @@ export function getMatchCompletionTasks({ matches, players, rows, canCheckMinute
     const score = parseMatchResult(match.result, match);
     if (!day || day > today || (day === today && !score && !match.completed)) continue;
 
-    const lineup = getLineup(match);
-    const ids = getMatchCompletionPlayerIds(match);
+    const participation = getMatchParticipation(match);
+    const ids = [...new Set([...getMatchCompletionPlayerIds(match),...participation.called])];
     const recorded = minutesByMatch.get(String(match.id));
     const missingMinutes = canCheckMinutes ? ids.filter((id) =>
       rosterIds.has(id) && resolveMatchMinutes(recorded?.get(id)?.minutes_played, match.attendance?.[id]?.minutes, recorded?.get(id)?.minutes_cleared) === null
     ).length : 0;
     const missingResult = !score;
-    const missingFormation = !lineup.starterIds.some(Boolean);
+    const missingFormation = !participation.starters.length;
     if (missingResult || missingFormation || missingMinutes) {
       pending.push({ match, missingResult, missingFormation, missingMinutes });
     }

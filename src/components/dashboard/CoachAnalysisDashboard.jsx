@@ -28,9 +28,8 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
   const count = (value) => loading ? "—" : number(value);
   const formPoints = model.form.reduce((total, item) => total + item.earned, 0);
   const calledUp = new Set([...(model.nextMatch?.convocazione?.playerIds || []), ...(model.nextMatch?.lineup?.calledUpIds || [])].map(String)).size;
-  const minuteTask = canManage && !statsPending && !statsError
-    ? getMatchCompletionTasks({ matches, players, rows, now, canCheckMinutes: true })
-      .filter((task) => task.missingMinutes > 0)
+  const matchTask = canManage && !loading
+    ? getMatchCompletionTasks({ matches, players, rows, now, canCheckMinutes: !statsPending && !statsError })
       .sort((a, b) => String(b.match.date).localeCompare(String(a.match.date)))[0]
     : null;
   const attendanceTask = canManage && !loading
@@ -77,7 +76,13 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
       <div className="daily-actions-grid">
         <Link to="/statistics?roster=1" className="daily-action-primary"><strong>{t("dailyUi.openQuadro")}</strong><span>{t("dailyUi.quadroHint")}</span><ArrowUpRight size={18} /></Link>
         {attendanceTask ? <Link to={attendanceTask.to} state={{ pendingOnly: true, fromDashboard: true }}><strong>{t("dailyUi.attendanceAction", { count: attendanceTask.count })}</strong><span>{attendanceTask.event.title} · {formatDate(attendanceTask.event.date)}</span><ArrowUpRight size={18} /></Link> : <Link to="/attendance-register"><strong>{t("dailyUi.register")}</strong><span>{t("dailyUi.trainingPresences")}</span><ArrowUpRight size={18} /></Link>}
-        {minuteTask && <Link to={`/match-completion/${encodeURIComponent(minuteTask.match.id)}`} state={{ fromDashboard: true }}><strong>{t("dailyUi.minutesAction", { count: minuteTask.missingMinutes })}</strong><span>{minuteTask.match.opponent} · {formatDate(minuteTask.match.date)}</span><ArrowUpRight size={18} /></Link>}
+        {matchTask && <Link to={`/match-completion/${encodeURIComponent(matchTask.match.id)}`} state={{ fromDashboard: true, missingMinutesOnly: !matchTask.missingResult && !matchTask.missingFormation }}>
+          <strong>{t('dailyUi.completeMatchAction')}</strong>
+          <span>{matchTask.match.opponent} · {formatDate(matchTask.match.date)}<br />{[
+            matchTask.missingResult?t('dailyUi.pendingMatchResult'):'',
+            matchTask.missingFormation?t('dailyUi.pendingMatchFormation'):'',
+            matchTask.missingMinutes?t(matchTask.missingMinutes===1?'dailyUi.pendingMatchMinute':'dailyUi.pendingMatchMinutes',{count:matchTask.missingMinutes}):'',
+          ].filter(Boolean).join(' · ')}</span><ArrowUpRight size={18} /></Link>}
       </div>
     </section>
     <MatchScopeFilters scope={matchScope} />

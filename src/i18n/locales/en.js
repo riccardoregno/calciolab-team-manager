@@ -96,6 +96,11 @@ export const en = {
   }
 },
   dailyUi: {
+    completeMatchAction: 'Complete match report',
+    pendingMatchResult: 'Result to record',
+    pendingMatchFormation: 'Lineup to record',
+    pendingMatchMinutes: '{{count}} minutes entries to complete',
+    pendingMatchMinute: '1 minutes entry to complete',
     refreshPendingList: 'Refresh pending list',
     stablePendingList: 'Edited rows stay visible so you can review or correct your choice. Refresh the list when you want to hide completed rows.',
     devTools: "Local development",

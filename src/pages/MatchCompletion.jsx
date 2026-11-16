@@ -1,4 +1,4 @@
-import { getRosterReturnPath } from "../utils/rosterNavigation";
+import { getRosterReturnPath, getRosterWeekPath } from "../utils/rosterNavigation";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import AppCard from "../components/ui/AppCard";
@@ -194,6 +194,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
       <PageHeader title="Completa tabellino" subtitle={formatDate(match.date)} />
       <MatchTabBar matchId={match.id} active="tabellino" matchLabel={match.opponent} matchData={match} />
       <Link to={rosterReturn || backTo}>{rosterReturn ? "Torna al riepilogo settimanale" : state?.fromDashboard ? "Torna alla Dashboard" : "Torna alle gare da completare"}</Link>
+      {!rosterReturn && <Link to={getRosterWeekPath(match.date)}>{t('dailyUi.sessionQuadro')}</Link>}
       <form onSubmit={save}>
         <fieldset disabled={!canManage || saving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: "grid", gap: 14 }}>
           {(draft !== emptyDraft || draftError) && (
