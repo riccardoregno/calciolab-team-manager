@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from '../../i18n';
 import { ArrowRight, BarChart3, ClipboardCheck, FileText, Shirt } from "lucide-react";
+import {getMatchParticipation} from '../../utils/matchTimeline';
 
 const TABS = [
   {
@@ -29,11 +30,11 @@ const TABS = [
     getStatus(d) {
       if (!d) return null;
       if (d.lineup?.ready) return "done";
-      if (d.lineup?.starterIds?.length > 0) return "draft";
+      if (getMatchParticipation(d).starters.length > 0) return "draft";
       return null;
     },
     getCount(d) {
-      const n = d?.lineup?.starterIds?.length || 0;
+      const n = d ? getMatchParticipation(d).starters.length : 0;
       return n > 0 ? `${n}/11` : null;
     },
   },

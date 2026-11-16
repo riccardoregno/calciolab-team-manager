@@ -11,6 +11,7 @@ try {
   const { default: MatchMinutesProposal } = await server.ssrLoadModule('/src/components/match/MatchMinutesProposal.jsx');
   const { default: PostMatch } = await server.ssrLoadModule('/src/pages/PostMatch.jsx');
   const { default: CoachAnalysisDashboard } = await server.ssrLoadModule('/src/components/dashboard/CoachAnalysisDashboard.jsx');
+  const { default: MatchCompletion } = await server.ssrLoadModule('/src/pages/MatchCompletion.jsx');
   const h = React.createElement;
   const players = Array.from({length:14},(_,i)=>({id:String(i+1),name:'Fittizio '+(i+1)}));
   const match = {id:'fixture',date:'2026-11-14',opponent:'QA',lineup:{starterIds:players.slice(0,11).map(p=>p.id),calledUpIds:players.map(p=>p.id)}};
@@ -44,5 +45,10 @@ try {
   assert.doesNotMatch(resultTask,/Formazione da registrare/,'Saved field is not advertised as missing formation');
   assert.match(overview({statsError:true}),/Risultato da inserire/,'A failed minute read does not hide the actionable result');
   assert.doesNotMatch(overview({canManage:false}),/Completa tabellino/,'Read-only users do not receive an editing task');
+  const completion=renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/match-completion/fixture']},h(Routes,null,h(Route,{path:'/match-completion/:id',element:h(MatchCompletion,{matches:[missingScore],players,setMatches(){}})})))));
+  assert.match(completion,/1\/11/,'Formation tab counts the saved first-half field');
+  assert.match(completion,/value="quadro"/,'Save and open overview submits the same validated form');
+  assert.match(completion,/Salva e apri il Quadro/);
+  assert.match(completion,/rosterWeek=2026-11-09/,'Sunday match links to its actual week');
   console.log('Match flow rendering: linked stages, active substitutions and read-only controls passed');
 } finally { await server.close(); }

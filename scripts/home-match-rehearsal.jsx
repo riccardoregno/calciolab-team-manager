@@ -8,7 +8,7 @@ import WeeklyRoster from '../src/components/statistics/WeeklyRoster';
 import '../src/index.css';
 import '../src/styles/design-system.css';
 import '../src/styles/product-refinement.css';
-if(location.hostname!=='127.0.0.1'||location.port!=='4184') throw new Error('Solo collaudo locale');
+if(location.hostname!=='127.0.0.1'||location.port!=='4184'||import.meta.env.VITE_SUPABASE_URL) throw new Error('Solo collaudo locale in memoria, senza Supabase configurato');
 const players=Array.from({length:25},(_,i)=>({id:String(i+1),name:i===0?'Luca Della Valle Castiglioni':`Giocatore fittizio ${i+1}`,role:i===0?'Portiere':'Centrocampista',gruppo:'prima',status:'Disponibile'}));
 const ids=players.slice(0,11).map(p=>p.id);
 const match={id:'home-sheet-fixture',date:'2026-11-15',type:'Partita',completed:true,matchKind:'Campionato',opponent:'AS Collaudo risultato',location:'Casa',result:'',

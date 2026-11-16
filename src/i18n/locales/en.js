@@ -97,6 +97,7 @@ export const en = {
 },
   dailyUi: {
     completeMatchAction: 'Complete match report',
+    saveMatchQuadro: 'Save and open squad overview',
     pendingMatchResult: 'Result to record',
     pendingMatchFormation: 'Lineup to record',
     pendingMatchMinutes: '{{count}} minutes entries to complete',

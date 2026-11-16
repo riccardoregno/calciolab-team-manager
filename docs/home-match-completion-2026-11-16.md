@@ -4,13 +4,15 @@ La Home propone la gara più recente da completare indicando cosa manca: risulta
 
 Il controllo dei titolari usa il campo del primo tempo salvato, con il precedente elenco titolari come fallback. Anche i giocatori presenti solo nel campo salvato vengono considerati per i minuti mancanti. Gli zeri espliciti restano valori confermati. Il vecchio task «risultato mancante» apre ora il tabellino modificabile, anziché il report narrativo Dopo gara.
 
-Nel tabellino è disponibile «Quadro di questa settimana», calcolato dalla data della gara, anche se la gara appartiene alla settimana precedente. I ritorni a un Quadro già selezionato conservano il loro contesto. Nessuna nuova scrittura automatica, migrazione o modifica dei criteri di salvataggio.
+Nel tabellino sono disponibili «Quadro di questa settimana» e «Salva e apri il Quadro», calcolati dalla data della gara, anche se la gara appartiene alla settimana precedente. La nuova azione di salvataggio usa lo stesso form e gli stessi controlli; il ritorno precedente resta disponibile. I ritorni a un Quadro già selezionato conservano il loro contesto. Anche il contatore Formazione della barra delle fasi legge il campo del primo tempo. Nessuna nuova scrittura automatica, migrazione o modifica dei criteri di salvataggio.
 
 ## Controlli
 
 Test di logica e rendering SSR: risultato mancante con minuti tutti zero, campo del primo tempo con elenco legacy vuoto, minutaggio nullo distinto dallo zero, lettura minuti indisponibile, assenza di azioni di modifica per utenti in sola lettura, destinazione del task e parità delle traduzioni italiano/inglese. Inclusi nella suite npm test. Lint e build controllati sul candidato.
 
-Il collaudo browser/Supabase di questo intervento NON è concluso: motore Docker Linux non disponibile (`dockerDesktopLinuxEngine` inesistente), API locale 54321 con connessione rifiutata e frontend locale con timeout. Tentato l'avvio di Docker Desktop senza ottenere il motore pronto. Nessuna fixture è stata inserita, nessun database remoto contattato e nessuna scrittura in produzione.
+Il primo tentativo era bloccato da Docker spento e frontend locale irraggiungibile. Dopo l'avvio di Docker e del frontend dalla PowerShell del PC, il collaudo browser/Supabase è stato completato sul solo pilot. L'agente continua a non accedere al socket Docker; ha usato l'API locale esistente dopo i controlli dello script eseguito dall'utente. Nessun database remoto contattato e nessuna scrittura in produzione.
+
+Home desktop: l'azione per AS Collaudo risultato indica soltanto risultato mancante; il tabellino mostra campo 1T e 11 zeri già presenti. A 390 px inseriti 1-0 e selezionato «Salva e apri il Quadro»: aperto direttamente 9–15 novembre e osservato Salvato online. Gli 11 zeri sono rimasti confermati e distinti da non convocati/minuti sconosciuti. Il documento misura 380 px su viewport 390 e 1270 px su 1280 desktop. Home ricaricata: la gara completata non compare più nell'azione rapida, che propone la successiva gara incompleta. Verifica API separata della fixture: risultato 1-0, campo 1T conservato, zeri invariati e nessuna attività residua per questa gara.
 
 ## Ripetizione sul PC
 

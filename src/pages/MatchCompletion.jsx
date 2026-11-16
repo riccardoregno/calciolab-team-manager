@@ -109,6 +109,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
 
   async function save(event) {
     event.preventDefault();
+    const destination = rosterReturn || (event.nativeEvent.submitter?.value === 'quadro' ? getRosterWeekPath(match.date) : backTo);
     if (!canManage || saveLock.current || (remote && !saved)) return;
     if (draft.minutesProposal && (!timeline.valid || draft.minutesProposal.fingerprint !== timeline.fingerprint)) {
       setError(t('matchFlow.staleProposal'));
@@ -180,7 +181,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
       }));
       writeDraft(draftKey, emptyDraft);
       window.dispatchEvent(new Event("player-match-stats-updated"));
-      navigate(rosterReturn || backTo);
+      navigate(destination);
     } catch {
       setError("Alcuni minuti potrebbero essere stati salvati. Riprova per completare il tabellino.");
     } finally {
@@ -257,7 +258,10 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
               })}
           </AppCard>
           {error && <p role="alert">{error}</p>}
-          <Button type="submit" disabled={saving || !canManage || (remote && !saved)}>{saving ? "Salvataggio…" : rosterReturn ? "Salva e torna al riepilogo" : state?.fromDashboard ? "Salva e torna alla Dashboard" : "Salva e torna alle gare"}</Button>
+          <div style={{display:'flex',flexWrap:'wrap',gap:10}}>
+            <Button type="submit" disabled={saving || !canManage || (remote && !saved)}>{saving ? "Salvataggio…" : rosterReturn ? "Salva e torna al riepilogo" : state?.fromDashboard ? "Salva e torna alla Dashboard" : "Salva e torna alle gare"}</Button>
+            {!rosterReturn && <Button type="submit" value="quadro" variant="ghost" disabled={saving || !canManage || (remote && !saved)}>{t('dailyUi.saveMatchQuadro')}</Button>}
+          </div>
         </fieldset>
       </form>
     </div>

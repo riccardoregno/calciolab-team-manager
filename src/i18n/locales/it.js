@@ -97,6 +97,7 @@ export const it = {
 },
   dailyUi: {
     completeMatchAction: 'Completa tabellino',
+    saveMatchQuadro: 'Salva e apri il Quadro',
     pendingMatchResult: 'Risultato da inserire',
     pendingMatchFormation: 'Formazione da registrare',
     pendingMatchMinutes: '{{count}} minutaggi da completare',
