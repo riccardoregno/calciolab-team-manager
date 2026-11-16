@@ -9,6 +9,7 @@ import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { canConfirmUnrecordedTrainingPresence, confirmUnrecordedTrainingPresences, formatDate, getRecordedTrainingStatus, getTrainingConfirmationStatus, hasPlayerTransferred, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes, TRAINING_ATTENDANCE_PENDING } from "../utils/helpers";
 import { hasTrainingEnded } from "../utils/trainingArchive";
+import { getAttendanceWorklistPlayers } from '../utils/attendanceWorklist';
 import { useTranslation } from "../i18n";
 
 const STATUS_OPTIONS = ["Presente", "Parziale", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato", TRAINING_ATTENDANCE_PENDING];
@@ -44,6 +45,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const rosterReturn = getRosterReturnPath(state);
   const registerReturn = getRegisterReturnPath(state);
   const [pendingOnly, setPendingOnly] = useState(Boolean(state?.pendingOnly));
+  const [reviewed, setReviewed] = useState({sessionId:id,ids:[]});
   const { canManage } = useAreaPermission();
   const [showSummaryList, setShowSummaryList] = useState(false);
   const [confirmState, setConfirmState] = useState(null);
@@ -59,7 +61,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const attendanceStatus = (player) => ended ? getTrainingConfirmationStatus(player, session) : getRecordedTrainingStatus(player, session);
   const unrecordedPlayers = firstTeamPlayers.filter((player) => needsConfirmation(attendanceStatus(player)));
   const visiblePlayers = pendingOnly
-    ? unrecordedPlayers
+    ? getAttendanceWorklistPlayers(firstTeamPlayers,unrecordedPlayers.map(player=>player.id),reviewed,id)
     : sessionPlayers;
   const eligibleCount = session ? visiblePlayers.filter((player) => canConfirmUnrecordedTrainingPresence(player, session)).length : 0;
 
@@ -67,6 +69,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
     if (!canManage) return;
     if (!session) return;
     if (!updateEvents) return;
+    if (pendingOnly && field === 'status') keepRows([playerId]);
     updateEvents((prevSessions) =>
       prevSessions.map((item) => {
         if (String(item.id) !== String(id)) return item;
@@ -82,10 +85,17 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
     );
   }
 
+  function keepRows(ids) {
+    setReviewed(previous=>({sessionId:id,ids:[...new Set([
+      ...(String(previous.sessionId)===String(id)?previous.ids:[]),...ids.map(String),
+    ])]}));
+  }
+
   function confirmUnrecorded() {
     if (!canManage) return;
     if (!session) return;
     if (!updateEvents) return;
+    if (pendingOnly) keepRows(visiblePlayers.filter(player=>canConfirmUnrecordedTrainingPresence(player,session)).map(player=>player.id));
     updateEvents((prevSessions) =>
       prevSessions.map((item) => {
         if (String(item.id) !== String(id)) return item;
@@ -248,13 +258,17 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
         <AppCard>
           {state?.pendingOnly && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-              <Button variant="ghost" onClick={() => setPendingOnly((value) => !value)}>
+              <Button variant="ghost" onClick={() => {setPendingOnly((value) => !value);setReviewed({sessionId:id,ids:[]});}}>
                 {t(pendingOnly ? "pages.sessionAttendance.showAllPlayers" : "pages.sessionAttendance.showPendingPlayers")}
               </Button>
+              {pendingOnly && reviewed.sessionId === id && reviewed.ids.length > 0 && <Button variant="ghost" onClick={()=>setReviewed({sessionId:id,ids:[]})}>
+                {t('dailyUi.refreshPendingList')}
+              </Button>}
               {!rosterReturn && !state?.fromDashboard && <Button variant="ghost" onClick={() => navigate("/")}>{t("pages.sessionAttendance.backToDashboard")}</Button>}
             </div>
           )}
-          {pendingOnly && !visiblePlayers.length && <p role="status">{t("pages.sessionAttendance.attendanceComplete")}</p>}
+          {pendingOnly && visiblePlayers.length > 0 && <p style={s.pendingHelp}>{t('dailyUi.stablePendingList')}</p>}
+          {pendingOnly && pending === 0 && <p role="status">{t("pages.sessionAttendance.attendanceComplete")}</p>}
           <div style={s.grid}>
             {[...visiblePlayers].sort((a, b) => {
               const ro = (r) => { const s = (r||"").toLowerCase(); return s.startsWith("portiere") ? 0 : s.startsWith("difensore") ? 1 : s.startsWith("centrocampista") ? 2 : s.startsWith("attaccante") ? 3 : 99; };

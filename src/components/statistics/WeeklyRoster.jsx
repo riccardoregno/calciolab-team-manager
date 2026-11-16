@@ -228,6 +228,11 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
             : text(pendingRows.length === 1 ? "playerPending" : "playersPending", { count: pendingRows.length })}
       </p>}
       </div>
+      <div className="weekly-roster-summary" role="region" aria-label={text('period')}>
+        <strong title={auth.team?.name || text('firstTeam')}>{auth.team?.name || text('firstTeam')}</strong>
+        <span>{dateLabel(periodStart)} – {dateLabel(end)}</span>
+        <small>{[text(fourWeeks?'fourWeeks':'week'),pendingOnly?text('onlyPending'):'',sortByMinutes?text('sortMinutes'):''].filter(Boolean).join(' · ')}</small>
+      </div>
       {standalone && !fourWeeks && players.length > 0 && <details onToggle={(event) => setShowComparison(event.currentTarget.open)} style={{ marginBottom: 12 }}>
         <summary style={{ cursor: "pointer", padding: "10px 0" }}>{text("comparison")}</summary>
         {showComparison && <FourWeekComparison {...{ events, players, rows, start, now, loading, statsError }}

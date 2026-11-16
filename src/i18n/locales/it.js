@@ -96,6 +96,8 @@ export const it = {
   }
 },
   dailyUi: {
+    refreshPendingList: 'Aggiorna elenco da confermare',
+    stablePendingList: 'Le righe modificate restano visibili per controllare o correggere la scelta. Aggiorna l’elenco quando vuoi nascondere quelle completate.',
     devTools: "Sviluppo locale",
     moreTools: "Altri strumenti",
     areaCount: "{{count}} aree",

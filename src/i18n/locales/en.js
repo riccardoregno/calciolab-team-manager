@@ -96,6 +96,8 @@ export const en = {
   }
 },
   dailyUi: {
+    refreshPendingList: 'Refresh pending list',
+    stablePendingList: 'Edited rows stay visible so you can review or correct your choice. Refresh the list when you want to hide completed rows.',
     devTools: "Local development",
     moreTools: "More tools",
     areaCount: "{{count}} areas",

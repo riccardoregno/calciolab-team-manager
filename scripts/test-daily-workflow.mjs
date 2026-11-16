@@ -5,6 +5,7 @@ import { buildCoachAnalysis } from "../src/utils/coachAnalysis.js";
 import { confirmUnrecordedTrainingPresences } from "../src/utils/helpers.js";
 import { it } from "../src/i18n/locales/it.js";
 import { en } from "../src/i18n/locales/en.js";
+import { getAttendanceWorklistPlayers } from '../src/utils/attendanceWorklist.js';
 
 const path = "/statistics?roster=1&rosterView=4&rosterWeek=2026-11-02&rosterPending=1&rosterSort=minutes";
 assert.equal(getRosterReturnPath({ rosterReturn: path }), path, "Correction returns to the same view, week, pending filter and order");
@@ -32,6 +33,11 @@ assert.equal(tasks[0].count, 2, "Saved pending and absent record both need confi
 assert.equal(tasks[0].to, "/session-attendance/session");
 const confirmed = confirmUnrecordedTrainingPresences(session, players);
 const after = buildCoachTasks({ players, sessions: [confirmed], now });
+const candidates=players.filter(player=>player.id!=='transferred');
+const reviewed={sessionId:'session',ids:['missing','transferred']};
+assert.deepEqual(getAttendanceWorklistPlayers(candidates,['pending'],reviewed,'session').map(player=>player.id),['pending','missing'],'A just-confirmed row remains reviewable; ineligible players do not reappear');
+assert.deepEqual(getAttendanceWorklistPlayers(candidates,['pending'],{sessionId:'session',ids:[]},'session').map(player=>player.id),['pending'],'Explicit refresh removes completed rows without changing saved exceptions');
+assert.deepEqual(getAttendanceWorklistPlayers(candidates,['pending'],reviewed,'other-session').map(player=>player.id),['pending'],'Reviewed rows cannot leak into another session');
 assert.equal(after[0].count, 1, "Collective confirmation preserves explicitly saved pending status");
 assert.equal(confirmed.attendance.absent.status, "Assente");
 assert.equal(confirmed.attendance.injured.status, "Infortunato");
