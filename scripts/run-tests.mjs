@@ -1,5 +1,6 @@
 import "./test-seasons.mjs";
 import "./test-daily-workflow.mjs";
+import './test-roster-comparison.mjs';
 import './test-calendar-attendance.mjs';
 import "./test-formation-lineup.mjs";
 import "./test-match-timeline.mjs";

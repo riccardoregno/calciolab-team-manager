@@ -6,6 +6,7 @@ import AppCard from "../ui/AppCard";
 import Button from "../ui/Button";
 import { getAgendaDateKey } from "../../utils/coachAgenda";
 import { hasTrainingEnded } from "../../utils/trainingArchive";
+import { getRosterComparisonGroups } from "../../utils/rosterComparison";
 import { comparePlayersByName, isTrainingStatsEvent, getPlayerMatchEntries, getTrainingConfirmationStatus, getTrainingAttendanceSummary, hasPlayerTransferred, isTrainingParticipation, localDateString, parseMatchResult, TRAINING_ATTENDANCE_PENDING } from "../../utils/helpers";
 
 function moveDate(date, days) {
@@ -116,9 +117,10 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
     setParams(next, { replace: true });
   };
   const fourWeeks = params.get("rosterView") === "4";
-  const sortByMinutes = params.get("rosterSort") === "minutes";
-  const setSortByMinutes = (enabled) => {
-    updateParams(next => { if (enabled) next.set("rosterSort", "minutes"); else next.delete("rosterSort"); });
+  const sortMode = ['minutes', 'continuity'].includes(params.get('rosterSort')) ? params.get('rosterSort') : 'name';
+  const sortLabel = sortMode === 'continuity' ? 'sortContinuity' : 'sortMinutes';
+  const setSortMode = (mode) => {
+    updateParams(next => { if (mode !== 'name') next.set("rosterSort", mode); else next.delete("rosterSort"); });
   };
   const setFourWeeks = (enabled) => {
     updateParams(next => { if (enabled) next.set("rosterView", "4"); else next.delete("rosterView"); });
@@ -142,6 +144,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
     const playerSessions = sessions.filter((event) => !hasPlayerTransferred(player, event.date));
     const statuses = playerSessions.map((event) => getTrainingConfirmationStatus(player, event));
     const pendingSessions = playerSessions.filter((_, index) => statuses[index] === TRAINING_ATTENDANCE_PENDING);
+    const trainingPresences = statuses.filter(isTrainingParticipation).length;
     const training = ["Presente", "Assente", "Recupero", "Parziale", "Permesso", "Infortunato", "Squalificato"]
       .map((status) => [status, statuses.filter((entry) => entry === status).length])
       .filter(([, count]) => count > 0);
@@ -165,24 +168,22 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
       .filter(([status]) => !fourWeeks || !["Presente", "Parziale", "Recupero"].includes(status))
       .map(([status, count]) => text(count === 1 ? ({ Presente: "confirmedPresence", Assente: "absence", Recupero: "recovery", Parziale: "partialSingle", Permesso: "permission", Infortunato: "injury", Squalificato: "suspension" })[status] : trainingLabels[status], { count }));
     if (fourWeeks && playerSessions.length) {
-      const trainingPresences = statuses.filter(isTrainingParticipation).length;
       trainingSummary.unshift(text("presencesRatio", { count: trainingPresences, total: playerSessions.length }));
     }
     if (pendingSessions.length) trainingSummary.push(text("pendingCount", { count: pendingSessions.length }));
-    return { player, playerSessions, trainingSummary, pendingSessions, games, known, missing, unverifiable, totalMinutes, matchSummary };
+    return { player, playerSessions, trainingPresences, trainingSummary, pendingSessions, games, known, missing, unverifiable, totalMinutes, matchSummary };
   });
   const pendingOnly = params.get("rosterPending") === "1";
   const pendingRows = rosterRows.filter(({ missing, pendingSessions }) =>
     pendingSessions.length || (!loading && !statsError && missing.length));
   const visibleRows = pendingOnly ? pendingRows : rosterRows;
-  const groupedByMinutes = fourWeeks && sortByMinutes && matches.length > 0 && !loading && !statsError;
-  const groups = groupedByMinutes ? [
-    { label: text("completeMinutes"), rows: visibleRows.filter(({ known, missing, unverifiable }) =>
-      known.length && !missing.length && !unverifiable).sort((a, b) => a.totalMinutes - b.totalMinutes) },
-    { label: text("incompleteMinutes"), rows: visibleRows.filter(({ missing, unverifiable }) =>
-      missing.length || unverifiable) },
-    { label: text("notCalledPeriod"), rows: visibleRows.filter(({ known, missing, unverifiable }) =>
-      !known.length && !missing.length && !unverifiable) },
+  const groupedByMinutes = fourWeeks && sortMode !== 'name' && matches.length > 0 && !loading && !statsError;
+  const comparisonGroups = groupedByMinutes ? getRosterComparisonGroups(visibleRows, sortMode) : null;
+  const groups = comparisonGroups ? [
+    { label: text(sortMode === 'continuity' ? 'completeComparison' : 'completeMinutes'), rows: comparisonGroups.complete },
+    { label: text(sortMode === 'continuity' ? 'incompleteComparison' : 'incompleteMinutes'), rows: comparisonGroups.incomplete },
+    { label: text('notCalledPeriod'), rows: comparisonGroups.notCalled },
+    { label: text('noTraining'), rows: comparisonGroups.noTraining },
   ] : [{ label: "", rows: visibleRows }];
   const checkingMinutes = loading && matches.length > 0;
   const togglePending = () => {
@@ -205,15 +206,17 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
         <Button variant="ghost" onClick={() => setStart(moveDate(start, 7))} disabled={start >= currentWeek} aria-label={text("next")}>→</Button>
       </div>
       {seasonBounds && <p className="season-period-note">{t(intersects ? "seasons.periodNote" : "seasons.outsidePeriod", { name: seasonBounds.name })}</p>}
-      <p>{text(sessions.length === 1 ? "sessionCount" : "sessionsCount", { count: sessions.length })} · {text(matches.length === 1 ? "matchCount" : "matchesCount", { count: matches.length })}</p>
+      <p className="weekly-roster-event-count">{text(sessions.length === 1 ? "sessionCount" : "sessionsCount", { count: sessions.length })} · {text(matches.length === 1 ? "matchCount" : "matchesCount", { count: matches.length })}</p>
       {fourWeeks && players.length > 0 && <label style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 8 }}>
         {text("sort")}
-        <select value={sortByMinutes ? "minutes" : "name"} onChange={(event) => setSortByMinutes(event.target.value === "minutes")}
+        <select value={sortMode} onChange={(event) => setSortMode(event.target.value)}
           style={{ minHeight: 44, minWidth: 0, maxWidth: "100%", padding: "8px 12px", border: "1px solid #334155", borderRadius: 8, background: "#182334", color: "#e2e8f0" }}>
           <option value="name">{text("sortName")}</option>
           <option value="minutes">{text("sortMinutes")}</option>
+          <option value="continuity">{text("sortContinuity")}</option>
         </select>
       </label>}
+      {fourWeeks && sortMode === 'continuity' && <p>{text('continuityHint')}</p>}
       {players.length > 0 && <label style={{ display: "inline-flex", alignItems: "center", gap: 8, minHeight: 44, cursor: "pointer" }}>
         <input type="checkbox" checked={pendingOnly} onChange={togglePending} />
         {text("onlyPending")}
@@ -231,7 +234,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
       <div className="weekly-roster-summary" role="region" aria-label={text('period')}>
         <strong title={auth.team?.name || text('firstTeam')}>{auth.team?.name || text('firstTeam')}</strong>
         <span>{dateLabel(periodStart)} – {dateLabel(end)}</span>
-        <small>{[text(fourWeeks?'fourWeeks':'week'),pendingOnly?text('onlyPending'):'',fourWeeks&&sortByMinutes?text('sortMinutes'):''].filter(Boolean).join(' · ')}</small>
+        <small>{[text(fourWeeks?'fourWeeks':'week'),pendingOnly?text('onlyPending'):'',fourWeeks&&sortMode!=='name'?text(sortLabel):''].filter(Boolean).join(' · ')}</small>
       </div>
       {standalone && !fourWeeks && players.length > 0 && <details onToggle={(event) => setShowComparison(event.currentTarget.open)} style={{ marginBottom: 12 }}>
         <summary style={{ cursor: "pointer", padding: "10px 0" }}>{text("comparison")}</summary>

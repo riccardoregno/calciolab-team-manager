@@ -75,6 +75,7 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
       <h2>{t("dailyUi.dailyTitle")}</h2>
       <div className="daily-actions-grid">
         <Link to="/statistics?roster=1" className="daily-action-primary"><strong>{t("dailyUi.openQuadro")}</strong><span>{t("dailyUi.quadroHint")}</span><ArrowUpRight size={18} /></Link>
+        <Link to="/statistics?roster=1&rosterView=4&rosterSort=continuity"><strong>{t('dailyUi.openContinuity')}</strong><span>{t('dailyUi.continuityActionHint')}</span><ArrowUpRight size={18} /></Link>
         {attendanceTask ? <Link to={attendanceTask.to} state={{ pendingOnly: true, fromDashboard: true }}><strong>{t("dailyUi.attendanceAction", { count: attendanceTask.count })}</strong><span>{attendanceTask.event.title} · {formatDate(attendanceTask.event.date)}</span><ArrowUpRight size={18} /></Link> : <Link to="/attendance-register"><strong>{t("dailyUi.register")}</strong><span>{t("dailyUi.trainingPresences")}</span><ArrowUpRight size={18} /></Link>}
         {matchTask && <Link to={`/match-completion/${encodeURIComponent(matchTask.match.id)}`} state={{ fromDashboard: true, missingMinutesOnly: !matchTask.missingResult && !matchTask.missingFormation }}>
           <strong>{t('dailyUi.completeMatchAction')}</strong>

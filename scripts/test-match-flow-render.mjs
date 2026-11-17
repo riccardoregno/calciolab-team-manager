@@ -70,5 +70,18 @@ try {
   assert.match(rosterLink,/href="\/session-attendance\/session%20%2F%20qa\?player=player\+%2F\+qa"/, 'Event links carry the exact player identity with encoded IDs');
   const weeklySort = renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/statistics?roster=1&rosterWeek=2020-01-06&rosterSort=minutes']},h(WeeklyRoster,{events:[],players,rows:[],standalone:true}))));
   assert.doesNotMatch(weeklySort,/Minuti di gara crescenti/, 'Weekly view cannot advertise a four-week-only sorting rule as active');
+  assert.match(resultTask,/href="\/statistics\?roster=1&amp;rosterView=4&amp;rosterSort=continuity"/, 'Home links directly to the four-week attendance/minute comparison');
+  const comparisonPlayers = [{id:'few',name:'Poche presenze'},{id:'many',name:'Molte presenze'},{id:'unknown',name:'Minutaggio incompleto'}];
+  const comparisonEvents = [1,2,3,4].map(day => ({id:'s'+day,type:'Allenamento',date:'2020-01-'+String(day+6).padStart(2,'0'),completed:true,attendance:{few:{status:day===1?'Presente':'Assente'}}}));
+  comparisonEvents.push({id:'game',type:'Partita',date:'2020-01-11',result:'1-0',convocazione:{published:true,playerIds:['few','many','unknown']},attendance:{few:{minutes:5},many:{minutes:5}}});
+  const continuityView = props => renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/statistics?roster=1&rosterView=4&rosterWeek=2020-01-06&rosterSort=continuity']},h(WeeklyRoster,{events:comparisonEvents,players:comparisonPlayers,rows:[],standalone:true,...props}))));
+  const compared = continuityView({});
+  assert.ok(compared.indexOf('<h3 style="margin:0 0 8px;overflow-wrap:anywhere">Molte presenze') < compared.indexOf('<h3 style="margin:0 0 8px;overflow-wrap:anywhere">Poche presenze'), 'More consistent attendance comes first at the same playing time');
+  assert.match(compared,/Presenze e minutaggi completi/);
+  assert.match(compared,/Dati da completare o verificare/);
+  assert.match(compared,/Minutaggio sconosciuto/);
+  assert.match(compared,/4\/4 presenze/);
+  assert.match(compared,/1\/4 presenze/);
+  assert.doesNotMatch(continuityView({events:comparisonEvents.filter(e=>e.type!=='Partita')}),/>Presenze e minutaggi completi</, 'A period without games must not be presented as a usable minute comparison');
   console.log('Match flow rendering: linked stages, active substitutions and read-only controls passed');
 } finally { await server.close(); }
