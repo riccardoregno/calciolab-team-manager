@@ -1,6 +1,10 @@
 .coach-analysis{--an-text:#edf3ff;--an-muted:#97a6bb;--an-border:rgba(148,163,184,.14);--an-green:#74d5b2;color:var(--an-text);display:grid;gap:22px;min-width:0;padding-bottom:12px}
 .coach-analysis *{min-width:0}
 .coach-analysis a{color:inherit;text-decoration:none}
+.daily-next-training h2{overflow-wrap:anywhere}
+.daily-next-training-date{font-size:15px;font-weight:650;line-height:1.5;margin:12px 0 0}
+.daily-next-training-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px 20px;margin-top:12px}
+@media(max-width:640px){.daily-next-training-actions{align-items:stretch;gap:8px}.daily-next-training-actions a{white-space:normal;overflow-wrap:anywhere;min-height:44px}.daily-next-training-actions .analysis-primary-link{width:100%}}
 .coach-analysis a:focus-visible,.coach-analysis button:focus-visible{outline:2px solid #93c5fd;outline-offset:5px}
 .analysis-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:8px 0 2px}
 .analysis-overline{display:block;font-size:10px;font-weight:750;letter-spacing:.16em;text-transform:uppercase;color:#8fa9c7}

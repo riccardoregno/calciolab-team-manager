@@ -14,6 +14,7 @@ try {
   const { default: MatchCompletion } = await server.ssrLoadModule('/src/pages/MatchCompletion.jsx');
   const { default: SessionAttendance } = await server.ssrLoadModule('/src/pages/SessionAttendance.jsx');
   const { default: WeeklyRoster } = await server.ssrLoadModule('/src/components/statistics/WeeklyRoster.jsx');
+  const { default: NextTrainingCard } = await server.ssrLoadModule('/src/components/dashboard/NextTrainingCard.jsx');
   const h = React.createElement;
   const players = Array.from({length:14},(_,i)=>({id:String(i+1),name:'Fittizio '+(i+1)}));
   const match = {id:'fixture',date:'2026-11-14',opponent:'QA',lineup:{starterIds:players.slice(0,11).map(p=>p.id),calledUpIds:players.map(p=>p.id)}};
@@ -83,5 +84,22 @@ try {
   assert.match(compared,/4\/4 presenze/);
   assert.match(compared,/1\/4 presenze/);
   assert.doesNotMatch(continuityView({events:comparisonEvents.filter(e=>e.type!=='Partita')}),/>Presenze e minutaggi completi</, 'A period without games must not be presented as a usable minute comparison');
+  const nextSession = props => renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,null,h(NextTrainingCard,props))));
+  const futureSession = {id:'qa / next',date:'2026-11-18T00:00:00',title:'Seduta QA con cognome lungo',start_time:'19:30:00',sessionBlocks:[{duration:15},{duration:20}]};
+  const nextManager = nextSession({session:futureSession,canManage:true});
+  assert.match(nextManager,/Seduta QA con cognome lungo/);
+  assert.match(nextManager,/datetime="2026-11-18T19:30"/i);
+  assert.match(nextManager,/35 min previsti/);
+  assert.match(nextManager,/Apri piano della seduta/);
+  assert.match(nextManager,/href="\/session-attendance\/qa%20%2F%20next"/);
+  assert.doesNotMatch(nextManager,/da confermare|presenti/, 'A future session must not advertise confirmed attendance or a backlog');
+  const nextReader = nextSession({session:futureSession,canManage:false});
+  assert.doesNotMatch(nextReader,/Apri piano della seduta/);
+  assert.match(nextReader,/Apri presenze della seduta/);
+  assert.match(nextSession({canManage:true}),/Crea seduta/);
+  assert.doesNotMatch(nextSession({canManage:false}),/Crea seduta/);
+  assert.match(nextSession({session:{...futureSession,start_time:'',sessionBlocks:[]}}),/Orario da definire/);
+  assert.match(nextSession({session:{...futureSession,start_time:'',sessionBlocks:[]}}),/Durata da definire/);
+  assert.doesNotMatch(nextSession({loading:true,canManage:true}),/Nessuna seduta in programma|Crea seduta/,'Loading does not suggest that the calendar is empty');
   console.log('Match flow rendering: linked stages, active substitutions and read-only controls passed');
 } finally { await server.close(); }

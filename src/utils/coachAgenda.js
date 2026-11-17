@@ -10,9 +10,12 @@ export function getAgendaDateKey(value) {
   const date = new Date(Number(y), Number(m) - 1, Number(d), 12);
   return localKey(date) === y + "-" + m + "-" + d ? localKey(date) : "";
 }
+export function getAgendaEventTime(event) {
+  const match = String(event.time || event.startTime || event.start_time || "").match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  return match && Number(match[1]) < 24 && Number(match[2]) < 60 ? match[1].padStart(2, '0') + ":" + match[2] : '';
+}
 function clock(event) {
-  const match = String(event.time || event.startTime || "").match(/^(\d{2}):(\d{2})(?::\d{2})?$/);
-  return match && Number(match[1]) < 24 && Number(match[2]) < 60 ? match[1] + ":" + match[2] : "24:00";
+  return getAgendaEventTime(event) || '24:00';
 }
 export function buildCoachAgenda(sessions = [], matches = [], now = new Date()) {
   const today = localKey(now);
@@ -32,7 +35,7 @@ export function buildCoachAgenda(sessions = [], matches = [], now = new Date()) 
     todayEvents: upcoming.filter((event) => getAgendaDateKey(event.date) === today),
     weekEvents: upcoming.filter((event) => getAgendaDateKey(event.date) <= end),
     nextEvent: futureEvents[0] || null,
-    nextTraining: futureEvents.find((event) => event.type !== "Partita") || null,
+    nextTraining: futureEvents.find((event) => event.type === "Allenamento") || null,
     nextMatch: futureEvents.find((event) => event.type === "Partita") || null,
     pastEvents: events.filter((event) => {
       const date = getAgendaDateKey(event.date);

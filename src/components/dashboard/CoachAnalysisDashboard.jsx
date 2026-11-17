@@ -9,6 +9,7 @@ import { isLeagueStatsMatch } from "../../utils/helpers.js";
 import { buildCoachTasks } from "../../utils/coachTasks";
 import { getMatchCompletionTasks } from "../../utils/matchCompletion";
 import { buildCoachAnalysis } from "../../utils/coachAnalysis.js";
+import NextTrainingCard from './NextTrainingCard';
 import "../../styles/coach-analysis.css";
 
 const nameOf = (player) => player.name || [player.firstName, player.lastName].filter(Boolean).join(" ") || "—";
@@ -86,6 +87,7 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
           ].filter(Boolean).join(' · ')}</span><ArrowUpRight size={18} /></Link>}
       </div>
     </section>
+    <NextTrainingCard session={model.nextTraining} loading={loading} canManage={canManage} />
     <MatchScopeFilters scope={matchScope} />
     {loading && <p className="analysis-loading" role="status">{text("loading")}</p>}
     {statsError && <div className="analysis-data-warning" role="alert"><span>{text("syncError")}</span>{onRetryStats && <button type="button" onClick={onRetryStats} disabled={statsLoading}>{text(statsLoading ? "checking" : "retry")}</button>}</div>}

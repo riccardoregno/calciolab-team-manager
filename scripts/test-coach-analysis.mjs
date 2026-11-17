@@ -2,8 +2,29 @@ import assert from "node:assert/strict";
 import { buildCoachAnalysis, hasRecordedLineup } from "../src/utils/coachAnalysis.js";
 import { buildMatchScope } from "../src/utils/matchScope.js";
 import { getSeasonRecord, parseMatchResult } from "../src/utils/helpers.js";
+import { getAgendaEventTime } from '../src/utils/coachAgenda.js';
 
 const now = new Date(2020, 0, 10, 12);
+const upcomingSessions = [
+  {id:'past',date:'2020-01-09',time:'19:00'},
+  {id:'earlier-today',date:'2020-01-10',start_time:'9:00'},
+  {id:'meeting',date:'2020-01-10',time:'13:00',type:'Riunione'},
+  {id:'rest',date:'2020-01-10',time:'14:00',type:'Riposo'},
+  {id:'completed',date:'2020-01-10',time:'15:00',completed:true},
+  {id:'late',date:'2020-01-10',time:'21:00'},
+  {id:'next',date:'2020-01-10',start_time:'19:30:00'},
+  {id:'tomorrow',date:'2020-01-11',time:'08:00'},
+  {id:'invalid',date:'2020-02-30'},
+];
+const beforeSessions = JSON.stringify(upcomingSessions);
+assert.equal(buildCoachAnalysis({sessions:upcomingSessions,now}).nextTraining.id,'next','Next session skips past/completed sessions, meetings and rest; legacy time participates in ordering');
+assert.equal(buildCoachAnalysis({sessions:upcomingSessions,now:new Date(2020,0,10,20)}).nextTraining.id,'late');
+assert.equal(buildCoachAnalysis({sessions:upcomingSessions,now:new Date(2020,0,12,12)}).nextTraining,null);
+assert.equal(JSON.stringify(upcomingSessions),beforeSessions);
+assert.equal(getAgendaEventTime({startTime:'9:05'}),'09:05');
+assert.equal(getAgendaEventTime({time:'24:00'}),'');
+assert.equal(getAgendaEventTime({time:'12:65'}),'');
+assert.equal(getAgendaEventTime({}), '');
 const base = { matchKind: "Campionato", season: "2019/20", location: "Casa" };
 const players = [
   { id: "a", name: "A", status: "Disponibile" },
