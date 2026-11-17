@@ -3891,6 +3891,12 @@ export const it = {
       errorTitle: "Invito disponibilità non valido",
     },
     sessionAttendance: {
+      selectedPlayer: "Presenze di {{name}}",
+      playerNotInSession: "Il giocatore non fa parte della rosa di questa seduta.",
+      searchPlayer: "Cerca un giocatore",
+      searchPlaceholder: "Nome o cognome…",
+      filteredTotalsHelp: "Il riepilogo in alto si riferisce all’intera prima squadra della seduta.",
+      noMatchingPlayers: "Nessun giocatore corrisponde al filtro.",
       title: "Presenze",
       defaultSession: "Seduta",
       subtitle: "Gestisci le presenze alla seduta",

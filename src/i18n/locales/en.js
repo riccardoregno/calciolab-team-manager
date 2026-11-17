@@ -3884,6 +3884,12 @@ export const en = {
       errorTitle: "Invalid availability invite",
     },
     sessionAttendance: {
+      selectedPlayer: "Attendance for {{name}}",
+      playerNotInSession: "This player is not in the squad for this session.",
+      searchPlayer: "Find a player",
+      searchPlaceholder: "First or last name…",
+      filteredTotalsHelp: "The summary above covers the session’s entire first team.",
+      noMatchingPlayers: "No players match this filter.",
       title: "Attendance",
       defaultSession: "Session",
       subtitle: "Manage session attendance",

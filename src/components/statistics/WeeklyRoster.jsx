@@ -231,7 +231,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
       <div className="weekly-roster-summary" role="region" aria-label={text('period')}>
         <strong title={auth.team?.name || text('firstTeam')}>{auth.team?.name || text('firstTeam')}</strong>
         <span>{dateLabel(periodStart)} – {dateLabel(end)}</span>
-        <small>{[text(fourWeeks?'fourWeeks':'week'),pendingOnly?text('onlyPending'):'',sortByMinutes?text('sortMinutes'):''].filter(Boolean).join(' · ')}</small>
+        <small>{[text(fourWeeks?'fourWeeks':'week'),pendingOnly?text('onlyPending'):'',fourWeeks&&sortByMinutes?text('sortMinutes'):''].filter(Boolean).join(' · ')}</small>
       </div>
       {standalone && !fourWeeks && players.length > 0 && <details onToggle={(event) => setShowComparison(event.currentTarget.open)} style={{ marginBottom: 12 }}>
         <summary style={{ cursor: "pointer", padding: "10px 0" }}>{text("comparison")}</summary>
@@ -262,7 +262,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
                 <summary style={{ cursor: "pointer", padding: "6px 0" }}>{text("details")}</summary>
                 <ul style={{ margin: "6px 0 0", paddingLeft: 18, overflowWrap: "anywhere" }}>
                   {playerSessions.map((event) => <li key={"session-" + event.id}>
-                    <Link to={"/session-attendance/" + encodeURIComponent(event.id)} state={{ rosterReturn, rosterWeek: start, rosterPending: pendingOnly }}>
+                    <Link to={"/session-attendance/" + encodeURIComponent(event.id) + "?" + new URLSearchParams({ player: String(player.id) })} state={{ rosterReturn, rosterWeek: start, rosterPending: pendingOnly }}>
                       {dateLabel(event.date)} · {event.title || t("common.session")} · {t("pages.attendanceRegister.status." + getTrainingConfirmationStatus(player, event))}
                     </Link>
                   </li>)}

@@ -5,9 +5,15 @@ import { buildCoachAnalysis } from "../src/utils/coachAnalysis.js";
 import { confirmUnrecordedTrainingPresences } from "../src/utils/helpers.js";
 import { it } from "../src/i18n/locales/it.js";
 import { en } from "../src/i18n/locales/en.js";
-import { getAttendanceWorklistPlayers } from '../src/utils/attendanceWorklist.js';
+import { getAttendanceWorklistPlayers, filterAttendancePlayers } from '../src/utils/attendanceWorklist.js';
 
 const path = "/statistics?roster=1&rosterView=4&rosterWeek=2026-11-02&rosterPending=1&rosterSort=minutes";
+const searchable = [{ id: 1, name: 'Nicolò Della Valle' }, { id: 2, firstName: 'Andrea', lastName: 'Rossi' }, { id: 3, name: 'Nicolò Della Valle' }];
+assert.deepEqual(filterAttendancePlayers(searchable, '1').map(p => p.id), [1], 'Quadro selects the identity, including homonyms');
+assert.deepEqual(filterAttendancePlayers(searchable, null, ' VALLE nicolo ').map(p => p.id), [1, 3], 'Search supports accents, whitespace and reversed name order');
+assert.deepEqual(filterAttendancePlayers(searchable, null, 'andrea rossi').map(p => p.id), [2]);
+assert.deepEqual(filterAttendancePlayers(searchable, 'unknown'), [], 'A stale player link does not silently select someone else');
+assert.equal(filterAttendancePlayers(searchable, null, '').length, 3);
 assert.equal(getRosterReturnPath({ rosterReturn: path }), path, "Correction returns to the same view, week, pending filter and order");
 assert.equal(getRosterReturnPath({ rosterReturn: "https://example.com" }), null);
 assert.equal(getRosterReturnPath({ rosterReturn: '/statistics?competition=league&roster=1&rosterView=4' }), '/statistics?competition=league&roster=1&rosterView=4', 'Return does not depend on query parameter order');

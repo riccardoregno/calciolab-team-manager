@@ -13,6 +13,7 @@ try {
   const { default: CoachAnalysisDashboard } = await server.ssrLoadModule('/src/components/dashboard/CoachAnalysisDashboard.jsx');
   const { default: MatchCompletion } = await server.ssrLoadModule('/src/pages/MatchCompletion.jsx');
   const { default: SessionAttendance } = await server.ssrLoadModule('/src/pages/SessionAttendance.jsx');
+  const { default: WeeklyRoster } = await server.ssrLoadModule('/src/components/statistics/WeeklyRoster.jsx');
   const h = React.createElement;
   const players = Array.from({length:14},(_,i)=>({id:String(i+1),name:'Fittizio '+(i+1)}));
   const match = {id:'fixture',date:'2026-11-14',opponent:'QA',lineup:{starterIds:players.slice(0,11).map(p=>p.id),calledUpIds:players.map(p=>p.id)}};
@@ -54,5 +55,20 @@ try {
   const calendarRegister=renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/session-attendance/past']},h(Routes,null,h(Route,{path:'/session-attendance/:id',element:h(SessionAttendance,{sessions:[{id:'past',date:'2020-01-01',completed:true}],players,setSessions(){}})})))));
   assert.match(calendarRegister,/Registra solo le eccezioni/);
   assert.doesNotMatch(calendarRegister,/Conferma presenze mancanti/,'Past calendar sessions must not ask for redundant confirmation');
+  const focusedRegister = (playerId, canManage = true) => renderToStaticMarkup(h(I18nProvider,null,h(PermissionContext.Provider,{value:{canManage}},h(MemoryRouter,{initialEntries:[{pathname:'/session-attendance/past',search:'?player='+playerId,state:{rosterReturn:'/statistics?roster=1&rosterView=4'}}]},h(Routes,null,h(Route,{path:'/session-attendance/:id',element:h(SessionAttendance,{sessions:[{id:'past',date:'2020-01-01',completed:true}],players,setSessions(){}})}))))));
+  const focused = focusedRegister('12');
+  assert.equal((focused.match(/class="attendance-player-card"/g)||[]).length, 1, 'Quadro opens one player rather than requiring another search');
+  assert.match(focused,/Presenze di Fittizio 12/);
+  assert.match(focused,/Mostra tutti/);
+  assert.match(focused,/Torna al Quadro/);
+  assert.match(focused,/Prima squadra · 14/, 'Filtering must not change the whole-session roster count');
+  assert.match(focusedRegister('unknown'),/Il giocatore non fa parte della rosa/);
+  assert.doesNotMatch(focusedRegister('12',false),/<button[^>]*aria-pressed="true"(?![^>]*disabled)/, 'Player focus cannot grant editing rights');
+  const rosterLink = renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/statistics?roster=1&rosterView=4&rosterWeek=2020-01-06&rosterSort=minutes']},h(WeeklyRoster,{
+    events:[{id:'session / qa',type:'Allenamento',date:'2020-01-07',completed:true}],players:[{id:'player / qa',name:'Omonimo QA'}],rows:[],standalone:true,
+  }))));
+  assert.match(rosterLink,/href="\/session-attendance\/session%20%2F%20qa\?player=player\+%2F\+qa"/, 'Event links carry the exact player identity with encoded IDs');
+  const weeklySort = renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/statistics?roster=1&rosterWeek=2020-01-06&rosterSort=minutes']},h(WeeklyRoster,{events:[],players,rows:[],standalone:true}))));
+  assert.doesNotMatch(weeklySort,/Minuti di gara crescenti/, 'Weekly view cannot advertise a four-week-only sorting rule as active');
   console.log('Match flow rendering: linked stages, active substitutions and read-only controls passed');
 } finally { await server.close(); }

@@ -1,5 +1,5 @@
 import { getRosterReturnPath, getRosterWeekPath, getRegisterReturnPath } from "../utils/rosterNavigation";
-import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -9,7 +9,7 @@ import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { canConfirmUnrecordedTrainingPresence, confirmUnrecordedTrainingPresences, formatDate, getRecordedTrainingStatus, getTrainingConfirmationStatus, hasPlayerTransferred, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes, TRAINING_ATTENDANCE_PENDING } from "../utils/helpers";
 import { hasTrainingEnded } from "../utils/trainingArchive";
-import { getAttendanceWorklistPlayers } from '../utils/attendanceWorklist';
+import { getAttendanceWorklistPlayers, filterAttendancePlayers } from '../utils/attendanceWorklist';
 import { useTranslation } from "../i18n";
 
 const STATUS_OPTIONS = ["Presente", "Parziale", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato", TRAINING_ATTENDANCE_PENDING];
@@ -42,6 +42,9 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const { id } = useParams();
   const navigate = useNavigate();
   const { state } = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusedPlayerId = searchParams.get('player');
+  const [search, setSearch] = useState('');
   const rosterReturn = getRosterReturnPath(state);
   const registerReturn = getRegisterReturnPath(state);
   const [pendingOnly, setPendingOnly] = useState(Boolean(state?.pendingOnly));
@@ -60,9 +63,18 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const ended = session && hasTrainingEnded(session);
   const attendanceStatus = (player) => ended ? getTrainingConfirmationStatus(player, session) : getRecordedTrainingStatus(player, session);
   const unrecordedPlayers = firstTeamPlayers.filter((player) => needsConfirmation(attendanceStatus(player)));
-  const visiblePlayers = pendingOnly
+  const worklistPlayers = pendingOnly
     ? getAttendanceWorklistPlayers(firstTeamPlayers,unrecordedPlayers.map(player=>player.id),reviewed,id)
     : sessionPlayers;
+  const visiblePlayers = filterAttendancePlayers(worklistPlayers, focusedPlayerId, search);
+  const focusedPlayer = sessionPlayers.find(player => String(player.id) === focusedPlayerId);
+  const showEveryone = () => {
+    setSearch('');
+    setPendingOnly(false);
+    const next = new URLSearchParams(searchParams);
+    next.delete('player');
+    setSearchParams(next, { replace: true, state });
+  };
   const eligibleCount = session && !ended ? visiblePlayers.filter((player) => canConfirmUnrecordedTrainingPresence(player, session)).length : 0;
 
   function updatePlayer(playerId, field, value) {
@@ -257,6 +269,19 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
         </AppCard>
       ) : (
         <AppCard>
+          {focusedPlayerId && <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <strong style={{ minWidth: 0, overflowWrap: 'anywhere', flex: '1 1 180px' }}>
+              {focusedPlayer ? t('pages.sessionAttendance.selectedPlayer', { name: focusedPlayer.name || [focusedPlayer.firstName, focusedPlayer.lastName].filter(Boolean).join(' ') }) : t('pages.sessionAttendance.playerNotInSession')}
+            </strong>
+            <Button variant="ghost" onClick={showEveryone}>{t('pages.sessionAttendance.showAllPlayers')}</Button>
+          </div>}
+          {!focusedPlayerId && <label style={{ display: 'grid', gap: 6, marginBottom: 12 }}>
+            {t('pages.sessionAttendance.searchPlayer')}
+            <input type="search" value={search} onChange={event => setSearch(event.target.value)}
+              placeholder={t('pages.sessionAttendance.searchPlaceholder')}
+              style={{ ...s.rpeInput, width: '100%', minHeight: 44, textAlign: 'left', boxSizing: 'border-box' }} />
+          </label>}
+          {(focusedPlayerId || search.trim()) && <p style={s.pendingHelp}>{t('pages.sessionAttendance.filteredTotalsHelp')}</p>}
           {state?.pendingOnly && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
               <Button variant="ghost" onClick={() => {setPendingOnly((value) => !value);setReviewed({sessionId:id,ids:[]});}}>
@@ -270,6 +295,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
           )}
           {pendingOnly && visiblePlayers.length > 0 && <p style={s.pendingHelp}>{t('dailyUi.stablePendingList')}</p>}
           {pendingOnly && pending === 0 && <p role="status">{t("pages.sessionAttendance.attendanceComplete")}</p>}
+          {visiblePlayers.length === 0 && (focusedPlayerId || search.trim()) && <p role="status">{t('pages.sessionAttendance.noMatchingPlayers')}</p>}
           <div style={s.grid}>
             {[...visiblePlayers].sort((a, b) => {
               const ro = (r) => { const s = (r||"").toLowerCase(); return s.startsWith("portiere") ? 0 : s.startsWith("difensore") ? 1 : s.startsWith("centrocampista") ? 2 : s.startsWith("attaccante") ? 3 : 99; };
