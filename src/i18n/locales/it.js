@@ -3916,6 +3916,8 @@ export const it = {
       errorTitle: "Invito disponibilità non valido",
     },
     sessionAttendance: {
+      otherStatuses: "Altri stati…",
+      otherStatusFor: "Altri stati per {{name}}",
       selectedPlayer: "Presenze di {{name}}",
       playerNotInSession: "Il giocatore non fa parte della rosa di questa seduta.",
       searchPlayer: "Cerca un giocatore",

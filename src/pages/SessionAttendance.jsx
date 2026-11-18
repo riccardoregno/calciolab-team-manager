@@ -13,7 +13,8 @@ import { getAgendaEventTime } from '../utils/coachAgenda';
 import { getAttendanceWorklistPlayers, filterAttendancePlayers } from '../utils/attendanceWorklist';
 import { useTranslation } from "../i18n";
 
-const STATUS_OPTIONS = ["Presente", "Parziale", "Assente", "Infortunato", "Recupero", "Permesso", "Squalificato", TRAINING_ATTENDANCE_PENDING];
+const QUICK_STATUS_OPTIONS = ["Presente", "Assente"];
+const OTHER_STATUS_OPTIONS = ["Parziale", "Infortunato", "Recupero", "Permesso", "Squalificato", TRAINING_ATTENDANCE_PENDING];
 const needsConfirmation = (status) => status === null || status === TRAINING_ATTENDANCE_PENDING;
 
 const STATUS_TONE = {
@@ -323,7 +324,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
 
                   {/* Bottoni stato */}
                   <div style={s.statusButtons}>
-                    {STATUS_OPTIONS.map((opt) => (
+                    {QUICK_STATUS_OPTIONS.map((opt) => (
                       <button
                         key={t("pages.attendanceRegister.status." + opt)}
                         type="button"
@@ -338,6 +339,16 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                         {t("pages.attendanceRegister.status." + opt)}
                       </button>
                     ))}
+                    <select
+                      aria-label={t('pages.sessionAttendance.otherStatusFor', { name: displayName })}
+                      value={OTHER_STATUS_OPTIONS.includes(recorded) ? recorded : ''}
+                      onChange={(event) => updatePlayer(pid, 'status', event.target.value)}
+                      disabled={!canManage}
+                      style={{ ...s.statusBtn, gridColumn: '1 / -1', width: '100%', minWidth: 0, textAlign: 'left', ...(OTHER_STATUS_OPTIONS.includes(recorded) ? s.statusBtnActive : {}) }}
+                    >
+                      <option value="" disabled>{t('pages.sessionAttendance.otherStatuses')}</option>
+                      {OTHER_STATUS_OPTIONS.map(status => <option key={status} value={status}>{t('pages.attendanceRegister.status.' + status)}</option>)}
+                    </select>
                   </div>
 
                   {/* RPE solo se presente */}
@@ -484,9 +495,9 @@ const s = {
   },
 
   statusButtons: {
-    display: "flex",
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     gap: 6,
-    flexWrap: "wrap",
   },
   statusBtn: {
     borderRadius: 999,

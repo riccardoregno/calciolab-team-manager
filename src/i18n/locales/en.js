@@ -3909,6 +3909,8 @@ export const en = {
       errorTitle: "Invalid availability invite",
     },
     sessionAttendance: {
+      otherStatuses: "Other statuses…",
+      otherStatusFor: "Other statuses for {{name}}",
       selectedPlayer: "Attendance for {{name}}",
       playerNotInSession: "This player is not in the squad for this session.",
       searchPlayer: "Find a player",

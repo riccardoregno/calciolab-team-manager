@@ -57,7 +57,7 @@ try {
   const calendarRegister=renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/session-attendance/past']},h(Routes,null,h(Route,{path:'/session-attendance/:id',element:h(SessionAttendance,{sessions:[{id:'past',date:'2020-01-01',completed:true}],players,setSessions(){}})})))));
   assert.match(calendarRegister,/Registra solo le eccezioni/);
   assert.doesNotMatch(calendarRegister,/Conferma presenze mancanti/,'Past calendar sessions must not ask for redundant confirmation');
-  const focusedRegister = (playerId, canManage = true) => renderToStaticMarkup(h(I18nProvider,null,h(PermissionContext.Provider,{value:{canManage}},h(MemoryRouter,{initialEntries:[{pathname:'/session-attendance/past',search:'?player='+playerId,state:{rosterReturn:'/statistics?roster=1&rosterView=4'}}]},h(Routes,null,h(Route,{path:'/session-attendance/:id',element:h(SessionAttendance,{sessions:[{id:'past',date:'2020-01-01',completed:true}],players,setSessions(){}})}))))));
+  const focusedRegister = (playerId, canManage = true, status = null) => renderToStaticMarkup(h(I18nProvider,null,h(PermissionContext.Provider,{value:{canManage}},h(MemoryRouter,{initialEntries:[{pathname:'/session-attendance/past',search:'?player='+playerId,state:{rosterReturn:'/statistics?roster=1&rosterView=4'}}]},h(Routes,null,h(Route,{path:'/session-attendance/:id',element:h(SessionAttendance,{sessions:[{id:'past',date:'2020-01-01',completed:true,attendance:status?{'12':{status}}:{}}],players,setSessions(){}})}))))));
   const focused = focusedRegister('12');
   assert.equal((focused.match(/class="attendance-player-card"/g)||[]).length, 1, 'Quadro opens one player rather than requiring another search');
   assert.match(focused,/Presenze di Fittizio 12/);
@@ -66,6 +66,16 @@ try {
   assert.match(focused,/Prima squadra · 14/, 'Filtering must not change the whole-session roster count');
   assert.match(focusedRegister('unknown'),/Il giocatore non fa parte della rosa/);
   assert.doesNotMatch(focusedRegister('12',false),/<button[^>]*aria-pressed="true"(?![^>]*disabled)/, 'Player focus cannot grant editing rights');
+  const otherStates = ['Parziale','Infortunato','Recupero','Permesso','Squalificato','Da confermare'];
+  for (const status of otherStates) {
+    const html = focusedRegister('12',true,status);
+    assert.match(html,/<select[^>]*aria-label="Altri stati per Fittizio 12"/);
+    assert.ok(html.includes(`<option value="${status}" selected="">`), `Saved ${status} remains selected in the compact control`);
+    for (const available of otherStates) assert.ok(html.includes(`<option value="${available}"`), `The control must keep ${available} available`);
+  }
+  assert.match(focusedRegister('12',false,'Da confermare'),/<select(?=[^>]*aria-label="Altri stati per Fittizio 12")(?=[^>]*disabled)[^>]*>/,'Read-only staff cannot change status through the selector');
+  assert.match(focusedRegister('12',true,'Assente'),/<button(?=[^>]*aria-pressed="true")[^>]*>Assente<\/button>/);
+  assert.match(focusedRegister('12',true,'Presente'),/<button(?=[^>]*aria-pressed="true")[^>]*>Presente<\/button>/);
   const rosterLink = renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/statistics?roster=1&rosterView=4&rosterWeek=2020-01-06&rosterSort=minutes']},h(WeeklyRoster,{
     events:[{id:'session / qa',type:'Allenamento',date:'2020-01-07',completed:true}],players:[{id:'player / qa',name:'Omonimo QA'}],rows:[],standalone:true,
   }))));
