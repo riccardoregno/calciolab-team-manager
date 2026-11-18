@@ -412,7 +412,7 @@ function Trainings({
       await generateSessionPlanPDF({ session: { ...form, duration: totalMinutes }, appSettings });
     } catch (err) {
       console.error("PDF export failed:", err);
-      showToast("Errore nella generazione del PDF", "error");
+      showToast(t("trainingHub.pdfError"), "error");
     }
   }
 
@@ -436,7 +436,7 @@ function Trainings({
   </>;
 
   return (
-    <div className="trainings-workspace" style={styles.page}>
+    <div ref={formCardRef} className="trainings-workspace" style={styles.page}>
       <ToastContainer />
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
       <PageHeader
@@ -461,7 +461,7 @@ function Trainings({
         }}
       >
         <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
-          <div className="print-area">
+          <div className="print-area screen-hidden-print-area">
             <section className="print-template">
               <article>
                 <header className="print-header">
@@ -560,13 +560,73 @@ function Trainings({
             </section>
           </div>
 
-  <div ref={formCardRef} className="training-editor-basic">
+  <div className="training-editor-basic">
   <AppCard>
     <div className="training-editor-fields">
       <FieldLabel label={t("pages.trainings.fieldTitle")}><input value={form.title} placeholder={t("pages.trainings.titlePlaceholder")} onChange={(event) => { setForm(previous => ({ ...previous, title: event.target.value })); setFormErrors((prev) => ({ ...prev, title: false })); }} style={styles.input} />{formErrors.title && <span style={trainingStyles.errorMsg}>{t("pages.trainings.titleRequired")}</span>}</FieldLabel>
       <FieldLabel label={t("pages.trainings.fieldDate")}><input type="date" min={seasonBounds?.start_date} max={seasonBounds?.end_date} value={form.date} onChange={(event) => { setForm(previous => ({ ...previous, date: event.target.value })); setFormErrors((prev) => ({ ...prev, date: false })); }} style={styles.input} />{formErrors.date && <span style={trainingStyles.errorMsg}>{t("pages.trainings.dateRequired")}</span>}</FieldLabel>
       <FieldLabel label={t('trainingHub.time')}><input type="time" step="60" value={form.time} onChange={(event) => { const time = event.target.value; setForm(previous => ({ ...previous, time })); setFormErrors(previous => ({ ...previous, time: false })); }} style={styles.input} aria-label={t('trainingHub.time')} aria-describedby={formErrors.time ? 'training-time-help training-time-error' : 'training-time-help'} aria-invalid={Boolean(formErrors.time)} /><small id="training-time-help" style={{ textTransform: 'none', letterSpacing: 'normal' }}>{t('trainingHub.timeHint')}</small>{formErrors.time && <span id="training-time-error" style={trainingStyles.errorMsg}>{t('trainingHub.timeInvalid')}</span>}</FieldLabel>
       <FieldLabel label={t("trainingHub.duration")}><input type="number" min="0" value={structuredMinutes || form.plannedDuration} readOnly={structuredMinutes > 0} onChange={(event) => { setForm(previous => ({ ...previous, plannedDuration: event.target.value })); setFormErrors((prev) => ({ ...prev, duration: false })); }} style={styles.input} />{structuredMinutes > 0 && <small>{t("trainingHub.durationFromPlan")}</small>}{formErrors.duration && <span style={trainingStyles.errorMsg}>{t("trainingHub.durationInvalid")}</span>}</FieldLabel>
+    </div>
+    <div className="training-editor-summary-actions no-print">
+      <Button variant="ghost" aria-expanded={showPreview} aria-controls="training-editor-summary" onClick={() => setShowPreview(value => !value)}>{t(showPreview ? 'trainingHub.hideSummary' : 'trainingHub.showSummary')}</Button>
+      <Button variant="ghost" onClick={exportSessionPlanPDF}>{t('trainingHub.downloadPdf')}</Button>
+    </div>
+    <div id="training-editor-summary" hidden={!showPreview}>
+            {showPreview && (
+              <div style={trainingStyles.previewCard}>
+                <div>
+                  <p style={trainingStyles.previewEyebrow}>{t("pages.trainings.previewEyebrow")}</p>
+                  <h2 style={trainingStyles.previewTitle}>
+                    {form.title || t("pages.trainings.previewTitleFallback")}
+                  </h2>
+                </div>
+                <div style={trainingStyles.previewMetaGrid}>
+                  <SessionMeta label={t("pages.trainings.previewMetaDate")} value={formatDate(form.date)} />
+                  <SessionMeta label={t('trainingHub.time')} value={form.time || t('dailyUi.sessionTimeUnknown')} />
+                  <SessionMeta label={t("pages.trainings.previewMetaTheme")} value={getThemeLabel(form.theme, t)} />
+                  <SessionMeta label={t("pages.trainings.previewMetaDuration")} value={`${totalMinutes} min`} />
+                  <SessionMeta label={t("pages.trainings.previewMetaExercises")} value={selectedExercises.length} />
+                </div>
+                {form.objective && (
+                  <p style={trainingStyles.previewObjective}>{form.objective}</p>
+                )}
+                {form.sourceType === "postMatch" && (
+                  <div style={trainingStyles.sourceBox}>
+                    <Badge tone="purple">{t("pages.trainings.sourcePostMatch")}</Badge>
+                    <span>
+                      {form.sourceMatchLabel ? `vs ${form.sourceMatchLabel}` : t("pages.trainings.sourceLinked")}
+                      {form.sourceSummary ? ` · ${form.sourceSummary}` : ""}
+                    </span>
+                  </div>
+                )}
+                {form.sourceType === "postMatch" && (
+                  <div style={trainingStyles.objectiveReviewBox}>
+                    <label style={trainingStyles.field}>
+                      <span>{t("pages.trainings.objectiveStatus")}</span>
+                      <select
+                        value={form.objectiveStatus || "todo"}
+                        onChange={(event) => setForm({ ...form, objectiveStatus: event.target.value })}
+                        style={styles.input}
+                      >
+                        {Object.entries(OBJECTIVE_STATUS).map(([value, meta]) => (
+                          <option key={value} value={value}>{t(meta.labelKey)}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label style={trainingStyles.field}>
+                      <span>{t("pages.trainings.staffReview")}</span>
+                      <textarea
+                        placeholder={t("pages.trainings.staffReviewPlaceholder")}
+                        value={form.objectiveReview || ""}
+                        onChange={(event) => setForm({ ...form, objectiveReview: event.target.value })}
+                        style={{ ...styles.input, minHeight: 72, resize: "vertical" }}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
     </div>
     <details className="training-editor-notes"><summary>{t("trainingHub.objectiveNotes")}</summary><div className="training-editor-fields">
       <FieldLabel label={t("pages.trainings.fieldObjective")}><input value={form.objective} onChange={(event) => setForm({ ...form, objective: event.target.value })} style={styles.input} /></FieldLabel>
@@ -963,69 +1023,7 @@ function Trainings({
                   </Button>
                 )}
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <Button variant="ghost" style={{ fontSize: 12 }} onClick={() => setShowPreview((v) => !v)}>
-                  {showPreview ? "Nascondi anteprima" : "👁 Anteprima PDF"}
-                </Button>
-                <Button variant="ghost" style={{ fontSize: 12 }} onClick={exportSessionPlanPDF}>
-                  📄 Scarica PDF
-                </Button>
-              </div>
             </div>
-
-            {showPreview && (
-              <div style={trainingStyles.previewCard}>
-                <div>
-                  <p style={trainingStyles.previewEyebrow}>{t("pages.trainings.previewEyebrow")}</p>
-                  <h2 style={trainingStyles.previewTitle}>
-                    {form.title || t("pages.trainings.previewTitleFallback")}
-                  </h2>
-                </div>
-                <div style={trainingStyles.previewMetaGrid}>
-                  <SessionMeta label={t("pages.trainings.previewMetaDate")} value={formatDate(form.date)} />
-                  <SessionMeta label={t("pages.trainings.previewMetaTheme")} value={getThemeLabel(form.theme, t)} />
-                  <SessionMeta label={t("pages.trainings.previewMetaDuration")} value={`${totalMinutes} min`} />
-                  <SessionMeta label={t("pages.trainings.previewMetaExercises")} value={selectedExercises.length} />
-                </div>
-                {form.objective && (
-                  <p style={trainingStyles.previewObjective}>{form.objective}</p>
-                )}
-                {form.sourceType === "postMatch" && (
-                  <div style={trainingStyles.sourceBox}>
-                    <Badge tone="purple">{t("pages.trainings.sourcePostMatch")}</Badge>
-                    <span>
-                      {form.sourceMatchLabel ? `vs ${form.sourceMatchLabel}` : t("pages.trainings.sourceLinked")}
-                      {form.sourceSummary ? ` · ${form.sourceSummary}` : ""}
-                    </span>
-                  </div>
-                )}
-                {form.sourceType === "postMatch" && (
-                  <div style={trainingStyles.objectiveReviewBox}>
-                    <label style={trainingStyles.field}>
-                      <span>{t("pages.trainings.objectiveStatus")}</span>
-                      <select
-                        value={form.objectiveStatus || "todo"}
-                        onChange={(event) => setForm({ ...form, objectiveStatus: event.target.value })}
-                        style={styles.input}
-                      >
-                        {Object.entries(OBJECTIVE_STATUS).map(([value, meta]) => (
-                          <option key={value} value={value}>{t(meta.labelKey)}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label style={trainingStyles.field}>
-                      <span>{t("pages.trainings.staffReview")}</span>
-                      <textarea
-                        placeholder={t("pages.trainings.staffReviewPlaceholder")}
-                        value={form.objectiveReview || ""}
-                        onChange={(event) => setForm({ ...form, objectiveReview: event.target.value })}
-                        style={{ ...styles.input, minHeight: 72, resize: "vertical" }}
-                      />
-                    </label>
-                  </div>
-                )}
-              </div>
-            )}
           </AppCard>
 
           <TeamGenerator

@@ -10,6 +10,7 @@ import {
   textBox,
 } from "./pdfExportHelpers";
 import { getTrainingDuration } from "./trainingArchive.js";
+import { getAgendaEventTime } from './coachAgenda.js';
 
 const PHASE_COLORS = {
   "Riscaldamento":    [251, 146,  60],
@@ -24,15 +25,20 @@ const PHASE_COLORS = {
  * @param {{ session: object, appSettings: object, save?: boolean }} opts
  */
 export async function generateSessionPlanPDF({ session, appSettings, save = true }) {
-  const { doc, y: startY, pageW, margins } = await createBrandedPdf({ appSettings });
+  const { doc, teamName, assets, y: startY, pageW, margins } = await createBrandedPdf({ appSettings });
   const usableW = pageW - margins.l - margins.r;
   let y = startY;
 
   // ── Intestazione seduta ───────────────────────────────────────
   y = sectionTitle(doc, "SCHEDA SEDUTA", y);
+  if (session.title) {
+    y = ensureSpace(doc, y, 34);
+    textBox(doc, 'Seduta', session.title, margins.l, y, usableW);
+    y += 34;
+  }
 
   const meta = [
-    { label: "Data",       value: formatPdfDate(session.date) },
+    { label: "Data / orario", value: formatPdfDate(session.date) + (getAgendaEventTime(session) ? ' - ' + getAgendaEventTime(session) : '') },
     { label: "Tipo",       value: session.type || "Allenamento" },
     { label: "Tema",       value: session.theme || "—" },
     { label: "Carico",     value: session.matchDayDistance || "—" },
@@ -42,7 +48,9 @@ export async function generateSessionPlanPDF({ session, appSettings, save = true
   y = keyValueGrid(doc, meta, y, { columns: 3 });
 
   if (session.objective) {
-    y = textBox(doc, "Obiettivo", session.objective, margins.l, y, usableW);
+    y = ensureSpace(doc, y, 34);
+    textBox(doc, "Obiettivo", session.objective, margins.l, y, usableW);
+    y += 34;
   }
 
   // ── Blocchi strutturati ───────────────────────────────────────
@@ -116,7 +124,7 @@ export async function generateSessionPlanPDF({ session, appSettings, save = true
     textBox(doc, "Note staff", session.notes, margins.l, y, usableW, 36);
   }
 
-  finishBrandedPdf(doc, appSettings);
+  finishBrandedPdf(doc, { teamName, assets, dateStr: formatPdfDate(session.date), save: false });
 
   if (save) {
     const dateStr = (session.date || "").replace(/-/g, "");

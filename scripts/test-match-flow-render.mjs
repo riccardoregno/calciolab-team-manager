@@ -106,6 +106,11 @@ try {
   const renderTrainingTime = canManage => renderToStaticMarkup(h(I18nProvider,null,h(PermissionContext.Provider,{value:{canManage}},h(MemoryRouter,{initialEntries:[{pathname:'/trainings',state:{draftTraining:timeDraft}}]},h(Trainings,{players:[],sessions:[timeDraft],exercises:[],setSessions(){},setExercises(){}})))));
   assert.match(renderTrainingTime(true),/<input(?=[^>]*type="time")(?=[^>]*value="09:05")[^>]*>/,'The editor preloads a legacy time in its native optional time input');
   assert.match(renderTrainingTime(true),/Facoltativo: lascia vuoto/);
+  const compactEditor = renderTrainingTime(true);
+  assert.match(compactEditor,/class="print-area screen-hidden-print-area"/,'The printable sheet stays available to print CSS without occupying the screen');
+  assert.match(compactEditor,/<button(?=[^>]*aria-expanded="false")(?=[^>]*aria-controls="training-editor-summary")[^>]*>/);
+  assert.match(compactEditor,/<div id="training-editor-summary" hidden="">/);
+  assert.match(compactEditor,/>Scarica PDF</);
   const timeReader = renderTrainingTime(false);
   assert.doesNotMatch(timeReader,/<input[^>]*type="time"/,'Read-only users do not get the time editor');
   assert.match(timeReader,/09:05/,'The read-only archive displays legacy times with the same normalization');

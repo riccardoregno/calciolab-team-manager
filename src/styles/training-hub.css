@@ -54,6 +54,9 @@
 .training-hub-footer{display:flex;justify-content:space-between;align-items:center;gap:18px;font-size:11px;color:#748ca9;padding:0 4px}
 .training-hub-footer a{display:flex;align-items:center;gap:6px;color:#a5bddc;min-height:36px}
 .training-editor-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:16px}
+.trainings-workspace{scroll-margin-top:72px}
+.training-editor-summary-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.training-editor-summary-actions button{min-height:44px}
 .training-editor-fields small{color:#879db7;line-height:1.5;font-size:11px}
 .training-disclosure{border:1px solid rgba(148,163,184,.15);border-radius:13px;background:rgba(15,24,38,.6);min-width:0}
 .training-disclosure>summary{padding:18px 20px;cursor:pointer;color:#b5c9e3;font-size:13px;font-weight:650;min-height:54px}
