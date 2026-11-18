@@ -14,6 +14,10 @@ export function getAgendaEventTime(event) {
   const match = String(event.time || event.startTime || event.start_time || "").match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
   return match && Number(match[1]) < 24 && Number(match[2]) < 60 ? match[1].padStart(2, '0') + ":" + match[2] : '';
 }
+// Clearing a canonical time also clears legacy aliases on the edited event.
+export function getEventTimeUpdate(value) {
+  return { time: getAgendaEventTime({ time: value }), startTime: null, start_time: null };
+}
 function clock(event) {
   return getAgendaEventTime(event) || '24:00';
 }

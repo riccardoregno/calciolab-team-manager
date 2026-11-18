@@ -11,7 +11,7 @@ import SearchBar from "../components/ui/SearchBar";
 import { searchNavigationItems } from "../utils/navigationSearch";
 import TrainingSessionList from "../components/trainings/TrainingSessionList";
 import { getTrainingDuration } from "../utils/trainingArchive.js";
-import { getAgendaDateKey } from "../utils/coachAgenda.js";
+import { getAgendaDateKey, getAgendaEventTime, getEventTimeUpdate } from "../utils/coachAgenda.js";
 import "../styles/training-hub.css";
 import SortableTrainingTimeline from "../components/trainings/SortableTrainingTimeline";
 import ExerciseDiagram from "../components/exercises/ExerciseDiagram";
@@ -250,16 +250,18 @@ function Trainings({
     const errors = {};
     if (!form.title.trim()) errors.title = true;
     if (!getAgendaDateKey(form.date)) errors.date = true;
+    if (form.time && !getAgendaEventTime({ time: form.time })) errors.time = true;
     if (!Number.isFinite(Number(form.plannedDuration)) || Number(form.plannedDuration) < 0) errors.duration = true;
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-      showToast(errors.duration ? t("trainingHub.durationInvalid") : errors.date ? t("pages.trainings.dateRequired") : t("pages.trainings.titleRequired"), "warn");
+      showToast(errors.time ? t('trainingHub.timeInvalid') : errors.duration ? t("trainingHub.durationInvalid") : errors.date ? t("pages.trainings.dateRequired") : t("pages.trainings.titleRequired"), "warn");
       return;
     }
     setFormErrors({});
 
     const payload = {
       ...form,
+      ...getEventTimeUpdate(form.time),
       id: editingId || createId("session"),
       duration: totalMinutes,
     };
@@ -299,6 +301,7 @@ function Trainings({
       title: session.title || "",
       plannedDuration: getTrainingDuration(session) ?? "",
       date: getAgendaDateKey(session.date),
+      time: getAgendaEventTime(session),
       type: session.type || "Allenamento",
       theme: session.theme || "Costruzione",
       matchDayDistance: session.matchDayDistance || "MD-3",
@@ -468,6 +471,7 @@ function Trainings({
                   </div>
                   <div className="print-meta">
                     <span>{formatDate(form.date)}</span>
+                    {form.time && <span>{form.time}</span>}
                     <span>{getThemeLabel(form.theme, t)}</span>
                     <span>{form.matchDayDistance}</span>
                     <span>{clubName}</span>
@@ -561,6 +565,7 @@ function Trainings({
     <div className="training-editor-fields">
       <FieldLabel label={t("pages.trainings.fieldTitle")}><input value={form.title} placeholder={t("pages.trainings.titlePlaceholder")} onChange={(event) => { setForm(previous => ({ ...previous, title: event.target.value })); setFormErrors((prev) => ({ ...prev, title: false })); }} style={styles.input} />{formErrors.title && <span style={trainingStyles.errorMsg}>{t("pages.trainings.titleRequired")}</span>}</FieldLabel>
       <FieldLabel label={t("pages.trainings.fieldDate")}><input type="date" min={seasonBounds?.start_date} max={seasonBounds?.end_date} value={form.date} onChange={(event) => { setForm(previous => ({ ...previous, date: event.target.value })); setFormErrors((prev) => ({ ...prev, date: false })); }} style={styles.input} />{formErrors.date && <span style={trainingStyles.errorMsg}>{t("pages.trainings.dateRequired")}</span>}</FieldLabel>
+      <FieldLabel label={t('trainingHub.time')}><input type="time" step="60" value={form.time} onChange={(event) => { const time = event.target.value; setForm(previous => ({ ...previous, time })); setFormErrors(previous => ({ ...previous, time: false })); }} style={styles.input} aria-label={t('trainingHub.time')} aria-describedby={formErrors.time ? 'training-time-help training-time-error' : 'training-time-help'} aria-invalid={Boolean(formErrors.time)} /><small id="training-time-help" style={{ textTransform: 'none', letterSpacing: 'normal' }}>{t('trainingHub.timeHint')}</small>{formErrors.time && <span id="training-time-error" style={trainingStyles.errorMsg}>{t('trainingHub.timeInvalid')}</span>}</FieldLabel>
       <FieldLabel label={t("trainingHub.duration")}><input type="number" min="0" value={structuredMinutes || form.plannedDuration} readOnly={structuredMinutes > 0} onChange={(event) => { setForm(previous => ({ ...previous, plannedDuration: event.target.value })); setFormErrors((prev) => ({ ...prev, duration: false })); }} style={styles.input} />{structuredMinutes > 0 && <small>{t("trainingHub.durationFromPlan")}</small>}{formErrors.duration && <span style={trainingStyles.errorMsg}>{t("trainingHub.durationInvalid")}</span>}</FieldLabel>
     </div>
     <details className="training-editor-notes"><summary>{t("trainingHub.objectiveNotes")}</summary><div className="training-editor-fields">
@@ -1103,6 +1108,7 @@ function emptyTraining(defaultDate = localDateString()) {
     title: "",
     plannedDuration: "",
     date: defaultDate,
+    time: '',
     type: "Allenamento",
     theme: "Costruzione",
     matchDayDistance: "MD-3",
@@ -1134,6 +1140,7 @@ function getInitialTrainingForm(draftTraining, defaultDate = localDateString()) 
     ...emptyTraining(defaultDate),
     ...draftTraining,
     date: draftTraining.date ? getAgendaDateKey(draftTraining.date) : defaultDate,
+    time: getAgendaEventTime(draftTraining),
     plannedDuration: draftTraining.plannedDuration ?? getTrainingDuration(draftTraining) ?? "",
     exercises: draftTraining.exercises || [],
     attendance: draftTraining.attendance || {},

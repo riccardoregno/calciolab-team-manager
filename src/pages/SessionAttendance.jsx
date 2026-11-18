@@ -8,7 +8,8 @@ import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { canConfirmUnrecordedTrainingPresence, confirmUnrecordedTrainingPresences, formatDate, getRecordedTrainingStatus, getTrainingConfirmationStatus, hasPlayerTransferred, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes, TRAINING_ATTENDANCE_PENDING } from "../utils/helpers";
-import { hasTrainingEnded } from "../utils/trainingArchive";
+import { hasTrainingEnded, getTrainingDuration } from "../utils/trainingArchive";
+import { getAgendaEventTime } from '../utils/coachAgenda';
 import { getAttendanceWorklistPlayers, filterAttendancePlayers } from '../utils/attendanceWorklist';
 import { useTranslation } from "../i18n";
 
@@ -129,10 +130,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
     );
   }
 
-  const totalMinutes = (session.exercises || []).reduce(
-    (sum, item) => sum + Number(item.customDuration || 0),
-    0
-  );
+  const totalMinutes = getTrainingDuration(session);
 
 
 
@@ -155,6 +153,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
 
   const subtitle = [
     formatDate(session.date),
+    getAgendaEventTime(session),
     session.theme,
     totalMinutes ? `${totalMinutes} min` : null,
   ]

@@ -21,6 +21,7 @@ import { useAreaPermission } from "../components/auth/permissionContext";
 import { formatShortDate, getAvailabilityGroups, getSessionLoad, createId } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { useTranslation } from "../i18n";
+import { getAgendaEventTime, getEventTimeUpdate } from '../utils/coachAgenda';
 
 const EVENT_TYPES = [
   { value: "Allenamento", labelKey: "pages.calendar.typeTraining", tone: "green" },
@@ -1113,7 +1114,7 @@ function EventEditModal({ event, onSave, onClose }) {
   const [form, setForm] = useState({
     title:    isMatch ? (event.opponent || "") : (event.title || ""),
     date:     event.date || "",
-    time:     event.time || "",
+    time:     isMatch ? (event.time || "") : getAgendaEventTime(event),
     notes:    event.notes || "",
     // match-only
     matchKind: event.matchKind || event.match_kind || "Campionato",
@@ -1139,7 +1140,7 @@ function EventEditModal({ event, onSave, onClose }) {
       : {
           title:    form.title,
           date:     form.date,
-          time:     form.time,
+          ...getEventTimeUpdate(form.time),
           notes:    form.notes,
           duration: Number(form.duration) || 0,
           theme:    form.theme,

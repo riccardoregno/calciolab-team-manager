@@ -1,7 +1,27 @@
 import assert from "node:assert/strict";
-import { buildTrainingArchive, getTrainingDuration, getTrainingStatus } from "../src/utils/trainingArchive.js";
+import { buildTrainingArchive, getTrainingDuration, getTrainingStatus, hasTrainingEnded } from "../src/utils/trainingArchive.js";
+import { getAgendaEventTime, getEventTimeUpdate } from '../src/utils/coachAgenda.js';
 
 const today = "2026-11-05";
+const legacyTime = { id:'legacy-time',date:'2026-11-06',time:'',startTime:'9:05',start_time:'19:30:00',attendance:{qa:{status:'Assente'}},sessionBlocks:[{duration:30}] };
+const originalTime = JSON.stringify(legacyTime);
+assert.equal(getAgendaEventTime(legacyTime),'09:05');
+const changedTime = {...legacyTime,...getEventTimeUpdate('20:15')};
+assert.equal(getAgendaEventTime(changedTime),'20:15');
+assert.deepEqual(changedTime.attendance,legacyTime.attendance);
+assert.deepEqual(changedTime.sessionBlocks,legacyTime.sessionBlocks);
+const clearedTime = JSON.parse(JSON.stringify({...changedTime,...getEventTimeUpdate('')}));
+assert.equal(getAgendaEventTime(clearedTime),'','Clearing time cannot resurrect either legacy alias after a saved round trip');
+assert.equal(clearedTime.startTime,null);
+assert.equal(clearedTime.start_time,null);
+assert.equal(JSON.stringify(legacyTime),originalTime,'Only explicitly saved event updates may change time data');
+assert.equal(getEventTimeUpdate('9:05:00').time,'09:05');
+const timedSession = {date:today,duration:75,...getEventTimeUpdate('19:30')};
+assert.equal(hasTrainingEnded(timedSession,new Date(2026,10,5,20,44)),false,'A 75 minute session at 19:30 is still underway at 20:44');
+assert.equal(hasTrainingEnded(timedSession,new Date(2026,10,5,20,45)),true);
+const withoutTime = {...timedSession,...getEventTimeUpdate('')};
+assert.equal(hasTrainingEnded(withoutTime,new Date(2026,10,5,23,59)),false,'Cleared time cannot silently retain the old end time');
+assert.equal(hasTrainingEnded(withoutTime,new Date(2026,10,6,0,1)),true,'Past calendar sessions still follow the established attendance rule');
 const sessions = [
   { id: "old", title: "Possesso", date: "2026-10-28", completed: true, duration: 90 },
   { id: "tomorrow", title: "Intensità", date: "2026-11-06", duration: 75 },

@@ -15,6 +15,7 @@ try {
   const { default: SessionAttendance } = await server.ssrLoadModule('/src/pages/SessionAttendance.jsx');
   const { default: WeeklyRoster } = await server.ssrLoadModule('/src/components/statistics/WeeklyRoster.jsx');
   const { default: NextTrainingCard } = await server.ssrLoadModule('/src/components/dashboard/NextTrainingCard.jsx');
+  const { default: Trainings } = await server.ssrLoadModule('/src/pages/Trainings.jsx');
   const h = React.createElement;
   const players = Array.from({length:14},(_,i)=>({id:String(i+1),name:'Fittizio '+(i+1)}));
   const match = {id:'fixture',date:'2026-11-14',opponent:'QA',lineup:{starterIds:players.slice(0,11).map(p=>p.id),calledUpIds:players.map(p=>p.id)}};
@@ -101,5 +102,15 @@ try {
   assert.match(nextSession({session:{...futureSession,start_time:'',sessionBlocks:[]}}),/Orario da definire/);
   assert.match(nextSession({session:{...futureSession,start_time:'',sessionBlocks:[]}}),/Durata da definire/);
   assert.doesNotMatch(nextSession({loading:true,canManage:true}),/Nessuna seduta in programma|Crea seduta/,'Loading does not suggest that the calendar is empty');
+  const timeDraft = {id:'time-qa',title:'Orario QA',date:'2099-01-01',start_time:'9:05:00',plannedDuration:75};
+  const renderTrainingTime = canManage => renderToStaticMarkup(h(I18nProvider,null,h(PermissionContext.Provider,{value:{canManage}},h(MemoryRouter,{initialEntries:[{pathname:'/trainings',state:{draftTraining:timeDraft}}]},h(Trainings,{players:[],sessions:[timeDraft],exercises:[],setSessions(){},setExercises(){}})))));
+  assert.match(renderTrainingTime(true),/<input(?=[^>]*type="time")(?=[^>]*value="09:05")[^>]*>/,'The editor preloads a legacy time in its native optional time input');
+  assert.match(renderTrainingTime(true),/Facoltativo: lascia vuoto/);
+  const timeReader = renderTrainingTime(false);
+  assert.doesNotMatch(timeReader,/<input[^>]*type="time"/,'Read-only users do not get the time editor');
+  assert.match(timeReader,/09:05/,'The read-only archive displays legacy times with the same normalization');
+  const timeAttendance=renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/session-attendance/time-qa']},h(Routes,null,h(Route,{path:'/session-attendance/:id',element:h(SessionAttendance,{sessions:[timeDraft],players:[],setSessions(){}})})))));
+  assert.match(timeAttendance,/09:05/);
+  assert.match(timeAttendance,/75 min/,'Attendance displays the same planned duration as Home and the archive');
   console.log('Match flow rendering: linked stages, active substitutions and read-only controls passed');
 } finally { await server.close(); }
