@@ -323,7 +323,7 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
                   </div>
 
                   {/* Bottoni stato */}
-                  <div style={s.statusButtons}>
+                  <div className="attendance-status-controls no-mobile-override" style={s.statusButtons}>
                     {QUICK_STATUS_OPTIONS.map((opt) => (
                       <button
                         key={t("pages.attendanceRegister.status." + opt)}

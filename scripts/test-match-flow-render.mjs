@@ -64,6 +64,7 @@ try {
   assert.match(focused,/Mostra tutti/);
   assert.match(focused,/Torna al Quadro/);
   assert.match(focused,/Prima squadra · 14/, 'Filtering must not change the whole-session roster count');
+  assert.match(focused,/class="attendance-status-controls no-mobile-override"/,'Keep quick attendance actions in two columns under the shared mobile grid override');
   assert.match(focusedRegister('unknown'),/Il giocatore non fa parte della rosa/);
   assert.doesNotMatch(focusedRegister('12',false),/<button[^>]*aria-pressed="true"(?![^>]*disabled)/, 'Player focus cannot grant editing rights');
   const otherStates = ['Parziale','Infortunato','Recupero','Permesso','Squalificato','Da confermare'];
