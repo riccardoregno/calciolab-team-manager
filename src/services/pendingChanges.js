@@ -20,6 +20,9 @@ export function persistPendingChanges(teamId, baseline, state, keys) {
       previous[key] = baseline[key];
     }
   }
+  // The journal already stores the original rows in previous; rebuild the live
+  // merge baseline on recovery instead of storing the same session a third time.
+  for (const change of Object.values(changes)) delete change.baseRecords;
   const token = JSON.stringify({ changes, previous, values });
   sessionStorage.setItem(journalKey(teamId), token);
   return token;

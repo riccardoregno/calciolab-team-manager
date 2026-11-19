@@ -16,7 +16,25 @@ try {
   const { default: WeeklyRoster } = await server.ssrLoadModule('/src/components/statistics/WeeklyRoster.jsx');
   const { default: NextTrainingCard } = await server.ssrLoadModule('/src/components/dashboard/NextTrainingCard.jsx');
   const { default: Trainings } = await server.ssrLoadModule('/src/pages/Trainings.jsx');
+  const { default: AttendanceSyncConflicts } = await server.ssrLoadModule('/src/components/ui/AttendanceSyncConflicts.jsx');
+  const { default: SaveStatus } = await server.ssrLoadModule('/src/components/ui/SaveStatus.jsx');
   const h = React.createElement;
+  const conflictBase={id:'conflict',title:'Seduta fittizia',attendance:{one:{status:'Presente'}}};
+  const conflictLocal={...conflictBase,attendance:{one:{status:'Assente'}}};
+  const conflictOnline={...conflictBase,attendance:{one:{status:'Parziale',partialMinutes:20,rpe:5}},_updatedAt:'online-version'};
+  const conflictPanel=renderToStaticMarkup(h(I18nProvider,null,h(AttendanceSyncConflicts,{
+    conflicts:[{id:'conflict',baseline:conflictBase,local:conflictLocal,online:conflictOnline}],sessions:[conflictLocal],players:[{id:'one',name:'Giocatore QA'}],onResolve(){},
+  })));
+  assert.match(conflictPanel,/Presenze da confrontare/);
+  assert.match(conflictPanel,/Giocatore QA/);
+  assert.match(conflictPanel,/Sul mio dispositivo/);
+  assert.match(conflictPanel,/Ultima versione online verificata/);
+  assert.match(conflictPanel,/Parziale · 20 min · RPE 5/);
+  assert.match(conflictPanel,/<button[^>]*disabled[^>]*>Salva le scelte<\/button>/,'A conflicting state requires an explicit choice before saving');
+  const conflictStatus=renderToStaticMarkup(h(I18nProvider,null,h(SaveStatus,{source:'partial',error:'conflict',hasAttendanceConflict:true,onReviewConflicts(){},onRetry(){}})));
+  assert.match(conflictStatus,/Presenze da confrontare/);
+  assert.match(conflictStatus,/Confronta presenze/);
+  assert.doesNotMatch(conflictStatus,/Sincronizza ora/,'Conflicts need a choice, not an indistinguishable network retry');
   const players = Array.from({length:14},(_,i)=>({id:String(i+1),name:'Fittizio '+(i+1)}));
   const match = {id:'fixture',date:'2026-11-14',opponent:'QA',lineup:{starterIds:players.slice(0,11).map(p=>p.id),calledUpIds:players.map(p=>p.id)}};
   const render = canManage => renderToStaticMarkup(h(I18nProvider,null,h(PermissionContext.Provider,{value:{canManage}},

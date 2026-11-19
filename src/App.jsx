@@ -19,6 +19,7 @@ import AppCard from "./components/ui/AppCard";
 import Button from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import SaveStatus from "./components/ui/SaveStatus";
+import AttendanceSyncConflicts from './components/ui/AttendanceSyncConflicts';
 import PWAInstallBanner from "./components/ui/PWAInstallBanner";
 import PWAUpdateBanner from "./components/ui/PWAUpdateBanner";
 import PushBanner from "./components/ui/PushBanner";
@@ -198,6 +199,8 @@ function App() {
     remoteSaving,
     refreshTeamData,
     retryLocalSave,
+    attendanceConflicts,
+    resolveAttendanceConflict,
     setPlayers: setAllPlayers,
     setSeasonRoster,
     setSeasonEvents,
@@ -600,7 +603,10 @@ function App() {
 
           <RouteSaveStatus loading={loading || auth.authLoading || seasonWorkspace.catalogLoading} source={storageSource}
             error={storageError} localError={localSaveError} saving={remoteSaving} refreshing={refreshing}
-            lastSyncedAt={lastSyncedAt} onRetryLocal={retryLocalSave} onRetry={auth.team?.id ? refreshTeamData : null} />
+            lastSyncedAt={lastSyncedAt} onRetryLocal={retryLocalSave} onRetry={auth.team?.id ? refreshTeamData : null}
+            hasAttendanceConflict={attendanceConflicts.length > 0} onReviewConflicts={()=>document.getElementById('attendance-sync-review-'+attendanceConflicts[0]?.id)?.scrollIntoView({block:'start',behavior:'smooth'})} />
+          <AttendanceSyncConflicts conflicts={attendanceConflicts} sessions={state.sessions} players={players}
+            onResolve={resolveAttendanceConflict} busy={remoteSaving || refreshing} />
 
           <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>

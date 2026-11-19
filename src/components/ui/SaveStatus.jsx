@@ -2,11 +2,13 @@ import { AlertCircle, CloudCheck, CloudUpload, HardDrive, LoaderCircle } from "l
 import { useTranslation } from "../../i18n";
 import { getSaveStatus } from "../../utils/saveStatus";
 
-export default function SaveStatus({ loading, source, error, localError, saving, refreshing, lastSyncedAt, onRetry, onRetryLocal, sticky = false }) {
+export default function SaveStatus({ loading, source, error, localError, saving, refreshing, lastSyncedAt, onRetry, onRetryLocal, hasAttendanceConflict = false, onReviewConflicts, sticky = false }) {
   const { t, language } = useTranslation();
-  const status = getSaveStatus({ loading, source, error, localError, saving, refreshing });
+  const baseStatus = getSaveStatus({ loading, source, error, localError, saving, refreshing });
+  const status = hasAttendanceConflict && ['retry','pending'].includes(baseStatus) ? 'conflict' : baseStatus;
   const showLocalRetry = Boolean(localError) && !loading;
   const showSync = onRetry && !loading && !saving && !refreshing && ["retry", "pending", "localError"].includes(status);
+  const showConflict = hasAttendanceConflict && onReviewConflicts && !loading && !saving && !refreshing;
   const Icon = status === "online" ? CloudCheck : status === "saving" || status === "loading" ? LoaderCircle : status === "device" ? HardDrive : status === "pending" ? CloudUpload : AlertCircle;
   const tone = status === "online" ? "#86d9b4" : status === "localError" ? "#fca5a5" : status === "saving" || status === "loading" ? "#93bbff" : "#f2c47d";
   const timestamp = lastSyncedAt && !Number.isNaN(new Date(lastSyncedAt).getTime())
@@ -20,10 +22,11 @@ export default function SaveStatus({ loading, source, error, localError, saving,
           {status === "online" && timestamp && <small className="save-status-time">{t("saveStatus.lastSaved", { time: timestamp })}</small>}
         </span>
       </div>
-      {(showLocalRetry || showSync) && (
+      {(showLocalRetry || showSync || showConflict) && (
         <div className="save-status-actions">
           {showLocalRetry && onRetryLocal && <button type="button" onClick={onRetryLocal} className="save-status-retry">{t("saveStatus.retryLocal")}</button>}
           {showSync && <button type="button" onClick={onRetry} className="save-status-retry">{t("saveStatus.retryAction")}</button>}
+          {showConflict && <button type="button" onClick={onReviewConflicts} className="save-status-retry">{t('attendanceSync.review')}</button>}
         </div>
       )}
     </div>

@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import { reconcileAttendanceRecord, buildEntityChanges, acknowledgeSavedKeys, acknowledgeUnchangedWrite, applyMergedRecords } from '../src/utils/syncHelpers.js';
+const base={id:'training',title:'Fixture',date:'2026-11-18',attendance:{a:{status:'Da confermare'},b:'Presente'},_updatedAt:'old'};
+const local={...base,attendance:{...base.attendance,a:{status:'Assente'}}};
+const online={...base,title:'Titolo aggiornato online',attendance:{...base.attendance,b:{status:'Parziale',partialMinutes:20,rpe:5}},_updatedAt:'new'};
+const merged=reconcileAttendanceRecord(base,local,online);
+assert.deepEqual(merged.conflicts,[]);
+assert.equal(merged.data.title,online.title);
+assert.deepEqual(merged.data.attendance,{a:{status:'Assente'},b:{status:'Parziale',partialMinutes:20,rpe:5}});
+assert.equal(merged.data._updatedAt,undefined);
+assert.deepEqual(base.attendance,{a:{status:'Da confermare'},b:'Presente'},'Never mutate the baseline');
+const collision={...online,attendance:{...online.attendance,a:{status:'Parziale',partialMinutes:30,rpe:7}}};
+assert.deepEqual(reconcileAttendanceRecord(base,local,collision).conflicts.map(c=>c.playerId),['a']);
+for(const choice of ['local','online']) {
+  const resolved=reconcileAttendanceRecord(base,local,collision,{a:choice});
+  assert.equal(resolved.conflicts.length,0);
+  assert.deepEqual(resolved.data.attendance.a,choice==='local'?local.attendance.a:collision.attendance.a);
+  assert.deepEqual(resolved.data.attendance.b,collision.attendance.b,'Conflict choices must not overwrite the other player');
+}
+assert.equal(reconcileAttendanceRecord(base,{...local,title:'Piano modificato'},online),null,'Plan edits cannot be automatically merged');
+assert.equal(reconcileAttendanceRecord(base,local,null),null,'Never recreate a deleted remote session');
+assert.deepEqual(reconcileAttendanceRecord(base,local,{...online,attendance:{...online.attendance,a:{status:'Assente'}}}).conflicts,[],'Identical choices are idempotent');
+const erased={...base,attendance:{b:'Presente'}};
+assert.equal(Object.hasOwn(reconcileAttendanceRecord(base,erased,online).data.attendance,'a'),false,'Removing a status preserves absence of a recorded value');
+assert.equal(reconcileAttendanceRecord(base,erased,collision).conflicts.length,1,'A status removal conflicts with a newer saved value');
+const changes=buildEntityChanges({sessions:[base]},{sessions:[local]},['sessions']);
+assert.deepEqual(changes.sessions.baseRecords,[base]);
+const canonical={...merged.data,_updatedAt:'ack'};
+const result={savedKeys:['sessions'],versions:{sessions:new Map([['training','ack']])},mergedRecords:{sessions:new Map([['training',canonical]])}};
+const acknowledged=acknowledgeSavedKeys({sessions:[base]},{sessions:[local]},result);
+assert.deepEqual(acknowledged.sessions,[canonical]);
+assert.deepEqual(applyMergedRecords({sessions:[local]},result.mergedRecords).sessions,[canonical]);
+const unsafeAck=acknowledgeUnchangedWrite(result,false);
+assert.deepEqual(unsafeAck.savedKeys,[],'A newer edit cannot acknowledge unseen merged remote changes');
+assert.deepEqual(acknowledgeSavedKeys({sessions:[base]},{sessions:[local]},unsafeAck).sessions,[base]);
+assert.equal(acknowledgeUnchangedWrite(result,true),result);
+console.log('Attendance sync: independent players, atomic conflicts, explicit choices, replay, deletion, plan protection and newer-edit acknowledgement passed');

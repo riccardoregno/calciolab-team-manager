@@ -22,9 +22,11 @@ import { classifyLocalSaveError } from "../utils/saveStatus";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { persistPendingChanges, restorePendingChanges, acknowledgePendingChanges } from "../services/pendingChanges";
 import {
-  acknowledgeEntityVersions,
+  acknowledgeUnchangedWrite,
   acknowledgeSavedKeys,
+  applyMergedRecords,
   buildEntityChanges,
+  reconcileAttendanceRecord,
 } from "../utils/syncHelpers";
 
 const REMOTE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
@@ -50,6 +52,7 @@ export function useTeamData({ teamId } = {}) {
   const [localSaveError, setLocalSaveError] = useState(null);
   const [remoteSaving, setRemoteSaving] = useState(false);
   const [localSaving, setLocalSaving] = useState(false);
+  const [attendanceConflicts, setAttendanceConflicts] = useState([]);
   const localSaveRevision = useRef(0);
   const hydrated = useRef(false);
   const remoteSyncReady = useRef(false);
@@ -76,6 +79,7 @@ export function useTeamData({ teamId } = {}) {
   }, [state]);
 
   const applyLoadedState = useCallback(({ state: loadedState, source, error, syncBaseline, pendingKeys = [] }) => {
+    setAttendanceConflicts([]);
     setState(loadedState);
     lastSyncedSnapshotRef.current = syncBaseline || loadedState;
     dirtyKeysRef.current = new Set(pendingKeys);
@@ -120,7 +124,10 @@ export function useTeamData({ teamId } = {}) {
         keys: retryKeys,
         entityChanges: retryChanges,
       });
-      lastSyncedSnapshotRef.current = acknowledgeSavedKeys(lastSyncedSnapshotRef.current, retrySnapshot, retryResult);
+      if (teamIdRef.current !== teamId) return {source:'local'};
+      setAttendanceConflicts((retryResult.failures || []).flatMap(failure=>failure.attendanceConflict ? [failure.attendanceConflict] : []));
+      lastSyncedSnapshotRef.current = acknowledgeSavedKeys(lastSyncedSnapshotRef.current, retrySnapshot, acknowledgeUnchangedWrite(retryResult,revision === editRevisionRef.current));
+      if (revision === editRevisionRef.current && Object.keys(retryResult.mergedRecords || {}).length) setState(previous=>applyMergedRecords(previous,retryResult.mergedRecords));
       setStorageSource((prev) => retryResult.source !== prev ? retryResult.source : prev);
       setStorageError((prev) => {
         const next = retryResult.error?.message || null;
@@ -196,6 +203,7 @@ export function useTeamData({ teamId } = {}) {
     hasUnsyncedLocalChanges.current = false;
 
     setLoading(true);
+    setAttendanceConflicts([]);
     setRemoteSaving(false);
     setLocalSaveError(null);
     localSaveRevision.current += 1;
@@ -335,10 +343,11 @@ export function useTeamData({ teamId } = {}) {
       const entityChanges = buildEntityChanges(lastSyncedSnapshotRef.current, normalized, keysToSave);
       const result = await saveTeamTablesState(normalized, teamId, { keys: keysToSave, entityChanges });
       if (teamIdRef.current !== teamId) return;
-      lastSyncedSnapshotRef.current = acknowledgeSavedKeys(lastSyncedSnapshotRef.current, normalized, result);
+      const unchanged = revision === editRevisionRef.current;
+      setAttendanceConflicts((result.failures || []).flatMap(failure=>failure.attendanceConflict ? [failure.attendanceConflict] : []));
+      lastSyncedSnapshotRef.current = acknowledgeSavedKeys(lastSyncedSnapshotRef.current, normalized, acknowledgeUnchangedWrite(result,unchanged));
+      if (unchanged && Object.keys(result.mergedRecords || {}).length) setState(previous=>applyMergedRecords(previous,result.mergedRecords));
       if (result.source === "supabase" && !result.error) {
-        lastSyncedSnapshotRef.current = acknowledgeEntityVersions(normalized, result.versions);
-        const unchanged = revision === editRevisionRef.current;
         hasUnsyncedLocalChanges.current = !unchanged;
         if (unchanged) {
           keysToSave.forEach((key) => dirtyKeysRef.current.delete(key));
@@ -379,6 +388,23 @@ export function useTeamData({ teamId } = {}) {
       if (!started) pendingSaveCount.current = Math.max(0, pendingSaveCount.current - 1);
     };
   }, [state, teamId, saveDeviceCopy]);
+
+  const resolveAttendanceConflict = useCallback((conflict, choices) => {
+    if (teamIdRef.current !== teamId || pendingSaveCount.current > 0) return false;
+    const local = stateRef.current.sessions.find(item=>String(item.id)===String(conflict.id));
+    const review = reconcileAttendanceRecord(conflict.baseline,local,conflict.online,choices);
+    if (!review || review.conflicts.length) return false;
+    lastSyncedSnapshotRef.current = {
+      ...lastSyncedSnapshotRef.current,
+      sessions:lastSyncedSnapshotRef.current.sessions.map(item=>String(item.id)===String(conflict.id)?conflict.online:item),
+    };
+    markDirty('sessions');
+    setState(previous=>({...previous,sessions:previous.sessions.map(item=>String(item.id)===String(conflict.id)?{...review.data,_updatedAt:conflict.online._updatedAt}:item)}));
+    setAttendanceConflicts(previous=>previous.filter(item=>item.id!==conflict.id));
+    setStorageSource('pending-upload');
+    setStorageError(null);
+    return true;
+  }, [teamId,markDirty]);
 
   const actions = useMemo(
     () => ({
@@ -488,6 +514,8 @@ export function useTeamData({ teamId } = {}) {
     remoteSaving: remoteSaving || localSaving,
     refreshTeamData,
     retryLocalSave,
+    attendanceConflicts,
+    resolveAttendanceConflict,
     teamId,
     ...actions,
   };

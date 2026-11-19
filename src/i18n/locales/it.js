@@ -1,4 +1,10 @@
 export const it = {
+  attendanceSync: {
+    title:'Presenze da confrontare',review:'Confronta presenze',session:'Seduta',unknownPlayer:'Giocatore da identificare',
+    help:'Lo stesso giocatore è stato modificato anche da un altro membro dello staff. Scegli quale dato conservare. Le modifiche indipendenti degli altri giocatori restano valide; attendi poi «Salvato online».',
+    local:'Sul mio dispositivo',online:'Ultima versione online verificata',notRecorded:'Nessuno stato registrato',minutes:'{{count}} min',
+    apply:'Salva le scelte',changed:'La seduta è stata modificata ancora. Controlla le modifiche prima di sincronizzare.',retry:'La sincronizzazione è ancora in corso o i dati sono cambiati. Ricontrolla le scelte e riprova.',
+  },
   matchReport: {
     analysisTopic:'Aspetto',analysisNotes:'Note dello staff',analysisPending:'Analisi post-gara da completare.',staffDecisions:'Decisioni staff',clipMinute:'Minuto',clipCategory:'Categoria',
     retry:'Riprova',exportFailed:'Impossibile generare il PDF. Riprova.',exporting:'Generazione PDF...',
@@ -434,6 +440,7 @@ export const it = {
 },
 
   saveStatus: {
+    conflict: 'Presenze da confrontare · modifiche conservate sul dispositivo',
   "loading": "Caricamento dati…",
   "saving": "Sincronizzazione in corso…",
   "online": "Salvato online",

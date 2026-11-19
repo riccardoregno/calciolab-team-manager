@@ -29,6 +29,7 @@ try {
   const { uploadTeamAttachment } = await server.ssrLoadModule('/src/services/attachments.js');
   const { persistPendingChanges, restorePendingChanges, acknowledgePendingChanges } = await server.ssrLoadModule('/src/services/pendingChanges.js');
   const { normalizeAppState } = await server.ssrLoadModule('/src/utils/helpers.js');
+  const { acknowledgeSavedKeys, buildEntityChanges, reconcileAttendanceRecord } = await server.ssrLoadModule('/src/utils/syncHelpers.js');
   const { loadPlayerMatches } = await server.ssrLoadModule('/src/services/playerProfile.js');
   const { savePlayerMatchStats, saveMatchMinutes } = await server.ssrLoadModule('/src/services/playerProfile.js');
   const { getPlayerMatchEntries } = await server.ssrLoadModule('/src/utils/helpers.js');
@@ -108,6 +109,18 @@ try {
   const concurrentRemote = { ...baseline, matches: [{ ...baseline.matches[0], result: '1-0', _updatedAt: 'version-2' }] };
   const conflictRecovery = restorePendingChanges('reload-team', { state: concurrentRemote, source: 'supabase' });
   assert.equal(conflictRecovery.syncBaseline.matches[0]._updatedAt, 'version-1', 'Recovery must preserve optimistic conflict detection');
+  const attendanceBase={sessions:[{id:'attendance-draft',attendance:{a:{status:'Da confermare'},b:{status:'Da confermare'}},_updatedAt:'before'}]};
+  const attendanceEdit={sessions:[{...attendanceBase.sessions[0],attendance:{...attendanceBase.sessions[0].attendance,a:{status:'Assente'}}}]};
+  const attendanceRemote={sessions:[{...attendanceBase.sessions[0],attendance:{...attendanceBase.sessions[0].attendance,b:{status:'Presente'}},_updatedAt:'after'}]};
+  const attendanceToken=persistPendingChanges('attendance-draft-team',attendanceBase,attendanceEdit,['sessions']);
+  assert.equal(JSON.parse(attendanceToken).changes.sessions.baseRecords,undefined,'The journal must not duplicate the merge baseline');
+  const attendanceRecovery=restorePendingChanges('attendance-draft-team',{state:attendanceRemote,source:'supabase'});
+  const pendingAttendance=buildEntityChanges(attendanceRecovery.syncBaseline,attendanceRecovery.state,['sessions']);
+  const restoredMerge=reconcileAttendanceRecord(pendingAttendance.sessions.baseRecords[0],pendingAttendance.sessions.changedOrAdded[0],attendanceRemote.sessions[0]);
+  assert.deepEqual(restoredMerge.conflicts,[]);
+  assert.deepEqual(restoredMerge.data.attendance,{a:{status:'Assente'},b:{status:'Presente'}},'A recovered draft must preserve the other staff member’s newer presence');
+  assert.equal(reconcileAttendanceRecord(pendingAttendance.sessions.baseRecords[0],pendingAttendance.sessions.changedOrAdded[0],{...attendanceRemote.sessions[0],attendance:{a:{status:'Recupero'}}}).conflicts.length,1,'Reload recovery must not bypass a same-player conflict');
+  acknowledgePendingChanges('attendance-draft-team',attendanceToken);
   for (const entity of ['players', 'exercises', 'sessions', 'matches', 'physicalTests', 'gpsSessions', 'staffTasks', 'injuryRecords']) {
     const before = { [entity]: [{ id: 'existing', note: 'old' }] };
     const after = { [entity]: [{ id: 'existing', note: 'new' }, { id: 'added', note: 'added' }] };
@@ -266,7 +279,6 @@ try {
     assert.equal((await saveTeamTablesState(writeState, "test-team", options)).source, "partial");
   } finally { supabase.from = originalFrom; }
 
-  const { acknowledgeSavedKeys, buildEntityChanges } = await server.ssrLoadModule("/src/utils/syncHelpers.js");
   supabase.from = (table) => ({
     update: () => {
       const query = {

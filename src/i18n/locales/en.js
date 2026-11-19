@@ -1,4 +1,10 @@
 export const en = {
+  attendanceSync: {
+    title:'Compare attendance changes',review:'Compare attendance',session:'Session',unknownPlayer:'Unidentified player',
+    help:'Another staff member also changed this player. Choose which data to keep. Independent changes to other players are preserved; then wait for “Saved online”.',
+    local:'On my device',online:'Last checked online version',notRecorded:'No saved status',minutes:'{{count}} min',
+    apply:'Save choices',changed:'The session has changed again. Review the changes before syncing.',retry:'Sync is still running or the data has changed. Check your choices and try again.',
+  },
   matchReport: {
     analysisTopic:'Topic',analysisNotes:'Staff notes',analysisPending:'Post-match analysis not completed.',staffDecisions:'Staff decisions',clipMinute:'Minute',clipCategory:'Category',
     retry:'Retry',exportFailed:'Unable to generate the PDF. Please retry.',exporting:'Generating PDF...',
@@ -434,6 +440,7 @@ export const en = {
 },
 
   saveStatus: {
+    conflict: 'Attendance conflict · changes kept on this device',
   "loading": "Loading data…",
   "saving": "Syncing…",
   "online": "Saved online",

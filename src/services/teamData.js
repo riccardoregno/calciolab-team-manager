@@ -9,7 +9,7 @@ import {
 } from "../data/initialData";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { normalizeAppState } from "../utils/helpers";
-import { sameSyncData } from "../utils/syncHelpers";
+import { sameSyncData, reconcileAttendanceRecord } from "../utils/syncHelpers";
 import { readLocalSnapshot, updateLocalSnapshot } from "./localSnapshotStore";
 
 const durableSnapshots = new Map();
@@ -227,6 +227,7 @@ export async function saveTeamTablesState(state, teamId, { keys, entityChanges }
           return { key: stateKey, table, versions };
         } catch (error) {
           const failure = new Error(error.message); failure._syncTable = table;
+          if (error.attendanceConflict) failure.attendanceConflict = error.attendanceConflict;
           throw failure;
         }
       })();
@@ -257,17 +258,19 @@ export async function saveTeamTablesState(state, teamId, { keys, entityChanges }
     const settled = [...entityResults, ...settingsResults];
     const versions = Object.fromEntries(entityResults.flatMap(({ value }) =>
       value?.versions ? [[value.key, value.versions]] : []));
+    const mergedRecords = Object.fromEntries(entityResults.flatMap(({ value }) =>
+      value?.versions?.mergedRecords?.size ? [[value.key,value.versions.mergedRecords]] : []));
     const savedKeys = settled.filter((result) => result.status === "fulfilled").map(({ value }) => value.key);
     const failures = collectSyncFailures(settled);
     if (failures.length > 0) {
       const error = new Error(`Sync parziale: ${failures.map((failure) => failure.table).join(", ")}`);
       if (import.meta.env.DEV) {
-        console.warn("[teamData] Sync parziale Supabase:", failures);
+        console.warn("[teamData] Sync parziale Supabase:", failures.map(({table,message})=>({table,message})));
       }
-      return { source: "partial", error, failures, versions, savedKeys };
+      return { source: "partial", error, failures, versions, savedKeys, mergedRecords };
     }
 
-    return { source: "supabase", versions, savedKeys };
+    return { source: "supabase", versions, savedKeys, mergedRecords };
   } catch (error) {
     if (import.meta.env.DEV) {
       console.warn("Sync tabelle Supabase fallita, mantenuto localStorage:", error.message);
@@ -514,6 +517,7 @@ function collectSyncFailures(results) {
       return {
         table,
         message: result.reason?.message || String(result.reason || "Errore sconosciuto"),
+        ...(result.reason?.attendanceConflict ? { attendanceConflict:result.reason.attendanceConflict } : {}),
       };
     })
     .filter(Boolean);
@@ -735,8 +739,9 @@ async function syncEntityTable(table, teamId, records, { allowEmptyDelete = fals
   // Le cancellazioni ordinarie passano da syncEntityChanges con ID espliciti.
 }
 
-async function syncEntityChanges(table, teamId, { changedOrAdded = [], deleted = [] } = {}) {
+async function syncEntityChanges(table, teamId, { changedOrAdded = [], deleted = [], baseRecords = [] } = {}) {
   const versions = new Map();
+  versions.mergedRecords = new Map();
   for (const record of changedOrAdded) {
     const originalId = String(record?.id || "");
     const id = normalizeRecordIdForTable(table, originalId);
@@ -756,7 +761,13 @@ async function syncEntityChanges(table, teamId, { changedOrAdded = [], deleted =
         .eq("updated_at", _updatedAt)
         .select("updated_at");
       if (error) throw error;
-      const version = updated?.[0]?.updated_at ?? await acknowledgeRepeatedWrite(table, teamId, id, data);
+      let version = updated?.[0]?.updated_at;
+      if (!version && table === 'sessions') {
+        const resolved = await retryAttendanceWrite(teamId,id,data,baseRecords.find(item=>String(item.id)===originalId));
+        version = resolved.version;
+        if (resolved.merged) versions.mergedRecords.set(originalId,{...resolved.merged,_updatedAt:version});
+      }
+      version ??= await acknowledgeRepeatedWrite(table, teamId, id, data);
       versions.set(originalId, version);
     } else {
       const { data: inserted, error } = await supabase.from(table).insert(row).select("updated_at").single();
@@ -783,6 +794,26 @@ async function syncEntityChanges(table, teamId, { changedOrAdded = [], deleted =
     }
   }
   return versions;
+}
+
+async function retryAttendanceWrite(teamId, id, local, baseline) {
+  for (let attempt=0; attempt<3; attempt++) {
+    const {data:online,error} = await supabase.from('sessions').select('data, updated_at').eq('team_id',teamId).eq('id',id).maybeSingle();
+    if (error) throw error;
+    if (online?.updated_at && sameSyncData(online.data,JSON.parse(JSON.stringify(local)))) return {version:online.updated_at};
+    const merged = online?.updated_at && reconcileAttendanceRecord(baseline,local,online.data);
+    if (!merged) throw new Error(`Conflitto di sincronizzazione su sessions:${id}`);
+    if (merged.conflicts.length) {
+      const conflict = new Error(`Conflitto presenze su sessions:${id}`);
+      conflict.attendanceConflict={id,baseline,local,online:{...online.data,_updatedAt:online.updated_at},players:merged.conflicts};
+      throw conflict;
+    }
+    const updatedAt = new Date(Math.max(Date.now(),Date.parse(online.updated_at)+1)).toISOString();
+    const result = await supabase.from('sessions').update({data:merged.data,updated_at:updatedAt}).eq('team_id',teamId).eq('id',id).eq('updated_at',online.updated_at).select('updated_at');
+    if (result.error) throw result.error;
+    if (result.data?.[0]?.updated_at) return {version:result.data[0].updated_at,merged:merged.data};
+  }
+  throw new Error(`Conflitto di sincronizzazione su sessions:${id}`);
 }
 
 async function acknowledgeRepeatedWrite(table, teamId, id, data) {
