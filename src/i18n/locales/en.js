@@ -1,4 +1,11 @@
 export const en = {
+  homePriorities: {
+    title:'To complete',scope:'Training sessions held in the last 14 days · past matches in the selected season and competition.',
+    session:'{{count}} training session to complete',sessions:'{{count}} training sessions to complete',state:'{{count}} individual status to confirm',states:'{{count}} individual statuses to confirm',
+    match:'{{count}} match to complete',matches:'{{count}} matches to complete',matchHint:'Missing result, lineup or minutes',
+    matchesUnavailable:'Matches need checking',matchesUnknown:'Checking matches',checkingMinutes:'Checking recorded minutes…',minutesError:'Minutes could not be verified: use Retry in the message below.',
+    loading:'Loading tasks…',empty:'No outstanding tasks found in this period.',moreOne:'Show one more task',more:'Show {{count}} more tasks',less:'Show fewer tasks',
+  },
   attendanceSync: {
     title:'Compare attendance changes',review:'Compare attendance',session:'Session',unknownPlayer:'Unidentified player',
     help:'Another staff member also changed this player. Choose which data to keep. Independent changes to other players are preserved; then wait for “Saved online”.',

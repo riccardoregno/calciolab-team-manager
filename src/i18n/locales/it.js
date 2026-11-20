@@ -1,4 +1,11 @@
 export const it = {
+  homePriorities: {
+    title:'Da completare',scope:'Sedute svolte negli ultimi 14 giorni · gare passate della stagione e competizione selezionate.',
+    session:'{{count}} seduta da completare',sessions:'{{count}} sedute da completare',state:'{{count}} stato individuale da confermare',states:'{{count}} stati individuali da confermare',
+    match:'{{count}} gara da completare',matches:'{{count}} gare da completare',matchHint:'Risultato, formazione o minuti mancanti',
+    matchesUnavailable:'Gare da verificare',matchesUnknown:'Verifica delle gare in corso',checkingMinutes:'Controllo dei minuti registrati…',minutesError:'Minutaggi non verificati: usa Riprova nel messaggio sotto.',
+    loading:'Caricamento delle attività…',empty:'Nessun arretrato rilevato in questo periodo.',moreOne:'Mostra un’altra attività',more:'Mostra altre {{count}} attività',less:'Mostra meno attività',
+  },
   attendanceSync: {
     title:'Presenze da confrontare',review:'Confronta presenze',session:'Seduta',unknownPlayer:'Giocatore da identificare',
     help:'Lo stesso giocatore è stato modificato anche da un altro membro dello staff. Scegli quale dato conservare. Le modifiche indipendenti degli altri giocatori restano valide; attendi poi «Salvato online».',

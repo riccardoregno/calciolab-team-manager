@@ -6,6 +6,28 @@
 .daily-next-training-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px 20px;margin-top:12px}
 @media(max-width:640px){.daily-next-training-actions{align-items:stretch;gap:8px}.daily-next-training-actions a{white-space:normal;overflow-wrap:anywhere;min-height:44px}.daily-next-training-actions .analysis-primary-link{width:100%}}
 .coach-analysis a:focus-visible,.coach-analysis button:focus-visible{outline:2px solid #93c5fd;outline-offset:5px}
+.daily-priorities-work{margin-top:18px;border-top:1px solid var(--an-border);padding-top:16px}
+.daily-priorities-work h3{font-size:15px;margin:0 0 7px}
+.daily-priorities-scope{font-size:12px;line-height:1.6;color:var(--an-muted);margin:0 0 14px}
+.daily-priorities-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.daily-priorities-totals>div{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--an-border);border-radius:10px;background:rgba(148,163,184,.04)}
+.daily-priorities-totals svg,.daily-priorities-list svg{flex-shrink:0;color:#93c5fd}
+.daily-priorities-totals span{display:grid;gap:5px;overflow-wrap:anywhere}
+.daily-priorities-totals strong{font-size:13px;line-height:1.5}
+.daily-priorities-totals small,.daily-priorities-list small{font-size:12px;line-height:1.6;color:var(--an-muted)}
+.daily-priorities-list{list-style:none;padding:0;margin:12px 0 0;display:grid}
+.daily-priorities-list a{display:flex;justify-content:space-between;align-items:center;gap:14px;min-height:64px;padding:14px 0;border-bottom:1px solid var(--an-border)}
+.daily-priorities-list a>span{display:grid;gap:4px;overflow-wrap:anywhere}
+.daily-priorities-list strong{font-size:13px;color:#b7f1dc;line-height:1.5}
+.daily-priorities-event{font-size:13px;line-height:1.5}
+.daily-priorities-list a:hover{background:rgba(116,213,178,.04)}
+.daily-priorities-toggle{display:flex;align-items:center;gap:8px;min-height:44px;padding:10px 0;border:0;background:transparent;color:#bfd2ec;font:inherit;font-size:13px;cursor:pointer}
+.daily-priorities-toggle[aria-expanded=true] svg{transform:rotate(180deg)}
+.daily-priorities-empty{display:flex;align-items:center;gap:8px;color:#9bdbbf;font-size:13px;line-height:1.6;margin:14px 0 0}
+.daily-priorities-shortcuts{display:flex;flex-wrap:wrap;gap:8px 24px;margin-top:12px}
+.daily-priorities-shortcuts a{display:inline-flex;align-items:center;gap:8px;min-height:44px;font-size:13px;line-height:1.5;color:#bfd2ec;overflow-wrap:anywhere}
+.daily-priorities-shortcuts svg{flex-shrink:0}
+@media(max-width:640px){.daily-priorities-totals{gap:8px}.daily-priorities-totals>div{padding:10px;gap:7px}.daily-priorities-totals svg{display:none}.daily-priorities-work{margin-top:14px;padding-top:14px}.daily-priorities-shortcuts{display:grid;gap:0}}
 .analysis-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:8px 0 2px}
 .analysis-overline{display:block;font-size:10px;font-weight:750;letter-spacing:.16em;text-transform:uppercase;color:#8fa9c7}
 .analysis-heading h1{margin:9px 0;font-size:clamp(26px,3vw,38px);font-weight:760;letter-spacing:-.045em;line-height:1.15;overflow-wrap:anywhere}

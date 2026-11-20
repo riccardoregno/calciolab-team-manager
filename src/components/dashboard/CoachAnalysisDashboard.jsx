@@ -10,6 +10,7 @@ import { buildCoachTasks } from "../../utils/coachTasks";
 import { getMatchCompletionTasks } from "../../utils/matchCompletion";
 import { buildCoachAnalysis } from "../../utils/coachAnalysis.js";
 import NextTrainingCard from './NextTrainingCard';
+import DailyPriorities from './DailyPriorities';
 import "../../styles/coach-analysis.css";
 
 const nameOf = (player) => player.name || [player.firstName, player.lastName].filter(Boolean).join(" ") || "—";
@@ -29,13 +30,13 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
   const count = (value) => loading ? "—" : number(value);
   const formPoints = model.form.reduce((total, item) => total + item.earned, 0);
   const calledUp = new Set([...(model.nextMatch?.convocazione?.playerIds || []), ...(model.nextMatch?.lineup?.calledUpIds || [])].map(String)).size;
-  const matchTask = canManage && !loading
+  const matchTasks = canManage && !loading
     ? getMatchCompletionTasks({ matches, players, rows, now, canCheckMinutes: !statsPending && !statsError })
-      .sort((a, b) => String(b.match.date).localeCompare(String(a.match.date)))[0]
-    : null;
-  const attendanceTask = canManage && !loading
-    ? buildCoachTasks({ sessions, players, now }).find((task) => task.kind === "attendance")
-    : null;
+      .sort((a, b) => String(b.match.date).localeCompare(String(a.match.date)))
+    : [];
+  const attendanceTasks = canManage && !loading
+    ? buildCoachTasks({ sessions, players, now }).filter((task) => task.kind === "attendance")
+    : [];
   const showPoints = !matchScope || matches.every(isLeagueStatsMatch);
   const metrics = [
     ["points", count(model.points), text("pointsNote"), TrendingUp],
@@ -72,21 +73,8 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
 
   return <div className="coach-analysis" aria-busy={loading}>
     <header className="analysis-heading"><div><span className="analysis-overline">{text("eyebrow")}</span><h1>{teamName}</h1><p>{text("subtitle")}</p></div><Link to="/statistics" className="analysis-primary-link">{text("openAnalysis")} <ArrowUpRight size={18} /></Link></header>
-    <section className="daily-actions" aria-label={t("dailyUi.dailyTitle")}>
-      <h2>{t("dailyUi.dailyTitle")}</h2>
-      <div className="daily-actions-grid">
-        <Link to="/statistics?roster=1" className="daily-action-primary"><strong>{t("dailyUi.openQuadro")}</strong><span>{t("dailyUi.quadroHint")}</span><ArrowUpRight size={18} /></Link>
-        <Link to="/statistics?roster=1&rosterView=4&rosterSort=continuity"><strong>{t('dailyUi.openContinuity')}</strong><span>{t('dailyUi.continuityActionHint')}</span><ArrowUpRight size={18} /></Link>
-        {attendanceTask ? <Link to={attendanceTask.to} state={{ pendingOnly: true, fromDashboard: true }}><strong>{t("dailyUi.attendanceAction", { count: attendanceTask.count })}</strong><span>{attendanceTask.event.title} · {formatDate(attendanceTask.event.date)}</span><ArrowUpRight size={18} /></Link> : <Link to="/attendance-register"><strong>{t("dailyUi.register")}</strong><span>{t("dailyUi.trainingPresences")}</span><ArrowUpRight size={18} /></Link>}
-        {matchTask && <Link to={`/match-completion/${encodeURIComponent(matchTask.match.id)}`} state={{ fromDashboard: true, missingMinutesOnly: !matchTask.missingResult && !matchTask.missingFormation }}>
-          <strong>{t('dailyUi.completeMatchAction')}</strong>
-          <span>{matchTask.match.opponent} · {formatDate(matchTask.match.date)}<br />{[
-            matchTask.missingResult?t('dailyUi.pendingMatchResult'):'',
-            matchTask.missingFormation?t('dailyUi.pendingMatchFormation'):'',
-            matchTask.missingMinutes?t(matchTask.missingMinutes===1?'dailyUi.pendingMatchMinute':'dailyUi.pendingMatchMinutes',{count:matchTask.missingMinutes}):'',
-          ].filter(Boolean).join(' · ')}</span><ArrowUpRight size={18} /></Link>}
-      </div>
-    </section>
+    <DailyPriorities attendance={attendanceTasks} matches={matchTasks} loading={loading}
+      checkingMinutes={statsPending} minutesError={Boolean(statsError)} canManage={canManage} />
     <NextTrainingCard session={model.nextTraining} loading={loading} canManage={canManage} />
     <MatchScopeFilters scope={matchScope} />
     {loading && <p className="analysis-loading" role="status">{text("loading")}</p>}
