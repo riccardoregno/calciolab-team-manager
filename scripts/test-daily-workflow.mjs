@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { getRosterReturnPath, getRosterWeekPath, getRegisterReturnPath, getRegisterRosterPath } from "../src/utils/rosterNavigation.js";
+import { getRosterReturnPath, getRosterWeekPath, getRegisterReturnPath, getRegisterRosterPath, withRosterContext } from "../src/utils/rosterNavigation.js";
 import { buildCoachTasks } from "../src/utils/coachTasks.js";
 import { buildCoachAnalysis } from "../src/utils/coachAnalysis.js";
 import { confirmUnrecordedTrainingPresences } from "../src/utils/helpers.js";
@@ -24,6 +24,20 @@ assert.equal(getRosterWeekPath('2026-02-30'), '/statistics?roster=1', 'Invalid c
 assert.equal(getRegisterReturnPath({ registerReturn: '/attendance-register?month=2026-10&group=prima&search=Rossi' }), '/attendance-register?month=2026-10&group=prima&search=Rossi');
 assert.equal(getRegisterReturnPath({ registerReturn: 'https://example.com/attendance-register' }), null);
 assert.equal(getRegisterReturnPath({ registerReturn: '/attendance-register-other' }), null);
+const correctionPath=withRosterContext('/session-attendance/session%20%2F%20qa',{playerId:'player / qa',rosterReturn:path});
+const correctionQuery=correctionPath.slice(correctionPath.indexOf('?'));
+assert.equal(new URLSearchParams(correctionQuery).get('player'),'player / qa');
+assert.equal(getRosterReturnPath(undefined,correctionQuery),path,'A copied correction URL retains its complete four-week context without history state');
+assert.equal(getRosterReturnPath({rosterReturn:'/statistics?roster=1'},correctionQuery),path,'The explicit URL takes precedence over stale history state');
+const registerPath=withRosterContext('/attendance-register?month=2026-10&search=Della+Valle',{rosterReturn:path});
+const sessionFromRegister=withRosterContext('/session-attendance/session',{registerReturn:registerPath});
+const recoveredRegister=getRegisterReturnPath(undefined,sessionFromRegister.slice(sessionFromRegister.indexOf('?')));
+assert.equal(recoveredRegister,registerPath,'Month, search and nested Quadro return survive opening a register correction in a new tab');
+assert.equal(getRosterReturnPath(undefined,recoveredRegister.slice(recoveredRegister.indexOf('?'))),path);
+assert.equal(getRosterReturnPath(undefined,'?rosterReturn='+encodeURIComponent('https://example.com/statistics?roster=1')),null);
+assert.equal(getRegisterReturnPath(undefined,'?registerReturn='+encodeURIComponent('//example.com/attendance-register')),null);
+assert.equal(getRosterReturnPath(undefined,'?rosterReturn='+encodeURIComponent('/statistics?roster=1#other')),null);
+assert.equal(withRosterContext('/session-attendance/session',{rosterReturn:'https://example.com'}),'/session-attendance/session');
 const registerEvents = [{ date: '2026-10-05' }, { date: '2026-10-20' }, { date: '2026-11-10' }];
 assert.equal(getRegisterRosterPath('2026-10', registerEvents, new Date(2026,10,13)), '/statistics?roster=1&rosterWeek=2026-10-19', 'Past month uses its latest session rather than the current week');
 assert.equal(getRegisterRosterPath('2026-10', [], new Date(2026,10,13)), '/statistics?roster=1&rosterWeek=2026-09-28', 'Empty past month opens its first week');

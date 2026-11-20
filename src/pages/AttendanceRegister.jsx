@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { getRegisterRosterPath, getRosterReturnPath } from "../utils/rosterNavigation";
+import { getRegisterRosterPath, getRosterReturnPath, withRosterContext } from "../utils/rosterNavigation";
 
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -213,7 +213,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
   const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth) ? requestedMonth : defaultMonth;
   const setMonth = value => changeFilter('month', value);
   const registerReturn = location.pathname + location.search;
-  const rosterReturn = getRosterReturnPath(location.state);
+  const rosterReturn = getRosterReturnPath(location.state, params);
 
   // RPE autodichiarato dai giocatori dal portale (tabella session_rpe) — usato come
   // pre-compilazione quando il mister non ha ancora inserito/corretto un valore.
@@ -506,7 +506,7 @@ export default function AttendanceRegister({ players = [], sessions = [], setSes
                     ) : (
                       <button
                         type="button"
-                        onClick={() => navigate(`/session-attendance/${encodeURIComponent(session.id)}`, { state: { registerReturn, registerRosterReturn: rosterReturn } })}
+                        onClick={() => navigate(withRosterContext(`/session-attendance/${encodeURIComponent(session.id)}`, { registerReturn }), { state: { registerReturn, registerRosterReturn: rosterReturn } })}
                         style={ar.sessionLink}
                         title={session.title || t("pages.attendanceRegister.sessionFallback")}
                       >

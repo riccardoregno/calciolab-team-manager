@@ -3,6 +3,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { createServer } from 'vite';
+import { withRosterContext } from '../src/utils/rosterNavigation.js';
 const server = await createServer({cacheDir:'node_modules/.vite-render-tests',server:{middlewareMode:true,hmr:false},appType:'custom'});
 try {
   const { I18nProvider } = await server.ssrLoadModule('/src/i18n/I18nProvider.jsx');
@@ -115,7 +116,21 @@ try {
   const rosterLink = renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/statistics?roster=1&rosterView=4&rosterWeek=2020-01-06&rosterSort=minutes']},h(WeeklyRoster,{
     events:[{id:'session / qa',type:'Allenamento',date:'2020-01-07',completed:true}],players:[{id:'player / qa',name:'Omonimo QA'}],rows:[],standalone:true,
   }))));
-  assert.match(rosterLink,/href="\/session-attendance\/session%20%2F%20qa\?player=player\+%2F\+qa"/, 'Event links carry the exact player identity with encoded IDs');
+  const correctionLink=rosterLink.match(/href="(\/session-attendance\/[^"]+)"/)[1].replaceAll('&amp;','&');
+  const correctionParams=new URLSearchParams(correctionLink.slice(correctionLink.indexOf('?')));
+  assert.match(correctionLink,/^\/session-attendance\/session%20%2F%20qa\?/);
+  assert.equal(correctionParams.get('player'),'player / qa','Event links carry the exact player identity with encoded IDs');
+  assert.equal(correctionParams.get('rosterReturn'),'/statistics?roster=1&rosterView=4&rosterWeek=2020-01-06&rosterSort=minutes','Copied links carry period and sorting without history state');
+  const queryContext='/statistics?roster=1&rosterView=4&rosterWeek=2020-01-06&rosterPending=1&rosterSort=minutes';
+  const copiedAttendance=withRosterContext('/session-attendance/past',{playerId:'12',rosterReturn:queryContext});
+  const copiedRegister=renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:[copiedAttendance]},h(Routes,null,h(Route,{path:'/session-attendance/:id',element:h(SessionAttendance,{sessions:[{id:'past',date:'2020-01-07',completed:true}],players,setSessions(){}})})))));
+  assert.match(copiedRegister,/Torna al Quadro/,'Directly opening the URL keeps the correct return action');
+  assert.match(copiedRegister,/Presenze di Fittizio 12/);
+  assert.doesNotMatch(copiedRegister,/Quadro di questa settimana/,'The original four-week context replaces the generic current-week shortcut');
+  const copiedMatch=renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:[withRosterContext('/match-completion/fixture',{playerId:'12',rosterReturn:queryContext})]},h(Routes,null,h(Route,{path:'/match-completion/:id',element:h(MatchCompletion,{matches:[missingScore],players,setMatches(){}})})))));
+  assert.ok(copiedMatch.includes('href="'+queryContext.replaceAll('&','&amp;')+'"'),'A match correction also returns to the copied four-week context');
+  assert.match(copiedMatch,/Torna al Quadro della rosa/);
+  assert.match(copiedMatch,/aria-label="Minuti di Fittizio 12"[^>]*autofocus/,'The selected player is focused from the copied match URL');
   const weeklySort = renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/statistics?roster=1&rosterWeek=2020-01-06&rosterSort=minutes']},h(WeeklyRoster,{events:[],players,rows:[],standalone:true}))));
   assert.doesNotMatch(weeklySort,/Minuti di gara crescenti/, 'Weekly view cannot advertise a four-week-only sorting rule as active');
   assert.match(resultTask,/href="\/statistics\?roster=1&amp;rosterView=4&amp;rosterSort=continuity"/, 'Home links directly to the four-week attendance/minute comparison');

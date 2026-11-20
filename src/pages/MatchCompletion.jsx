@@ -68,11 +68,11 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
 
   const registeredIds = getMatchCompletionPlayerIds(match);
   const expected = new Set([...registeredIds, ...starters]);
-  const { state } = useLocation();
-  const linkedPlayerId = state?.minutesPlayerId;
+  const { state, search } = useLocation();
+  const linkedPlayerId = new URLSearchParams(search).get('player') || state?.minutesPlayerId;
   const [missingOnly, setMissingOnly] = useState(Boolean(state?.missingMinutesOnly));
   const backTo = state?.fromDashboard ? "/" : "/matches?view=pending";
-  const rosterReturn = getRosterReturnPath(state);
+  const rosterReturn = getRosterReturnPath(state, search);
   const savedStarterNames = starters.map((id) => {
     const player = players.find((item) => String(item.id) === id);
     return player ? playerName(player) : id;
@@ -194,7 +194,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
     <div style={{ maxWidth: 720, marginInline: "auto", display: "grid", gap: 14 }}>
       <PageHeader title="Completa tabellino" subtitle={formatDate(match.date)} />
       <MatchTabBar matchId={match.id} active="tabellino" matchLabel={match.opponent} matchData={match} />
-      <Link to={rosterReturn || backTo}>{rosterReturn ? "Torna al riepilogo settimanale" : state?.fromDashboard ? "Torna alla Dashboard" : "Torna alle gare da completare"}</Link>
+      <Link to={rosterReturn || backTo}>{rosterReturn ? t('dailyUi.backQuadro') : state?.fromDashboard ? "Torna alla Dashboard" : "Torna alle gare da completare"}</Link>
       {!rosterReturn && <Link to={getRosterWeekPath(match.date)}>{t('dailyUi.sessionQuadro')}</Link>}
       <form onSubmit={save}>
         <fieldset disabled={!canManage || saving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: "grid", gap: 14 }}>
@@ -259,7 +259,7 @@ function CompletionForm({ match, setMatches, players, teamId, clubName }) {
           </AppCard>
           {error && <p role="alert">{error}</p>}
           <div style={{display:'flex',flexWrap:'wrap',gap:10}}>
-            <Button type="submit" disabled={saving || !canManage || (remote && !saved)}>{saving ? "Salvataggio…" : rosterReturn ? "Salva e torna al riepilogo" : state?.fromDashboard ? "Salva e torna alla Dashboard" : "Salva e torna alle gare"}</Button>
+            <Button type="submit" disabled={saving || !canManage || (remote && !saved)}>{saving ? "Salvataggio…" : rosterReturn ? t('dailyUi.saveMatchQuadro') : state?.fromDashboard ? "Salva e torna alla Dashboard" : "Salva e torna alle gare"}</Button>
             {!rosterReturn && <Button type="submit" value="quadro" variant="ghost" disabled={saving || !canManage || (remote && !saved)}>{t('dailyUi.saveMatchQuadro')}</Button>}
           </div>
         </fieldset>

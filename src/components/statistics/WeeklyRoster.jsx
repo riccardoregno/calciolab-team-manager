@@ -7,6 +7,7 @@ import Button from "../ui/Button";
 import { getAgendaDateKey } from "../../utils/coachAgenda";
 import { hasTrainingEnded } from "../../utils/trainingArchive";
 import { getRosterComparisonGroups } from "../../utils/rosterComparison";
+import { withRosterContext } from '../../utils/rosterNavigation';
 import { comparePlayersByName, isTrainingStatsEvent, getPlayerMatchEntries, getTrainingConfirmationStatus, getTrainingAttendanceSummary, hasPlayerTransferred, isTrainingParticipation, localDateString, parseMatchResult, TRAINING_ATTENDANCE_PENDING } from "../../utils/helpers";
 
 function moveDate(date, days) {
@@ -195,7 +196,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
       <summary hidden={standalone} style={{ cursor: "pointer", fontWeight: 700 }}>{text(standalone ? "firstTeamWeek" : "quadro")}</summary>
       <div className="weekly-roster-controls">
       <div className="weekly-roster-context"><strong>{auth.team?.name || text("firstTeam")}</strong>{scopeLabel && <span>{scopeLabel}</span>}</div>
-      <Button variant="ghost" onClick={() => navigate('/attendance-register?month=' + start.slice(0, 7), { state: { rosterReturn } })}>{text('openRegister')}</Button>
+      <Button variant="ghost" onClick={() => navigate(withRosterContext('/attendance-register?month=' + start.slice(0, 7), { rosterReturn }), { state: { rosterReturn } })}>{text('openRegister')}</Button>
       <div role="group" aria-label={text("period")} style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
         <Button variant={fourWeeks ? "ghost" : "primary"} aria-pressed={!fourWeeks} onClick={() => setFourWeeks(false)}>{text("week")}</Button>
         <Button variant={fourWeeks ? "primary" : "ghost"} aria-pressed={fourWeeks} onClick={() => setFourWeeks(true)}>{text("fourWeeks")}</Button>
@@ -265,7 +266,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
                 <summary style={{ cursor: "pointer", padding: "6px 0" }}>{text("details")}</summary>
                 <ul style={{ margin: "6px 0 0", paddingLeft: 18, overflowWrap: "anywhere" }}>
                   {playerSessions.map((event) => <li key={"session-" + event.id}>
-                    <Link to={"/session-attendance/" + encodeURIComponent(event.id) + "?" + new URLSearchParams({ player: String(player.id) })} state={{ rosterReturn, rosterWeek: start, rosterPending: pendingOnly }}>
+                    <Link to={withRosterContext('/session-attendance/' + encodeURIComponent(event.id), { playerId:player.id, rosterReturn })} state={{ rosterReturn, rosterWeek: start, rosterPending: pendingOnly }}>
                       {dateLabel(event.date)} · {event.title || t("common.session")} · {t("pages.attendanceRegister.status." + getTrainingConfirmationStatus(player, event))}
                     </Link>
                   </li>)}
@@ -273,7 +274,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
                     const label = dateLabel(event.date) + " · " + (event.opponent || event.title || t("common.match")) + " · " +
                       (minutes === 0 ? text("zeroMinutes") : minutes !== null ? minutes + " min" : status === "Minutaggio da completare" ? text("missingMinutes") : status === "Convocazione non verificabile" ? text("unverifiable") : text("notCalled"));
                     return <li key={"match-" + event.id}>{status === "Minutaggio da completare" ?
-                      <Link to={"/match-completion/" + encodeURIComponent(event.id)} state={{ minutesPlayerId: String(player.id), rosterReturn, rosterWeek: start, rosterPending: pendingOnly }}>{label}</Link> : label}
+                      <Link to={withRosterContext('/match-completion/' + encodeURIComponent(event.id), { playerId:player.id, rosterReturn })} state={{ minutesPlayerId: String(player.id), rosterReturn, rosterWeek: start, rosterPending: pendingOnly }}>{label}</Link> : label}
                     </li>;
                   })}
                 </ul>

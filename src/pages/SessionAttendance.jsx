@@ -47,8 +47,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const [searchParams, setSearchParams] = useSearchParams();
   const focusedPlayerId = searchParams.get('player');
   const [search, setSearch] = useState('');
-  const rosterReturn = getRosterReturnPath(state);
-  const registerReturn = getRegisterReturnPath(state);
+  const rosterReturn = getRosterReturnPath(state, searchParams);
+  const registerReturn = getRegisterReturnPath(state, searchParams);
   const [pendingOnly, setPendingOnly] = useState(Boolean(state?.pendingOnly));
   const [reviewed, setReviewed] = useState({sessionId:id,ids:[]});
   const { canManage } = useAreaPermission();
