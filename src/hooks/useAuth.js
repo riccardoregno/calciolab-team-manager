@@ -5,6 +5,7 @@ import { ensureDefaultTeam, getAuthSession, onAuthChange } from "../services/aut
 
 const AUTH_REQUEST_TIMEOUT_MS = 10000;
 const AUTH_TEAM_CACHE_KEY = "calciolab_auth_team_cache_v1";
+const TEAM_SWITCH_PARAM = "selectTeam";
 const teamPreferenceKey = (userId) => "calciolab_selected_team:" + userId;
 
 function readPreferredTeam(userId) {
@@ -96,7 +97,10 @@ export function useAuth() {
           return;
         }
 
-        const preferredTeamId = readPreferredTeam(nextUser.id);
+        const location = new URL(window.location.href);
+        const requestedTeamId = location.pathname === "/" ? location.searchParams.get(TEAM_SWITCH_PARAM) : null;
+        const storedTeamId = readPreferredTeam(nextUser.id);
+        const preferredTeamId = requestedTeamId || storedTeamId;
         const cachedTeam = teamBillingTestEnabled ? null : loadCachedTeam(nextUser.id);
         if (cachedTeam && (!preferredTeamId || preferredTeamId === cachedTeam.id)) {
           setTeam(cachedTeam);
@@ -106,11 +110,26 @@ export function useAuth() {
         setTeamLoading(true);
 
         const { team: ensuredTeam, teams: availableTeams = [], error } = await withTimeout(
-          ensureDefaultTeam(nextUser, preferredTeamId),
+          ensureDefaultTeam(nextUser, preferredTeamId, storedTeamId),
           "Team",
         );
 
         if (!active) return;
+
+        let preferenceError = null;
+        if (requestedTeamId && !error) {
+          if (ensuredTeam?.id === requestedTeamId && availableTeams.some(({ id }) => id === requestedTeamId)) {
+            try {
+              window.localStorage.setItem(teamPreferenceKey(nextUser.id), requestedTeamId);
+            } catch {
+              preferenceError = "Impossibile salvare la squadra selezionata sul dispositivo.";
+            }
+          }
+          if (!preferenceError && window.location.href === location.href) {
+            location.searchParams.delete(TEAM_SWITCH_PARAM);
+            window.history.replaceState(window.history.state, "", location);
+          }
+        }
 
         // Segna l'utente come completamente idratato SOLO dopo che il team è stato caricato.
         // Così TOKEN_REFRESHED non può skippare un'idratazione ancora in corso.
@@ -119,7 +138,7 @@ export function useAuth() {
         setTeam(ensuredTeam);
         setTeams(availableTeams);
         saveCachedTeam(nextUser.id, ensuredTeam);
-        setAuthError(error?.message || null);
+        setAuthError(error?.message || preferenceError);
       } catch (error) {
         if (!active) return;
         setAuthError(error?.message || "Errore autenticazione Supabase");
@@ -181,13 +200,9 @@ export function useAuth() {
 
   function selectTeam(id) {
     if (!user || id === team?.id || !teams.some((item) => item.id === id)) return;
-    try {
-      window.localStorage.setItem(teamPreferenceKey(user.id), id);
-    } catch {
-      setAuthError("Impossibile salvare la squadra selezionata sul dispositivo.");
-      return;
-    }
-    window.location.reload();
+    // The browser may cancel navigation while attendance edits are pending.
+    // Save the preference only after reaching the new workspace.
+    window.location.replace("/?" + new URLSearchParams({ [TEAM_SWITCH_PARAM]: id }));
   }
 
   return {

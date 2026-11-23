@@ -141,7 +141,7 @@ export async function acceptTeamInvite(token) {
 
 /** @param {any} user
  * @returns {Promise<{data: any[], error: any}>} */
-export async function ensureDefaultTeam(user, preferredTeamId) {
+export async function ensureDefaultTeam(user, preferredTeamId, fallbackTeamId) {
   if (!isSupabaseConfigured || !user) {
     return { team: null };
   }
@@ -195,6 +195,7 @@ export async function ensureDefaultTeam(user, preferredTeamId) {
 
   const availableMemberships = (memberships || []).filter((membership) => membership?.teams);
   const existingMembership = availableMemberships.find((membership) => membership.team_id === preferredTeamId)
+    || (fallbackTeamId !== preferredTeamId && availableMemberships.find((membership) => membership.team_id === fallbackTeamId))
     || await pickBestMembership(availableMemberships);
 
   if (existingMembership?.teams) {
