@@ -372,6 +372,12 @@ function Statistics({
     .map((id) => stats.find((player) => String(player.id) === String(id)))
     .filter(Boolean);
 
+  const rosterScopeLabel = matchScope
+    ? (matchScope.season === "all" ? t("dailyUi.allSeasons") : matchScope.season) + " · " +
+      (matchScope.competitions.find(({ value }) => value === matchScope.competition)?.label ||
+        t(matchScope.competition === "league" ? "dailyUi.league" : "dailyUi.allCompetitions"))
+    : "";
+
   if (rosterOnly) {
     return <div className="statistics-workspace" style={{ ...styles.page, ...s.page }}>
       <PageHeader title={t("dailyUi.quadro")} />
@@ -385,11 +391,11 @@ function Statistics({
       {auth.authError && auth.team && <p role="alert">{t("dailyUi.teamError")}</p>}
       {matchScope && <details style={{ marginBottom: 12 }}>
         <summary style={{ cursor: "pointer", padding: "10px 0", color: "#cbd5e1" }}>
-          {t("dailyUi.scope")} · {matchScope.season === "all" ? t("dailyUi.allSeasons") : matchScope.season} · {matchScope.competitions.find(({ value }) => value === matchScope.competition)?.label || t(matchScope.competition === "league" ? "dailyUi.league" : "dailyUi.allCompetitions")}
+          {t("dailyUi.scope")} · {rosterScopeLabel}
         </summary>
         <MatchScopeFilters scope={matchScope} />
       </details>}
-      <WeeklyRoster seasonBounds={matchScope?.seasonBounds} events={events} players={players} rows={playerMatchStatsRows} loading={rosterStatsLoading} statsError={rosterStatsError} standalone scopeLabel={matchScope ? (matchScope.season === "all" ? t("dailyUi.allSeasons") : matchScope.season) + " · " + (matchScope.competitions.find(({ value }) => value === matchScope.competition)?.label || t(matchScope.competition === "league" ? "dailyUi.league" : "dailyUi.allCompetitions")) : ""} />
+      <WeeklyRoster seasonBounds={matchScope?.seasonBounds} events={events} players={players} rows={playerMatchStatsRows} loading={rosterStatsLoading} statsError={rosterStatsError} standalone scopeLabel={rosterScopeLabel} />
     </div>;
   }
 
@@ -427,7 +433,7 @@ function Statistics({
         </div>
       </div>
       <MatchScopeFilters scope={matchScope} />
-      <WeeklyRoster seasonBounds={matchScope?.seasonBounds} events={events} players={players} rows={playerMatchStatsRows} loading={rosterStatsLoading} statsError={rosterStatsError} />
+      <WeeklyRoster seasonBounds={matchScope?.seasonBounds} events={events} players={players} rows={playerMatchStatsRows} loading={rosterStatsLoading} statsError={rosterStatsError} scopeLabel={rosterScopeLabel} />
 
       {/* ── Filtri ── */}
       <AppCard>

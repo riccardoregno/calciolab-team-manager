@@ -108,6 +108,22 @@ export const en = {
     "orphans": "References to missing players"
   }
 },
+  "rosterCsv": {
+    "action": "Export CSV",
+    "team": "Squad",
+    "scope": "Season and competition",
+    "from": "From",
+    "to": "To",
+    "player": "Player",
+    "sessions": "Sessions",
+    "presences": "Attendance",
+    "pendingPresences": "Attendance to confirm",
+    "matches": "Matches",
+    "minutes": "Recorded minutes",
+    "missingMinutes": "Matches with missing minutes",
+    "unknownCallups": "Unverifiable call-ups",
+    "minutesStatus": "Minutes status"
+  },
   dailyUi: {
     completeMatchAction: 'Complete match report',
     saveMatchQuadro: 'Save and open squad overview',

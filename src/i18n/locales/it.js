@@ -108,6 +108,22 @@ export const it = {
     "orphans": "Riferimenti a giocatori non presenti"
   }
 },
+  "rosterCsv": {
+    "action": "Esporta CSV",
+    "team": "Squadra",
+    "scope": "Stagione e competizione",
+    "from": "Dal",
+    "to": "Al",
+    "player": "Giocatore",
+    "sessions": "Sedute",
+    "presences": "Presenze",
+    "pendingPresences": "Presenze da confermare",
+    "matches": "Gare",
+    "minutes": "Minuti registrati",
+    "missingMinutes": "Gare con minutaggio mancante",
+    "unknownCallups": "Convocazioni non verificabili",
+    "minutesStatus": "Stato minutaggio"
+  },
   dailyUi: {
     completeMatchAction: 'Completa tabellino',
     saveMatchQuadro: 'Salva e apri il Quadro',

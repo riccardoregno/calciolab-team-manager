@@ -7,6 +7,7 @@ import Button from "../ui/Button";
 import { getAgendaDateKey } from "../../utils/coachAgenda";
 import { hasTrainingEnded } from "../../utils/trainingArchive";
 import { getRosterComparisonGroups } from "../../utils/rosterComparison";
+import { buildWeeklyRosterCsv } from "../../utils/weeklyRosterCsv";
 import { withRosterContext } from '../../utils/rosterNavigation';
 import { comparePlayersByName, isTrainingStatsEvent, getPlayerMatchEntries, getTrainingConfirmationStatus, getTrainingAttendanceSummary, hasPlayerTransferred, isTrainingParticipation, localDateString, parseMatchResult, TRAINING_ATTENDANCE_PENDING } from "../../utils/helpers";
 
@@ -187,6 +188,24 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
     { label: text('noTraining'), rows: comparisonGroups.noTraining },
   ] : [{ label: "", rows: visibleRows }];
   const checkingMinutes = loading && matches.length > 0;
+  const minutesUnavailable = checkingMinutes ? text("loadingMinutes")
+    : statsError && matches.length > 0 ? text("unverifiableMinutes") : "";
+  const teamName = auth.team?.name || text("firstTeam");
+
+  function exportCsv() {
+    const csv = buildWeeklyRosterCsv({
+      groups, teamName, scopeLabel, start: periodStart, end, minutesUnavailable, language, t,
+    });
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = (language === "en" ? "squad-overview" : "quadro-rosa") + "-" + periodStart + "_" + end + ".csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   const togglePending = () => {
     updateParams(next => { if (next.get('rosterPending') === '1') next.delete("rosterPending"); else next.set("rosterPending", "1"); });
   };
@@ -195,8 +214,11 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
     <details open={standalone || Boolean(requestedWeek) || pendingOnly || fourWeeks || undefined}>
       <summary hidden={standalone} style={{ cursor: "pointer", fontWeight: 700 }}>{text(standalone ? "firstTeamWeek" : "quadro")}</summary>
       <div className="weekly-roster-controls">
-      <div className="weekly-roster-context"><strong>{auth.team?.name || text("firstTeam")}</strong>{scopeLabel && <span>{scopeLabel}</span>}</div>
-      <Button variant="ghost" onClick={() => navigate(withRosterContext('/attendance-register?month=' + start.slice(0, 7), { rosterReturn }), { state: { rosterReturn } })}>{text('openRegister')}</Button>
+      <div className="weekly-roster-context"><strong>{teamName}</strong>{scopeLabel && <span>{scopeLabel}</span>}</div>
+      <div className="weekly-roster-actions">
+        <Button variant="ghost" onClick={() => navigate(withRosterContext('/attendance-register?month=' + start.slice(0, 7), { rosterReturn }), { state: { rosterReturn } })}>{text('openRegister')}</Button>
+        <Button variant="ghost" onClick={exportCsv} disabled={!visibleRows.length || checkingMinutes}>{t("rosterCsv.action")}</Button>
+      </div>
       <div role="group" aria-label={text("period")} style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
         <Button variant={fourWeeks ? "ghost" : "primary"} aria-pressed={!fourWeeks} onClick={() => setFourWeeks(false)}>{text("week")}</Button>
         <Button variant={fourWeeks ? "primary" : "ghost"} aria-pressed={fourWeeks} onClick={() => setFourWeeks(true)}>{text("fourWeeks")}</Button>
@@ -233,7 +255,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
       </p>}
       </div>
       <div className="weekly-roster-summary" role="region" aria-label={text('period')}>
-        <strong title={auth.team?.name || text('firstTeam')}>{auth.team?.name || text('firstTeam')}</strong>
+        <strong title={teamName}>{teamName}</strong>
         <span>{dateLabel(periodStart)} – {dateLabel(end)}</span>
         <small>{[text(fourWeeks?'fourWeeks':'week'),pendingOnly?text('onlyPending'):'',fourWeeks&&sortMode!=='name'?text(sortLabel):''].filter(Boolean).join(' · ')}</small>
       </div>
@@ -252,7 +274,7 @@ export default function WeeklyRoster({ events, players, rows, loading, statsErro
               {hasPlayerTransferred(player, today) && <small>{t("pages.playerDetail.profile.transferred")} · {dateLabel(player.transferDate)}</small>}
               <div><strong>{text("training")}</strong><div>{trainingSummary.join(" · ") || text("noTraining")}</div></div>
               <div style={{ marginTop: 8 }}><strong>{text("games")}</strong><div>
-                {loading && matches.length ? text("loadingMinutes") : statsError && matches.length ? text("unverifiableMinutes") : <>
+                {minutesUnavailable || <>
                   <span style={!known.length && missing.length ? { color: "#fde68a" } : undefined}>{matchSummary}</span>
                   {missing.length > 0 && (fourWeeks || known.length > 0 || missing.length > 1) && <span style={{ color: "#fde68a" }}>
                     {" · " + text(missing.length === 1 ? "missingGame" : "missingGames", { count: missing.length })}

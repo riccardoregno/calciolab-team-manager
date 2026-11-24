@@ -167,6 +167,7 @@
 .weekly-roster-controls p { margin: 8px 0; font-size: 13px; }
 .weekly-roster-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; overflow-wrap: anywhere; }
 .weekly-roster-context span { color: #b0c3db; font-size: 12px; }
+.weekly-roster-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .weekly-roster-controls button, .weekly-roster summary, .weekly-roster li a { min-height: 44px; }
 .weekly-roster > details > summary { padding-block: 8px; }
 .weekly-roster li a { display: inline-flex; align-items: center; padding-block: 6px; }

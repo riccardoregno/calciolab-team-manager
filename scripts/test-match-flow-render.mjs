@@ -148,6 +148,10 @@ try {
   assert.match(compared,/Minutaggio sconosciuto/);
   assert.match(compared,/4\/4 presenze/);
   assert.match(compared,/1\/4 presenze/);
+  assert.match(compared, /<button(?![^>]* disabled)[^>]*>Esporta CSV<\/button>/);
+  assert.match(continuityView({ loading: true }), /<button(?=[^>]* disabled)[^>]*>Esporta CSV<\/button>/);
+  assert.match(continuityView({ players: [] }), /<button(?=[^>]* disabled)[^>]*>Esporta CSV<\/button>/);
+  assert.match(continuityView({ statsError: new Error('offline') }), /<button(?![^>]* disabled)[^>]*>Esporta CSV<\/button>/);
   assert.doesNotMatch(continuityView({events:comparisonEvents.filter(e=>e.type!=='Partita')}),/>Presenze e minutaggi completi</, 'A period without games must not be presented as a usable minute comparison');
   const nextSession = props => renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,null,h(NextTrainingCard,props))));
   const futureSession = {id:'qa / next',date:'2026-11-18T00:00:00',title:'Seduta QA con cognome lungo',start_time:'19:30:00',sessionBlocks:[{duration:15},{duration:20}]};
