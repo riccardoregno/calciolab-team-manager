@@ -690,6 +690,7 @@ export const it = {
     label: "Lingua",
     italian: "Italiano",
     english: "English",
+    loadFailed: "Impossibile caricare l’inglese. Riprova.",
   },
   pages: {
     fines: { subtitle: "Riepilogo delle multe di partitelle e torello, per settimana e giocatore." },

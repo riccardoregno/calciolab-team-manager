@@ -697,6 +697,7 @@ export const en = {
     label: "Language",
     italian: "Italiano",
     english: "English",
+    loadFailed: "English could not be loaded. Please try again.",
   },
   pages: {
     fines: { subtitle: "Small-sided game and rondo fines by week and player." },

@@ -1,7 +1,7 @@
 import { languages, useTranslation } from "../../i18n";
 
 export default function LanguageSelector({ compact = false }) {
-  const { language, setLanguage, t } = useTranslation();
+  const { language, setLanguage, languageLoading, languageLoadFailed, t } = useTranslation();
 
   return (
     <label style={compact ? selectorStyles.compactWrap : selectorStyles.wrap}>
@@ -12,6 +12,8 @@ export default function LanguageSelector({ compact = false }) {
       <select
         value={language}
         onChange={(event) => setLanguage(event.target.value)}
+        disabled={languageLoading}
+        aria-busy={languageLoading}
         style={compact ? selectorStyles.compactSelect : selectorStyles.select}
         aria-label={t("language.label")}
       >
@@ -21,6 +23,7 @@ export default function LanguageSelector({ compact = false }) {
           </option>
         ))}
       </select>
+      {languageLoadFailed && <small role="status">{t("language.loadFailed")}</small>}
     </label>
   );
 }
