@@ -19,6 +19,9 @@ try {
   const { default: Trainings } = await server.ssrLoadModule('/src/pages/Trainings.jsx');
   const { default: AttendanceSyncConflicts } = await server.ssrLoadModule('/src/components/ui/AttendanceSyncConflicts.jsx');
   const { default: SaveStatus } = await server.ssrLoadModule('/src/components/ui/SaveStatus.jsx');
+  const { default: Dashboard } = await server.ssrLoadModule('/src/pages/Dashboard.jsx');
+  const { CoachTab } = await server.ssrLoadModule('/src/components/settings/CoachTab.jsx');
+  const { getAgendaDateKey } = await server.ssrLoadModule('/src/utils/coachAgenda.js');
   const h = React.createElement;
   const conflictBase={id:'conflict',title:'Seduta fittizia',attendance:{one:{status:'Presente'}}};
   const conflictLocal={...conflictBase,attendance:{one:{status:'Assente'}}};
@@ -178,5 +181,26 @@ try {
   const timeAttendance=renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/session-attendance/time-qa']},h(Routes,null,h(Route,{path:'/session-attendance/:id',element:h(SessionAttendance,{sessions:[timeDraft],players:[],setSessions(){}})})))));
   assert.match(timeAttendance,/09:05/);
   assert.match(timeAttendance,/75 min/,'Attendance displays the same planned duration as Home and the archive');
+
+  const recentTraining = {
+    id: 'dashboard-rpe',
+    date: getAgendaDateKey(new Date()),
+    title: 'Seduta con RPE',
+    type: 'Allenamento',
+    attendance: { '12': { status: 'Presente', rpe: 6 } },
+  };
+  const renderDashboard = (dashboardWidgets, userRole = 'headCoach', sessions = [recentTraining]) => renderToStaticMarkup(h(I18nProvider, null, h(MemoryRouter, null,
+    h(Dashboard, { players, sessions, appSettings: { experienceMode: 'advanced', workspaceProfile: { userRole }, dashboardWidgets } }),
+  )));
+  assert.match(renderDashboard({ rosterStatus: false }), /RPE medio della squadra per seduta/);
+  assert.doesNotMatch(renderDashboard({ weeklyLoad: false }), /RPE medio della squadra per seduta/);
+  assert.doesNotMatch(renderDashboard({}, 'director'), /RPE medio della squadra per seduta/);
+  assert.doesNotMatch(renderDashboard({}, 'headCoach', []), /RPE medio della squadra per seduta/);
+  const renderCoachSettings = dashboardWidgets => renderToStaticMarkup(h(I18nProvider, null, h(CoachTab, {
+    appSettings: { dashboardWidgets }, setAppSettings() {}, setConfirmState() {}, showToast() {},
+  })));
+  assert.match(renderCoachSettings({ rosterStatus: false }), /Carico settimanale<\/span><input[^>]*checked/);
+  assert.doesNotMatch(renderCoachSettings({ weeklyLoad: false }), /Carico settimanale<\/span><input[^>]*checked/);
+
   console.log('Match flow rendering: linked stages, active substitutions and read-only controls passed');
 } finally { await server.close(); }

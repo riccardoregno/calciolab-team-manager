@@ -888,6 +888,8 @@ export const en = {
       widgetKpi: "KPI",
       widgetWeek: "Week",
       widgetRoster: "Squad",
+      widgetWeeklyLoad: "Weekly load",
+      weeklyLoadSubtitle: "Average team RPE per session (last 14 days)",
       widgetAlerts: "Alerts",
       widgetActivities: "Activities",
       widgetActions: "Actions",

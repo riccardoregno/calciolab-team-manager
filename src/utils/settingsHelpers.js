@@ -25,6 +25,7 @@ export const widgetLabelKeys = {
   kpis:             "pages.settings.mainKpis",
   weekFocus:        "pages.settings.weekFocus",
   rosterStatus:     "pages.settings.rosterStatus",
+  weeklyLoad:       "pages.dashboard.widgetWeeklyLoad",
   coachAlerts:      "pages.settings.coachAlerts",
   recentActivities: "pages.settings.recentActivities",
   quickActions:     "pages.settings.quickActions",

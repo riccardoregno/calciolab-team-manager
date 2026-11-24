@@ -203,6 +203,17 @@ assert.deepEqual(normalizeAppSettings(sharedSettings).seasonGoals, sharedGoals, 
 assert.deepEqual(normalizeAppSettings(sharedSettings).playerPortal.playerPrefs, sharedPrefs);
 assert.deepEqual(normalizeAppSettings({ seasonGoals: { teamGoals: null, playerGoals: "broken" } }).seasonGoals, { teamGoals: [], playerGoals: [] });
 
+const legacyWidgets = { rosterStatus: false, coachAlerts: true };
+const legacyDashboard = normalizeAppSettings({
+  dashboardWidgets: legacyWidgets,
+  dashboardSectionOrder: ["coachAlerts", "rosterStatus"],
+});
+assert.equal(legacyDashboard.dashboardWidgets.weeklyLoad, true, "Missing widgets inherit their default on existing dashboards");
+assert.equal(legacyDashboard.dashboardWidgets.rosterStatus, false, "An explicitly hidden widget stays hidden");
+assert.deepEqual(legacyDashboard.dashboardSectionOrder, ["coachAlerts", "rosterStatus"]);
+assert.equal(normalizeAppSettings({ dashboardWidgets: { weeklyLoad: false } }).dashboardWidgets.weeklyLoad, false);
+assert.deepEqual(normalizeAppSettings(legacyDashboard).dashboardWidgets, legacyDashboard.dashboardWidgets);
+
 const reward = getCoachRewardProfile({
   players: [{ id: 1 }, { id: 2 }],
   exercises: [{ id: 1 }],

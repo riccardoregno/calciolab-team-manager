@@ -53,7 +53,10 @@ export function CoachTab({ appSettings, setAppSettings, setConfirmState, showToa
   }
 
   function updateWidget(key, value) {
-    setAppSettings({ ...settings, dashboardWidgets: { ...settings.dashboardWidgets, [key]: value } });
+    setAppSettings((previous) => ({
+      ...previous,
+      dashboardWidgets: { ...previous.dashboardWidgets, [key]: value },
+    }));
   }
 
   function updateExperienceMode(experienceMode) {

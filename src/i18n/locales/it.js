@@ -881,6 +881,8 @@ export const it = {
       widgetKpi: "KPI",
       widgetWeek: "Settimana",
       widgetRoster: "Rosa",
+      widgetWeeklyLoad: "Carico settimanale",
+      weeklyLoadSubtitle: "RPE medio della squadra per seduta (ultimi 14 giorni)",
       widgetAlerts: "Alert",
       widgetActivities: "Attività",
       widgetActions: "Azioni",

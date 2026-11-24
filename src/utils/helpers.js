@@ -776,7 +776,7 @@ export function normalizeAppSettings(settings = {}){
         { label: "45/15", seconds: 45, percent: 0.85, reps: 6, sets: 2, recovery: "3' tra serie" },
       ],
     },
-    dashboardWidgets: settings.dashboardWidgets || {
+    dashboardWidgets: {
       hero: true,
       nextEvent: true,
       kpis: true,
@@ -787,6 +787,9 @@ export function normalizeAppSettings(settings = {}){
       recentActivities: true,
       quickActions: true,
       rewardCenter: true,
+      ...(settings.dashboardWidgets && typeof settings.dashboardWidgets === "object" && !Array.isArray(settings.dashboardWidgets)
+        ? settings.dashboardWidgets
+        : null),
     },
     dashboardSectionOrder: Array.isArray(settings.dashboardSectionOrder)
       ? settings.dashboardSectionOrder

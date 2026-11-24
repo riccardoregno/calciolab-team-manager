@@ -438,12 +438,9 @@ function Dashboard({
   }
 
   function toggleWidget(key) {
-    setAppSettings?.({
-      ...settings,
-      dashboardWidgets: {
-        ...widgets,
-        [key]: !widgets[key],
-      },
+    setAppSettings?.((previous) => {
+      const { dashboardWidgets } = normalizeAppSettings(previous);
+      return { ...previous, dashboardWidgets: { ...dashboardWidgets, [key]: !dashboardWidgets[key] } };
     });
   }
 
@@ -1040,6 +1037,7 @@ function Dashboard({
     return <CoachAnalysisDashboard matchScope={matchScope} players={players} matches={matchScope?.matches ?? matches} sessions={sessions} rows={playerMatchRows}
       profile={settings.workspaceProfile} loading={loading} statsLoading={Boolean(auth.team?.id) && (statsLoading || statsCompletedForTeam !== auth.team.id)} statsError={statsError}
       onRetryStats={() => setStatsReload((value) => value + 1)}
+      weeklyLoad={showOperationalQueue && widgets.weeklyLoad ? <WeeklyLoadWidget sessions={sessions} /> : null}
       now={new Date(agendaMinute)} canManage={["owner", "headCoach", "assistantCoach"].includes(currentRole)} />;
   }
 
@@ -1115,7 +1113,7 @@ function Dashboard({
               ["kpis", t("pages.dashboard.widgetKpi")],
               ["weekFocus", t("pages.dashboard.widgetWeek")],
               ["rosterStatus", t("pages.dashboard.widgetRoster")],
-              ["weeklyLoad", "Carico settimanale"],
+              ["weeklyLoad", t("pages.dashboard.widgetWeeklyLoad")],
               ["coachAlerts", t("pages.dashboard.widgetAlerts")],
               ["recentActivities", t("pages.dashboard.widgetActivities")],
               ["quickActions", t("pages.dashboard.widgetActions")],
@@ -1124,6 +1122,7 @@ function Dashboard({
               <button
                 key={key}
                 onClick={() => toggleWidget(key)}
+                aria-pressed={widgets[key]}
                 style={{
                   borderRadius: 999,
                   border: "1px solid rgba(255,255,255,0.1)",
@@ -1851,6 +1850,7 @@ function RosterGrid({ players }) {
 
 // ─── WeeklyLoadWidget — grafico a barre carico settimanale ───────────
 function WeeklyLoadWidget({ sessions }) {
+  const { t } = useTranslation();
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 13);
 
@@ -1882,8 +1882,8 @@ function WeeklyLoadWidget({ sessions }) {
   return (
     <AppCard>
       <SectionTitle
-        title="Carico settimanale"
-        subtitle="RPE medio della squadra per seduta (ultimi 14 giorni)"
+        title={t("pages.dashboard.widgetWeeklyLoad")}
+        subtitle={t("pages.dashboard.weeklyLoadSubtitle")}
       />
       <div style={{ display: "flex", alignItems: "flex-end", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
         {bars.map((b, i) => {

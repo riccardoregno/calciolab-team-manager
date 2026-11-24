@@ -15,7 +15,7 @@ import "../../styles/coach-analysis.css";
 
 const nameOf = (player) => player.name || [player.firstName, player.lastName].filter(Boolean).join(" ") || "—";
 
-export default function CoachAnalysisDashboard({ matchScope, players = [], matches = [], sessions = [], rows = [], profile = {}, loading = false, statsLoading = false, statsError = null, onRetryStats, now = new Date(), canManage = true }) {
+export default function CoachAnalysisDashboard({ matchScope, players = [], matches = [], sessions = [], rows = [], profile = {}, loading = false, statsLoading = false, statsError = null, onRetryStats, weeklyLoad, now = new Date(), canManage = true }) {
   const { t, language } = useTranslation();
   const text = (key, params) => t(`coachOverview.${key}`, params);
   const [group, setGroup] = useState("prima");
@@ -116,6 +116,7 @@ export default function CoachAnalysisDashboard({ matchScope, players = [], match
     </div>
 
     <section className="analysis-panel analysis-contributions"><div className="analysis-panel-head"><div><span className="analysis-overline">{text("contributions")}</span><h2>{text("playersInFocus")}</h2><p className="analysis-muted">{text("contributionsNote")}</p></div><Link to="/player-compare" className="analysis-text-link">{text("comparePlayers")} <ArrowUpRight size={16} /></Link></div><div className="analysis-leaderboards"><Leaderboard title={text("scorers")} items={model.topScorers} field="goals" /><Leaderboard title={text("assists")} items={model.topAssists} field="assists" /><Leaderboard title={text("minutes")} items={model.topMinutes} field="minutes" suffix="′" /></div></section>
+    {weeklyLoad}
     <footer className="analysis-footer"><span>{text("footerNote")}</span>{model.nextTraining && <Link to={canManage ? "/trainings" : "/calendar"} state={canManage ? { editSessionId: model.nextTraining.id } : undefined} className="analysis-text-link">{text("nextTraining")} · {formatDate(model.nextTraining.date)} <ArrowUpRight size={16} /></Link>}</footer>
   </div>;
 }
