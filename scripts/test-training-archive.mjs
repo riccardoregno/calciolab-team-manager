@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildTrainingArchive, getTrainingDuration, getTrainingStatus, hasTrainingEnded } from "../src/utils/trainingArchive.js";
+import { buildTrainingArchive, getRecentTrainingLoad, getTrainingDuration, getTrainingStatus, hasTrainingEnded } from "../src/utils/trainingArchive.js";
 import { getAgendaEventTime, getEventTimeUpdate } from '../src/utils/coachAgenda.js';
 
 const today = "2026-11-05";
@@ -51,4 +51,24 @@ assert.equal(getTrainingDuration({ duration: "" }), null, "Missing duration is n
 assert.equal(getTrainingDuration({ duration: -3 }), null);
 assert.equal(getTrainingDuration({ duration: Infinity }), null);
 assert.equal(JSON.stringify(sessions), before, "Sorting must not modify session data");
+
+const rpe = { first: { rpe: 5 }, second: { rpe: "8" }, missing: { rpe: "" }, invalid: { rpe: Infinity } };
+const loadSessions = [
+  { id: "later", date: "2026-11-05", time: "19:00", attendance: rpe },
+  { id: "too-old", date: "2026-10-22", attendance: rpe },
+  { id: "too-new", date: "2026-11-06", attendance: rpe },
+  { id: "first-day", date: "2026-10-23T00:00:00.000Z", attendance: rpe },
+  { id: "earlier", date: "2026-11-05", startTime: "9:15", attendance: rpe },
+  { id: "no-rpe", date: "2026-10-30", attendance: { missing: { rpe: "" } } },
+  { id: "bad-date", date: "2026-10-39", attendance: rpe },
+];
+const loadBefore = JSON.stringify(loadSessions);
+const load = getRecentTrainingLoad(loadSessions, new Date(2026, 10, 5, 17, 45));
+assert.deepEqual(load.map(({ id, date, time }) => ({ id, date, time })), [
+  { id: "first-day", date: "2026-10-23", time: "" },
+  { id: "earlier", date: "2026-11-05", time: "09:15" },
+  { id: "later", date: "2026-11-05", time: "19:00" },
+]);
+assert.ok(load.every(({ average, count }) => average === 6.5 && count === 2));
+assert.equal(JSON.stringify(loadSessions), loadBefore);
 console.log("Training archive: future/history filters, completed state, search and legacy/manual duration passed");

@@ -890,6 +890,7 @@ export const en = {
       widgetRoster: "Squad",
       widgetWeeklyLoad: "Weekly load",
       weeklyLoadSubtitle: "Average team RPE per session (last 14 days)",
+      weeklyLoadBar: "{{title}}, {{date}}. Average RPE {{average}}. Readings ({{count}}).",
       widgetAlerts: "Alerts",
       widgetActivities: "Activities",
       widgetActions: "Actions",

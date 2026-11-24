@@ -14,6 +14,7 @@ import CoachActionQueue from "../components/dashboard/CoachActionQueue";
 import CoachFocusCard from "../components/dashboard/CoachFocusCard";
 import CoachAlertList from "../components/dashboard/CoachAlertList";
 import { buildCoachAgenda, completeSectionOrder, prioritizeCoachAlerts } from "../utils/coachAgenda";
+import { getRecentTrainingLoad } from "../utils/trainingArchive";
 import FilterChips from "../components/ui/FilterChips";
 import PageHeader from "../components/ui/PageHeader";
 import AppCard from "../components/ui/AppCard";
@@ -735,7 +736,7 @@ function Dashboard({
 
       case "weeklyLoad":
         if (!widgets.weeklyLoad) return null;
-        return <WeeklyLoadWidget sessions={sessions} />;
+        return <WeeklyLoadWidget sessions={sessions} now={agendaMinute} />;
 
       case "wellnessToday": {
         if (!teamWellnessToday.length) return null;
@@ -1037,7 +1038,7 @@ function Dashboard({
     return <CoachAnalysisDashboard matchScope={matchScope} players={players} matches={matchScope?.matches ?? matches} sessions={sessions} rows={playerMatchRows}
       profile={settings.workspaceProfile} loading={loading} statsLoading={Boolean(auth.team?.id) && (statsLoading || statsCompletedForTeam !== auth.team.id)} statsError={statsError}
       onRetryStats={() => setStatsReload((value) => value + 1)}
-      weeklyLoad={showOperationalQueue && widgets.weeklyLoad ? <WeeklyLoadWidget sessions={sessions} /> : null}
+      weeklyLoad={showOperationalQueue && widgets.weeklyLoad ? <WeeklyLoadWidget sessions={sessions} now={agendaMinute} /> : null}
       now={new Date(agendaMinute)} canManage={["owner", "headCoach", "assistantCoach"].includes(currentRole)} />;
   }
 
@@ -1849,27 +1850,16 @@ function RosterGrid({ players }) {
 }
 
 // ─── WeeklyLoadWidget — grafico a barre carico settimanale ───────────
-function WeeklyLoadWidget({ sessions }) {
-  const { t } = useTranslation();
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 13);
-
-  const recent = sessions
-    .filter((s) => s.date && new Date(s.date) >= cutoff && new Date(s.date) < new Date(new Date().toDateString() + " 23:59"))
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-  const bars = recent.map((s) => {
-    const att = s.attendance || {};
-    const vals = Object.values(att)
-      .map((v) => Number(v?.rpe || 0))
-      .filter((v) => v > 0);
-    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-    return { date: s.date, title: s.title || "Seduta", avg: Math.round(avg * 10) / 10, count: vals.length };
-  }).filter((b) => b.avg > 0);
+function WeeklyLoadWidget({ sessions, now }) {
+  const { t, language } = useTranslation();
+  const bars = getRecentTrainingLoad(sessions, now ? new Date(now) : undefined);
 
   if (!bars.length) return null;
 
-  const maxVal = Math.max(...bars.map((b) => b.avg), 1);
+  const locale = language === "en" ? "en-GB" : "it-IT";
+  const dateFormat = new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit" });
+  const numberFormat = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+  const maxVal = Math.max(...bars.map((bar) => bar.average), 1);
   const BAR_H = 80;
 
   const barColor = (v) => {
@@ -1886,19 +1876,24 @@ function WeeklyLoadWidget({ sessions }) {
         subtitle={t("pages.dashboard.weeklyLoadSubtitle")}
       />
       <div style={{ display: "flex", alignItems: "flex-end", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-        {bars.map((b, i) => {
-          const h = Math.max(8, Math.round((b.avg / maxVal) * BAR_H));
-          const color = barColor(b.avg);
-          const d = new Date(b.date);
-          const label = d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
+        {bars.map((bar) => {
+          const h = Math.max(8, Math.round((bar.average / maxVal) * BAR_H));
+          const color = barColor(bar.average);
+          const date = dateFormat.format(new Date(bar.date + "T12:00:00"));
+          const average = numberFormat.format(bar.average);
+          const description = t("pages.dashboard.weeklyLoadBar", {
+            title: bar.title || t("pages.dashboard.eventTypeSession"),
+            date: bar.time ? date + " " + bar.time : date,
+            average,
+            count: bar.count,
+          });
           return (
-            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 42, flex: "1 1 42px" }}>
-              <span style={{ fontSize: 11, fontWeight: 750, color }}>{b.avg}</span>
+            <div key={bar.id} role="img" aria-label={description} title={description} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 42, flex: "1 1 42px" }}>
+              <span style={{ fontSize: 11, fontWeight: 750, color }}>{average}</span>
               <div
-                title={`${b.title} — RPE medio ${b.avg} (${b.count} giocatori)`}
                 style={{ width: "100%", height: h, borderRadius: "5px 5px 0 0", background: color, opacity: 0.85, transition: "height 0.3s ease", minHeight: 8 }}
               />
-              <span style={{ fontSize: 10, color: "#475569", fontWeight: 700, whiteSpace: "nowrap" }}>{label}</span>
+              <span style={{ fontSize: 10, color: "#475569", fontWeight: 700, whiteSpace: "nowrap" }}>{date}</span>
             </div>
           );
         })}

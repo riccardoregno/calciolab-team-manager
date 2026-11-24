@@ -1,4 +1,4 @@
-import { getAgendaDateKey } from "./coachAgenda.js";
+import { getAgendaDateKey, getAgendaEventTime } from "./coachAgenda.js";
 import { formatDate, localDateString, parseMatchResult } from "./helpers.js";
 import { searchNavigationItems } from "./navigationSearch.js";
 
@@ -28,6 +28,31 @@ export function getTrainingStatus(session, today = localDateString()) {
   if (!date) return "toCheck";
   if (date < today) return session.isFriendlyMatch ? "toCheck" : "completed";
   return date === today ? "today" : "scheduled";
+}
+
+export function getRecentTrainingLoad(sessions, now = new Date()) {
+  const today = getAgendaDateKey(now);
+  const firstDay = getAgendaDateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13, 12));
+
+  return sessions.flatMap((session) => {
+    const date = getAgendaDateKey(session.date);
+    if (!date || date < firstDay || date > today) return [];
+
+    const values = Object.values(session.attendance || {})
+      .map((entry) => Number(entry?.rpe))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    if (!values.length) return [];
+
+    const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+    return [{
+      id: session.id,
+      title: session.title,
+      date,
+      time: getAgendaEventTime(session),
+      average: Math.round(average * 10) / 10,
+      count: values.length,
+    }];
+  }).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "24:00").localeCompare(b.time || "24:00"));
 }
 
 export function buildTrainingArchive(sessions = [], { today = localDateString(), view = "auto", search = "" } = {}) {

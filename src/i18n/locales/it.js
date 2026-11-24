@@ -883,6 +883,7 @@ export const it = {
       widgetRoster: "Rosa",
       widgetWeeklyLoad: "Carico settimanale",
       weeklyLoadSubtitle: "RPE medio della squadra per seduta (ultimi 14 giorni)",
+      weeklyLoadBar: "{{title}}, {{date}}. RPE medio {{average}}. Rilevazioni ({{count}}).",
       widgetAlerts: "Alert",
       widgetActivities: "Attività",
       widgetActions: "Azioni",

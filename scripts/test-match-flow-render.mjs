@@ -187,12 +187,15 @@ try {
     date: getAgendaDateKey(new Date()),
     title: 'Seduta con RPE',
     type: 'Allenamento',
+    time: '18:30',
     attendance: { '12': { status: 'Presente', rpe: 6 } },
   };
   const renderDashboard = (dashboardWidgets, userRole = 'headCoach', sessions = [recentTraining]) => renderToStaticMarkup(h(I18nProvider, null, h(MemoryRouter, null,
     h(Dashboard, { players, sessions, appSettings: { experienceMode: 'advanced', workspaceProfile: { userRole }, dashboardWidgets } }),
   )));
-  assert.match(renderDashboard({ rosterStatus: false }), /RPE medio della squadra per seduta/);
+  const dashboardWithLoad = renderDashboard({ rosterStatus: false });
+  assert.match(dashboardWithLoad, /RPE medio della squadra per seduta/);
+  assert.match(dashboardWithLoad, /role="img" aria-label="Seduta con RPE, .*18:30\. RPE medio 6\. Rilevazioni \(1\)\."/);
   assert.doesNotMatch(renderDashboard({ weeklyLoad: false }), /RPE medio della squadra per seduta/);
   assert.doesNotMatch(renderDashboard({}, 'director'), /RPE medio della squadra per seduta/);
   assert.doesNotMatch(renderDashboard({}, 'headCoach', []), /RPE medio della squadra per seduta/);
