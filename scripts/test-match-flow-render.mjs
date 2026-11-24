@@ -236,8 +236,9 @@ try {
   const inSeason = auditedAttendance(flaggedPath);
   assert.match(inSeason, /Presenze — Seduta da verificare/);
   assert.match(inSeason, /id="session-review-title"[^>]*>Dati da verificare/);
-  assert.match(inSeason, /<h3>Presenze<\/h3>.*<code>vecchio-id<\/code> · Presente/);
-  assert.match(inSeason, /<h3>Convocazione<\/h3>.*<code>vecchio-id<\/code>/);
+  assert.match(inSeason, /<h3>Giocatore non identificato<\/h3>.*<li>Presenze · <strong>Presente<\/strong><\/li><li>Convocazione<\/li>/);
+  assert.match(inSeason, /<summary>Altre sedute con lo stesso riferimento \(1\)<\/summary>.*href="\/session-attendance\/data-invalida\?review=season"[^>]*>Seduta con data errata<\/a>/);
+  assert.match(inSeason, /<details><summary>Mostra ID tecnico<\/summary><code>vecchio-id<\/code><\/details>/);
   assert.match(inSeason, /Fittizio 12/, 'Current-season sessions retain the regular attendance view');
   assert.doesNotMatch(auditedAttendance(flaggedPath.split('?')[0]), /id="session-review-title"/);
   const unassigned = auditedAttendance(getSeasonSessionReviewPath(badDate.id));

@@ -270,6 +270,11 @@
 .season-session-review h2 { font-size:18px; }
 .season-session-review h3 { font-size:14px; }
 .season-session-review ul, .season-session-review dl { margin:0 0 12px; }
+.season-review-players { display:grid; gap:8px; padding:0; list-style:none; }
+.season-review-players > li { padding:10px 12px; border:1px solid #755e32; border-radius:8px; }
+.season-review-players > li > ul { padding-inline-start:16px; margin-bottom:4px; }
+.season-review-players summary { cursor:pointer; min-height:36px; padding-block:6px; }
+.season-review-players a { color:#b9daff; text-decoration:underline; }
 .season-session-review dl > div { display:flex; flex-wrap:wrap; gap:4px 10px; }
 .season-session-review dd { margin:0; font-weight:700; }
 .season-session-review p:last-child { margin-bottom:0; }

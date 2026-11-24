@@ -80,9 +80,11 @@ export const it = {
   "auditHint": "Apri una seduta segnalata per vedere quali dati richiedono una verifica.",
   "openSessionReview": "Apri {{title}} e verifica i dati",
   "sessionReviewTitle": "Dati da verificare",
-  "sessionReviewMissingPlayers": "Giocatori con riferimenti in questa seduta e profilo assente dalla rosa della squadra ({{count}}).",
+  "sessionReviewMissingPlayers": "Questa seduta contiene dati collegati a giocatori di cui manca la scheda. Il nome non è disponibile.",
   "sessionReviewReadOnly": "Dettaglio consultabile in sola lettura.",
-  "reviewPlayerId": "ID giocatore",
+  "reviewUnknownPlayer": "Giocatore non identificato",
+  "reviewPlayerId": "Mostra ID tecnico",
+  "reviewRelatedSessions": "Altre sedute con lo stesso riferimento ({{count}})",
   "reviewSavedDate": "Data registrata",
   "reviewSavedSeason": "Stagione registrata",
   "reviewFields": {

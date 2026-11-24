@@ -80,9 +80,11 @@ export const en = {
   "auditHint": "Open a flagged session to see which data needs checking.",
   "openSessionReview": "Open {{title}} and review its data",
   "sessionReviewTitle": "Data to review",
-  "sessionReviewMissingPlayers": "Players referenced in this session whose profiles are missing from the team squad ({{count}}).",
+  "sessionReviewMissingPlayers": "This session contains records linked to missing player profiles. Their names are unavailable.",
   "sessionReviewReadOnly": "This detail is available in read-only mode.",
-  "reviewPlayerId": "Player ID",
+  "reviewUnknownPlayer": "Unidentified player",
+  "reviewPlayerId": "Show technical ID",
+  "reviewRelatedSessions": "Other sessions with the same reference ({{count}})",
   "reviewSavedDate": "Recorded date",
   "reviewSavedSeason": "Recorded season",
   "reviewFields": {
