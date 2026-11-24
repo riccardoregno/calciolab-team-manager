@@ -30,15 +30,36 @@ export function resolveEventSeason(event, seasons) {
 
 export function auditSeasonData({ players = [], sessions = [], matches = [], seasons = [] }) {
   const ids = new Set(players.map(player => String(player.id)));
-  return [...sessions, ...matches].flatMap(event => {
-    const references = new Set([
-      ...Object.keys(event.attendance || {}), ...(event.convocazione?.playerIds || []),
-      ...(event.lineup?.starterIds || []), ...(event.lineup?.benchIds || []), ...(event.lineup?.calledUpIds || []),
-    ].map(String));
-    const orphanIds = [...references].filter(id => !ids.has(id));
+  const auditEvents = (events, kind) => events.flatMap(event => {
+    const references = {
+      attendance: Object.keys(event.attendance || {}),
+      callup: event.convocazione?.playerIds || [],
+      starters: event.lineup?.starterIds || [],
+      bench: event.lineup?.benchIds || [],
+      lineupCallup: event.lineup?.calledUpIds || [],
+    };
+    const orphanReferences = Object.entries(references).flatMap(([field, values]) => {
+      const playerIds = Array.isArray(values) ? [...new Set(values.map(String))].filter(id => !ids.has(id)) : [];
+      return playerIds.length ? [{ field, playerIds }] : [];
+    });
+    const orphanIds = [...new Set(orphanReferences.flatMap(({ playerIds }) => playerIds))];
     const resolved = resolveEventSeason(event, seasons);
-    return resolved.reason || orphanIds.length ? [{ id: event.id, title: event.title || event.opponent || event.id, date: event.date || "", reason: orphanIds.length ? "orphans" : resolved.reason, orphanIds }] : [];
+    return resolved.reason || orphanIds.length ? [{
+      id: event.id,
+      kind,
+      title: event.title || event.opponent || event.id,
+      date: event.date || "",
+      reason: orphanIds.length ? "orphans" : resolved.reason,
+      seasonReason: resolved.reason,
+      orphanIds,
+      orphanReferences,
+    }] : [];
   });
+  return [...auditEvents(sessions, "session"), ...auditEvents(matches, "match")];
+}
+
+export function getSeasonSessionReviewPath(sessionId) {
+  return "/session-attendance/" + encodeURIComponent(sessionId) + "?review=season";
 }
 
 export function getSeasonPlayers(players, memberships, seasonId) {

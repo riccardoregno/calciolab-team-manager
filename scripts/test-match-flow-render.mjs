@@ -20,6 +20,8 @@ try {
   const { default: AttendanceSyncConflicts } = await server.ssrLoadModule('/src/components/ui/AttendanceSyncConflicts.jsx');
   const { default: SaveStatus } = await server.ssrLoadModule('/src/components/ui/SaveStatus.jsx');
   const { default: Dashboard } = await server.ssrLoadModule('/src/pages/Dashboard.jsx');
+  const { default: SeasonWorkspaceBar } = await server.ssrLoadModule('/src/components/layout/SeasonWorkspaceBar.jsx');
+  const { auditSeasonData, getSeasonSessionReviewPath } = await server.ssrLoadModule('/src/utils/seasons.js');
   const { CoachTab } = await server.ssrLoadModule('/src/components/settings/CoachTab.jsx');
   const { getAgendaDateKey } = await server.ssrLoadModule('/src/utils/coachAgenda.js');
   const h = React.createElement;
@@ -208,6 +210,43 @@ try {
   })));
   assert.match(renderCoachSettings({ rosterStatus: false }), /Carico settimanale<\/span><input[^>]*checked/);
   assert.doesNotMatch(renderCoachSettings({ weeklyLoad: false }), /Carico settimanale<\/span><input[^>]*checked/);
+
+  const auditSeason = { id: 'qa-season', name: '2020/21', start_date: '2020-07-01', end_date: '2021-06-30' };
+  const flaggedSession = {
+    id: 'seduta / 7', title: 'Seduta da verificare', date: '2020-08-10', completed: true,
+    attendance: { '12': { status: 'Assente' }, 'vecchio-id': { status: 'Presente' } },
+    convocazione: { playerIds: ['vecchio-id'] },
+  };
+  const badDate = { ...flaggedSession, id: 'data-invalida', title: 'Seduta con data errata', date: '2020-02-30' };
+  const auditSessions = [flaggedSession, badDate];
+  const seasonAudit = auditSeasonData({ players, sessions: auditSessions, seasons: [auditSeason] });
+  const auditList = renderToStaticMarkup(h(I18nProvider, null, h(MemoryRouter, null, h(SeasonWorkspaceBar, {
+    model: { enabled: true, teamId: 'qa-team', seasons: [auditSeason], season: auditSeason, audit: seasonAudit },
+    role: 'owner',
+  }))));
+  assert.match(auditList, /href="\/session-attendance\/seduta%20%2F%207\?review=season"[^>]*>Seduta da verificare<\/a>/);
+  const auditedAttendance = (path, props) => renderToStaticMarkup(h(I18nProvider, null,
+    h(MemoryRouter, { initialEntries: [path] }, h(Routes, null,
+      h(Route, { path: '/session-attendance/:id', element: h(SessionAttendance, {
+        players, sessions: [flaggedSession], seasonAudit, auditSessions, setSessions() {}, ...props,
+      }) }),
+    )),
+  ));
+  const flaggedPath = getSeasonSessionReviewPath(flaggedSession.id);
+  const inSeason = auditedAttendance(flaggedPath);
+  assert.match(inSeason, /Presenze — Seduta da verificare/);
+  assert.match(inSeason, /id="session-review-title"[^>]*>Dati da verificare/);
+  assert.match(inSeason, /<h3>Presenze<\/h3>.*<code>vecchio-id<\/code> · Presente/);
+  assert.match(inSeason, /<h3>Convocazione<\/h3>.*<code>vecchio-id<\/code>/);
+  assert.match(inSeason, /Fittizio 12/, 'Current-season sessions retain the regular attendance view');
+  assert.doesNotMatch(auditedAttendance(flaggedPath.split('?')[0]), /id="session-review-title"/);
+  const unassigned = auditedAttendance(getSeasonSessionReviewPath(badDate.id));
+  assert.match(unassigned, /Presenze — Seduta con data errata/);
+  assert.match(unassigned, /Data mancante o non standard/);
+  assert.match(unassigned, /<dt>Data registrata<\/dt><dd>2020-02-30/);
+  assert.match(unassigned, /Dettaglio consultabile in sola lettura/);
+  assert.doesNotMatch(unassigned, /Fittizio 12/, 'Unassigned source data do not project the current roster');
+  assert.match(auditedAttendance(flaggedPath, { sessions: [], seasonAudit: [], auditSessions: [], auditLoading: true }), /role="status"/);
 
   console.log('Match flow rendering: linked stages, active substitutions and read-only controls passed');
 } finally { await server.close(); }

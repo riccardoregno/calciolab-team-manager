@@ -264,6 +264,15 @@
 .season-period span { color:#e1c48a; }
 .season-audit { margin:8px 0 16px; border:1px solid #755e32; border-radius:10px; padding:10px 14px; font-size:13px; overflow-wrap:anywhere; }
 .season-audit summary { min-height:44px; cursor:pointer; }
+.season-audit a { color:#b9daff; text-decoration:underline; text-underline-offset:3px; }
+.season-session-review { border:1px solid #755e32; border-inline-start:4px solid #f7bd69; background:#292316; border-radius:12px; padding:14px 16px; color:#f9e8cb; overflow-wrap:anywhere; scroll-margin-top:72px; }
+.season-session-review h2, .season-session-review h3, .season-session-review p { margin:0 0 8px; }
+.season-session-review h2 { font-size:18px; }
+.season-session-review h3 { font-size:14px; }
+.season-session-review ul, .season-session-review dl { margin:0 0 12px; }
+.season-session-review dl > div { display:flex; flex-wrap:wrap; gap:4px 10px; }
+.season-session-review dd { margin:0; font-weight:700; }
+.season-session-review p:last-child { margin-bottom:0; }
 .season-error { border:1px solid #8f575e; background:#321c26; color:#ffd4d4; padding:12px; border-radius:10px; margin-bottom:12px; overflow-wrap:anywhere; }
 .season-create-form { display:grid; gap:14px; min-width:0; }
 .season-create-form p { margin:0; line-height:1.5; color:#b9cce3; }

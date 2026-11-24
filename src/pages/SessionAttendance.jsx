@@ -1,6 +1,6 @@
 import { getRosterReturnPath, getRosterWeekPath, getRegisterReturnPath } from "../utils/rosterNavigation";
 import { useLocation, useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
@@ -9,7 +9,7 @@ import PageHeader from "../components/ui/PageHeader";
 import { useAreaPermission } from "../components/auth/permissionContext";
 import { canConfirmUnrecordedTrainingPresence, confirmUnrecordedTrainingPresences, formatDate, getRecordedTrainingStatus, getTrainingConfirmationStatus, hasPlayerTransferred, isFriendlyMatch, isTrainingParticipation, parseRecordedMinutes, TRAINING_ATTENDANCE_PENDING } from "../utils/helpers";
 import { hasTrainingEnded, getTrainingDuration } from "../utils/trainingArchive";
-import { getAgendaEventTime } from '../utils/coachAgenda';
+import { getAgendaDateKey, getAgendaEventTime } from '../utils/coachAgenda';
 import { getAttendanceWorklistPlayers, filterAttendancePlayers } from '../utils/attendanceWorklist';
 import { useTranslation } from "../i18n";
 
@@ -39,7 +39,38 @@ function getFriendlySession(match) {
   };
 }
 
-export default function SessionAttendance({ players = [], sessions = [], setSessions, matches = [], setMatches }) {
+function SeasonSessionReview({ issue, session, readOnly }) {
+  const { t } = useTranslation();
+  const heading = useRef(null);
+  useEffect(() => { heading.current?.focus(); }, [issue.id]);
+
+  return <section className="season-session-review" aria-labelledby="session-review-title">
+    <h2 id="session-review-title" ref={heading} tabIndex={-1}>{t("seasons.sessionReviewTitle")}</h2>
+    {issue.orphanReferences.length > 0 && <>
+      <p>{t("seasons.sessionReviewMissingPlayers", { count: issue.orphanIds.length })}</p>
+      {issue.orphanReferences.map(({ field, playerIds }) => <div key={field}>
+        <h3>{t("seasons.reviewFields." + field)}</h3>
+        <ul>{playerIds.map(playerId => {
+          const status = field === "attendance" ? getRecordedTrainingStatus({ id: playerId }, session) : null;
+          return <li key={playerId}>
+            <span>{t("seasons.reviewPlayerId")}</span>{" "}<code>{playerId}</code>
+            {status && <>{" · "}{t("pages.attendanceRegister.status." + status)}</>}
+          </li>;
+        })}</ul>
+      </div>)}
+    </>}
+    {issue.seasonReason && <>
+      <h3>{t("seasons.reasons." + issue.seasonReason)}</h3>
+      <dl>
+        <div><dt>{t("seasons.reviewSavedDate")}</dt><dd>{session.date || t("seasons.noDate")}</dd></div>
+        <div><dt>{t("seasons.reviewSavedSeason")}</dt><dd>{session.season || session.seasonId || t("seasons.unassigned")}</dd></div>
+      </dl>
+    </>}
+    {readOnly && <p>{t("seasons.sessionReviewReadOnly")}</p>}
+  </section>;
+}
+
+export default function SessionAttendance({ players = [], sessions = [], setSessions, matches = [], setMatches, seasonAudit = [], auditSessions = [], auditLoading = false }) {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -56,8 +87,14 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const [confirmState, setConfirmState] = useState(null);
 
   const trainingSession = sessions.find((s) => String(s.id) === String(id));
+  const reviewRequested = searchParams.get("review") === "season";
+  const auditIssue = reviewRequested
+    ? seasonAudit.find(item => item.kind === "session" && String(item.id) === String(id))
+    : null;
+  const auditSession = auditIssue && auditSessions.find(item => String(item.id) === String(id));
+  const detailsOnly = Boolean(auditSession && (!trainingSession || auditIssue.seasonReason));
   const friendlyMatch = matches.find((match) => String(match.id) === String(id) && isFriendlyMatch(match));
-  const session = trainingSession || getFriendlySession(friendlyMatch);
+  const session = detailsOnly ? auditSession : trainingSession || getFriendlySession(friendlyMatch);
   const updateEvents = session?.isFriendlyMatch ? setMatches : setSessions;
   const attendance = session?.attendance || {};
   const sessionPlayers = players.filter((player) => !hasPlayerTransferred(player, session?.date));
@@ -118,6 +155,10 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
     );
   }
 
+  if (reviewRequested && auditLoading && !auditIssue) {
+    return <AppCard><p role="status">{t("common.loadingData")}</p></AppCard>;
+  }
+
   if (!session) {
     return (
       <div style={s.page}>
@@ -152,8 +193,9 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   const infortunati = counts["Infortunato"] || 0;
   const permesso    = counts["Permesso"]    || 0;
 
+  const sessionDate = getAgendaDateKey(session.date);
   const subtitle = [
-    formatDate(session.date),
+    sessionDate ? formatDate(sessionDate + "T12:00:00") : session.date || t("seasons.noDate"),
     getAgendaEventTime(session),
     session.theme,
     totalMinutes ? `${totalMinutes} min` : null,
@@ -161,13 +203,26 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
     .filter(Boolean)
     .join(" · ");
 
+  const header = (
+    <PageHeader
+      title={`${t("pages.sessionAttendance.title")} — ${session.title || t("pages.sessionAttendance.defaultSession")}`}
+      subtitle={subtitle}
+      badge={detailsOnly ? undefined : t("pages.sessionAttendance.badge", { count: firstTeamPlayers.length })}
+    />
+  );
+
+  if (detailsOnly) return (
+    <div style={s.page}>
+      {header}
+      <SeasonSessionReview issue={auditIssue} session={auditSession} readOnly />
+      <div><Button variant="ghost" onClick={() => navigate("/trainings")}>{t("pages.sessionAttendance.backToSessions")}</Button></div>
+    </div>
+  );
+
   return (
     <div style={s.page}>
-      <PageHeader
-        title={`${t("pages.sessionAttendance.title")} — ${session.title || t("pages.sessionAttendance.defaultSession")}`}
-        subtitle={subtitle}
-        badge={t("pages.sessionAttendance.badge", { count: firstTeamPlayers.length })}
-      />
+      {header}
+      {auditSession && <SeasonSessionReview issue={auditIssue} session={auditSession} readOnly={!canManage} />}
 
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
 

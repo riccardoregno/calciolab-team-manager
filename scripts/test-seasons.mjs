@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { canonicalSeasonDate,resolveEventSeason,auditSeasonData,getSeasonPlayers,changeSeasonRoster,changeSeasonEvents,defaultSeasonDate } from "../src/utils/seasons.js";
+import { canonicalSeasonDate,resolveEventSeason,auditSeasonData,getSeasonPlayers,changeSeasonRoster,changeSeasonEvents,defaultSeasonDate,getSeasonSessionReviewPath } from "../src/utils/seasons.js";
 import { normalizeAppState,getTrainingAttendanceSummary,getPlayerMatchEntries } from "../src/utils/helpers.js";
 const seasons=[{id:"old",name:"2025/26",start_date:"2025-07-01",end_date:"2026-06-30"},{id:"new",name:"2026/27",start_date:"2026-07-01",end_date:"2027-06-30"}];
 assert.equal(canonicalSeasonDate("2026-02-30"),"");
@@ -35,5 +35,29 @@ for(const season of seasons) {
 }
 assert.equal(getPlayerMatchEntries(getSeasonPlayers(updated.players,updated.seasonPlayers,"old")[0],[{id:"m",date:"2026-06-28",type:"Partita",attendance:{a:{minutes:90}}}],[],false)[0].data.minutes,90);
 assert.equal(auditSeasonData({players,sessions:[{id:"orphan",date:"2026-06-30",attendance:{missing:{status:"Presente"}}}],seasons})[0].reason,"orphans");
+const auditItems = auditSeasonData({
+  players: [{ id: 7 }],
+  sessions: [{
+    id: "seduta / 1",
+    date: "invalid-date",
+    attendance: { "7": { status: "Presente" }, missing: { status: "Assente" } },
+    convocazione: { playerIds: [7, "missing", "missing"] },
+    lineup: { starterIds: ["other"], benchIds: ["missing"] },
+  }],
+  matches: [{ id: "seduta / 1", date: "invalid-date" }],
+  seasons,
+});
+assert.deepEqual(auditItems.map(({ kind, reason, seasonReason }) => ({ kind, reason, seasonReason })), [
+  { kind: "session", reason: "orphans", seasonReason: "date" },
+  { kind: "match", reason: "date", seasonReason: "date" },
+]);
+assert.deepEqual(auditItems[0].orphanIds, ["missing", "other"]);
+assert.deepEqual(auditItems[0].orphanReferences, [
+  { field: "attendance", playerIds: ["missing"] },
+  { field: "callup", playerIds: ["missing"] },
+  { field: "starters", playerIds: ["other"] },
+  { field: "bench", playerIds: ["missing"] },
+]);
+assert.equal(getSeasonSessionReviewPath("seduta / 1"), "/session-attendance/seduta%20%2F%201?review=season");
 assert.equal(defaultSeasonDate(seasons[0],"2026-11-12"),"2026-06-30");
 console.log("Seasons: explicit/legacy resolution, ambiguity, stable player identity, historical snapshots, new events and crossing-week isolation passed.");

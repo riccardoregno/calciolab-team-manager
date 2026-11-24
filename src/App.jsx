@@ -967,6 +967,9 @@ function App() {
                   gate(technicalRoles, <SessionAttendance
                     players={players}
                     sessions={sessions}
+                    seasonAudit={loading ? [] : seasonWorkspace.audit}
+                    auditSessions={loading ? [] : state.sessions}
+                    auditLoading={loading || seasonWorkspace.catalogLoading}
                     setSessions={setSessions}
                     matches={matches}
                     setMatches={setMatches}

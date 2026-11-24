@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { supabase } from "../../lib/supabaseClient";
 import { normalizeSeason } from "../../utils/matchScope";
-import { auditSeasonData, canonicalSeasonDate } from "../../utils/seasons";
+import { auditSeasonData, canonicalSeasonDate, getSeasonSessionReviewPath } from "../../utils/seasons";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
 
@@ -31,7 +32,16 @@ export default function SeasonWorkspaceBar({ model, role, allPlayers, allSession
       <div className="season-period">{model.season ? <><strong>{model.season.start_date} – {model.season.end_date}</strong>{model.readOnlyRoster && <span>{text("historicalRoster")}</span>}</> : <span>{text("legacyHint")}</span>}</div>
       {mayCreate && <Button variant="ghost" onClick={()=>setOpen(true)} disabled={!model.synchronized || model.catalogLoading || Boolean(model.catalogError)}>{text(model.seasons.length ? "new" : "register")}</Button>}
     </section>
-    {model.audit.length>0 && <details className="season-audit"><summary>{text("auditCount",{count:model.audit.length})}</summary><p>{text("auditHint")}</p><ul>{model.audit.map(item=><li key={item.id}>{item.title} · {item.date||text("noDate")} · {text("reasons."+item.reason)}</li>)}</ul></details>}
+    {model.audit.length>0 && <details className="season-audit">
+      <summary>{text("auditCount",{count:model.audit.length})}</summary>
+      <p>{text("auditHint")}</p>
+      <ul>{model.audit.map(item => <li key={item.kind + ":" + item.id}>
+        {item.kind === "session" && item.id != null
+          ? <Link to={getSeasonSessionReviewPath(item.id)} aria-label={text("openSessionReview", { title: item.title })}>{item.title}</Link>
+          : item.title}
+        {" · "}{item.date || text("noDate")}{" · "}{text("reasons." + item.reason)}
+      </li>)}</ul>
+    </details>}
     {errorKey && <div role="alert" className="season-error">{text("errors."+errorKey)}<Button variant="ghost" onClick={model.catalogError ? model.refresh : model.clearError}>{text(model.catalogError ? "retry" : "dismiss")}</Button></div>}
     {open && <SeasonCreation key={model.teamId} {...{model,allPlayers,allSessions,allMatches,memberships,onCreated}} onClose={()=>setOpen(false)} />}
   </>;
@@ -82,7 +92,7 @@ function SeasonCreation({model,allPlayers,allSessions,allMatches,memberships,onC
         <div className="season-dates"><label>{text("start")}<input type="date" value={draft.start} onChange={event=>update({start:event.target.value})} /></label><label>{text("end")}<input type="date" value={draft.end} min={draft.start} onChange={event=>update({end:event.target.value})} /></label></div>
         {source ? <><p>{text("choosePlayers",{season:source.name})}</p><p>{text("resetHint")}</p><div className="season-player-choices">{sourcePlayers.map(player=><label key={player.id}><input type="checkbox" checked={draft.playerIds.includes(String(player.id))} onChange={event=>update({playerIds:event.target.checked?[...draft.playerIds,String(player.id)]:draft.playerIds.filter(id=>id!==String(player.id))})} /><span>{player.name}</span></label>)}</div></> : <p>{text("initialRoster",{count:sourcePlayers.length})}</p>}
         {!valid && <p role="status">{text("invalidDates")}</p>}
-        {blockingAudit.length>0 && <div role="alert"><strong>{text("auditCount",{count:blockingAudit.length})}</strong><ul>{blockingAudit.map(item=><li key={item.id}>{item.title} · {text("reasons."+item.reason)}</li>)}</ul><p>{text("blockingHint")}</p></div>}
+        {blockingAudit.length>0 && <div role="alert"><strong>{text("auditCount",{count:blockingAudit.length})}</strong><ul>{blockingAudit.map(item=><li key={item.kind + ":" + item.id}>{item.title} · {text("reasons."+item.reason)}</li>)}</ul><p>{text("blockingHint")}</p></div>}
         <Button onClick={()=>setReview(true)} disabled={!valid||blockingAudit.length>0}>{text("review")}</Button>
       </> : <>
         <h3>{text("summary")}</h3><p><strong>{draft.name}</strong> · {draft.start} – {draft.end}</p><p>{text("selectedCount",{count:selected.length,total:sourcePlayers.length})}</p>
