@@ -80,21 +80,10 @@ export const it = {
   "auditHint": "Apri una seduta segnalata per vedere quali dati richiedono una verifica.",
   "openSessionReview": "Apri {{title}} e verifica i dati",
   "sessionReviewTitle": "Dati da verificare",
-  "sessionReviewMissingPlayers": "Questa seduta contiene dati collegati a giocatori di cui manca la scheda. Il nome non è disponibile.",
   "sessionReviewReadOnly": "Dettaglio consultabile in sola lettura.",
-  "reviewUnknownPlayer": "Giocatore non identificato",
-  "reviewPlayerId": "Mostra ID tecnico",
-  "reviewRelatedSessions": "Altre sedute con lo stesso riferimento ({{count}})",
   "reviewSavedDate": "Data registrata",
   "reviewSavedSeason": "Stagione registrata",
-  "reviewFields": {
-    "attendance": "Presenze",
-    "callup": "Convocazione",
-    "starters": "Titolari",
-    "bench": "Panchina",
-    "lineupCallup": "Convocati nella formazione"
-  },
-  "blockingHint": "Prima di registrare l’annata, risolvi le date o i riferimenti indicati. Nessuna modifica ai dati è stata eseguita.",
+  "blockingHint": "Prima di registrare l’annata, verifica le date e le stagioni indicate.",
   "noDate": "Data mancante",
   "periodNote": "Solo eventi della stagione {{name}}; il periodo è limitato alle sue date.",
   "outsidePeriod": "La settimana selezionata è fuori dalla stagione {{name}}.",
@@ -120,8 +109,7 @@ export const it = {
     "identity": "Identificativo stagione o date incoerenti",
     "label": "Etichetta stagione e date da verificare",
     "overlap": "Date di stagioni sovrapposte",
-    "outside": "Fuori dalle stagioni registrate",
-    "orphans": "Riferimenti a giocatori non presenti"
+    "outside": "Fuori dalle stagioni registrate"
   }
 },
   "rosterCsv": {

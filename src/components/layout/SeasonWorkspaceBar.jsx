@@ -63,7 +63,7 @@ function SeasonCreation({model,allPlayers,allSessions,allMatches,memberships,onC
   useEffect(()=>{try{localStorage.setItem(draftKey,JSON.stringify(draft));}catch{/* Same nonce remains in memory. */}},[draft,draftKey]);
   const selected=sourcePlayers.filter(player=>draft.playerIds.includes(String(player.id)));
   const proposed={id:"proposed",name:normalizeSeason(draft.name),start_date:draft.start,end_date:draft.end};
-  const initialAudit=!source ? auditSeasonData({players:allPlayers,sessions:allSessions,matches:allMatches,seasons:[proposed]}) : [];
+  const initialAudit=!source ? auditSeasonData({sessions:allSessions,matches:allMatches,seasons:[proposed]}) : [];
   const blockingAudit=initialAudit.filter(item=>item.reason!=="outside" && (!canonicalSeasonDate(item.date) || (item.date>=draft.start && item.date<=draft.end)));
   const valid=Boolean(draft.name.trim() && canonicalSeasonDate(draft.start) && canonicalSeasonDate(draft.end) && draft.start<=draft.end && (!source || draft.start>source.end_date));
   const update=patch=>{setDraft(previous=>({...previous,...patch}));setError("");};

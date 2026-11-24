@@ -34,9 +34,12 @@ for(const season of seasons) {
   assert.equal(getTrainingAttendanceSummary(a,selected,{requireConfirmedPresence:true}).trainingPresences,season.id==="old"?1:0);
 }
 assert.equal(getPlayerMatchEntries(getSeasonPlayers(updated.players,updated.seasonPlayers,"old")[0],[{id:"m",date:"2026-06-28",type:"Partita",attendance:{a:{minutes:90}}}],[],false)[0].data.minutes,90);
-assert.equal(auditSeasonData({players,sessions:[{id:"orphan",date:"2026-06-30",attendance:{missing:{status:"Presente"}}}],seasons})[0].reason,"orphans");
+const historicalAttendance = { missing: { status: "Presente" } };
+const sessionWithFormerPlayer = { id: "historical-session", date: "2026-06-30", attendance: historicalAttendance };
+const matchWithFormerPlayer = { id: "historical-match", date: "2026-06-30", lineup: { starterIds: ["missing"] } };
+assert.deepEqual(auditSeasonData({ sessions: [sessionWithFormerPlayer], matches: [matchWithFormerPlayer], seasons }), []);
+assert.deepEqual(sessionWithFormerPlayer.attendance, { missing: { status: "Presente" } });
 const auditItems = auditSeasonData({
-  players: [{ id: 7 }],
   sessions: [{
     id: "seduta / 1",
     date: "invalid-date",
@@ -47,16 +50,9 @@ const auditItems = auditSeasonData({
   matches: [{ id: "seduta / 1", date: "invalid-date" }],
   seasons,
 });
-assert.deepEqual(auditItems.map(({ kind, reason, seasonReason }) => ({ kind, reason, seasonReason })), [
-  { kind: "session", reason: "orphans", seasonReason: "date" },
-  { kind: "match", reason: "date", seasonReason: "date" },
-]);
-assert.deepEqual(auditItems[0].orphanIds, ["missing", "other"]);
-assert.deepEqual(auditItems[0].orphanReferences, [
-  { field: "attendance", playerIds: ["missing"] },
-  { field: "callup", playerIds: ["missing"] },
-  { field: "starters", playerIds: ["other"] },
-  { field: "bench", playerIds: ["missing"] },
+assert.deepEqual(auditItems.map(({ kind, reason }) => ({ kind, reason })), [
+  { kind: "session", reason: "date" },
+  { kind: "match", reason: "date" },
 ]);
 assert.equal(getSeasonSessionReviewPath("seduta / 1"), "/session-attendance/seduta%20%2F%201?review=season");
 assert.equal(defaultSeasonDate(seasons[0],"2026-11-12"),"2026-06-30");

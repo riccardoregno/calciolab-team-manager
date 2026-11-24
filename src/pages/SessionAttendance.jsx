@@ -1,5 +1,5 @@
 import { getRosterReturnPath, getRosterWeekPath, getRegisterReturnPath } from "../utils/rosterNavigation";
-import { Link, useLocation, useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import AppCard from "../components/ui/AppCard";
 import Badge from "../components/ui/Badge";
@@ -11,7 +11,6 @@ import { canConfirmUnrecordedTrainingPresence, confirmUnrecordedTrainingPresence
 import { hasTrainingEnded, getTrainingDuration } from "../utils/trainingArchive";
 import { getAgendaDateKey, getAgendaEventTime } from '../utils/coachAgenda';
 import { getAttendanceWorklistPlayers, filterAttendancePlayers } from '../utils/attendanceWorklist';
-import { getSeasonSessionReviewPath } from "../utils/seasons";
 import { useTranslation } from "../i18n";
 
 const QUICK_STATUS_OPTIONS = ["Presente", "Assente"];
@@ -40,49 +39,19 @@ function getFriendlySession(match) {
   };
 }
 
-function SeasonSessionReview({ issue, session, seasonAudit, readOnly }) {
+function SeasonSessionReview({ issue, session }) {
   const { t } = useTranslation();
   const heading = useRef(null);
   useEffect(() => { heading.current?.focus(); }, [issue.id]);
 
   return <section className="season-session-review" aria-labelledby="session-review-title">
     <h2 id="session-review-title" ref={heading} tabIndex={-1}>{t("seasons.sessionReviewTitle")}</h2>
-    {issue.orphanIds.length > 0 && <>
-      <p>{t("seasons.sessionReviewMissingPlayers")}</p>
-      <ul className="season-review-players">{issue.orphanIds.map(playerId => {
-        const related = seasonAudit.filter(item => item.kind === "session" && item.id !== issue.id && item.orphanIds.includes(playerId))
-          .sort((a, b) => String(a.date).localeCompare(String(b.date)));
-        const fields = issue.orphanReferences.filter(({ playerIds }) => playerIds.includes(playerId));
-        return <li key={playerId}>
-          <h3>{t("seasons.reviewUnknownPlayer")}</h3>
-          <ul>{fields.map(({ field }) => {
-            const status = field === "attendance" ? getRecordedTrainingStatus({ id: playerId }, session) : null;
-            return <li key={field}>
-              {t("seasons.reviewFields." + field)}
-              {status && <>{" · "}<strong>{t("pages.attendanceRegister.status." + status)}</strong></>}
-            </li>;
-          })}</ul>
-          {related.length > 0 && <details>
-            <summary>{t("seasons.reviewRelatedSessions", { count: related.length })}</summary>
-            <ul>{related.map(item => <li key={item.id}>
-              <Link to={getSeasonSessionReviewPath(item.id)}>{item.title}</Link>{" · "}{item.date || t("seasons.noDate")}
-            </li>)}</ul>
-          </details>}
-          <details>
-            <summary>{t("seasons.reviewPlayerId")}</summary>
-            <code>{playerId}</code>
-          </details>
-        </li>;
-      })}</ul>
-    </>}
-    {issue.seasonReason && <>
-      <h3>{t("seasons.reasons." + issue.seasonReason)}</h3>
-      <dl>
-        <div><dt>{t("seasons.reviewSavedDate")}</dt><dd>{session.date || t("seasons.noDate")}</dd></div>
-        <div><dt>{t("seasons.reviewSavedSeason")}</dt><dd>{session.season || session.seasonId || t("seasons.unassigned")}</dd></div>
-      </dl>
-    </>}
-    {readOnly && <p>{t("seasons.sessionReviewReadOnly")}</p>}
+    <h3>{t("seasons.reasons." + issue.reason)}</h3>
+    <dl>
+      <div><dt>{t("seasons.reviewSavedDate")}</dt><dd>{session.date || t("seasons.noDate")}</dd></div>
+      <div><dt>{t("seasons.reviewSavedSeason")}</dt><dd>{session.season || session.seasonId || t("seasons.unassigned")}</dd></div>
+    </dl>
+    <p>{t("seasons.sessionReviewReadOnly")}</p>
   </section>;
 }
 
@@ -108,9 +77,8 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
     ? seasonAudit.find(item => item.kind === "session" && String(item.id) === String(id))
     : null;
   const auditSession = auditIssue && auditSessions.find(item => String(item.id) === String(id));
-  const detailsOnly = Boolean(auditSession && (!trainingSession || auditIssue.seasonReason));
   const friendlyMatch = matches.find((match) => String(match.id) === String(id) && isFriendlyMatch(match));
-  const session = detailsOnly ? auditSession : trainingSession || getFriendlySession(friendlyMatch);
+  const session = auditSession || trainingSession || getFriendlySession(friendlyMatch);
   const updateEvents = session?.isFriendlyMatch ? setMatches : setSessions;
   const attendance = session?.attendance || {};
   const sessionPlayers = players.filter((player) => !hasPlayerTransferred(player, session?.date));
@@ -223,14 +191,14 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
     <PageHeader
       title={`${t("pages.sessionAttendance.title")} — ${session.title || t("pages.sessionAttendance.defaultSession")}`}
       subtitle={subtitle}
-      badge={detailsOnly ? undefined : t("pages.sessionAttendance.badge", { count: firstTeamPlayers.length })}
+      badge={auditSession ? undefined : t("pages.sessionAttendance.badge", { count: firstTeamPlayers.length })}
     />
   );
 
-  if (detailsOnly) return (
+  if (auditSession) return (
     <div style={s.page}>
       {header}
-      <SeasonSessionReview issue={auditIssue} session={auditSession} seasonAudit={seasonAudit} readOnly />
+      <SeasonSessionReview issue={auditIssue} session={auditSession} />
       <div><Button variant="ghost" onClick={() => navigate("/trainings")}>{t("pages.sessionAttendance.backToSessions")}</Button></div>
     </div>
   );
@@ -238,8 +206,6 @@ export default function SessionAttendance({ players = [], sessions = [], setSess
   return (
     <div style={s.page}>
       {header}
-      {auditSession && <SeasonSessionReview issue={auditIssue} session={auditSession} seasonAudit={seasonAudit} readOnly={!canManage} />}
-
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
 
       {/* Barra riepilogo + azioni */}

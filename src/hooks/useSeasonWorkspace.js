@@ -33,12 +33,12 @@ export function useSeasonWorkspace({ teamId, role, state, actions, synchronized 
   const seasons = useMemo(()=>catalog.teamId===teamId ? catalog.seasons : [],[catalog,teamId]);
   let preferred = choice.teamId===teamId ? choice.id : null;
   if(!preferred && teamId) { try { preferred=localStorage.getItem(preferenceKey(teamId)); } catch { /* preference is optional */ } }
-  const season = seasons.find(item=>item.id===preferred) || (preferred==="legacy" ? null : seasons[0]) || null;
   const enabled = role!=="player";
   const writeBlocked = enabled && Boolean(teamId) && (catalog.teamId!==teamId || Boolean(catalog.error));
   const registered = enabled && seasons.length>0;
+  const audit = useMemo(()=>registered ? auditSeasonData({sessions:state.sessions,matches:state.matches,seasons}) : [],[registered,state.sessions,state.matches,seasons]);
+  const season = seasons.find(item=>item.id===preferred) || (preferred==="legacy" && audit.length ? null : seasons[0]) || null;
   const legacyView = registered && !season;
-  const audit = useMemo(()=>registered ? auditSeasonData({players:state.players,sessions:state.sessions,matches:state.matches,seasons}) : [],[registered,state.players,state.sessions,state.matches,seasons]);
   const projectEvents = useCallback(list => !registered ? list : list.filter(event=>{
     const resolved=resolveEventSeason(event,seasons);
     return legacyView ? !resolved.season : resolved.season?.id===season.id;

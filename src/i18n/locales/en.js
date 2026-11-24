@@ -80,21 +80,10 @@ export const en = {
   "auditHint": "Open a flagged session to see which data needs checking.",
   "openSessionReview": "Open {{title}} and review its data",
   "sessionReviewTitle": "Data to review",
-  "sessionReviewMissingPlayers": "This session contains records linked to missing player profiles. Their names are unavailable.",
   "sessionReviewReadOnly": "This detail is available in read-only mode.",
-  "reviewUnknownPlayer": "Unidentified player",
-  "reviewPlayerId": "Show technical ID",
-  "reviewRelatedSessions": "Other sessions with the same reference ({{count}})",
   "reviewSavedDate": "Recorded date",
   "reviewSavedSeason": "Recorded season",
-  "reviewFields": {
-    "attendance": "Attendance",
-    "callup": "Call-up",
-    "starters": "Starters",
-    "bench": "Bench",
-    "lineupCallup": "Lineup call-ups"
-  },
-  "blockingHint": "Resolve the listed dates or references before registering the season. No data has been changed.",
+  "blockingHint": "Review the listed dates and seasons before registering the season.",
   "noDate": "Missing date",
   "periodNote": "Only events in season {{name}}; the period is limited to its dates.",
   "outsidePeriod": "The selected week is outside season {{name}}.",
@@ -120,8 +109,7 @@ export const en = {
     "identity": "Inconsistent season identity or dates",
     "label": "Season label and dates need review",
     "overlap": "Overlapping season dates",
-    "outside": "Outside registered seasons",
-    "orphans": "References to missing players"
+    "outside": "Outside registered seasons"
   }
 },
   "rosterCsv": {
