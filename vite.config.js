@@ -88,6 +88,11 @@ export default defineConfig(({ mode }) => ({
 
           if (!id.includes('node_modules')) return;
 
+          // Il salvataggio locale usa fflate anche senza aprire le esportazioni PDF.
+          if (id.includes('/fflate/')) {
+            return 'vendor-compression';
+          }
+
           // ── Supabase ──────────────────────────────────────────────────────
           if (id.includes('@supabase')) {
             return 'vendor-supabase';
