@@ -9,6 +9,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, LockKeyhole, Wrench } from "luc
 import { primaryMenuGroups, toolboxGroups, juniorNavigationItems } from "../../constants/navigation";
 import { useTranslation } from "../../i18n";
 import { getCurrentUserRole, isFeatureUnlocked, isRoleAllowed, normalizeAppSettings } from "../../utils/helpers";
+import calciolabMark from "../../assets/calciolab-mark.svg";
 
 export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp = null, chatUnread = 0, onboardingCompleted = null, navigationKey = "local" }) {
   const { t } = useTranslation();
@@ -70,7 +71,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
         >
           {!collapsed && (
             <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-              <img src="/favicon.svg" alt="" style={{ width: 36, height: 36 }} />
+              <img src={calciolabMark} alt="" width={36} height={36} />
               <div>
                 <h2 style={{ margin: 0, fontSize: 22, letterSpacing: 0 }}>CalcioLab</h2>
               <p style={{ color: "#94a3b8", marginTop: 6, marginBottom: 0 }}>
@@ -81,7 +82,7 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
           )}
 
           {collapsed && (
-            <img src="/favicon.svg" alt="CalcioLab" style={{ width: 38, height: 38 }} />
+            <img src={calciolabMark} alt="CalcioLab" width={38} height={38} />
           )}
 
           <button

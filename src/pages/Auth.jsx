@@ -3,6 +3,7 @@ import { useIsMobile } from "../hooks/useIsMobile";
 import { Eye, EyeOff } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { useTranslation } from "../i18n";
+import calciolabMark from "../assets/calciolab-mark.svg";
 
 /* ─── Social proof ──────────────────────────────────────────── */
 const STATS_KEYS = ["activeTeams", "plannedSessions", "staffSatisfaction"];
@@ -292,7 +293,7 @@ function Auth() {
         {/* ── Brand panel — hidden on mobile, replaced by compact header ── */}
         {isMobile ? (
           <div style={s.mobileHeader}>
-            <img src="/favicon.svg" alt="CalcioLab" style={s.brandMarkSm} />
+            <img src={calciolabMark} alt="" style={s.brandMarkSm} />
             <div>
               <p style={{ ...s.eyebrow, margin: 0 }}>{t("pages.auth.coachWorkspace")}</p>
               <strong style={{ fontSize: 20, lineHeight: 1.1 }}>CalcioLab</strong>
@@ -301,7 +302,7 @@ function Auth() {
         ) : (
           <section style={s.panel}>
             <div>
-              <img src="/favicon.svg" alt="CalcioLab" style={s.brandMark} />
+              <img src={calciolabMark} alt="" style={s.brandMark} />
               <p style={{ ...s.eyebrow, marginTop: 22 }}>{t("pages.auth.coachWorkspace")}</p>
               <h1 style={s.heroTitle}>CalcioLab</h1>
               <p style={s.heroText}>

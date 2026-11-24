@@ -19,6 +19,7 @@ import DevelopmentPlanSwitcher from "./DevelopmentPlanSwitcher";
 import DevelopmentRoleSwitcher from "./DevelopmentRoleSwitcher";
 import LanguageSelector from "./LanguageSelector";
 import { useInAppNotifications } from "../../hooks/useInAppNotifications";
+import calciolabMark from "../../assets/calciolab-mark.svg";
 
 export default function Topbar({
   players = [],
@@ -155,7 +156,7 @@ export default function Topbar({
     <>
     <header className="mobile-only mobile-topbar" style={mobileTopbarStyles.header}>
       <div style={mobileTopbarStyles.brand}>
-        <img src="/favicon.svg" alt="CalcioLab" style={mobileTopbarStyles.logo} />
+        <img src={calciolabMark} alt="" style={mobileTopbarStyles.logo} />
         <div style={{ minWidth: 0 }}>
           <strong style={mobileTopbarStyles.appName}>CalcioLab</strong>
           <span className="mobile-topbar-subtitle" style={mobileTopbarStyles.subtitle}>{t("topbar.title")}</span>
