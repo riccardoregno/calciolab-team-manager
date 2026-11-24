@@ -107,11 +107,6 @@ export default defineConfig(({ mode }) => ({
             return 'vendor-react';
           }
 
-          // ── Grafici (recharts) ─────────────────────────────────────────────
-          if (id.includes('recharts') || id.includes('d3-') || id.includes('victory')) {
-            return 'vendor-charts';
-          }
-
           // ── PDF (jspdf) ───────────────────────────────────────────────────
           if (id.includes('jspdf') || id.includes('html2canvas')) {
             return 'vendor-pdf';
