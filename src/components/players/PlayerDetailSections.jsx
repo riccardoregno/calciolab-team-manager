@@ -18,6 +18,7 @@ import Button from "../ui/Button";
 import { useTranslation } from "../../i18n";
 import { styles } from "../../styles/index.js";
 import { formatDate, formatShortDate, hasPlayerTransferred, getPhysicalReference, localDateString, parsePlayerBirthDate, PLAYER_ROLES, ROLE_GROUPS } from "../../utils/helpers";
+import "./player-tactical-roles.css";
 
 const TT = {
   contentStyle: {
@@ -393,6 +394,11 @@ export function PlayerProfileTab({
           onChange={(v) => onFieldChange?.("altRoles", v)}
         />
       </div>
+      <TacticalRolesField
+        value={editing ? form.tacticalRoles : player.tacticalRoles}
+        editing={editing && Boolean(onFieldChange)}
+        onChange={(roles) => onFieldChange("tacticalRoles", roles)}
+      />
 
       {playerPrefs && (playerPrefs.preferredRole || playerPrefs.secondaryRole || playerPrefs.preferredFoot) && (
         <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
@@ -1355,18 +1361,73 @@ function RoleSelectField({ label, value, editing, onChange }) {
   );
 }
 
+const tacticalRoleGroups = {
+  goalkeeping: ["lineKeeper", "sweeperKeeper"],
+  defence: ["markingCentreBack", "coveringCentreBack", "ballPlayingCentreBack", "overlappingFullBack", "invertedFullBack"],
+  midfield: ["holdingMidfielder", "deepPlaymaker", "boxToBox", "advancedPlaymaker", "pressingMidfielder"],
+  attack: ["wideWinger", "insideForward", "targetForward", "runningForward", "falseNine", "boxStriker"],
+};
+
+function TacticalRolesField({ value, editing, onChange }) {
+  const { t } = useTranslation();
+  const headingId = React.useId();
+  const translation = "pages.playerDetail.profile.tacticalRoles";
+  const selected = new Set(Array.isArray(value) ? value : []);
+  const label = (role) => t(`${translation}.options.${role}`);
+  const assignedRoles = Object.values(tacticalRoleGroups).flat().filter((role) => selected.has(role));
+
+  function toggle(role, checked) {
+    onChange(checked ? [...selected, role] : [...selected].filter((assigned) => assigned !== role));
+  }
+
+  return (
+    <section className="player-tactical-roles" aria-labelledby={headingId}>
+      <h4 id={headingId}>{t(`${translation}.title`)}</h4>
+      {editing ? (
+        <>
+          <p>{t(`${translation}.help`)}</p>
+          <div className="player-tactical-roles__groups">
+            {Object.entries(tacticalRoleGroups).map(([group, roles]) => (
+              <fieldset key={group}>
+                <legend>{t(`${translation}.groups.${group}`)}</legend>
+                {roles.map((role) => (
+                  <label key={role} className="player-tactical-roles__choice">
+                    <input type="checkbox" checked={selected.has(role)} onChange={(event) => toggle(role, event.target.checked)} />
+                    {label(role)}
+                  </label>
+                ))}
+              </fieldset>
+            ))}
+          </div>
+        </>
+      ) : assignedRoles.length ? (
+        <ul className="player-tactical-roles__summary">
+          {assignedRoles.map((role) => <li key={role}>{label(role)}</li>)}
+        </ul>
+      ) : (
+        <p>{t(`${translation}.empty`)}</p>
+      )}
+    </section>
+  );
+}
+
 function AltRolesField({ label, primaryRole, value = [], editing, onChange }) {
-  const available = PLAYER_ROLES.filter((r) => r.value !== primaryRole);
+  const { t } = useTranslation();
+  const key = (role) => String(role ?? "").trim().toLowerCase();
+  const selected = (Array.isArray(value) ? value : []).filter((role) => key(role) && key(role) !== key(primaryRole));
+  const activeKeys = new Set(selected.map(key));
+  const available = PLAYER_ROLES.filter((r) => key(r.value) !== key(primaryRole));
   const toggle = (role) => {
-    const next = value.includes(role) ? value.filter((r) => r !== role) : [...value, role];
+    const next = activeKeys.has(key(role)) ? selected.filter((r) => key(r) !== key(role)) : [...selected, role];
     onChange(next);
   };
-  if (!editing && value.length === 0) return null;
+  if (!editing && selected.length === 0) return null;
   return (
     <div>
       <FieldLabel>{label}</FieldLabel>
       {editing ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+          <span style={{ width: "100%", color: "#94a3b8", fontSize: 12 }}>{t("pages.playerDetail.profile.alternateRolesHelp")}</span>
           {ROLE_GROUPS.map((group) => {
             const groupRoles = available.filter((r) => r.group === group);
             if (!groupRoles.length) return null;
@@ -1374,11 +1435,12 @@ function AltRolesField({ label, primaryRole, value = [], editing, onChange }) {
               <React.Fragment key={group}>
                 <div style={{ width: "100%", fontSize: 10, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 6 }}>{group}</div>
                 {groupRoles.map((r) => {
-                  const active = value.includes(r.value);
+                  const active = activeKeys.has(key(r.value));
                   return (
                     <button
                       key={r.value}
                       type="button"
+                      aria-pressed={active}
                       onClick={() => toggle(r.value)}
                       style={{
                         padding: "5px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer",
@@ -1398,7 +1460,7 @@ function AltRolesField({ label, primaryRole, value = [], editing, onChange }) {
         </div>
       ) : (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-          {value.map((r) => (
+          {[...new Set(selected)].map((r) => (
             <span key={r} style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.25)", color: "#7dd3fc" }}>
               {r}
             </span>

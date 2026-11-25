@@ -17,6 +17,7 @@ try {
   const { default: WeeklyRoster } = await server.ssrLoadModule('/src/components/statistics/WeeklyRoster.jsx');
   const { default: NextTrainingCard } = await server.ssrLoadModule('/src/components/dashboard/NextTrainingCard.jsx');
   const { default: Trainings } = await server.ssrLoadModule('/src/pages/Trainings.jsx');
+  const { PlayerProfileTab } = await server.ssrLoadModule('/src/components/players/PlayerDetailSections.jsx');
   const { default: AttendanceSyncConflicts } = await server.ssrLoadModule('/src/components/ui/AttendanceSyncConflicts.jsx');
   const { default: SaveStatus } = await server.ssrLoadModule('/src/components/ui/SaveStatus.jsx');
   const { default: Dashboard } = await server.ssrLoadModule('/src/pages/Dashboard.jsx');
@@ -25,6 +26,20 @@ try {
   const { CoachTab } = await server.ssrLoadModule('/src/components/settings/CoachTab.jsx');
   const { getAgendaDateKey } = await server.ssrLoadModule('/src/utils/coachAgenda.js');
   const h = React.createElement;
+  const profilePlayer = { id: 'profile', name: 'Giocatore QA', role: 'Mediano' };
+  const tacticalRoles = ['holdingMidfielder', 'deepPlaymaker'];
+  const renderProfile = ({ player = profilePlayer, form = player, editing = false } = {}) =>
+    renderToStaticMarkup(h(I18nProvider, null, h(PlayerProfileTab, { player, form, editing, onFieldChange() {} })));
+  assert.match(renderProfile(), /Nessun compito tattico assegnato/);
+  const tacticalEditor = renderProfile({ editing: true, form: { ...profilePlayer, tacticalRoles } });
+  assert.match(tacticalEditor, /<optgroup label="Difensori"><option value="Difensore">Difensore<\/option>/,
+    'A player with a different role can select the generic defender role from the profile');
+  assert.match(tacticalEditor, /<input type="checkbox" checked=""\/>Mediano di schermo/);
+  assert.match(tacticalEditor, /<input type="checkbox" checked=""\/>Regista basso/);
+  assert.match(tacticalEditor, /<input type="checkbox"\/>Falso nove/);
+  const tacticalProfile = renderProfile({ player: { ...profilePlayer, tacticalRoles } });
+  assert.match(tacticalProfile, /<li>Mediano di schermo<\/li><li>Regista basso<\/li>/);
+  assert.doesNotMatch(tacticalProfile, /type="checkbox"/);
   const conflictBase={id:'conflict',title:'Seduta fittizia',attendance:{one:{status:'Presente'}}};
   const conflictLocal={...conflictBase,attendance:{one:{status:'Assente'}}};
   const conflictOnline={...conflictBase,attendance:{one:{status:'Parziale',partialMinutes:20,rpe:5}},_updatedAt:'online-version'};
@@ -187,6 +202,25 @@ try {
   const timeAttendance=renderToStaticMarkup(h(I18nProvider,null,h(MemoryRouter,{initialEntries:['/session-attendance/time-qa']},h(Routes,null,h(Route,{path:'/session-attendance/:id',element:h(SessionAttendance,{sessions:[timeDraft],players:[],setSessions(){}})})))));
   assert.match(timeAttendance,/09:05/);
   assert.match(timeAttendance,/75 min/,'Attendance displays the same planned duration as Home and the archive');
+  const trainingSides = (moved) => {
+    const draftTraining = {
+      ...timeDraft, teamSize: 4, numTeams: 2,
+      teamAssignments: { goalkeeper: 0, defender: moved ? 1 : 0, forward: 1 },
+      teamFormations: { 0: { formation: "2-1", slots: {0: "goalkeeper",1: "defender"} } },
+    };
+    const demoPlayers = [
+      { id:"goalkeeper", name:"Luca Fittizio", role:"Portiere" },
+      { id:"defender", name:"Marco Difensore", role:"Difensore Centrale" },
+      { id:"forward", name:"André Attaccante", role:"Centravanti" },
+    ];
+    return renderToStaticMarkup(h(I18nProvider, null, h(PermissionContext.Provider, {value:{canManage:true}},
+      h(MemoryRouter, {initialEntries:[{pathname:"/trainings",state:{draftTraining}}]},
+        h(Trainings,{players:demoPlayers,sessions:[],exercises:[],setSessions(){},setExercises(){}}))
+    )));
+  };
+  assert.match(trainingSides(false), /aria-label="Sposta Marco Difensore in un’altra squadra"/);
+  assert.match(trainingSides(false), /<title>Difensore · Difensore Centrale<\/title>/);
+  assert.doesNotMatch(trainingSides(true), /<title>Difensore · Difensore Centrale<\/title>/);
 
   const recentTraining = {
     id: 'dashboard-rpe',

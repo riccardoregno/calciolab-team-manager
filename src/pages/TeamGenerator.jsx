@@ -8,8 +8,10 @@ import { useNavigate } from "react-router-dom";
 import { hasPlayerTransferred, normalizeRoleToGroup } from "../utils/helpers";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { fetchPlayerAvailability } from "../services/playerAvailability";
+import { buildTrainingTeamPlan } from "../utils/trainingFormations.js";
 
 const GROUP_ORDER = ["Portieri", "Difensori", "Centrocampisti", "Attaccanti", "Altro"];
+const isJunior = (player) => (player.gruppo ?? player.squadra) === "juniores";
 
 const TEAM_COLORS = [
   { bg: "rgba(59,130,246,0.12)",  border: "rgba(59,130,246,0.35)",  text: "#93c5fd", name: "Squadra A" },
@@ -44,7 +46,7 @@ function roleGroupColor(group) {
   return "#94a3b8";
 }
 
-function buildTrainingDraftFromTeams(teams) {
+function buildTrainingDraftFromTeams(teams, plan) {
   const lines = teams.map((team, ti) => {
     const col = TEAM_COLORS[ti] || TEAM_COLORS[0];
     const names = team.map((p) => p.name).join(", ");
@@ -56,6 +58,12 @@ function buildTrainingDraftFromTeams(teams) {
     notes: `Suddivisione squadre:\n${lines.join("\n")}`,
     exercises: [],
     attendance: {},
+    ...(plan && {
+      teamAssignments: plan.assignments,
+      teamFormations: plan.formations,
+      numTeams: teams.length,
+      teamSize: plan.teamSize,
+    }),
     teamSplit: teams.map((team, ti) => ({
       name: (TEAM_COLORS[ti] || TEAM_COLORS[0]).name,
       players: team.map((p) => ({ id: String(p.id), name: p.name, role: p.role || "" })),
@@ -88,7 +96,7 @@ function PlayerRow({ p, isSelected, onToggle }) {
       <span style={{ flex: 1, fontSize: 14, fontWeight: isSelected ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {p.name}
       </span>
-      {p.squadra === "juniores" && (
+      {isJunior(p) && (
         <span style={{ fontSize: 9, fontWeight: 800, color: "#fb923c", background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.25)", borderRadius: 999, padding: "1px 5px" }}>JUN</span>
       )}
       {p.shirtNumber != null && (
@@ -118,24 +126,26 @@ export default function TeamGenerator({ players = [], teamId = null }) {
   const availablePlayers = useMemo(() => {
     return players.filter((p) => {
       if (hasPlayerTransferred(p) || ["Infortunato", "Squalificato"].includes(p.status || "")) return false;
-      if (p.squadra === "juniores") return availMap[String(p.id)] === "available";
+      if (isJunior(p)) return availMap[String(p.id)] === "available";
       return true;
     });
   }, [players, availMap]);
 
   // Juniores non disponibili (non "available") → sezione grigia
   const unavailableJuniores = useMemo(() =>
-    players.filter((p) => !hasPlayerTransferred(p) && p.squadra === "juniores" && availMap[String(p.id)] !== "available"),
+    players.filter((p) => !hasPlayerTransferred(p) && isJunior(p) && availMap[String(p.id)] !== "available"),
   [players, availMap]);
 
   // Giocatori prima squadra non disponibili (inj/susp)
   const unavailablePrima = useMemo(() =>
-    players.filter((p) => !hasPlayerTransferred(p) && p.squadra !== "juniores" && ["Infortunato", "Squalificato"].includes(p.status || "")),
+    players.filter((p) => !hasPlayerTransferred(p) && !isJunior(p) && ["Infortunato", "Squalificato"].includes(p.status || "")),
   [players]);
 
   const [selected, setSelected] = useState(() => new Set(availablePlayers.map((p) => String(p.id))));
   const [numTeams, setNumTeams]  = useState(2);
-  const [teams, setTeams]        = useState(null);
+  const [result, setResult] = useState(null);
+  const teams = result?.teams;
+  const plan = result?.plan;
 
   const initializedRef = useRef(availablePlayers.length > 0);
   useEffect(() => {
@@ -165,7 +175,7 @@ export default function TeamGenerator({ players = [], teamId = null }) {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-    setTeams(null);
+    setResult(null);
   }
 
   function toggleAll() {
@@ -174,18 +184,23 @@ export default function TeamGenerator({ players = [], teamId = null }) {
     } else {
       setSelected(new Set(availablePlayers.map((p) => String(p.id))));
     }
-    setTeams(null);
+    setResult(null);
   }
 
-  function generate() {
+  function generate(random = false) {
     const pool = availablePlayers.filter((p) => selected.has(String(p.id)));
     if (pool.length < numTeams) return;
-    setTeams(buildTeams(pool, numTeams));
+    if (random) {
+      setResult({ teams: buildTeams(pool, numTeams) });
+      return;
+    }
+    const nextPlan = buildTrainingTeamPlan(pool, numTeams);
+    setResult({ teams: nextPlan.teams, plan: nextPlan });
   }
 
   function createTraining() {
     if (!teams) return;
-    const draft = buildTrainingDraftFromTeams(teams);
+    const draft = buildTrainingDraftFromTeams(teams, plan);
     try { sessionStorage.setItem("trainings_draft", JSON.stringify(draft)); } catch { /* ignore */ }
     navigate("/trainings", { state: { draftTraining: draft } });
   }
@@ -193,14 +208,14 @@ export default function TeamGenerator({ players = [], teamId = null }) {
   // Raggruppa per reparto — separando prima e juniores per il pannello selezione
   const primaByGroup = useMemo(() => {
     const map = Object.fromEntries(GROUP_ORDER.map((g) => [g, []]));
-    for (const p of availablePlayers.filter((p) => p.squadra !== "juniores")) {
+    for (const p of availablePlayers.filter((p) => !isJunior(p))) {
       map[normalizeRoleToGroup(p.role)].push(p);
     }
     return map;
   }, [availablePlayers]);
 
   const junioresList = useMemo(() =>
-    availablePlayers.filter((p) => p.squadra === "juniores"),
+    availablePlayers.filter(isJunior),
   [availablePlayers]);
 
   if (!players.length) {
@@ -312,7 +327,7 @@ export default function TeamGenerator({ players = [], teamId = null }) {
                   <button
                     key={n}
                     type="button"
-                    onClick={() => { setNumTeams(n); setTeams(null); }}
+                    onClick={() => { setNumTeams(n); setResult(null); }}
                     style={{
                       width: 40, height: 40, borderRadius: 10, fontSize: 16, fontWeight: 900, cursor: "pointer",
                       background: numTeams === n ? "rgba(37,99,235,0.25)" : "rgba(255,255,255,0.05)",
@@ -327,12 +342,12 @@ export default function TeamGenerator({ players = [], teamId = null }) {
 
               <div style={{ display: "flex", gap: 8, marginLeft: "auto", flexWrap: "wrap" }}>
                 {teams && (
-                  <Button variant="ghost" onClick={generate} aria-label="Rimescola squadre">
+                  <Button variant="ghost" onClick={() => generate(true)} aria-label="Rimescola casualmente le squadre">
                     🔀 Rimescola
                   </Button>
                 )}
-                <Button onClick={generate} disabled={!canGenerate}>
-                  {teams ? "Rigenera" : "⚽ Genera squadre"}
+                <Button onClick={() => generate()} disabled={!canGenerate}>
+                  Genera formazioni
                 </Button>
               </div>
             </div>
@@ -357,7 +372,7 @@ export default function TeamGenerator({ players = [], teamId = null }) {
                     <AppCard key={ti}>
                       <div style={{ padding: "6px 10px 10px", borderRadius: 10, background: col.bg, border: `1px solid ${col.border}`, marginBottom: 14 }}>
                         <p style={{ margin: 0, fontSize: 13, fontWeight: 900, color: col.text }}>{col.name}</p>
-                        <p style={{ margin: "2px 0 0", fontSize: 11, color: col.text, opacity: 0.7 }}>{team.length} giocatori</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: col.text, opacity: 0.7 }}>{team.length} giocatori{plan ? ` · ${plan.formations[ti].formation}` : ""}</p>
                       </div>
 
                       {GROUP_ORDER.map((group) => {
@@ -376,7 +391,7 @@ export default function TeamGenerator({ players = [], teamId = null }) {
                                 <span style={{ fontSize: 14, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                   {p.name}
                                 </span>
-                                {p.squadra === "juniores" && (
+                                {isJunior(p) && (
                                   <span style={{ fontSize: 9, fontWeight: 800, color: "#fb923c" }}>JUN</span>
                                 )}
                               </div>
@@ -384,6 +399,9 @@ export default function TeamGenerator({ players = [], teamId = null }) {
                           </div>
                         );
                       })}
+                      {plan?.benches[ti].length > 0 && (
+                        <p style={{ margin: "12px 0 0", color: "#fde68a", fontSize: 12 }}>A disposizione: {plan.benches[ti].map(({ name }) => name).join(", ")}</p>
+                      )}
                     </AppCard>
                   );
                 })}
@@ -395,7 +413,7 @@ export default function TeamGenerator({ players = [], teamId = null }) {
                   <div>
                     <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>Usa questa suddivisione</p>
                     <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
-                      Crea un allenamento con le squadre già impostate nelle note
+                      {plan ? "Crea una seduta con squadre e schieramenti già impostati" : "Crea un allenamento con le squadre già impostate nelle note"}
                     </p>
                   </div>
                   <Button onClick={createTraining}>
@@ -409,10 +427,10 @@ export default function TeamGenerator({ players = [], teamId = null }) {
               <div style={{ textAlign: "center", padding: "32px 0", color: "#475569" }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>⚽</div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#64748b" }}>
-                  Seleziona i giocatori e premi <strong style={{ color: "#e2e8f0" }}>Genera squadre</strong>
+                  Seleziona i giocatori e premi <strong style={{ color: "#e2e8f0" }}>Genera formazioni</strong>
                 </p>
                 <p style={{ margin: "8px 0 0", fontSize: 13, color: "#475569" }}>
-                  Prima squadra + Juniores disponibili, distribuiti per reparto.
+                  Prima squadra e Juniores disponibili, schierati nei loro ruoli.
                 </p>
               </div>
             </AppCard>

@@ -9,6 +9,7 @@ export function localDateString(d = new Date()) {
 // ── Ruoli canonici del giocatore ──────────────────────────────────────────────
 export const PLAYER_ROLES = [
   { value: "Portiere",              group: "Portieri" },
+  { value: "Difensore",             group: "Difensori" },
   { value: "Difensore Centrale",    group: "Difensori" },
   { value: "Terzino Destro",        group: "Difensori" },
   { value: "Terzino Sinistro",      group: "Difensori" },
@@ -16,6 +17,10 @@ export const PLAYER_ROLES = [
   { value: "Mediano",               group: "Centrocampisti" },
   { value: "Centrocampista",        group: "Centrocampisti" },
   { value: "Mezzala",               group: "Centrocampisti" },
+  { value: "Regista",               group: "Centrocampisti" },
+  { value: "Esterno Destro",        group: "Centrocampisti" },
+  { value: "Esterno Sinistro",      group: "Centrocampisti" },
+  { value: "Esterno",               group: "Centrocampisti" },
   { value: "Trequartista",          group: "Centrocampisti" },
   { value: "Ala Destra",            group: "Attaccanti" },
   { value: "Ala Sinistra",          group: "Attaccanti" },

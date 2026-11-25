@@ -11,6 +11,12 @@ import SearchBar from "../components/ui/SearchBar";
 import { searchNavigationItems } from "../utils/navigationSearch";
 import TrainingSessionList from "../components/trainings/TrainingSessionList";
 import { getTrainingDuration } from "../utils/trainingArchive.js";
+import {
+  TRAINING_FORMATIONS as FORMATIONS_DEF, buildTrainingTeamPlan, clampTrainingSideSize,
+  getTrainingModuleOptions, getTrainingRoleTag as getRoleTag, resolveTrainingFormation,
+  serializeTrainingFormation, trainingPositionFit, TRAINING_BENCH_BASE as BENCH_BASE,
+  trainingBenchKey as benchKey,
+} from "../utils/trainingFormations.js";
 import { getAgendaDateKey, getAgendaEventTime, getEventTimeUpdate } from "../utils/coachAgenda.js";
 import "../styles/training-hub.css";
 import SortableTrainingTimeline from "../components/trainings/SortableTrainingTimeline";
@@ -199,8 +205,10 @@ function Trainings({
     [players, form.date, availabilityRecords, form.attendance]
   );
   const sessionAssignablePlayers = useMemo(
-    () => sessionAvailability.available.filter((player) => isPlayerAvailableForSession(player, form.attendance)),
-    [sessionAvailability.available, form.attendance]
+    () => sessionAvailability.available.filter((player) =>
+      isPlayerAvailableForSession(player, form.attendance, form.teamAssignments)
+    ),
+    [sessionAvailability.available, form.attendance, form.teamAssignments]
   );
   const objectiveStatusMeta = getObjectiveStatusMeta(form.objectiveStatus);
   function toggleExercise(exercise) {
@@ -321,6 +329,7 @@ function Trainings({
       teamAssignments: session.teamAssignments || {},
       partitella: session.partitella || null,
       teamFormations: session.teamFormations || {},
+      teamSize: groupTeamSize(session.teamSize),
       materials: session.materials || "",
       completed: Boolean(session.completed),
       completedAt: session.completedAt || "",
@@ -1030,14 +1039,18 @@ function Trainings({
             availablePlayers={sessionAssignablePlayers}
             numTeams={form.numTeams || 2}
             assignments={form.teamAssignments || {}}
+            playersPerTeam={groupTeamSize(form.teamSize)}
             partitella={form.partitella}
-            onChange={({ assignments, numTeams }) => {
-              setForm((f) => ({ ...f, teamAssignments: assignments, numTeams }));
+            onChange={({ assignments, numTeams, teamSize, formations }) => {
+              const patch = { teamAssignments: assignments, numTeams };
+              if (teamSize !== undefined) patch.teamSize = teamSize;
+              if (formations !== undefined) patch.teamFormations = formations;
+              setForm((f) => ({ ...f, ...patch }));
               if (editingId) {
                 setSessions((prevSessions) =>
                   prevSessions.map((session) =>
                     session.id === editingId
-                      ? { ...session, teamAssignments: assignments, numTeams }
+                      ? { ...session, ...patch }
                       : session
                   )
                 );
@@ -1077,7 +1090,8 @@ function Trainings({
                 benches={benches}
                 teamColors={TEAM_COLORS}
                 numTeams={numTeams}
-                savedFormations={form.teamFormations || {}}
+                teamSize={clampTrainingSideSize(form.teamSize)}
+                savedFormations={form.teamFormations}
                 onSave={(data) => {
                   setForm((f) => ({ ...f, teamFormations: data }));
                   if (editingId) {
@@ -1126,6 +1140,7 @@ function emptyTraining(defaultDate = localDateString()) {
     teamAssignments: {},
     partitella: null,
     teamFormations: {},
+    teamSize: 11,
     materials: "",
     completed: false,
     completedAt: "",
@@ -1183,9 +1198,10 @@ const ATTENDANCE_UNAVAILABLE_LABELS = {
   Squalificato: "Squalificato nel registro",
 };
 
-function isPlayerAvailableForSession(player, attendance = {}) {
-  const savedStatus = attendance[String(player.id)]?.status;
-  if (player._defaultAbsent) return savedStatus === "Presente";
+function isPlayerAvailableForSession(player, attendance = {}, assignments = {}) {
+  const id = String(player.id);
+  const savedStatus = attendance[id]?.status;
+  if (player._defaultAbsent) return savedStatus === "Presente" || (!savedStatus && Object.hasOwn(assignments || {}, id));
   return !savedStatus || SESSION_AVAILABLE_ATTENDANCE.has(savedStatus);
 }
 
@@ -1964,16 +1980,6 @@ const sbtnStyle = {
 const ROLE_ORDER = { P: 0, D: 1, C: 2, A: 3 };
 const ROLE_COLORS = { P: "#facc15", D: "#60a5fa", C: "#4ade80", A: "#f87171" };
 
-function getRoleTag(role) {
-  if (!role) return null;
-  const r = role.trim().toUpperCase();
-  if (r.startsWith("P")) return "P";
-  if (r.startsWith("D")) return "D";
-  if (r.startsWith("C")) return "C";
-  if (r.startsWith("A")) return "A";
-  return null;
-}
-
 function escapePrintHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -1999,9 +2005,8 @@ const TEAM_COLORS = [
 ];
 
 // bench per squadra: team i → 100+i
-const BENCH_BASE = 100;
-const benchKey = (i) => BENCH_BASE + i;
 const isBenchKey = (v) => typeof v === "number" && v >= BENCH_BASE;
+const groupTeamSize = (value) => Math.min(30, Math.max(1, Math.floor(Number(value) || 11)));
 
 function getPlayerFullName(player) {
   return [player?.firstName, player?.lastName].filter(Boolean).join(" ") || player?.name || "—";
@@ -2041,9 +2046,8 @@ function getPlayerTeamLabel(player, duplicateLastNames = new Set()) {
   return lastName || getPlayerFullName(player);
 }
 
-function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitella, onChange, onPartitellaChange }) {
+function TeamGenerator({ availablePlayers = [], numTeams, assignments, playersPerTeam, partitella, onChange, onPartitellaChange }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [playersPerTeam, setPlayersPerTeam] = useState(11);
   const miniGoals = partitella?.goals || {};
   const duplicateLastNames = useMemo(() => getDuplicateLastNames(availablePlayers), [availablePlayers]);
 
@@ -2125,7 +2129,12 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
     onChange({ assignments: next, numTeams });
   }
 
-  function reset() { onChange({ assignments: {}, numTeams }); }
+  function generateBalanced() {
+    const { assignments, formations, teamSize } = buildTrainingTeamPlan(availablePlayers, numTeams, playersPerTeam);
+    onChange({ assignments, numTeams, teamSize, formations });
+  }
+
+  function reset() { onChange({ assignments: {}, numTeams, formations: {} }); }
   function sendToBench(playerId, teamIndex) { onChange({ assignments: { ...assignments, [String(playerId)]: benchKey(teamIndex) }, numTeams }); }
   function pullFromBench(playerId) { const next = { ...assignments }; delete next[String(playerId)]; onChange({ assignments: next, numTeams }); }
   function updatePartitella(partial) {
@@ -2222,7 +2231,7 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
               <span>Giocatori per squadra</span>
               <input
                 type="number" min={1} max={30} value={playersPerTeam}
-                onChange={(e) => setPlayersPerTeam(Math.max(1, Number(e.target.value)))}
+                onChange={(e) => onChange({ assignments, numTeams, teamSize: groupTeamSize(e.target.value) })}
                 style={{ width: 44, padding: "3px 6px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#e2e8f0", fontSize: 12, fontWeight: 700, textAlign: "center" }}
               />
             </label>
@@ -2235,7 +2244,8 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
           <div className="training-team-builder-toolbar">
             <span>{availablePlayers.length} disponibili · {unassigned.length} da assegnare</span>
             <div className="training-team-builder-actions">
-              <button type="button" className="training-hub-primary" onClick={shuffle}>Genera casuale</button>
+              <button type="button" className="training-hub-primary" onClick={generateBalanced} disabled={availablePlayers.length < numTeams}>Genera formazioni</button>
+              <button type="button" className="training-hub-secondary" onClick={shuffle}>Genera casuale</button>
               <button type="button" className="training-hub-secondary" onClick={printTeams}>Stampa</button>
               <button type="button" className="training-hub-secondary" onClick={reset}>Reset</button>
             </div>
@@ -2303,6 +2313,13 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
                         </span>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {renderGoalInput(p.id)}
+                          <select className="training-team-builder-assign" value=""
+                            aria-label={`Sposta ${getPlayerFullName(p)} in un’altra squadra`}
+                            onChange={(event) => { if (event.target.value) assign(p.id, Number(event.target.value)); }}>
+                            <option value="" disabled>Sposta…</option>
+                            {TEAM_COLORS.slice(0, numTeams).map(({ label }, index) =>
+                              index !== i && <option key={label} value={index}>{label}</option>)}
+                          </select>
                           <button onClick={() => sendToBench(p.id, i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", fontSize: 10, padding: "0 2px", lineHeight: 1 }} title="A disposizione">Disp.</button>
                           <button onClick={() => unassign(p.id)} style={{
                             background: "none", border: "none", cursor: "pointer", color: "#94a6be", fontSize: 13, padding: "0 2px", lineHeight: 1,
@@ -2437,176 +2454,69 @@ function TeamGenerator({ availablePlayers = [], numTeams, assignments, partitell
 }
 
 // ── Formazioni ────────────────────────────────────────────────────────────────
-const FORMATIONS_DEF = {
-  "4-3-3": [
-    { role:"P", x:50, y:88 },
-    { role:"D", x:15, y:65 },{ role:"D", x:35, y:70 },{ role:"D", x:65, y:70 },{ role:"D", x:85, y:65 },
-    { role:"C", x:25, y:43 },{ role:"C", x:50, y:49 },{ role:"C", x:75, y:43 },
-    { role:"A", x:18, y:20 },{ role:"A", x:50, y:16 },{ role:"A", x:82, y:20 },
-  ],
-  "4-4-2": [
-    { role:"P", x:50, y:88 },
-    { role:"D", x:15, y:65 },{ role:"D", x:35, y:70 },{ role:"D", x:65, y:70 },{ role:"D", x:85, y:65 },
-    { role:"C", x:15, y:42 },{ role:"C", x:38, y:49 },{ role:"C", x:62, y:49 },{ role:"C", x:85, y:42 },
-    { role:"A", x:33, y:18 },{ role:"A", x:67, y:18 },
-  ],
-  "4-3-1-2": [
-    { role:"P", x:50, y:88 },
-    { role:"D", x:15, y:65 },{ role:"D", x:35, y:70 },{ role:"D", x:65, y:70 },{ role:"D", x:85, y:65 },
-    { role:"C", x:25, y:50 },{ role:"C", x:50, y:55 },{ role:"C", x:75, y:50 },
-    { role:"C", x:50, y:32 },
-    { role:"A", x:35, y:16 },{ role:"A", x:65, y:16 },
-  ],
-  "4-2-3-1": [
-    { role:"P", x:50, y:88 },
-    { role:"D", x:15, y:65 },{ role:"D", x:35, y:70 },{ role:"D", x:65, y:70 },{ role:"D", x:85, y:65 },
-    { role:"C", x:35, y:52 },{ role:"C", x:65, y:52 },
-    { role:"C", x:18, y:35 },{ role:"C", x:50, y:33 },{ role:"C", x:82, y:35 },
-    { role:"A", x:50, y:15 },
-  ],
-  "3-5-2": [
-    { role:"P", x:50, y:88 },
-    { role:"D", x:25, y:65 },{ role:"D", x:50, y:70 },{ role:"D", x:75, y:65 },
-    { role:"C", x:12, y:48 },{ role:"C", x:30, y:44 },{ role:"C", x:50, y:50 },{ role:"C", x:70, y:44 },{ role:"C", x:88, y:48 },
-    { role:"A", x:33, y:18 },{ role:"A", x:67, y:18 },
-  ],
-  "3-4-3": [
-    { role:"P", x:50, y:88 },
-    { role:"D", x:25, y:65 },{ role:"D", x:50, y:70 },{ role:"D", x:75, y:65 },
-    { role:"C", x:18, y:48 },{ role:"C", x:40, y:45 },{ role:"C", x:60, y:45 },{ role:"C", x:82, y:48 },
-    { role:"A", x:18, y:20 },{ role:"A", x:50, y:16 },{ role:"A", x:82, y:20 },
-  ],
-  "3-4-1-2": [
-    { role:"P", x:50, y:88 },
-    { role:"D", x:22, y:68 },{ role:"D", x:50, y:72 },{ role:"D", x:78, y:68 },
-    { role:"C", x:15, y:48 },{ role:"C", x:38, y:45 },{ role:"C", x:62, y:45 },{ role:"C", x:85, y:48 },
-    { role:"C", x:50, y:30 },
-    { role:"A", x:33, y:16 },{ role:"A", x:67, y:16 },
-  ],
-  "5-3-2": [
-    { role:"P", x:50, y:88 },
-    { role:"D", x:10, y:68 },{ role:"D", x:28, y:73 },{ role:"D", x:50, y:75 },{ role:"D", x:72, y:73 },{ role:"D", x:90, y:68 },
-    { role:"C", x:25, y:45 },{ role:"C", x:50, y:50 },{ role:"C", x:75, y:45 },
-    { role:"A", x:33, y:18 },{ role:"A", x:67, y:18 },
-  ],
-};
-
-function autoAssignFormation(players, formation) {
-  const slots = FORMATIONS_DEF[formation] || [];
-  const byRole = { P:[], D:[], C:[], A:[] };
-  players.forEach((p) => { const t = getRoleTag(p.role) || "A"; if (byRole[t]) byRole[t].push(p); });
-  const assigned = {};
-  slots.forEach((slot, idx) => {
-    const pool = byRole[slot.role];
-    if (pool.length > 0) {
-      assigned[idx] = pool.shift();
-    }
-  });
-  // fill remaining slots with leftover players
-  const leftover = Object.values(byRole).flat();
-  slots.forEach((_, idx) => {
-    if (!assigned[idx] && leftover.length > 0) assigned[idx] = leftover.shift();
-  });
-  return assigned;
-}
-
-function FormationView({ teams, benches = [], teamColors, numTeams, savedFormations = {}, onSave }) {
-  const [activeTeam, setActiveTeam] = useState(0);
-  const [formations, setFormations] = useState({});
-  const [slotMaps, setSlotMaps] = useState({});
-  const [selected, setSelected] = useState(null);
-  const [saved, setSaved] = useState(false);
-
-  // Carica dati salvati al primo render
-  const loadedRef = useRef(false);
-  useEffect(() => {
-    if (loadedRef.current || !Object.keys(savedFormations).length) return;
-    loadedRef.current = true;
-    const restoredFormations = {};
-    const restoredSlotMaps = {};
-    Object.entries(savedFormations).forEach(([ti, data]) => {
-      const teamIdx = Number(ti);
-      restoredFormations[teamIdx] = data.formation || "4-3-3";
-      const allPlayers = teams.flat();
-      const slotMap = {};
-      Object.entries(data.slots || {}).forEach(([slotIdx, playerId]) => {
-        const p = allPlayers.find((pl) => String(pl.id) === String(playerId));
-        if (p) slotMap[Number(slotIdx)] = p;
-      });
-      restoredSlotMaps[teamIdx] = slotMap;
-    });
-    setFormations(restoredFormations);
-    setSlotMaps(restoredSlotMaps);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const players = teams[activeTeam] || [];
+function FormationView({ teams, benches = [], teamColors, numTeams, teamSize, savedFormations, onSave }) {
+  const [teamTab, setTeamTab] = useState(0);
+  const [draft, setDraft] = useState(null);
+  const [selection, setSelection] = useState(null);
+  const { showToast } = useToast();
+  const activeTeam = Math.min(teamTab, numTeams - 1);
+  const overrides = draft?.base === savedFormations ? draft?.values : undefined;
+  const layouts = useMemo(() => teams.map((members, index) =>
+    resolveTrainingFormation(members, teamSize, overrides?.[index] ?? savedFormations?.[index])
+  ), [overrides, savedFormations, teamSize, teams]);
+  const layout = layouts[activeTeam];
+  const { formation, slots: slotMap, automatic } = layout;
+  const players = teams[activeTeam];
   const duplicateLastNames = useMemo(() => getDuplicateLastNames(teams.flat()), [teams]);
-  const formation = formations[activeTeam] || "4-3-3";
+  const placed = new Set(Object.values(slotMap).map(({ id }) => String(id)));
+  const unplaced = players.filter(({ id }) => !placed.has(String(id)));
+  const slots = FORMATIONS_DEF[formation];
+  const signature = JSON.stringify([activeTeam, formation, Object.entries(slotMap).map(([index, p]) => [index, p.id])]);
+  const selected = selection?.signature === signature ? selection.index : null;
 
-  function setFormation(f) {
-    setFormations((prev) => ({ ...prev, [activeTeam]: f }));
-    setSlotMaps((prev) => ({ ...prev, [activeTeam]: autoAssignFormation([...players], f) }));
-    setSelected(null);
-    setSaved(false);
+  function replaceLayout(value) {
+    setDraft({ base: savedFormations, values: { ...overrides, [activeTeam]: value } });
+    setSelection(null);
   }
 
-  function selectTeam(teamIdx) {
-    setActiveTeam(teamIdx);
-    setSelected(null);
-    setSlotMaps((prev) => {
-      if (prev[teamIdx] !== undefined) return prev;
-      const teamPlayers = teams[teamIdx] || [];
-      const teamFormation = formations[teamIdx] || "4-3-3";
-      return { ...prev, [teamIdx]: autoAssignFormation([...teamPlayers], teamFormation) };
-    });
+  function setFormation(value) {
+    replaceLayout(value === "auto"
+      ? { ...serializeTrainingFormation(layout), automatic: true }
+      : { formation: value, automatic: false, slots: value === formation ? serializeTrainingFormation(layout).slots : {} });
   }
-
-  const slotMap = slotMaps[activeTeam] ?? autoAssignFormation([...players], formation);
 
   function handleSave() {
-    const data = {};
-    const allFormations = { ...formations };
-    const allSlotMaps = { ...slotMaps };
-    Array.from({ length: numTeams }, (_, i) => {
-      const fm = allFormations[i] || "4-3-3";
-      const sm = allSlotMaps[i] || {};
-      const slots = {};
-      Object.entries(sm).forEach(([slotIdx, p]) => { if (p) slots[slotIdx] = String(p.id); });
-      data[i] = { formation: fm, slots };
-    });
-    onSave?.(data);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    onSave?.(Object.fromEntries(layouts.map((value, index) => [index, serializeTrainingFormation(value)])));
+    showToast("Schieramento aggiornato", "ok");
   }
 
-  const slots = FORMATIONS_DEF[formation] || [];
   const ROLE_BADGE_COLORS = { P:"#ca8a04", D:"#2563eb", C:"#16a34a", A:"#dc2626" };
 
   function clickSlot(idx) {
-    if (selected === null) { setSelected(idx); return; }
-    if (selected === idx) { setSelected(null); return; }
+    if (selected === null) { setSelection({ signature, index: idx }); return; }
+    if (selected === idx) { setSelection(null); return; }
+    if ((slotMap[selected] && trainingPositionFit(slotMap[selected], slots[idx]) < 0) ||
+      (slotMap[idx] && trainingPositionFit(slotMap[idx], slots[selected]) < 0)) {
+      showToast("Uno dei giocatori non ha un ruolo compatibile con la nuova posizione", "warn");
+      setSelection(null);
+      return;
+    }
     const next = { ...slotMap, [selected]: slotMap[idx], [idx]: slotMap[selected] };
-    setSlotMaps((prev) => ({ ...prev, [activeTeam]: next }));
-    setSelected(null);
+    replaceLayout(serializeTrainingFormation({ ...layout, automatic: false, slots: next }));
   }
 
   function printFormation() {
     const W = 320, H = 464;
     const sortForPrint = (arr) => sortByRole(arr || []);
     const playerName = (p) => escapePrintHtml(getPlayerTeamLabel(p, duplicateLastNames));
-    const allFormations = { ...formations };
-    const allSlotMaps = { ...slotMaps, [activeTeam]: slotMap };
-
     const renderField = (teamIdx) => {
-      const teamPlayers = teams[teamIdx] || [];
-      const teamFormation = allFormations[teamIdx] || "4-3-3";
-      const teamSlots = FORMATIONS_DEF[teamFormation] || [];
-      const teamSlotMap = allSlotMaps[teamIdx] ?? autoAssignFormation([...teamPlayers], teamFormation);
+      const { formation: teamFormation, slots: teamSlotMap } = layouts[teamIdx];
+      const teamSlots = FORMATIONS_DEF[teamFormation];
       const svgSlots = teamSlots.map((slot, idx) => {
         const p = teamSlotMap[idx];
         const cx = slot.x / 100 * W;
         const cy = slot.y / 100 * H;
-        const tag = p ? (getRoleTag(p.role) || slot.role || "") : slot.role || "";
+        const tag = slot.role;
         const col = ROLE_BADGE_COLORS[slot.role] || ROLE_BADGE_COLORS[tag] || "#888";
         const name = p ? playerName(p).slice(0, 12) : "";
         return `<g>
@@ -2669,7 +2579,7 @@ function FormationView({ teams, benches = [], teamColors, numTeams, savedFormati
         <h4 style={{ margin:0, fontSize:14, fontWeight:800 }}>Schieramento</h4>
         <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
           {Array.from({ length: numTeams }, (_, i) => (
-            <button key={i} onClick={() => selectTeam(i)} style={{
+            <button key={i} onClick={() => { setTeamTab(i); setSelection(null); }} aria-pressed={activeTeam === i} style={{
               padding:"4px 10px", borderRadius:7, border:"1px solid",
               borderColor: activeTeam===i ? teamColors[i]?.color : "rgba(255,255,255,0.1)",
               background: activeTeam===i ? `${teamColors[i]?.color}22` : "transparent",
@@ -2677,11 +2587,12 @@ function FormationView({ teams, benches = [], teamColors, numTeams, savedFormati
               fontSize:12, fontWeight:700, cursor:"pointer",
             }}>{teamColors[i]?.label}</button>
           ))}
-          <select value={formation} onChange={(e) => setFormation(e.target.value)} style={{
+          <select aria-label="Modulo della squadra" value={automatic ? "auto" : formation} onChange={(e) => setFormation(e.target.value)} style={{
             padding:"4px 8px", borderRadius:7, border:"1px solid rgba(255,255,255,0.12)",
             background:"rgba(255,255,255,0.06)", color:"#e2e8f0", fontSize:12, fontWeight:700, cursor:"pointer",
           }}>
-            {Object.keys(FORMATIONS_DEF).map((f) => <option key={f} value={f}>{f}</option>)}
+            <option value="auto">Automatico · {formation}</option>
+            {[...new Set([...getTrainingModuleOptions(teamSize), formation])].map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
           <button onClick={printFormation} style={{
             padding:"4px 12px", borderRadius:7, border:"1px solid rgba(255,255,255,0.1)",
@@ -2689,13 +2600,18 @@ function FormationView({ teams, benches = [], teamColors, numTeams, savedFormati
           }}>🖨 Stampa</button>
           <button onClick={handleSave} style={{
             padding:"4px 12px", borderRadius:7, fontSize:12, fontWeight:700, cursor:"pointer",
-            border: saved ? "1px solid #22c55e" : "1px solid rgba(56,189,248,0.3)",
-            background: saved ? "rgba(34,197,94,0.12)" : "rgba(56,189,248,0.1)",
-            color: saved ? "#22c55e" : "#38bdf8",
-          }}>{saved ? "✓ Salvato" : "💾 Salva"}</button>
+            border: "1px solid rgba(56,189,248,0.3)",
+            background: "rgba(56,189,248,0.1)",
+            color: "#38bdf8",
+          }}>Salva schieramento</button>
         </div>
       </div>
-      <p style={{ margin:"0 0 10px", fontSize:11, color:"#64748b" }}>Clicca due giocatori per scambiarli di posizione</p>
+      <p style={{ margin:"0 0 10px", fontSize:12, color:"#94a6be" }}>Clicca due posizioni per scambiarle, se i ruoli sono compatibili.</p>
+      {unplaced.length > 0 && (
+        <p className="training-team-builder-unplaced" role="status">
+          Da schierare in {teamColors[activeTeam]?.label} ({unplaced.length}): {unplaced.map(getPlayerFullName).join(", ")}
+        </p>
+      )}
 
       {/* Campo SVG */}
       <div style={{ display:"flex", justifyContent:"center" }}>
@@ -2725,7 +2641,8 @@ function FormationView({ teams, benches = [], teamColors, numTeams, savedFormati
             const col = ROLE_BADGE_COLORS[slot.role] || "#475569";
             const isSelected = selected === idx;
             return (
-              <g key={`empty-${idx}`} onClick={() => clickSlot(idx)} style={{ cursor: isSelected ? "pointer" : "default" }}>
+              <g key={`empty-${idx}`} onClick={() => clickSlot(idx)} style={{ cursor: "pointer" }}>
+                <title>{slot.positions.join(" / ")}</title>
                 <circle cx={cx} cy={cy} r="17" fill={isSelected ? "#facc1544" : "rgba(255,255,255,0.08)"}
                   stroke={col} strokeWidth="1.5" strokeDasharray="4 3" opacity="0.6"/>
                 <text x={cx} y={cy+4} textAnchor="middle" fontSize="9" fill={col} fontFamily="sans-serif" fontWeight="700" opacity="0.7">{slot.role}</text>
@@ -2743,15 +2660,14 @@ function FormationView({ teams, benches = [], teamColors, numTeams, savedFormati
             const col = ROLE_BADGE_COLORS[posRole] || "#475569";
             const isSelected = selected === idx;
             const name = getPlayerTeamLabel(p, duplicateLastNames);
-            const origRole = getRoleTag(p.role) || "";
-            const isDifferentRole = origRole && origRole !== posRole;
+            const alternate = trainingPositionFit(p, slot) === 1;
             return (
               <g key={idx} onClick={() => clickSlot(idx)} style={{ cursor:"pointer" }}>
-                <title>{name}{isDifferentRole ? ` (${origRole}→${posRole})` : ""}</title>
+                <title>{`${name} · ${slot.positions.join(" / ")}${alternate ? " · ruolo secondario" : ""}`}</title>
                 <circle cx={cx} cy={cy} r="17"
                   fill={isSelected ? "#facc15" : col}
-                  stroke={isSelected ? "#fbbf24" : isDifferentRole ? "#f97316" : "rgba(255,255,255,0.4)"}
-                  strokeWidth={isSelected ? 2.5 : isDifferentRole ? 2 : 1.5}
+                  stroke={isSelected ? "#fbbf24" : alternate ? "#f97316" : "rgba(255,255,255,0.4)"}
+                  strokeWidth={isSelected ? 2.5 : alternate ? 2 : 1.5}
                   opacity="0.93"
                 />
                 <text x={cx} y={cy-3} textAnchor="middle" fontSize="9" fontWeight="900" fill="white" fontFamily="sans-serif">{posRole}</text>

@@ -4,6 +4,7 @@ import './test-attendance-sync.mjs';
 import './test-roster-comparison.mjs';
 import './test-calendar-attendance.mjs';
 import "./test-formation-lineup.mjs";
+import "./test-training-formations.mjs";
 import "./test-match-timeline.mjs";
 import "./test-match-report.mjs";
 import "./test-season-trend.mjs";

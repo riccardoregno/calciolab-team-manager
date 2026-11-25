@@ -200,3 +200,22 @@
   color: #a9b8cb;
   font-size: 12px;
 }
+.training-team-builder-assign {
+  min-height: 30px;
+  max-width: 96px;
+  padding: 3px 5px;
+  border: 1px solid rgba(148, 166, 190, .35);
+  border-radius: 6px;
+  background: #111d2d;
+  color: #e2e8f0;
+  font-size: 11px;
+}
+
+.training-team-builder-unplaced {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: rgba(245, 158, 11, .1);
+  color: #fde68a;
+  font-size: 12px;
+}
