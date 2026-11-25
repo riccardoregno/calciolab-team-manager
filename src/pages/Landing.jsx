@@ -11,6 +11,7 @@ import {
 
 import { CALCIOLAB_TEAM_PLAN } from "../constants/coachPlans.js";
 import { CALCIOLAB_MARK_URL } from "../constants/branding.js";
+import WeeklyWorkflowDemo from "../components/marketing/WeeklyWorkflowDemo.jsx";
 
 /* ─── Dati ────────────────────────────────────────────────────── */
 const FEATURES = [
@@ -21,12 +22,6 @@ const FEATURES = [
   { icon: Activity, title: "Test fisici", desc: "Gacon, Yo-Yo, sprint e storico dei progressi di ogni atleta." },
   { icon: Target, title: "Obiettivi stagione", desc: "Traguardi di squadra e individuali aggiornati dai dati partita." },
   { icon: Dumbbell, title: "Staff multi-utente", desc: "Assistenti, preparatori e dirigenti accedono alle aree pertinenti al proprio ruolo." },
-];
-
-const WORKFLOW = [
-  { step: "01", title: "Registra le presenze", text: "Dopo la seduta, lo staff segna chi era presente, assente o in recupero nel registro." },
-  { step: "02", title: "Completa il tabellino", text: "Dopo la gara, lo staff registra risultato, formazione e minuti giocati." },
-  { step: "03", title: "Consulta il quadro settimanale", text: "Prima della prossima seduta, il mister controlla presenze, minuti di gara e dati ancora da completare." },
 ];
 
 const PLANS = [{ ...CALCIOLAB_TEAM_PLAN, monthlyPrice: CALCIOLAB_TEAM_PLAN.price, cta: "Crea un account", ctaVariant: "primary" }];
@@ -132,34 +127,19 @@ export default function Landing() {
       <section style={l.hero}>
         <div style={l.heroInner}>
           <div style={l.heroBadge}>Per allenatori e staff del calcio dilettantistico</div>
-          <h1 style={l.heroTitle}>Presenze e minutaggio della tua squadra, in un colpo d’occhio</h1>
+          <h1 style={l.heroTitle}>Organizza la settimana della tua squadra, dalla seduta al report gara</h1>
           <p style={l.heroSubtitle}>
-            Lo staff registra presenze e tabellini. Prima della prossima seduta vedi chi si è allenato, quanto ha giocato e quali dati mancano.
+            Prepara gli allenamenti, registra le presenze e rivedi i minuti di gara. Lo staff ritrova tutto nello stesso posto.
           </p>
           <div style={l.heroActions}>
             <button style={l.btnHeroPrimary} onClick={goToSignup}>
               Crea account gratuito <ArrowRight size={18} />
             </button>
-            <button style={l.btnHeroGhost} onClick={goToLogin}>
-              Ho già un account
-            </button>
+            <a href="#demo" style={{ ...l.btnHeroGhost, textDecoration: "none" }}>Guarda la demo · 40 s</a>
           </div>
           <p style={l.heroNote}>Nessuna carta di credito richiesta</p>
 
-          <WeeklyRosterPreview />
-        </div>
-      </section>
-
-      <section style={l.workflowSection} aria-labelledby="landing-workflow-title">
-        <h2 id="landing-workflow-title" style={l.workflowHeading}>Come si usa</h2>
-        <div style={l.workflowInner}>
-          {WORKFLOW.map((item) => (
-            <div key={item.step} style={l.workflowItem}>
-              <span style={l.workflowStep}>{item.step}</span>
-              <h3 style={l.workflowTitle}>{item.title}</h3>
-              <p style={l.workflowText}>{item.text}</p>
-            </div>
-          ))}
+          <WeeklyWorkflowDemo />
         </div>
       </section>
 
@@ -329,32 +309,6 @@ export default function Landing() {
   );
 }
 
-function WeeklyRosterPreview() {
-  const rows = [
-    { name: "Luca Riva", training: "3 presenti", match: "90 min" },
-    { name: "Marco Serra", training: "2 presenti · 1 recupero", match: "0 min · non impiegato" },
-    { name: "Andrea Costa", training: "2 presenti · 1 da registrare", match: "Minutaggio da completare", pending: true },
-  ];
-  return (
-    <figure style={l.mockup}>
-      <figcaption style={l.previewCaption}>
-        <strong>Quadro settimanale della rosa</strong>
-        <span style={l.previewExample}>Dati di esempio</span>
-      </figcaption>
-      <div style={l.previewWeek}>2–8 novembre · 3 sedute · 1 gara</div>
-      <ul style={l.previewList}>
-        {rows.map(({ name, training, match, pending }) => (
-          <li key={name} className="no-mobile-override" style={l.previewRow}>
-            <strong>{name}</strong>
-            <div><span style={l.previewLabel}>Allenamenti</span>{training}</div>
-            <div><span style={l.previewLabel}>Gara</span><span style={pending ? l.previewPending : undefined}>{match}</span></div>
-          </li>
-        ))}
-      </ul>
-    </figure>
-  );
-}
-
 const l = {
   root: {
     minHeight: "100vh",
@@ -492,50 +446,12 @@ const l = {
   },
   heroNote: { color: "#aebed2", fontSize: 13, fontWeight: 600, margin: "0 0 24px" },
 
-  /* Mockup */
-  mockup: {
-    borderRadius: 20,
-    border: "1px solid rgba(255,255,255,0.10)",
-    overflow: "hidden",
-    boxShadow: "0 40px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)",
-    background: "rgba(15,17,21,0.97)",
-    maxWidth: 780, margin: "0 auto",
-  },
-  previewCaption: {
-    display: "flex", alignItems: "baseline", flexWrap: "wrap", justifyContent: "space-between",
-    gap: "4px 12px", padding: "14px 14px 4px", fontSize: 16, textAlign: "left",
-  },
-  previewExample: { color: "#aebed2", fontSize: 13 },
-  previewWeek: { color: "#cbd5e1", fontSize: 13, textAlign: "left", padding: "0 14px 10px" },
-  previewList: { listStyle: "none", margin: 0, padding: "0 10px 10px", display: "grid", gap: 6 },
-  previewRow: {
-    display: "grid", gridTemplateColumns: "minmax(0, .85fr) repeat(2, minmax(0, 1fr))",
-    alignItems: "center", gap: 8, textAlign: "left", overflowWrap: "anywhere",
-    background: "#172233", borderRadius: 10, padding: "9px 8px", fontSize: 14, lineHeight: 1.35,
-  },
-  previewLabel: { display: "block", color: "#b9c8db", fontSize: 12, marginBottom: 2 },
-  previewPending: { color: "#fde68a", fontWeight: 650 },
-
   /* Stats */
   statsSection: {
     borderTop: "1px solid rgba(255,255,255,0.06)",
     borderBottom: "1px solid rgba(255,255,255,0.06)",
     padding: "32px 24px",
   },
-  workflowSection: {
-    padding: "48px 24px",
-    background: "#10151d",
-    borderBottom: "1px solid rgba(255,255,255,0.07)",
-  },
-  workflowHeading: { maxWidth: 1100, margin: "0 auto 22px", fontSize: 26 },
-  workflowInner: {
-    maxWidth: 1100, margin: "0 auto", display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))", gap: 32,
-  },
-  workflowItem: { borderLeft: "2px solid #22c55e", paddingLeft: 18 },
-  workflowStep: { color: "#22c55e", fontSize: 12, fontWeight: 900 },
-  workflowTitle: { margin: "8px 0", fontSize: 20, letterSpacing: 0 },
-  workflowText: { margin: 0, color: "#94a3b8", fontSize: 14, lineHeight: 1.65 },
   statsGrid: {
     maxWidth: 860, margin: "0 auto",
     display: "grid",
