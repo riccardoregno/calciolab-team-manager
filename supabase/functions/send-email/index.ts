@@ -19,6 +19,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitedResponse } from "../_shared/rateLimit.ts";
 import { requireAuth } from "../_shared/requireAuth.ts";
+import { CALCIOLAB_EMAIL_LOGO_URL } from "../_shared/branding.ts";
 
 // Rate limit: max 15 email per utente ogni 10 minuti (protezione spam inviti)
 const EMAIL_RL_MAX = 15;
@@ -116,8 +117,8 @@ ${safePreview}
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;">
       <tr><td align="center" style="padding-bottom:40px;">
         <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
-          <td align="center" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8);border-radius:16px;width:56px;height:56px;">
-            <span style="display:block;color:#fff;font-size:22px;font-weight:800;line-height:56px;text-align:center;width:56px;">CL</span>
+          <td align="center" width="56" height="56">
+            <img src="${CALCIOLAB_EMAIL_LOGO_URL}" width="56" height="56" alt="" style="display:block;border:0;border-radius:14px;" />
           </td>
           <td style="padding-left:14px;">
             <span style="display:block;color:#fff;font-size:24px;font-weight:700;">CalcioLab</span>
@@ -202,7 +203,7 @@ function infoBox(text: string) {
 function templateWelcome(firstName = "Coach") {
   const subject = "Benvenuto in CalcioLab 🎉";
   const html = baseLayout(`
-    ${h1(`Ciao ${firstName}, benvenuto in CalcioLab! ⚡`)}
+    ${h1(`Ciao ${firstName}, benvenuto in CalcioLab!`)}
     ${p("Il tuo account è stato creato con successo. Sei pronto a gestire la tua squadra come uno staff professionista.")}
     ${p("Con CalcioLab hai accesso a:")}
     <ul style="margin:0 0 16px;padding-left:20px;color:#94a3b8;font-size:14px;line-height:2;">

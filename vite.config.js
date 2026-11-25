@@ -11,7 +11,6 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       selfDestroying: false,
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'pwa-192.svg', 'pwa-512.svg'],
       manifest: {
         name: 'CalcioLab — Coach Platform',
         short_name: 'CalcioLab',
@@ -24,16 +23,22 @@ export default defineConfig(({ mode }) => ({
         orientation: 'portrait-primary',
         icons: [
           {
-            src: 'pwa-192.svg',
+            src: 'brand/calciolab-192.png',
             sizes: '192x192',
-            type: 'image/svg+xml',
+            type: 'image/png',
             purpose: 'any',
           },
           {
-            src: 'pwa-512.svg',
+            src: 'brand/calciolab-512.png',
             sizes: '512x512',
-            type: 'image/svg+xml',
-            purpose: 'any maskable',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: 'brand/calciolab-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       },

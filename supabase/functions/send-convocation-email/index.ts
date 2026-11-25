@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitedResponse } from "../_shared/rateLimit.ts";
+import { CALCIOLAB_EMAIL_LOGO_URL } from "../_shared/branding.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const FROM_EMAIL = Deno.env.get("EMAIL_FROM") ?? "CalcioLab <noreply@calciolab.org>";
@@ -136,7 +137,7 @@ function buildHtml({ playerName, teamName, opponent, matchDate, matchTime, match
         <tr><td style="padding:0 0 24px;">
           <table cellpadding="0" cellspacing="0">
             <tr>
-              <td style="width:38px;height:38px;background:#2563eb;border-radius:10px;text-align:center;vertical-align:middle;color:white;font-weight:900;">CL</td>
+              <td width="38" height="38"><img src="${CALCIOLAB_EMAIL_LOGO_URL}" width="38" height="38" alt="" style="display:block;border:0;border-radius:10px;" /></td>
               <td style="padding-left:10px;font-size:18px;font-weight:900;color:white;">CalcioLab</td>
             </tr>
           </table>

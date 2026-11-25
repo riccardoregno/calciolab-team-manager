@@ -1,6 +1,7 @@
 import { getPlayerPhotoStyle } from "../utils/playerPhoto";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "../i18n";
+import { CALCIOLAB_MARK_URL } from "../constants/branding.js";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { usePlayerMatches } from "../hooks/usePlayerMatches";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
@@ -156,7 +157,12 @@ export default function PlayerPortal({
   return (
     <div style={ps.page}>
       <PageHeader
-        title={isPlayerView ? t("pages.playerPortal.myArea") : t("pages.playerPortal.title")}
+        title={isPlayerView ? (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+            <img src={CALCIOLAB_MARK_URL} alt="CalcioLab" width={32} height={32} />
+            {t("pages.playerPortal.myArea")}
+          </span>
+        ) : t("pages.playerPortal.title")}
         subtitle={
           isPlayerView
             ? t("pages.playerPortal.subtitlePlayer")

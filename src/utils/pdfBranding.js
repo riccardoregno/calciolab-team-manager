@@ -3,7 +3,7 @@
  * Provides consistent header (team logo + name) and footer (CalcioLab logo) across all PDFs.
  */
 
-const CALCIOLAB_LOGO_URL = "/calciolab-logo.svg";
+import { CALCIOLAB_MARK_URL } from "../constants/branding.js";
 
 export async function loadImageBase64(url) {
   if (!url) return null;
@@ -28,7 +28,7 @@ export async function loadImageBase64(url) {
 
 export async function loadBrandingAssets(teamLogoUrl) {
   const [calciolabLogo, teamLogo] = await Promise.all([
-    loadImageBase64(CALCIOLAB_LOGO_URL),
+    loadImageBase64(CALCIOLAB_MARK_URL),
     teamLogoUrl ? loadImageBase64(teamLogoUrl) : Promise.resolve(null),
   ]);
   return { calciolabLogo, teamLogo };
@@ -92,11 +92,11 @@ export function drawBrandedFooters(doc, { teamName, dateStr, calciolabLogo }) {
     // CalcioLab logo bottom-right
     if (calciolabLogo) {
       try {
-        doc.addImage(calciolabLogo, "PNG", W - 22, 287, 8, 6);
+        doc.addImage(calciolabLogo, "PNG", W - 20, 288, 6, 6);
       } catch { /* skip */ }
     }
     doc.setTextColor(...CM);
     doc.setFontSize(6.5);
-    doc.text("calciolab.org", W - 14, 292, { align: "right" });
+    doc.text("calciolab.org", W - (calciolabLogo ? 22 : 14), 292, { align: "right" });
   }
 }

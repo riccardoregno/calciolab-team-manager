@@ -67,7 +67,7 @@ function drawCover(doc, { teamName, season, competition, generatedAt, calciolabL
 
   // CalcioLab logo or text
   if (calciolabLogo) {
-    try { doc.addImage(calciolabLogo, "PNG", W / 2 - 22, 60, 44, 38); } catch { /* skip */ }
+    try { doc.addImage(calciolabLogo, "PNG", W / 2 - 19, 60, 38, 38); } catch { /* skip */ }
   }
 
   // App name

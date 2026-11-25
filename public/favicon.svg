@@ -1,30 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>
-    <linearGradient id="shield" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1e3a8a"/>
-      <stop offset="1" stop-color="#0f172a"/>
-    </linearGradient>
-    <linearGradient id="ball" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#cbd5e1"/>
-    </linearGradient>
-  </defs>
-
-  <path d="M50 6 L86 18 V46 C86 70 70 87 50 95 C30 87 14 70 14 46 V18 Z" fill="url(#shield)"/>
-
-  <!-- soccer ball, lower portion -->
-  <g fill="url(#ball)">
-    <path d="M50 46 L62 54 L58 68 L42 68 L38 54 Z"/>
-    <path d="M62 54 L77 58 L78 74 L66 84 L58 68 Z"/>
-    <path d="M38 54 L42 68 L34 84 L22 74 L23 58 Z"/>
-    <path d="M42 68 L58 68 L66 84 L50 94 L34 84 Z"/>
-  </g>
-
-  <!-- bar chart + accent line, upper portion -->
-  <g fill="#38bdf8">
-    <rect x="24" y="32" width="6" height="14" rx="1.5"/>
-    <rect x="34" y="26" width="6" height="20" rx="1.5"/>
-    <rect x="44" y="18" width="6" height="28" rx="1.5"/>
-  </g>
-  <path d="M20 50 C36 38 64 38 80 50" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <rect x="1" y="1" width="62" height="62" rx="16" fill="#0B1928" stroke="#285164" stroke-width="2"/>
+  <path d="M44 16a20 20 0 1 0 0 32" fill="none" stroke="#54E7BA" stroke-width="7" stroke-linecap="round"/>
+  <path d="M29 23v16h12" fill="none" stroke="#EDF7FF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="47" cy="27" r="4.5" fill="#FFCE73"/>
 </svg>

@@ -4,6 +4,7 @@ import Badge from "../components/ui/Badge";
 import { createId, normalizeAppSettings } from "../utils/helpers";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { useTranslation } from "../i18n";
+import { CALCIOLAB_MARK_URL } from "../constants/branding.js";
 
 // ─────────────────────────────────────────────
 // Dati configurazione
@@ -210,7 +211,7 @@ export default function Onboarding({ appSettings = {}, setAppSettings, team, onE
         <MobileProgress step={step} total={STEP_COUNT} labels={stepLabels} onSkip={!showSuccess ? skipForNow : null} />
       ) : (
         <aside style={ob.aside}>
-          <div style={ob.asideLogo}>⚽ CalcioLab</div>
+          <div style={ob.asideLogo}><img src={CALCIOLAB_MARK_URL} alt="" width={36} height={36} /> CalcioLab</div>
           <p style={ob.asideTagline}>{t("pages.onboarding.tagline")}</p>
 
           <div style={ob.stepList}>
@@ -293,7 +294,9 @@ function MobileProgress({ step, total, labels, onSkip }) {
     <div style={ob.mobileProgress}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontWeight: 900, fontSize: 16 }}>⚽ CalcioLab</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 900, fontSize: 16 }}>
+            <img src={CALCIOLAB_MARK_URL} alt="" width={24} height={24} /> CalcioLab
+          </span>
           <span style={{ color: "#64748b", fontSize: 13 }}>{t("pages.onboarding.mobileProgress", { step, total, label: labels[step - 1] })}</span>
         </div>
         {onSkip && (
@@ -1041,7 +1044,7 @@ const ob = {
     height: "100vh",
     overflowY: "auto",
   },
-  asideLogo:    { fontSize: 22, fontWeight: 900, color: "white", marginBottom: 8 },
+  asideLogo:    { display: "flex", alignItems: "center", gap: 10, fontSize: 22, fontWeight: 900, color: "white", marginBottom: 8 },
   asideTagline: { color: "#475569", fontSize: 13, marginTop: 0, marginBottom: 48 },
   stepList:     { display: "flex", flexDirection: "column", gap: 28 },
   stepItem:     { display: "flex", alignItems: "flex-start", gap: 14 },

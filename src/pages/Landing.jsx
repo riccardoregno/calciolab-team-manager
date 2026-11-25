@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 import { CALCIOLAB_TEAM_PLAN } from "../constants/coachPlans.js";
-import calciolabMark from "../assets/calciolab-mark.svg";
+import { CALCIOLAB_MARK_URL } from "../constants/branding.js";
 
 /* ─── Dati ────────────────────────────────────────────────────── */
 const FEATURES = [
@@ -86,7 +86,7 @@ export default function Landing() {
       <header style={l.nav}>
         <div style={l.navInner}>
           <div style={l.logo}>
-            <img src={calciolabMark} alt="" style={l.logoBolt} />
+            <img src={CALCIOLAB_MARK_URL} alt="" style={l.logoBolt} />
             <span style={l.logoText}>CalcioLab</span>
           </div>
 
@@ -311,7 +311,7 @@ export default function Landing() {
         <div style={l.footerInner}>
           <div style={l.footerBrand}>
             <div style={l.logo}>
-              <img src={calciolabMark} alt="" style={l.logoBolt} />
+              <img src={CALCIOLAB_MARK_URL} alt="" style={l.logoBolt} />
               <span style={{ ...l.logoText, fontSize: 16 }}>CalcioLab</span>
             </div>
             <p style={l.footerTagline}>La piattaforma per allenatori di calcio.</p>

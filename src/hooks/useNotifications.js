@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "../i18n";
+import { CALCIOLAB_MARK_URL } from "../constants/branding.js";
 
 /**
  * useNotifications — gestisce i permessi e l'invio di notifiche browser.
@@ -35,7 +36,7 @@ export function useNotifications() {
   }, [supported]);
 
   const notify = useCallback(
-    ({ title, body = "", icon = "/favicon.svg", tag = "" }) => {
+    ({ title, body = "", icon = CALCIOLAB_MARK_URL, tag = "" }) => {
       if (!supported || permission !== "granted") return null;
       try {
         return new Notification(title, { body, icon, tag });
