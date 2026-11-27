@@ -12,6 +12,7 @@ import {
 import { CALCIOLAB_TEAM_PLAN } from "../constants/coachPlans.js";
 import { CALCIOLAB_MARK_URL } from "../constants/branding.js";
 import WeeklyWorkflowDemo from "../components/marketing/WeeklyWorkflowDemo.jsx";
+import ProductIntroVideo from "../components/marketing/ProductIntroVideo.jsx";
 
 /* ─── Dati ────────────────────────────────────────────────────── */
 const FEATURES = [
@@ -135,11 +136,11 @@ export default function Landing() {
             <button style={l.btnHeroPrimary} onClick={goToSignup}>
               Crea account gratuito <ArrowRight size={18} />
             </button>
-            <a href="#demo" style={{ ...l.btnHeroGhost, textDecoration: "none" }}>Guarda la demo · 40 s</a>
+            <a href="#video-presentazione" style={{ ...l.btnHeroGhost, textDecoration: "none" }}>Video di presentazione · 40 s</a>
           </div>
           <p style={l.heroNote}>Nessuna carta di credito richiesta</p>
 
-          <WeeklyWorkflowDemo />
+          <ProductIntroVideo />
         </div>
       </section>
 
@@ -178,6 +179,10 @@ export default function Landing() {
       </section>
 
       {/* ── Pricing ── */}
+      <div style={{ padding: "0 24px 56px" }}>
+        <WeeklyWorkflowDemo />
+      </div>
+
       <section id="pricing" style={{ ...l.section, background: "rgba(255,255,255,0.015)" }}>
         <div style={l.sectionInner}>
           <div style={l.sectionHeader}>
