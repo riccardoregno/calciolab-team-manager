@@ -2206,6 +2206,7 @@ export const en = {
       accessNone: "No access",
     },
     calendar: {
+      eventsForDay: "Events on {{date}}",
       title: "Calendar",
       subtitle: "Manage events, attendance and match/training statistics",
       eventsBadge: "{{count}} events",

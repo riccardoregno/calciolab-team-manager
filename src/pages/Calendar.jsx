@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTabState } from "../hooks/useTabState";
 import { useIsMobile } from "../hooks/useIsMobile";
 import {
@@ -18,7 +19,7 @@ import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useAreaPermission } from "../components/auth/permissionContext";
-import { formatShortDate, getAvailabilityGroups, getSessionLoad, createId } from "../utils/helpers";
+import { formatShortDate, getAvailabilityGroups, getSessionLoad, createId, parseMatchResult } from "../utils/helpers";
 import { styles } from "../styles/index.js";
 import { useTranslation } from "../i18n";
 import { getAgendaEventTime, getEventTimeUpdate } from '../utils/coachAgenda';
@@ -77,7 +78,7 @@ function weekOffsetForDate(date) {
 
 
 function Calendar({
-  events, players, setSessions, setMatches, sessions = [], matches = [], appSettings = {} }) {
+  events, players, setSessions, setMatches, sessions = [], matches = [], appSettings = {}, canOpenDetails = false }) {
 
   const { t } = useTranslation();
   const [view, setView] = useTabState("view", "week");
@@ -145,8 +146,6 @@ function Calendar({
     [events]
   );
 
-  const [selectedId, setSelectedId] = useState(sortedEvents[0]?.id || "");
-  const effectiveSelectedId = selectedId || sortedEvents[0]?.id || "";
 
   function requestDeleteEvent(event) {
     if (!canManage) return;
@@ -213,6 +212,7 @@ function Calendar({
         {view === "week" ? (
           <WeekView
             events={sortedEvents}
+            canOpenDetails={canOpenDetails}
             players={players}
             onQuickCreate={quickCreate}
             onDeleteEvent={requestDeleteEvent}
@@ -229,10 +229,9 @@ function Calendar({
         ) : (
           <MonthView
             events={sortedEvents}
+            canOpenDetails={canOpenDetails}
             monthDate={monthDate}
             setMonthDate={setMonthDate}
-            selectedId={effectiveSelectedId}
-            onSelect={setSelectedId}
             onQuickCreate={quickCreate}
             onDeleteEvent={requestDeleteEvent}
             canManage={canManage}
@@ -248,9 +247,24 @@ function Calendar({
   );
 }
 
-function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQuickCreate, onDeleteEvent, onEditEvent, canManage = true }) {
+function CalendarEventTitle({ event, canOpenDetails, style, children }) {
+  const id = event.id == null ? "" : encodeURIComponent(event.id);
+  const match = event.type === "Partita";
+  const path = !canOpenDetails || !id || event.type === "Altro" ? null : match
+    ? (parseMatchResult(event.result, event) ? "/post-match/" : "/match-day/") + id
+    : "/session-attendance/" + id;
+  const title = match ? event.opponent || event.title : event.title;
+  const content = <>{children}{title}</>;
+  return path
+    ? <Link to={path} title={title} style={{ ...style, display: "block", textDecoration: "underline", textUnderlineOffset: 3 }}>{content}</Link>
+    : <span title={title} style={{ ...style, display: "block" }}>{content}</span>;
+}
+
+function MonthView({ events, monthDate, setMonthDate, onQuickCreate, onDeleteEvent, onEditEvent, canManage = true, canOpenDetails }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const [mobileDay, setMobileDay] = useState("");
+  const mobileEventsId = useId();
   const [openDay, setOpenDay] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
   const [activeEvent, setActiveEvent] = useState(null);
@@ -312,8 +326,12 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
       ],
     };
   }, [events, monthDate]);
+  const mobileDayIndex = isMobile ? month.cells.findIndex((day) => day.dateKey === mobileDay && day.events.length) : -1;
+  const mobileEventsDay = mobileDayIndex >= 0 ? month.cells[mobileDayIndex] : null;
+  const mobileWeekEnd = Math.min(mobileDayIndex + 6 - mobileDayIndex % 7, month.cells.length - 1);
 
   function moveMonth(delta) {
+    setMobileDay("");
     setMonthDate(
       new Date(monthDate.getFullYear(), monthDate.getMonth() + delta, 1)
     );
@@ -377,14 +395,14 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
             overflowX: isMobile ? undefined : "auto",
           }}
         >
-          {month.cells.map((cell) => {
+          {month.cells.flatMap((cell, index) => {
             if (cell.empty) {
               return <div key={cell.key} />;
             }
 
             const isOpen = openDay === cell.dateKey;
             const isToday = cell.dateKey === todayKey;
-            return (
+            const dayCell = (
               <DroppableDay
                 key={cell.dateKey}
                 dateKey={cell.dateKey}
@@ -408,12 +426,17 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                 {/* Header cella */}
                 {isMobile ? (
                   /* Mobile: solo numero + dot evento */
-                  <div style={{ textAlign: "center" }}>
+                  <button type="button" disabled={!cell.events.length}
+                    aria-label={t("pages.calendar.eventsForDay", { date: formatShortDate(cell.dateKey) })}
+                    aria-expanded={mobileEventsDay?.dateKey === cell.dateKey}
+                    aria-controls={mobileEventsDay?.dateKey === cell.dateKey ? mobileEventsId : undefined}
+                    onClick={() => setMobileDay((current) => current === cell.dateKey ? "" : cell.dateKey)}
+                    style={{ textAlign: "center", width: "100%", minHeight: 34, borderRadius: 6, border: 0, background: mobileDay === cell.dateKey ? "rgba(56,189,248,.18)" : "transparent", cursor: cell.events.length ? "pointer" : "default" }}>
                     <strong style={{ fontSize: 11, color: isToday ? "#38bdf8" : "#94a3b8", display: "block", lineHeight: 1.3 }}>
                       {cell.day}
                     </strong>
                     {cell.events.length > 0 && (
-                      <div style={{ display: "flex", justifyContent: "center", gap: 2, flexWrap: "wrap", marginTop: 2 }}>
+                      <span style={{ display: "flex", justifyContent: "center", gap: 2, flexWrap: "wrap", marginTop: 2 }}>
                         {cell.events.slice(0, 3).map((ev) => (
                           <span
                             key={ev.id}
@@ -424,9 +447,9 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                             }}
                           />
                         ))}
-                      </div>
+                      </span>
                     )}
-                  </div>
+                  </button>
                 ) : (
                   /* Desktop: numero + today badge + pulsanti edit/delete/add */
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 3 }}>
@@ -470,10 +493,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                         style={{
                           borderRadius: 8,
                           padding: "5px 7px",
-                          background:
-                            String(selectedId) === String(event.id)
-                              ? "rgba(56,189,248,0.24)"
-                              : event.type === "Partita"
+                          background: event.type === "Partita"
                               ? "rgba(251,146,60,0.18)"
                               : event.type === "Altro"
                               ? "rgba(56,189,248,0.14)"
@@ -483,15 +503,12 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                           gap: 4,
                         }}
                       >
-                        <button
-                          type="button"
-                          onClick={() => onSelect(event.id)}
-                          style={{ flex: 1, cursor: "pointer", fontSize: 11, fontWeight: 700, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", border: "none", background: "transparent", padding: 0, textAlign: "left", minHeight: 0 }}
+                        <CalendarEventTitle event={event} canOpenDetails={canOpenDetails}
+                          style={{ flex: 1, fontSize: 11, fontWeight: 700, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                         >
                           {event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}{" "}
                           {event.time && <span style={{ opacity: 0.85 }}>{event.time}{" "}</span>}
-                          {event.type === "Partita" ? (event.opponent || event.title) : event.title}
-                        </button>
+                        </CalendarEventTitle>
                         {canManage && cell.events.length > 1 && (
                           <>
                             <button
@@ -514,6 +531,27 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
                 </div>
               </DroppableDay>
             );
+            if (!mobileEventsDay || index !== mobileWeekEnd) return dayCell;
+
+            return [
+              dayCell,
+                <section key={mobileEventsId} id={mobileEventsId} aria-labelledby={mobileEventsId + "-title"}
+                  style={{ gridColumn: "1 / -1", margin: "5px 0", padding: 10, background: "rgba(56,189,248,.08)", borderRadius: 8 }}>
+                  <h4 id={mobileEventsId + "-title"} style={{ margin: "0 0 6px", fontSize: 13 }}>
+                    {t("pages.calendar.eventsForDay", { date: formatShortDate(mobileEventsDay.dateKey) })}
+                  </h4>
+                  <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                    {mobileEventsDay.events.map((event) => (
+                      <li key={`${event.type}-${event.id}`}>
+                        <CalendarEventTitle event={event} canOpenDetails={canOpenDetails}
+                          style={{ padding: "6px 0", color: "#e2e8f0", fontWeight: 700, fontSize: 13 }}>
+                          {event.time ? event.time + " · " : ""}
+                        </CalendarEventTitle>
+                      </li>
+                    ))}
+                  </ul>
+                </section>,
+            ];
           })}
         </div>
 
@@ -539,7 +577,7 @@ function MonthView({ events, monthDate, setMonthDate, selectedId, onSelect, onQu
 // ─────────────────────────────────────────────
 // Vista Settimana (ex WeekPlan)
 // ─────────────────────────────────────────────
-function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, canManage = true, appSettings = {}, offset = 0, setOffset }) {
+function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, canManage = true, canOpenDetails, appSettings = {}, offset = 0, setOffset }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const isCompactWeek = useIsMobile(1540);
@@ -724,10 +762,9 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                             <>
                               <span style={{ fontSize: 15 }}>{event.type === "Partita" ? "⚽" : event.type === "Altro" ? "📌" : "🏃"}</span>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <p style={{ margin: 0, fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                <CalendarEventTitle event={event} canOpenDetails={canOpenDetails} style={{ margin: 0, color: "#e2e8f0", fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                   {event.time && <span style={{ color: "#38bdf8", marginRight: 5 }}>{event.time}</span>}
-                                  {event.type === "Partita" ? (event.opponent || event.title) : event.title}
-                                </p>
+                                </CalendarEventTitle>
                                 {(event.theme || event.opponent || event.notes) && (
                                   <p style={{ margin: 0, fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                     {event.theme || event.opponent || event.notes}
@@ -760,10 +797,9 @@ function WeekView({ events, players, onQuickCreate, onDeleteEvent, onEditEvent, 
                                   </div>
                                 )}
                               </div>
-                              <p style={wv.eventTitle}>
+                              <CalendarEventTitle event={event} canOpenDetails={canOpenDetails} style={wv.eventTitle}>
                                 {event.time && <span style={{ color: "#38bdf8", marginRight: 5 }}>{event.time}</span>}
-                                {event.type === "Partita" ? (event.opponent || event.title) : event.title}
-                              </p>
+                              </CalendarEventTitle>
                               {(event.theme || event.opponent || event.objective || event.notes) && (
                                 <p style={wv.eventMeta}>
                                   {event.theme || event.opponent || event.objective || event.notes}

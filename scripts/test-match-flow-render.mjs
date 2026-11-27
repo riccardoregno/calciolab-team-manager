@@ -18,6 +18,7 @@ try {
   const { default: NextTrainingCard } = await server.ssrLoadModule('/src/components/dashboard/NextTrainingCard.jsx');
   const { default: Trainings } = await server.ssrLoadModule('/src/pages/Trainings.jsx');
   const { PlayerProfileTab } = await server.ssrLoadModule('/src/components/players/PlayerDetailSections.jsx');
+  const { default: Calendar } = await server.ssrLoadModule('/src/pages/Calendar.jsx');
   const { default: AttendanceSyncConflicts } = await server.ssrLoadModule('/src/components/ui/AttendanceSyncConflicts.jsx');
   const { default: SaveStatus } = await server.ssrLoadModule('/src/components/ui/SaveStatus.jsx');
   const { default: Dashboard } = await server.ssrLoadModule('/src/pages/Dashboard.jsx');
@@ -221,6 +222,26 @@ try {
   assert.match(trainingSides(false), /aria-label="Sposta Marco Difensore in un’altra squadra"/);
   assert.match(trainingSides(false), /<title>Difensore · Difensore Centrale<\/title>/);
   assert.doesNotMatch(trainingSides(true), /<title>Difensore · Difensore Centrale<\/title>/);
+  const calendarDate = getAgendaDateKey(new Date());
+  const calendarEvents = [
+    { id: "seduta / oggi", type: "Allenamento", title: "Seduta demo", date: calendarDate },
+    { id: "gara-futura", type: "Partita", opponent: "Ospite demo", date: calendarDate },
+    { id: "gara-finita", type: "Partita", opponent: "Ospite giocata", result: "2-1", date: calendarDate },
+    { id: "altro", type: "Altro", title: "Riunione", date: calendarDate },
+  ];
+  const calendarMarkup = (view, canOpenDetails = true) => renderToStaticMarkup(h(I18nProvider, null,
+    h(MemoryRouter, {initialEntries: ["/calendar?view=" + view]}, h(Calendar, {
+      events: calendarEvents, players: [], canOpenDetails,
+    }))
+  ));
+  for (const view of ["week", "month"]) {
+    const calendar = calendarMarkup(view);
+    assert.match(calendar,/href="\/session-attendance\/seduta%20%2F%20oggi"/);
+    assert.match(calendar,/href="\/match-day\/gara-futura"/);
+    assert.match(calendar,/href="\/post-match\/gara-finita"/);
+    assert.doesNotMatch(calendar,/href="[^"]*\/altro"/);
+    assert.doesNotMatch(calendarMarkup(view, false),/href="\/(session-attendance|match-day|post-match)\//);
+  }
 
   const recentTraining = {
     id: 'dashboard-rpe',

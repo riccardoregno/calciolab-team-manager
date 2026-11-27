@@ -1034,6 +1034,7 @@ function App() {
                 element={
                   gate(playerCalendarRoles, <Calendar
                     events={[...sessions, ...matches]}
+                    canOpenDetails={technicalRoles.includes(auth.team?.role)}
                     players={players}
                     updateEventAttendance={updateEventAttendance}
                     setSessions={setSessions}
