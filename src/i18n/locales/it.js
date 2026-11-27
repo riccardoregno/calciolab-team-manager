@@ -2199,6 +2199,7 @@ export const it = {
       accessNone: "Nessun accesso",
     },
     calendar: {
+      eventsForDay: "Eventi del {{date}}",
       title: "Calendario",
       subtitle: "Gestisci eventi, presenze e statistiche partita/allenamento",
       eventsBadge: "{{count}} eventi",
