@@ -35,3 +35,8 @@ android/*.keystore
 
 .vercel
 recovery/
+# Local Supabase dumps and runtime artifacts
+/supabase/production_schema_only.sql
+/supabase/local_baseline_schema.sql
+/supabase/.branches/
+/supabase/.temp/
