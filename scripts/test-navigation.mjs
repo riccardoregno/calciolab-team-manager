@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { NAVIGATION_ITEMS, PRIMARY, CORE_SECONDARY, ADVANCED_SECONDARY, primaryMenuGroups, toolboxGroups, juniorNavigationItems } from "../src/constants/navigation.js";
+import { NAVIGATION_ITEMS, calendarNavigationItem, PRIMARY, CORE_SECONDARY, ADVANCED_SECONDARY, primaryMenuGroups, toolboxGroups, juniorNavigationItems } from "../src/constants/navigation.js";
 
-const desktopItems = [...primaryMenuGroups, ...toolboxGroups].flatMap((group) => group.items);
+const desktopMenuItems = [...primaryMenuGroups, ...toolboxGroups].flatMap((group) => group.items);
+const desktopItems = [...desktopMenuItems, calendarNavigationItem];
 const mobileItems = [...PRIMARY, ...CORE_SECONDARY, ...ADVANCED_SECONDARY];
 const roles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player", "sponsor"];
 for (const items of [NAVIGATION_ITEMS, desktopItems, mobileItems]) {
@@ -26,7 +27,9 @@ for (const items of [desktopItems, mobileItems]) {
   assert.deepEqual(fines.roles, ["owner", "headCoach", "assistantCoach"]);
 }
 assert.ok(PRIMARY.some((item) => item.to === "/statistics"), "Statistics must be directly reachable in both primary menus");
-assert.ok(CORE_SECONDARY.some((item) => item.to === "/calendar" && item.roles.includes("player")), "Players retain calendar access");
+assert.equal(desktopMenuItems.some((item) => item.to === "/calendar"), false, "Calendar has its own shortcut outside the desktop menu");
+assert.ok(calendarNavigationItem.roles.includes("player"), "Players retain calendar access");
+assert.equal(calendarNavigationItem.roles.includes("sponsor"), false, "The shortcut respects calendar permissions");
 assert.deepEqual(juniorNavigationItems(), []);
 assert.deepEqual(juniorNavigationItems({ workspaceProfile: { managesJuniores: true, teamLevel: "juniores" } }), []);
 assert.equal(juniorNavigationItems({ workspaceProfile: { managesJuniores: true, teamLevel: "prima" } })[0].to, "/players?gruppo=juniores");

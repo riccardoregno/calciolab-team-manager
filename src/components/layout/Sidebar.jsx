@@ -6,7 +6,7 @@ import { useState, useCallback } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { navigationAccent, navigationItemIsActive } from "../../constants/navigationAppearance";
 import { ChevronDown, ChevronLeft, ChevronRight, LockKeyhole, Wrench } from "lucide-react";
-import { primaryMenuGroups, toolboxGroups, juniorNavigationItems } from "../../constants/navigation";
+import { calendarNavigationItem, primaryMenuGroups, toolboxGroups, juniorNavigationItems } from "../../constants/navigation";
 import { useTranslation } from "../../i18n";
 import { getCurrentUserRole, isFeatureUnlocked, isRoleAllowed, normalizeAppSettings } from "../../utils/helpers";
 import { CALCIOLAB_MARK_URL } from "../../constants/branding.js";
@@ -32,7 +32,9 @@ export default function Sidebar({ appSettings = {}, currentRole: currentRoleProp
   const visibleToolboxAreas = visibleToolboxGroups.length;
   const toolsOpen = toolsOpenOverride ?? visibleToolboxGroups.some((group) => group.items.some((item) => navigationItemIsActive(item, location)));
 
-  const allItems = [...new Map([...visiblePrimaryGroups, ...visibleToolboxGroups].flatMap((group) => group.items).map((item) => [item.to, item])).values()];
+  const searchableItems = [...visiblePrimaryGroups, ...visibleToolboxGroups].flatMap((group) => group.items);
+  if (isRoleAllowed(currentRole, calendarNavigationItem.roles)) searchableItems.push(calendarNavigationItem);
+  const allItems = [...new Map(searchableItems.map((item) => [item.to, item])).values()];
   const labelFor = (item) => item.label || t(item.labelKey);
   const searchedItems = searchNavigationItems(allItems, search, labelFor);
   const favoriteItems = favorites.map((path) => allItems.find((item) => item.to === path)).filter(Boolean);
