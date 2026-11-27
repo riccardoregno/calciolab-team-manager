@@ -33,7 +33,12 @@ const coachRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "
 const technicalRoles = ["owner", "headCoach", "assistantCoach"];
 const physicalRoles = ["owner", "headCoach", "athleticTrainer"];
 const managementRoles = ["owner", "headCoach", "director"];
-const playerCalendarRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"];
+export const calendarNavigationItem = {
+  to: "/calendar",
+  labelKey: "navigation.items.calendar",
+  icon: CalendarDays,
+  roles: ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"],
+};
 
 // ── Voci principali sempre visibili ──────────────────────────────
 export const PRIMARY = [
@@ -46,7 +51,7 @@ export const PRIMARY = [
 
 // ── Drawer "Altro": poche scorciatoie operative, il resto sotto avanzate ──
 export const CORE_SECONDARY = [
-  { to: "/calendar", labelKey: "navigation.items.calendar", icon: CalendarDays, roles: playerCalendarRoles },
+  calendarNavigationItem,
   { to: "/fines", labelKey: "navigation.items.fines", icon: Coins, roles: technicalRoles, cat: "gestione" },
   { to: "/availability",        labelKey: "navigation.items.availability",        icon: HeartPulse, roles: ["owner","headCoach","assistantCoach","athleticTrainer","player"], cat: "squadra" },
   { to: "/staff-chat",          labelKey: "navigation.items.staffChat",           icon: MessagesSquare, roles: coachRoles, cat: "squadra", badge: "chat" },
@@ -75,7 +80,6 @@ export const ADVANCED_SECONDARY = [
 const primaryLabelKeys = {
   "/": "navigation.items.dashboard", "/players": "navigation.mobile.roster",
   "/trainings": "navigation.mobile.trainings", "/matches": "navigation.items.matches",
-  "/calendar": "navigation.items.calendar",
 };
 export const NAVIGATION_ITEMS = [...PRIMARY, ...CORE_SECONDARY, ...ADVANCED_SECONDARY].map((item) => ({
   ...item,
@@ -96,7 +100,7 @@ export const primaryMenuGroups = [
   { titleKey: "navigation.groups.analysis", items: [navigationItem("/statistics")] },
 ];
 export const toolboxGroups = [
-  { titleKey: "navigation.groups.home", items: [navigationItem("/calendar"), navigationItem("/onboarding")] },
+  { titleKey: "navigation.groups.home", items: [navigationItem("/onboarding")] },
   { titleKey: "navigation.groups.team", items: [
     navigationItem("/availability"), navigationItem("/player-compare", { featureKey: "statistics" }),
     navigationItem("/season-goals"), navigationItem("/physical-tests", { featureKey: "physicalTests" }),

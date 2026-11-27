@@ -12,6 +12,8 @@ import { buildMatchScope, buildStatisticsEvents } from "./utils/matchScope.js";
 import RouteScrollReset from "./components/layout/RouteScrollReset";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
+import { calendarNavigationItem } from "./constants/navigation";
+import { getCurrentUserRole, isRoleAllowed } from "./utils/helpers";
 import MobileBottomNav from "./components/layout/MobileBottomNav";
 import FeatureGate from "./components/premium/FeatureGate";
 import RoleGate from "./components/auth/RoleGate";
@@ -101,7 +103,6 @@ const technicalRoles = ["owner", "headCoach", "assistantCoach"];
 const physicalRoles = ["owner", "headCoach", "athleticTrainer"];
 const managementRoles = ["owner", "headCoach", "director"];
 const onboardingRoles = ["owner", "headCoach"];
-const playerCalendarRoles = ["owner", "headCoach", "assistantCoach", "athleticTrainer", "director", "player"];
 
 function getInitialDevelopmentPlanPreview() {
   if (!import.meta.env.DEV || typeof window === "undefined") return "";
@@ -573,6 +574,7 @@ function App() {
 
         <main className="app-content" style={styles.content}>
           <Topbar
+            canOpenCalendar={isRoleAllowed(auth.team?.role || getCurrentUserRole(previewAppSettings), calendarNavigationItem.roles)}
             players={players}
             exercises={exercises}
             sessions={sessions}
@@ -1032,7 +1034,7 @@ function App() {
               <Route
                 path="/calendar"
                 element={
-                  gate(playerCalendarRoles, <Calendar
+                  gate(calendarNavigationItem.roles, <Calendar
                     events={[...sessions, ...matches]}
                     canOpenDetails={technicalRoles.includes(auth.team?.role)}
                     players={players}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   Bell,
@@ -20,8 +20,12 @@ import DevelopmentRoleSwitcher from "./DevelopmentRoleSwitcher";
 import LanguageSelector from "./LanguageSelector";
 import { useInAppNotifications } from "../../hooks/useInAppNotifications";
 import { CALCIOLAB_MARK_URL } from "../../constants/branding.js";
+import { calendarNavigationItem } from "../../constants/navigation";
+
+const CalendarIcon = calendarNavigationItem.icon;
 
 export default function Topbar({
+  canOpenCalendar = false,
   players = [],
   sessions = [],
   matches = [],
@@ -34,7 +38,6 @@ export default function Topbar({
   onDevelopmentRolePreviewChange,
 }) {
   const { t } = useTranslation();
-  const _location = useLocation();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [openNotifications, setOpenNotifications] = useState(false);
@@ -152,6 +155,19 @@ export default function Topbar({
     );
   }
 
+  const calendarLabel = t(calendarNavigationItem.labelKey);
+  const calendarShortcut = canOpenCalendar && (
+    <NavLink
+      to={calendarNavigationItem.to}
+      end
+      className="topbar-calendar-link"
+      aria-label={calendarLabel}
+      title={calendarLabel}
+    >
+      <CalendarIcon size={20} aria-hidden="true" />
+    </NavLink>
+  );
+
   return (
     <>
     <header className="mobile-only mobile-topbar" style={mobileTopbarStyles.header}>
@@ -163,7 +179,7 @@ export default function Topbar({
         </div>
       </div>
 
-      <div />
+      {calendarShortcut}
     </header>
 
     <header className="mobile-hide cl-desktop-topbar" style={styles.topbar}>
@@ -243,6 +259,8 @@ export default function Topbar({
           <span style={styles.topbarPlus}><Plus size={15} /></span>
           {t("topbar.newSession")}
         </Link>
+
+        {calendarShortcut}
 
         <div style={{ position: "relative" }}>
           <button
